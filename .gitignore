@@ -1,0 +1,28 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+docs/setup-keys.md
+
+# Node / Astro
+node_modules/
+dist/
+.astro/
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+
+# Scratch / OS / editors
+.superpowers/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
