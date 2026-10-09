@@ -197,12 +197,6 @@ declare global {
     }
   }
 }
-
-declare namespace App {
-  interface Locals {
-    user: User | null;
-  }
-}
 ```
 
 - [ ] **Step 4: Verify it compiles**
