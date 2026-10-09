@@ -107,7 +107,8 @@ reports; staff can read all.
 - Students: read their own `profiles` / `students` row, their own reports and requests;
   insert maintenance reports and room-change requests; update only via the safe RPC.
 - Staff / admin: read all rows; perform approvals/rejections via the Postgres functions.
-- `official_residents`: admin-only read/write.
+- `official_residents`: readable by staff and admin (needed to compare pending
+  accounts); writable (import/replace) by admin only.
 
 ## 6. Website (Student) — Features
 
