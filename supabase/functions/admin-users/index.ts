@@ -52,10 +52,23 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...CORS, "Content-Type": "application/json" },
       });
     }
-    await admin.from("profiles").update({ role: "staff" }).eq("id", created.user.id);
-    await admin.from("staff").insert({
+    const { error: roleError } = await admin
+      .from("profiles").update({ role: "staff" }).eq("id", created.user.id);
+    if (roleError) {
+      await admin.auth.admin.deleteUser(created.user.id);
+      return new Response(JSON.stringify({ error: roleError.message }), {
+        status: 500, headers: { ...CORS, "Content-Type": "application/json" },
+      });
+    }
+    const { error: staffError } = await admin.from("staff").insert({
       id: created.user.id, full_name, position: position ?? null,
     });
+    if (staffError) {
+      await admin.auth.admin.deleteUser(created.user.id);
+      return new Response(JSON.stringify({ error: staffError.message }), {
+        status: 500, headers: { ...CORS, "Content-Type": "application/json" },
+      });
+    }
     return new Response(JSON.stringify({ id: created.user.id }), {
       status: 201, headers: { ...CORS, "Content-Type": "application/json" },
     });
