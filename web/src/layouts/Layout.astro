@@ -1,0 +1,37 @@
+---
+import '../styles/global.css';
+interface Props { title?: string; }
+const { title = 'Residence Tlemcen' } = Astro.props;
+const user = Astro.locals.user;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-900">
+    <header class="border-b bg-white">
+      <nav class="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+        <a href="/" class="font-semibold">Residence Tlemcen</a>
+        <div class="flex items-center gap-4 text-sm">
+          {user ? (
+            <>
+              <a href="/dashboard" class="hover:underline">Dashboard</a>
+              <a href="/logout" class="hover:underline">Log out</a>
+            </>
+          ) : (
+            <>
+              <a href="/login" class="hover:underline">Log in</a>
+              <a href="/register" class="rounded bg-slate-900 px-3 py-1.5 text-white">Register</a>
+            </>
+          )}
+        </div>
+      </nav>
+    </header>
+    <main class="mx-auto max-w-4xl px-4 py-8">
+      <slot />
+    </main>
+  </body>
+</html>
