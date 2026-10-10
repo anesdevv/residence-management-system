@@ -1,0 +1,49 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { createSupabaseServerClient } from '../../lib/supabase';
+export const prerender = false;
+
+const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+const uid = Astro.locals.user!.id;
+
+const { data: student } = await supabase.from('students').select('gender').eq('id', uid).single();
+const { data: rooms } = await supabase
+  .from('rooms').select('id, block, floor, number, gender').eq('gender', student?.gender ?? 'male')
+  .order('block').order('number');
+
+const { data: requests } = await supabase
+  .from('room_change_requests')
+  .select('id, reason, status, decision_note, preferred_room_id, created_at')
+  .eq('student_id', uid).order('created_at', { ascending: false });
+
+const error = Astro.url.searchParams.get('error');
+---
+<Layout title="Room change — Residence Tlemcen">
+  <h1 class="text-2xl font-bold">Room-change requests</h1>
+  {error && <p class="mt-3 rounded bg-red-50 p-3 text-red-700">{error}</p>}
+
+  <form method="POST" action="/api/room-change" class="mt-6 space-y-4 rounded border bg-white p-4">
+    <label class="flex flex-col gap-1">Reason
+      <textarea name="reason" required rows="3" class="rounded border p-2"></textarea></label>
+    <label class="flex flex-col gap-1">Preferred room (optional)
+      <select name="preferred_room_id" class="rounded border p-2">
+        <option value="">No preference</option>
+        {(rooms ?? []).map((r) => <option value={r.id}>Block {r.block} — {r.number}</option>)}
+      </select></label>
+    <button type="submit" class="rounded bg-slate-900 px-4 py-2 text-white">Submit request</button>
+  </form>
+
+  <h2 class="mt-8 text-lg font-semibold">Your requests</h2>
+  <ul class="mt-3 space-y-3">
+    {(requests ?? []).map((r) => (
+      <li class="rounded border bg-white p-4">
+        <div class="flex items-center justify-between">
+          <span class="font-medium">Request</span>
+          <span class="text-sm text-slate-500">{r.status}</span>
+        </div>
+        <p class="mt-2 text-slate-700">{r.reason}</p>
+        {r.decision_note && <p class="mt-2 text-sm text-slate-600">Staff note: {r.decision_note}</p>}
+      </li>
+    ))}
+  </ul>
+</Layout>
