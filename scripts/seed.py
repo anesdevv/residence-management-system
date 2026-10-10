@@ -9,6 +9,7 @@ sb = create_client(URL, SERVICE)
 
 def ensure_user(email, password, role, meta=None):
     users = sb.auth.admin.list_users()
+    users = getattr(users, "users", users)
     existing = next((u for u in users if u.email == email), None)
     if existing:
         uid = existing.id
