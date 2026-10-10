@@ -1,0 +1,44 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { createSupabaseServerClient } from '../../lib/supabase';
+export const prerender = false;
+
+const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+const { data: student } = await supabase
+  .from('students')
+  .select('first_name, last_name, card_id, status, rejection_reason, room_id, rooms(block, floor, number)')
+  .eq('id', Astro.locals.user!.id)
+  .single();
+
+const statusColor =
+  student?.status === 'active' ? 'bg-green-100 text-green-800'
+  : student?.status === 'rejected' ? 'bg-red-100 text-red-800'
+  : 'bg-amber-100 text-amber-800';
+---
+<Layout title="Dashboard — Residence Tlemcen">
+  <h1 class="text-2xl font-bold">Welcome, {student?.first_name} {student?.last_name}</h1>
+
+  <div class="mt-4 rounded border bg-white p-4">
+    <span class="text-sm text-slate-500">Account status</span>
+    <div class="mt-1">
+      <span class={`rounded px-2 py-1 text-sm font-medium ${statusColor}`}>{student?.status}</span>
+    </div>
+    {student?.status === 'rejected' && (
+      <p class="mt-2 text-sm text-red-700">Reason: {student.rejection_reason}</p>
+    )}
+    {student?.status === 'pending' && (
+      <p class="mt-2 text-sm text-slate-600">Your registration is awaiting staff review.</p>
+    )}
+    {student?.status === 'active' && student.rooms && (
+      <p class="mt-2 text-sm text-slate-600">
+        Room: Block {student.rooms.block}, Floor {student.rooms.floor}, No. {student.rooms.number}
+      </p>
+    )}
+  </div>
+
+  <div class="mt-6 flex gap-3 text-sm">
+    <a href="/dashboard/maintenance" class="rounded border px-3 py-2">Maintenance reports</a>
+    <a href="/dashboard/room-change" class="rounded border px-3 py-2">Room-change requests</a>
+    <a href="/dashboard/profile" class="rounded border px-3 py-2">Profile</a>
+  </div>
+</Layout>
