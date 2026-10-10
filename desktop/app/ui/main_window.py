@@ -7,6 +7,7 @@ from .pages.pending import PendingPage
 from .pages.residents import ResidentsPage
 from .pages.rooms import RoomsPage
 from .pages.maintenance import MaintenancePage
+from .pages.room_changes import RoomChangesPage
 
 
 class MainWindow(QMainWindow):
@@ -27,6 +28,7 @@ class MainWindow(QMainWindow):
         self._add_page("Residents", ResidentsPage(client))
         self._add_page("Rooms", RoomsPage(client))
         self._add_page("Maintenance", MaintenancePage(client))
+        self._add_page("Room changes", RoomChangesPage(client))
 
         # Later tasks append more pages via self._add_page(...).
 
