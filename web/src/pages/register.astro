@@ -1,0 +1,44 @@
+---
+import Layout from '../layouts/Layout.astro';
+export const prerender = false;
+const error = Astro.url.searchParams.get('error');
+const levels = ['L1', 'L2', 'L3', 'M1', 'M2', 'Doctorat'];
+---
+<Layout title="Register — Residence Tlemcen">
+  <h1 class="text-2xl font-bold">Resident registration</h1>
+  {error && <p class="mt-3 rounded bg-red-50 p-3 text-red-700">{error}</p>}
+  <form method="POST" action="/api/register" class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <label class="flex flex-col gap-1">Student card ID
+      <input name="card_id" required class="rounded border p-2" /></label>
+    <label class="flex flex-col gap-1">First name
+      <input name="first_name" required class="rounded border p-2" /></label>
+    <label class="flex flex-col gap-1">Last name
+      <input name="last_name" required class="rounded border p-2" /></label>
+    <label class="flex flex-col gap-1">Birth date
+      <input type="date" name="birth_date" required class="rounded border p-2" /></label>
+    <label class="flex flex-col gap-1">Gender
+      <select name="gender" required class="rounded border p-2">
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+      </select></label>
+    <label class="flex flex-col gap-1">Phone
+      <input name="phone" required class="rounded border p-2" /></label>
+    <label class="flex flex-col gap-1">Email (optional)
+      <input type="email" name="email" class="rounded border p-2" /></label>
+    <label class="flex flex-col gap-1">University
+      <input name="university" required class="rounded border p-2" /></label>
+    <label class="flex flex-col gap-1">Faculty
+      <input name="faculty" required class="rounded border p-2" /></label>
+    <label class="flex flex-col gap-1">Study level
+      <select name="study_level" required class="rounded border p-2">
+        {levels.map((l) => <option value={l}>{l}</option>)}
+      </select></label>
+    <label class="flex flex-col gap-1">Wilaya
+      <input name="wilaya" required class="rounded border p-2" /></label>
+    <label class="flex flex-col gap-1">Password
+      <input type="password" name="password" required minlength="8" class="rounded border p-2" /></label>
+    <div class="sm:col-span-2">
+      <button type="submit" class="rounded bg-slate-900 px-4 py-2 text-white">Submit registration</button>
+    </div>
+  </form>
+</Layout>
