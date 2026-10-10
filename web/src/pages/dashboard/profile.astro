@@ -1,0 +1,39 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { createSupabaseServerClient } from '../../lib/supabase';
+export const prerender = false;
+
+const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+const { data: s } = await supabase
+  .from('students')
+  .select('card_id, first_name, last_name, birth_date, gender, phone, email, university, faculty, study_level, wilaya')
+  .eq('id', Astro.locals.user!.id).single();
+
+const error = Astro.url.searchParams.get('error');
+const updated = Astro.url.searchParams.get('updated');
+---
+<Layout title="Profile — Residence Tlemcen">
+  <h1 class="text-2xl font-bold">Profile</h1>
+  {updated && <p class="mt-3 rounded bg-green-50 p-3 text-green-700">Contact details updated.</p>}
+  {error && <p class="mt-3 rounded bg-red-50 p-3 text-red-700">{error}</p>}
+
+  <dl class="mt-6 grid grid-cols-2 gap-3 rounded border bg-white p-4 text-sm">
+    <div><dt class="text-slate-500">Card ID</dt><dd>{s?.card_id}</dd></div>
+    <div><dt class="text-slate-500">Name</dt><dd>{s?.first_name} {s?.last_name}</dd></div>
+    <div><dt class="text-slate-500">Birth date</dt><dd>{s?.birth_date}</dd></div>
+    <div><dt class="text-slate-500">Gender</dt><dd>{s?.gender}</dd></div>
+    <div><dt class="text-slate-500">University</dt><dd>{s?.university}</dd></div>
+    <div><dt class="text-slate-500">Faculty</dt><dd>{s?.faculty}</dd></div>
+    <div><dt class="text-slate-500">Study level</dt><dd>{s?.study_level}</dd></div>
+    <div><dt class="text-slate-500">Wilaya</dt><dd>{s?.wilaya}</dd></div>
+  </dl>
+
+  <form method="POST" action="/api/profile" class="mt-6 max-w-sm space-y-4 rounded border bg-white p-4">
+    <p class="text-sm text-slate-500">You can edit your phone and email.</p>
+    <label class="flex flex-col gap-1">Phone
+      <input name="phone" value={s?.phone ?? ''} required class="rounded border p-2" /></label>
+    <label class="flex flex-col gap-1">Email (optional)
+      <input type="email" name="email" value={s?.email ?? ''} class="rounded border p-2" /></label>
+    <button type="submit" class="rounded bg-slate-900 px-4 py-2 text-white">Save</button>
+  </form>
+</Layout>
