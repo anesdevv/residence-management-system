@@ -63,18 +63,23 @@ class MaintenancePage(QWidget):
     def show_detail(self):
         r = self.selected()
         if not r:
+            self.detail.clear()
+            self.photo.clear()
             return
         self.detail.setPlainText(f"{r['description']}\n\nStaff note: {r.get('staff_note') or '—'}")
         self.photo.clear()
         if r.get("photo_path"):
-            signed = self.client.storage.from_("maintenance-photos").create_signed_url(r["photo_path"], 300)
-            url = (signed or {}).get("signedURL") or (signed or {}).get("signedUrl")
-            if url:
-                import urllib.request
-                data = urllib.request.urlopen(url).read()
-                pix = QPixmap()
-                pix.loadFromData(data)
-                self.photo.setPixmap(pix.scaledToWidth(400, Qt.SmoothTransformation))
+            import urllib.request
+            try:
+                signed = self.client.storage.from_("maintenance-photos").create_signed_url(r["photo_path"], 300)
+                url = (signed or {}).get("signedURL") or (signed or {}).get("signedUrl")
+                if url:
+                    data = urllib.request.urlopen(url, timeout=15).read()
+                    pix = QPixmap()
+                    pix.loadFromData(data)
+                    self.photo.setPixmap(pix.scaledToWidth(400, Qt.SmoothTransformation))
+            except Exception:  # noqa: BLE001
+                self.photo.clear()
 
     def set_status(self, status: str):
         r = self.selected()
