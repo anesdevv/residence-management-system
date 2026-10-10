@@ -8,6 +8,7 @@ from .pages.residents import ResidentsPage
 from .pages.rooms import RoomsPage
 from .pages.maintenance import MaintenancePage
 from .pages.room_changes import RoomChangesPage
+from .pages.official_list import OfficialListPage
 
 
 class MainWindow(QMainWindow):
@@ -29,6 +30,7 @@ class MainWindow(QMainWindow):
         self._add_page("Rooms", RoomsPage(client))
         self._add_page("Maintenance", MaintenancePage(client))
         self._add_page("Room changes", RoomChangesPage(client))
+        self._add_page("Official list", OfficialListPage(client))
 
         # Later tasks append more pages via self._add_page(...).
 
