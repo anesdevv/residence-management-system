@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (
 )
 from ..client import current_role
 from .pages.overview import OverviewPage
+from .pages.pending import PendingPage
 
 
 class MainWindow(QMainWindow):
@@ -19,6 +20,7 @@ class MainWindow(QMainWindow):
 
         self.pages: dict[str, QWidget] = {}
         self._add_page("Overview", OverviewPage(client))
+        self._add_page("Pending accounts", PendingPage(client))
 
         # Later tasks append more pages via self._add_page(...).
 
