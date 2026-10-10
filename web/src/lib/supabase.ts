@@ -1,4 +1,4 @@
-import { createServerClient, createBrowserClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr';
+import { createServerClient, createBrowserClient, parseCookieHeader } from '@supabase/ssr';
 import type { AstroCookies } from 'astro';
 
 const URL = import.meta.env.PUBLIC_SUPABASE_URL;

@@ -6,7 +6,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const { data } = await supabase.auth.getUser();
   context.locals.user = data.user ?? null;
 
-  if (context.url.pathname.startsWith('/dashboard') && !data.user) {
+  const path = context.url.pathname;
+  if ((path === '/dashboard' || path.startsWith('/dashboard/')) && !data.user) {
     return context.redirect('/login');
   }
   return next();
