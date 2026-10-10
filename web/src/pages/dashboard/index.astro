@@ -14,6 +14,8 @@ const statusColor =
   student?.status === 'active' ? 'bg-green-100 text-green-800'
   : student?.status === 'rejected' ? 'bg-red-100 text-red-800'
   : 'bg-amber-100 text-amber-800';
+
+const room = student?.rooms as unknown as { block: string; floor: string; number: string } | null;
 ---
 <Layout title="Dashboard — Residence Tlemcen">
   <h1 class="text-2xl font-bold">Welcome, {student?.first_name} {student?.last_name}</h1>
@@ -29,9 +31,9 @@ const statusColor =
     {student?.status === 'pending' && (
       <p class="mt-2 text-sm text-slate-600">Your registration is awaiting staff review.</p>
     )}
-    {student?.status === 'active' && student.rooms && (
+    {student?.status === 'active' && room && (
       <p class="mt-2 text-sm text-slate-600">
-        Room: Block {student.rooms.block}, Floor {student.rooms.floor}, No. {student.rooms.number}
+        Room: Block {room.block}, Floor {room.floor}, No. {room.number}
       </p>
     )}
   </div>
