@@ -1,0 +1,52 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { createSupabaseServerClient } from '../../lib/supabase';
+export const prerender = false;
+
+const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+const { data: reports } = await supabase
+  .from('maintenance_reports')
+  .select('id, category, description, status, staff_note, photo_path, created_at')
+  .eq('student_id', Astro.locals.user!.id)
+  .order('created_at', { ascending: false });
+
+const withUrls = await Promise.all((reports ?? []).map(async (r) => {
+  if (!r.photo_path) return { ...r, url: null };
+  const { data } = await supabase.storage.from('maintenance-photos').createSignedUrl(r.photo_path, 300);
+  return { ...r, url: data?.signedUrl ?? null };
+}));
+
+const error = Astro.url.searchParams.get('error');
+const categories = ['plumbing', 'electrical', 'furniture', 'internet', 'other'];
+---
+<Layout title="Maintenance — Residence Tlemcen">
+  <h1 class="text-2xl font-bold">Maintenance reports</h1>
+  {error && <p class="mt-3 rounded bg-red-50 p-3 text-red-700">{error}</p>}
+
+  <form method="POST" action="/api/maintenance" enctype="multipart/form-data" class="mt-6 space-y-4 rounded border bg-white p-4">
+    <label class="flex flex-col gap-1">Category
+      <select name="category" required class="rounded border p-2">
+        {categories.map((c) => <option value={c}>{c}</option>)}
+      </select></label>
+    <label class="flex flex-col gap-1">Description
+      <textarea name="description" required rows="3" class="rounded border p-2"></textarea></label>
+    <label class="flex flex-col gap-1">Photo (optional)
+      <input type="file" name="photo" accept="image/*" /></label>
+    <button type="submit" class="rounded bg-slate-900 px-4 py-2 text-white">Submit report</button>
+  </form>
+
+  <h2 class="mt-8 text-lg font-semibold">Your reports</h2>
+  <ul class="mt-3 space-y-3">
+    {withUrls.map((r) => (
+      <li class="rounded border bg-white p-4">
+        <div class="flex items-center justify-between">
+          <span class="font-medium capitalize">{r.category}</span>
+          <span class="text-sm text-slate-500">{r.status}</span>
+        </div>
+        <p class="mt-2 text-slate-700">{r.description}</p>
+        {r.staff_note && <p class="mt-2 text-sm text-slate-600">Staff note: {r.staff_note}</p>}
+        {r.url && <img src={r.url} alt="report photo" class="mt-3 max-h-48 rounded" />}
+      </li>
+    ))}
+  </ul>
+</Layout>
