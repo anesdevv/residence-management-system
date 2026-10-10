@@ -62,13 +62,19 @@ class RoomsPage(QWidget):
         cap_s, ok = QInputDialog.getText(self, "Room", "Capacity:", text=capacity)
         if not ok:
             return None
+        try:
+            floor_val = int(floor_s or 0)
+            cap_val = int(cap_s or 1)
+        except ValueError:
+            QMessageBox.warning(self, "Invalid", "Floor and capacity must be whole numbers.")
+            return None
         gender_idx = 0 if gender == "male" else 1
         gender, ok = QInputDialog.getItem(self, "Room", "Gender:", ["male", "female"], gender_idx, False)
         if not ok:
             return None
         return {
-            "block": block.strip(), "floor": int(floor_s or 0), "number": number.strip(),
-            "capacity": int(cap_s or 1), "gender": gender,
+            "block": block.strip(), "floor": floor_val, "number": number.strip(),
+            "capacity": cap_val, "gender": gender,
         }
 
     def on_add(self):
@@ -100,6 +106,9 @@ class RoomsPage(QWidget):
         if r < 0:
             return
         room = self.rows[r]
+        if room_occupancy(self.client).get(room["id"], 0) > 0:
+            QMessageBox.warning(self, "Room occupied", "Cannot delete a room that still has residents assigned.")
+            return
         confirm = QMessageBox.question(self, "Delete", f"Delete room {room['block']}-{room['number']}?")
         if confirm != QMessageBox.Yes:
             return
