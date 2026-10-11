@@ -1,7 +1,12 @@
+from PySide6.QtCore import Qt, QSize
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QHBoxLayout, QListWidget, QStackedWidget,
+    QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QListWidget, QListWidgetItem,
+    QStackedWidget, QStatusBar, QLabel, QPushButton, QFrame,
 )
 from ..client import current_role
+from .live_sync import LiveSyncWorker
+from .icons import get_icon, get_pixmap
+from .theme import DESKTOP_STYLESHEET
 from .pages.overview import OverviewPage
 from .pages.pending import PendingPage
 from .pages.residents import ResidentsPage
@@ -17,38 +22,227 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.client = client
         self.role = current_role(client)
-        self.setWindowTitle("Residence Staff Console — Tlemcen")
-        self.resize(1000, 680)
+        self.setWindowTitle("Residence Staff Console — Tlemcen [LIVE MODE]")
+        self.resize(1180, 760)
+        self.setStyleSheet(DESKTOP_STYLESHEET)
 
+        # Main Layout Container
+        central = QWidget()
+        self.setCentralWidget(central)
+        root_layout = QVBoxLayout(central)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
+
+        # 1. Top Institutional Control Header
+        header_bar = QWidget()
+        header_bar.setStyleSheet("""
+            QWidget {
+                background-color: #0f172a;
+                border-bottom: 1px solid #1e293b;
+            }
+        """)
+        header_layout = QHBoxLayout(header_bar)
+        header_layout.setContentsMargins(16, 12, 16, 12)
+        header_layout.setSpacing(12)
+
+        # Brand / Emblem
+        crest_label = QLabel()
+        crest_label.setPixmap(get_pixmap("crest", size=24, color="#38bdf8"))
+        header_layout.addWidget(crest_label)
+
+        title_container = QVBoxLayout()
+        title_container.setSpacing(1)
+        title_lbl = QLabel("Cité Universitaire — Residence Tlemcen")
+        title_lbl.setStyleSheet("color: #ffffff; font-weight: 800; font-size: 14px; letter-spacing: 0.3px;")
+        sub_lbl = QLabel("Dormitory Operations & Facility Management Console")
+        sub_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
+        title_container.addWidget(title_lbl)
+        title_container.addWidget(sub_lbl)
+        header_layout.addLayout(title_container)
+
+        header_layout.addStretch(1)
+
+        # Operator Role Badge
+        role_text = "ADMINISTRATOR" if self.role == "admin" else "HOUSING STAFF"
+        role_color = "#38bdf8" if self.role == "admin" else "#94a3b8"
+        role_badge = QLabel(f"● {role_text}")
+        role_badge.setStyleSheet(f"""
+            color: {role_color};
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 700;
+        """)
+        header_layout.addWidget(role_badge)
+
+        # Live Mode Indicator
+        self.live_pill = QLabel("🟢 LIVE SYNC (2s)")
+        self.live_pill.setStyleSheet("""
+            color: #4ade80;
+            background-color: #064e3b;
+            border: 1px solid #059669;
+            border-radius: 12px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 700;
+        """)
+        header_layout.addWidget(self.live_pill)
+
+        # Pause / Resume Live Button
+        self.toggle_live_btn = QPushButton("Pause Live")
+        self.toggle_live_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #1e293b;
+                border: 1px solid #334155;
+                color: #e2e8f0;
+                padding: 4px 12px;
+                font-size: 12px;
+                font-weight: 600;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #334155;
+                color: #ffffff;
+            }
+        """)
+        self.toggle_live_btn.clicked.connect(self.toggle_live_mode)
+        header_layout.addWidget(self.toggle_live_btn)
+
+        root_layout.addWidget(header_bar)
+
+        # 2. Main Body: Sidebar + Stacked Pages
+        body_widget = QWidget()
+        body_layout = QHBoxLayout(body_widget)
+        body_layout.setContentsMargins(0, 0, 0, 0)
+        body_layout.setSpacing(0)
+
+        # Left Sidebar Navigation
         self.nav = QListWidget()
-        self.nav.setFixedWidth(200)
-        self.stack = QStackedWidget()
+        self.nav.setObjectName("sidebarNav")
+        self.nav.setFixedWidth(230)
+        self.nav.setIconSize(QSize(18, 18))
+        body_layout.addWidget(self.nav)
 
+        # Stacked Pages
+        self.stack = QStackedWidget()
+        self.stack.setStyleSheet("background-color: #f8fafc;")
+        body_layout.addWidget(self.stack, 1)
+
+        root_layout.addWidget(body_widget, 1)
+
+        # Pages instantiation
         self.pages: dict[str, QWidget] = {}
-        self._add_page("Overview", OverviewPage(client))
-        self._add_page("Pending accounts", PendingPage(client))
-        self._add_page("Residents", ResidentsPage(client))
-        self._add_page("Rooms", RoomsPage(client))
-        self._add_page("Maintenance", MaintenancePage(client))
-        self._add_page("Room changes", RoomChangesPage(client))
-        self._add_page("Official list", OfficialListPage(client))
+        self.overview_page = OverviewPage(client)
+        self.pending_page = PendingPage(client)
+        self.residents_page = ResidentsPage(client)
+        self.rooms_page = RoomsPage(client)
+        self.maintenance_page = MaintenancePage(client)
+        self.room_changes_page = RoomChangesPage(client)
+        self.official_list_page = OfficialListPage(client)
+
+        self._add_nav_item("Overview", "overview", self.overview_page)
+        self._add_nav_item("Pending accounts", "pending", self.pending_page)
+        self._add_nav_item("Residents", "residents", self.residents_page)
+        self._add_nav_item("Rooms", "rooms", self.rooms_page)
+        self._add_nav_item("Maintenance", "maintenance", self.maintenance_page)
+        self._add_nav_item("Room changes", "room_changes", self.room_changes_page)
+        self._add_nav_item("Official list", "official_list", self.official_list_page)
 
         if self.role == "admin":
-            self._add_page("Staff accounts", StaffAccountsPage(client))
-
-        # Later tasks append more pages via self._add_page(...).
+            self.staff_accounts_page = StaffAccountsPage(client)
+            self._add_nav_item("Staff accounts", "staff_accounts", self.staff_accounts_page)
 
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
-
-        container = QWidget()
-        layout = QHBoxLayout(container)
-        layout.addWidget(self.nav)
-        layout.addWidget(self.stack, 1)
-        self.setCentralWidget(container)
-
         self.nav.setCurrentRow(0)
 
-    def _add_page(self, title: str, widget: QWidget):
+        # 3. Status Bar with Live Sync & Alerts
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
+        self.status_bar.showMessage("Connecting to Supabase Live Sync...")
+
+        # Start live background sync worker
+        self.sync_worker = LiveSyncWorker(client, interval_ms=2000)
+        self.sync_worker.sync_tick.connect(self.on_live_sync_tick)
+        self.sync_worker.alert_event.connect(self.on_live_alert)
+        self.sync_worker.start()
+
+    def _add_nav_item(self, title: str, icon_name: str, widget: QWidget):
         self.pages[title] = widget
-        self.nav.addItem(title)
+        item = QListWidgetItem(title)
+        item.setIcon(get_icon(icon_name, size=18, color="#94a3b8"))
+        self.nav.addItem(item)
         self.stack.addWidget(widget)
+
+    def toggle_live_mode(self):
+        if self.sync_worker.is_paused():
+            self.sync_worker.set_paused(False)
+            self.live_pill.setText("🟢 LIVE SYNC (2s)")
+            self.live_pill.setStyleSheet("""
+                color: #4ade80;
+                background-color: #064e3b;
+                border: 1px solid #059669;
+                border-radius: 12px;
+                padding: 4px 10px;
+                font-size: 11px;
+                font-weight: 700;
+            """)
+            self.toggle_live_btn.setText("Pause Live")
+            self.status_bar.showMessage("Live sync resumed.", 3000)
+        else:
+            self.sync_worker.set_paused(True)
+            self.live_pill.setText("⏸️ LIVE PAUSED")
+            self.live_pill.setStyleSheet("""
+                color: #f97316;
+                background-color: #431407;
+                border: 1px solid #ea580c;
+                border-radius: 12px;
+                padding: 4px 10px;
+                font-size: 11px;
+                font-weight: 700;
+            """)
+            self.toggle_live_btn.setText("Resume Live")
+            self.status_bar.showMessage("Live sync paused.", 3000)
+
+    def on_live_alert(self, msg: str):
+        self.status_bar.showMessage(f"🔔 LIVE EVENT: {msg}", 10000)
+
+    def on_live_sync_tick(self, data: dict):
+        pending_students = data.get("pending_students", [])
+        reports = data.get("reports", [])
+        open_reports_count = data.get("open_reports_count", 0)
+        pending_requests = data.get("pending_requests", [])
+        timestamp = data.get("timestamp", "")
+
+        # 1. Update status bar message if no urgent event is displayed
+        current_msg = self.status_bar.currentMessage()
+        if not current_msg or not current_msg.startswith("🔔 LIVE EVENT:"):
+            self.status_bar.showMessage(f"Live sync active • Last update: {timestamp}")
+
+        # 2. Update badge counts on sidebar navigation items
+        p_count = len(pending_students)
+        m_count = open_reports_count
+        r_count = len(pending_requests)
+
+        for i in range(self.nav.count()):
+            item = self.nav.item(i)
+            text = item.text().split(" (")[0]
+            if text == "Pending accounts":
+                item.setText(f"Pending accounts ({p_count})" if p_count > 0 else "Pending accounts")
+            elif text == "Maintenance":
+                item.setText(f"Maintenance ({m_count})" if m_count > 0 else "Maintenance")
+            elif text == "Room changes":
+                item.setText(f"Room changes ({r_count})" if r_count > 0 else "Room changes")
+
+        # 3. Deliver live data to pages
+        self.overview_page.apply_live_data(p_count, m_count, r_count)
+        self.pending_page.apply_live_data(pending_students)
+        self.maintenance_page.apply_live_data(reports)
+        self.room_changes_page.apply_live_data(pending_requests)
+
+    def closeEvent(self, event):
+        if hasattr(self, "sync_worker"):
+            self.sync_worker.stop()
+            self.sync_worker.wait(1000)
+        super().closeEvent(event)

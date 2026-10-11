@@ -1,14 +1,26 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import Icon from '../../components/Icon.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
+
 export const prerender = false;
 
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+const uid = Astro.locals.user!.id;
+
 const { data: reports } = await supabase
   .from('maintenance_reports')
   .select('id, category, description, status, staff_note, photo_path, created_at')
-  .eq('student_id', Astro.locals.user!.id)
+  .eq('student_id', uid)
   .order('created_at', { ascending: false });
+
+const { data: student } = await supabase
+  .from('students')
+  .select('status, room_id, rooms(block, number)')
+  .eq('id', uid)
+  .single();
+
+const isActive = student?.status === 'active';
 
 const withUrls = await Promise.all((reports ?? []).map(async (r) => {
   if (!r.photo_path) return { ...r, url: null };
@@ -17,36 +29,228 @@ const withUrls = await Promise.all((reports ?? []).map(async (r) => {
 }));
 
 const error = Astro.url.searchParams.get('error');
-const categories = ['plumbing', 'electrical', 'furniture', 'internet', 'other'];
+const created = Astro.url.searchParams.get('created');
+const categories = [
+  { id: 'plumbing', label: 'Plumbing', icon: 'plumbing', desc: 'Leaks, faucets, drainage, sanitary' },
+  { id: 'electrical', label: 'Electrical', icon: 'electrical', desc: 'Lights, switches, power sockets' },
+  { id: 'furniture', label: 'Furniture', icon: 'furniture', desc: 'Bed, desk, chair, wardrobe, door' },
+  { id: 'internet', label: 'Network', icon: 'internet', desc: 'Campus Wi-Fi or ethernet jack' },
+  { id: 'other', label: 'Other', icon: 'wrench', desc: 'General repairs & heating' },
+];
 ---
-<Layout title="Maintenance — Residence Tlemcen">
-  <h1 class="text-2xl font-bold">Maintenance reports</h1>
-  {error && <p class="mt-3 rounded bg-red-50 p-3 text-red-700">{error}</p>}
 
-  <form method="POST" action="/api/maintenance" enctype="multipart/form-data" class="mt-6 space-y-4 rounded border bg-white p-4">
-    <label class="flex flex-col gap-1">Category
-      <select name="category" required class="rounded border p-2">
-        {categories.map((c) => <option value={c}>{c}</option>)}
-      </select></label>
-    <label class="flex flex-col gap-1">Description
-      <textarea name="description" required rows="3" class="rounded border p-2"></textarea></label>
-    <label class="flex flex-col gap-1">Photo (optional)
-      <input type="file" name="photo" accept="image/*" /></label>
-    <button type="submit" class="rounded bg-slate-900 px-4 py-2 text-white">Submit report</button>
-  </form>
+<Layout title="Maintenance Reports — Residence Tlemcen" activeNav="maintenance">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-5">
+    <div>
+      <div class="flex items-center gap-2">
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+          Facility Maintenance
+        </h1>
+      </div>
+      <p class="mt-1 text-xs sm:text-sm text-slate-500">
+        Submit fault tickets for your assigned dormitory room and track repair triage.
+      </p>
+    </div>
 
-  <h2 class="mt-8 text-lg font-semibold">Your reports</h2>
-  <ul class="mt-3 space-y-3">
-    {withUrls.map((r) => (
-      <li class="rounded border bg-white p-4">
-        <div class="flex items-center justify-between">
-          <span class="font-medium capitalize">{r.category}</span>
-          <span class="text-sm text-slate-500">{r.status}</span>
+    <a
+      href="/dashboard"
+      class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-xs transition self-start sm:self-auto"
+    >
+      <Icon name="arrow-left" size={14} />
+      <span>Back to Dashboard</span>
+    </a>
+  </div>
+
+  <!-- Feedback Banners -->
+  {created && (
+    <div class="mt-6 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+      <Icon name="check-circle" size={20} class="text-emerald-700 shrink-0 mt-0.5" />
+      <div class="text-xs sm:text-sm">
+        <span class="font-bold">Maintenance Ticket Submitted Successfully!</span>
+        <p class="mt-0.5 text-emerald-800">Your report has been queued for housing facility technicians. You can follow progress below.</p>
+      </div>
+    </div>
+  )}
+
+  {error && (
+    <div class="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-900">
+      <Icon name="alert-circle" size={20} class="text-red-700 shrink-0 mt-0.5" />
+      <div class="text-xs sm:text-sm">
+        <span class="font-bold">Unable to Submit Report</span>
+        <p class="mt-0.5 text-red-800">{error}</p>
+      </div>
+    </div>
+  )}
+
+  <!-- Locked State or Submission Form -->
+  {!isActive ? (
+    <div class="mt-6 rounded-xl border border-amber-300 bg-amber-50/80 p-5 sm:p-6 text-amber-950 shadow-xs">
+      <div class="flex items-start gap-3.5">
+        <div class="rounded-lg bg-amber-100 p-2 text-amber-700 shrink-0">
+          <Icon name="lock" size={22} />
         </div>
-        <p class="mt-2 text-slate-700">{r.description}</p>
-        {r.staff_note && <p class="mt-2 text-sm text-slate-600">Staff note: {r.staff_note}</p>}
-        {r.url && <img src={r.url} alt="report photo" class="mt-3 max-h-48 rounded" />}
-      </li>
-    ))}
-  </ul>
+        <div>
+          <h2 class="text-base font-bold text-amber-950">Maintenance Reporting Locked</h2>
+          <p class="mt-1 text-xs sm:text-sm text-amber-900 leading-relaxed">
+            Your account status is <span class="font-bold uppercase tracking-wider">{student?.status ?? 'pending'}</span>.
+            Maintenance requests are strictly tied to an officially assigned dormitory room. Once your housing registration is verified and approved, you will be able to file repair tickets here.
+          </p>
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
+      <div class="border-b border-slate-100 pb-4 mb-6">
+        <h2 class="text-base font-bold text-slate-900">Submit a New Maintenance Ticket</h2>
+        <p class="text-xs text-slate-500">Provide clear details to assist technicians in resolving the issue quickly.</p>
+      </div>
+
+      <form method="POST" action="/api/maintenance" enctype="multipart/form-data" class="space-y-6">
+        <!-- Category Radio Picker -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
+            Issue Category <span class="text-red-500">*</span>
+          </label>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+            {categories.map((c, i) => (
+              <label class="cursor-pointer">
+                <input
+                  type="radio"
+                  name="category"
+                  value={c.id}
+                  required
+                  checked={i === 0}
+                  class="peer sr-only"
+                />
+                <div class="flex flex-col items-center justify-center p-3 text-center rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 peer-checked:border-blue-600 peer-checked:bg-blue-50/60 peer-checked:text-blue-900 transition">
+                  <Icon name={c.icon} size={22} class="text-slate-600 peer-checked:text-blue-600" />
+                  <span class="mt-2 text-xs font-semibold">{c.label}</span>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label for="description" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+            Detailed Fault Description <span class="text-red-500">*</span>
+          </label>
+          <textarea
+            name="description"
+            id="description"
+            required
+            rows="3"
+            placeholder="Explain the problem clearly (e.g. Bathroom faucet leaking continuously, radiator valve stuck, room light ballast buzzing)..."
+            class="w-full rounded-lg border border-slate-300 p-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition"
+          ></textarea>
+        </div>
+
+        <!-- Photo Upload Box -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+            Attach Photo (Optional but Recommended)
+          </label>
+          <div class="flex items-center gap-3">
+            <input
+              type="file"
+              name="photo"
+              id="photo"
+              accept="image/*"
+              class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
+            />
+          </div>
+          <span class="mt-1 block text-[11px] text-slate-400">Attach clear photos of the damage or fault (JPEG, PNG).</span>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="pt-2">
+          <button
+            type="submit"
+            class="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition cursor-pointer"
+          >
+            <Icon name="check-circle" size={16} />
+            <span>Submit Maintenance Ticket</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  )}
+
+  <!-- History Section -->
+  <div class="mt-10 space-y-4">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-bold text-slate-900">Your Maintenance History</h2>
+      <span class="text-xs text-slate-400 font-medium">({withUrls.length} total reports)</span>
+    </div>
+
+    {withUrls.length === 0 ? (
+      <div class="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-400">
+        <Icon name="wrench" size={32} class="mx-auto text-slate-300 mb-2" />
+        <p class="text-sm font-medium text-slate-600">No maintenance reports filed</p>
+        <p class="text-xs text-slate-400 mt-1">When you report faults in your room, tickets will be tracked here.</p>
+      </div>
+    ) : (
+      <div class="space-y-4">
+        {withUrls.map((r) => (
+          <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3">
+              <div class="flex items-center gap-2.5">
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                  <Icon name="wrench" size={16} />
+                </div>
+                <div>
+                  <span class="font-bold text-sm text-slate-900 capitalize">{r.category}</span>
+                  <span class="text-xs text-slate-400 ml-2">Ticket #{r.id.slice(0, 8)}</span>
+                </div>
+              </div>
+
+              <div>
+                {r.status === 'resolved' ? (
+                  <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-800">
+                    <Icon name="check-circle" size={14} class="text-emerald-600" /> Resolved
+                  </span>
+                ) : r.status === 'in_progress' ? (
+                  <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-800">
+                    <Icon name="clock" size={14} class="text-blue-600" /> In Progress
+                  </span>
+                ) : (
+                  <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-800">
+                    <Icon name="clock" size={14} class="text-amber-600" /> Pending Triage
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <p class="mt-3 text-sm text-slate-700 leading-relaxed">{r.description}</p>
+
+            {r.staff_note && (
+              <div class="mt-3.5 rounded-lg border border-blue-200 bg-blue-50/60 p-3 text-xs text-blue-950">
+                <span class="font-bold uppercase tracking-wider text-blue-900 block text-[10px] mb-0.5">Technician / Staff Note:</span>
+                <p class="font-medium">{r.staff_note}</p>
+              </div>
+            )}
+
+            {r.url && (
+              <div class="mt-4">
+                <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Attached Photo</span>
+                <a href={r.url} target="_blank" rel="noopener noreferrer" class="inline-block">
+                  <img
+                    src={r.url}
+                    alt="Fault inspection photo"
+                    class="h-36 w-auto max-w-xs object-cover rounded-lg border border-slate-200 shadow-xs hover:opacity-95 transition"
+                  />
+                </a>
+              </div>
+            )}
+
+            <div class="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between text-[11px] text-slate-400">
+              <span>Submitted on {new Date(r.created_at).toLocaleDateString()} at {new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
 </Layout>

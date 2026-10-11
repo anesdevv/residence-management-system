@@ -16,7 +16,23 @@ export const POST: APIRoute = async (context) => {
   }
 
   const supabase = createSupabaseServerClient(context.request, context.cookies);
+
+  const { data: student } = await supabase
+    .from('students')
+    .select('status')
+    .eq('id', user.id)
+    .single();
+
+  if (student?.status !== 'active') {
+    return context.redirect(
+      `/dashboard/maintenance?error=${encodeURIComponent(
+        'Your account is pending review. Only active approved residents can submit maintenance reports.',
+      )}`,
+    );
+  }
+
   let photo_path: string | null = null;
+
 
   if (photo instanceof File && photo.size > 0) {
     const ext = photo.name.split('.').pop()?.toLowerCase() || 'jpg';

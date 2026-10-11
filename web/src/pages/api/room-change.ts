@@ -14,7 +14,19 @@ export const POST: APIRoute = async (context) => {
 
   const supabase = createSupabaseServerClient(context.request, context.cookies);
   const { data: student } = await supabase
-    .from('students').select('room_id').eq('id', user.id).single();
+    .from('students')
+    .select('room_id, status')
+    .eq('id', user.id)
+    .single();
+
+  if (student?.status !== 'active' || !student?.room_id) {
+    return context.redirect(
+      `/dashboard/room-change?error=${encodeURIComponent(
+        'Your account is pending review. Only active residents with an assigned room can request a room change.',
+      )}`,
+    );
+  }
+
 
   const { error } = await supabase.from('room_change_requests').insert({
     student_id: user.id,

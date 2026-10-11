@@ -16,3 +16,23 @@ def test_staff_approve_then_reject_flow(staff_client):
     }).execute().data
     assert approved["status"] == "active"
     assert approved["room_id"] == male_room
+
+    # Gender mismatch test
+    female_room = next(r["id"] for r in rooms if r["gender"] == "female")
+    with pytest.raises(Exception):
+        staff_client.rpc("approve_student", {
+            "p_student": student["id"], "p_room": female_room,
+        }).execute()
+
+
+def test_student_update_contact(student_client):
+    updated = student_client.rpc("update_my_contact", {
+        "p_phone": "0550000099", "p_email": "updated@test.com",
+    }).execute().data
+    assert updated["phone"] == "0550000099"
+    assert updated["email"] == "updated@test.com"
+
+    # Restore original phone
+    student_client.rpc("update_my_contact", {
+        "p_phone": "0550000001", "p_email": "",
+    }).execute()

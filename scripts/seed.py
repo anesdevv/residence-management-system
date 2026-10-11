@@ -1,10 +1,24 @@
 import os
 from datetime import date
+from pathlib import Path
+from dotenv import load_dotenv
 from supabase import create_client
 
-URL = os.environ["SUPABASE_URL"]
-SERVICE = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+# Load environment from root .env or desktop/.env
+for env_path in [
+    Path(__file__).resolve().parent.parent / ".env",
+    Path(__file__).resolve().parent.parent / "desktop" / ".env",
+]:
+    if env_path.exists():
+        load_dotenv(env_path)
+
+URL = os.environ.get("SUPABASE_URL", "")
+SERVICE = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+if not URL or not SERVICE:
+    raise SystemExit("Error: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required in .env to run the seed script.")
+
 sb = create_client(URL, SERVICE)
+
 
 
 def ensure_user(email, password, role, meta=None):

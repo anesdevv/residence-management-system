@@ -21,4 +21,19 @@ describe('validateRegistration', () => {
   it('rejects a bad email when provided', () => {
     expect(validateRegistration({ ...base, email: 'nope' })).toContain('Email is invalid.');
   });
+  it('rejects an invalid study level', () => {
+    expect(validateRegistration({ ...base, study_level: 'InvalidLevel' })).toContain('Study level is invalid.');
+  });
+  it('rejects an invalid gender', () => {
+    expect(validateRegistration({ ...base, gender: 'other' })).toContain('Gender must be male or female.');
+  });
+  it('rejects an invalid birth date format', () => {
+    expect(validateRegistration({ ...base, birth_date: '14/05/2003' })).toContain('Birth date must be YYYY-MM-DD.');
+  });
+  it('rejects missing first or last name', () => {
+    const res = validateRegistration({ ...base, first_name: '', last_name: '   ' });
+    expect(res).toContain('First name is required.');
+    expect(res).toContain('Last name is required.');
+  });
 });
+

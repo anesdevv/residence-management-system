@@ -1,44 +1,249 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
+
 export const prerender = false;
 const error = Astro.url.searchParams.get('error');
 const levels = ['L1', 'L2', 'L3', 'M1', 'M2', 'Doctorat'];
 ---
-<Layout title="Register — Residence Tlemcen">
-  <h1 class="text-2xl font-bold">Resident registration</h1>
-  {error && <p class="mt-3 rounded bg-red-50 p-3 text-red-700">{error}</p>}
-  <form method="POST" action="/api/register" class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-    <label class="flex flex-col gap-1">Student card ID
-      <input name="card_id" required class="rounded border p-2" /></label>
-    <label class="flex flex-col gap-1">First name
-      <input name="first_name" required class="rounded border p-2" /></label>
-    <label class="flex flex-col gap-1">Last name
-      <input name="last_name" required class="rounded border p-2" /></label>
-    <label class="flex flex-col gap-1">Birth date
-      <input type="date" name="birth_date" required class="rounded border p-2" /></label>
-    <label class="flex flex-col gap-1">Gender
-      <select name="gender" required class="rounded border p-2">
-        <option value="male">Male</option>
-        <option value="female">Female</option>
-      </select></label>
-    <label class="flex flex-col gap-1">Phone
-      <input name="phone" required class="rounded border p-2" /></label>
-    <label class="flex flex-col gap-1">Email (optional)
-      <input type="email" name="email" class="rounded border p-2" /></label>
-    <label class="flex flex-col gap-1">University
-      <input name="university" required class="rounded border p-2" /></label>
-    <label class="flex flex-col gap-1">Faculty
-      <input name="faculty" required class="rounded border p-2" /></label>
-    <label class="flex flex-col gap-1">Study level
-      <select name="study_level" required class="rounded border p-2">
-        {levels.map((l) => <option value={l}>{l}</option>)}
-      </select></label>
-    <label class="flex flex-col gap-1">Wilaya
-      <input name="wilaya" required class="rounded border p-2" /></label>
-    <label class="flex flex-col gap-1">Password
-      <input type="password" name="password" required minlength="8" class="rounded border p-2" /></label>
-    <div class="sm:col-span-2">
-      <button type="submit" class="rounded bg-slate-900 px-4 py-2 text-white">Submit registration</button>
+
+<Layout title="Resident Registration — Residence Tlemcen" activeNav="register">
+  <div class="mx-auto max-w-2xl py-6 sm:py-8">
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 sm:p-10 shadow-xs">
+      <!-- Title & Intro -->
+      <div>
+        <div class="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800 mb-3">
+          <Icon name="crest" size={14} class="text-blue-700" />
+          <span>New Resident Intake Form</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+          Resident Registration
+        </h1>
+        <p class="mt-2 text-xs sm:text-sm text-slate-500 leading-relaxed">
+          Please fill in your academic information accurately. Your student card ID will be cross-referenced with the university official admission list to determine eligibility and room assignment.
+        </p>
+      </div>
+
+      <!-- Error Banner -->
+      {error && (
+        <div class="mt-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-900">
+          <Icon name="alert-circle" size={18} class="text-red-700 shrink-0 mt-0.5" />
+          <div class="text-xs">
+            <span class="font-bold">Registration could not be completed</span>
+            <p class="mt-0.5 text-red-800">{error}</p>
+          </div>
+        </div>
+      )}
+
+      <form method="POST" action="/api/register" class="mt-8 space-y-8">
+        <!-- Section 1: Academic Information -->
+        <div class="space-y-4">
+          <div class="border-b border-slate-200 pb-2">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-800">1. Academic Information</h2>
+            <p class="text-xs text-slate-400">Institutional registration details</p>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label for="card_id" class="block text-xs font-semibold text-slate-700 mb-1">
+                Student Card ID (Carte d'étudiant) <span class="text-red-500">*</span>
+              </label>
+              <input
+                name="card_id"
+                id="card_id"
+                required
+                placeholder="e.g. 202338012345"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition tnum"
+              />
+              <span class="mt-1 block text-[11px] text-slate-400">Must match your university matriculation number.</span>
+            </div>
+
+            <div>
+              <label for="university" class="block text-xs font-semibold text-slate-700 mb-1">
+                University <span class="text-red-500">*</span>
+              </label>
+              <input
+                name="university"
+                id="university"
+                required
+                placeholder="e.g. Université Abou Bekr Belkaïd"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition"
+              />
+            </div>
+
+            <div>
+              <label for="faculty" class="block text-xs font-semibold text-slate-700 mb-1">
+                Faculty / Department <span class="text-red-500">*</span>
+              </label>
+              <input
+                name="faculty"
+                id="faculty"
+                required
+                placeholder="e.g. Faculté des Sciences"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition"
+              />
+            </div>
+
+            <div class="sm:col-span-2">
+              <label for="study_level" class="block text-xs font-semibold text-slate-700 mb-1">
+                Study Level (Niveau d'études) <span class="text-red-500">*</span>
+              </label>
+              <select
+                name="study_level"
+                id="study_level"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition bg-white"
+              >
+                {levels.map((l) => <option value={l}>{l}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Personal Profile -->
+        <div class="space-y-4">
+          <div class="border-b border-slate-200 pb-2">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-800">2. Personal Profile</h2>
+            <p class="text-xs text-slate-400">Resident identity and civil status</p>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label for="first_name" class="block text-xs font-semibold text-slate-700 mb-1">
+                First Name (Prénom) <span class="text-red-500">*</span>
+              </label>
+              <input
+                name="first_name"
+                id="first_name"
+                required
+                placeholder="e.g. Mohamed"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition"
+              />
+            </div>
+
+            <div>
+              <label for="last_name" class="block text-xs font-semibold text-slate-700 mb-1">
+                Last Name (Nom) <span class="text-red-500">*</span>
+              </label>
+              <input
+                name="last_name"
+                id="last_name"
+                required
+                placeholder="e.g. Benali"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition"
+              />
+            </div>
+
+            <div>
+              <label for="birth_date" class="block text-xs font-semibold text-slate-700 mb-1">
+                Date of Birth <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                name="birth_date"
+                id="birth_date"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition bg-white"
+              />
+            </div>
+
+            <div>
+              <label for="gender" class="block text-xs font-semibold text-slate-700 mb-1">
+                Gender (for block assignment) <span class="text-red-500">*</span>
+              </label>
+              <select
+                name="gender"
+                id="gender"
+                required
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition bg-white"
+              >
+                <option value="male">Male (Bloc Hommes)</option>
+                <option value="female">Female (Bloc Femmes)</option>
+              </select>
+            </div>
+
+            <div class="sm:col-span-2">
+              <label for="wilaya" class="block text-xs font-semibold text-slate-700 mb-1">
+                Wilaya of Origin <span class="text-red-500">*</span>
+              </label>
+              <input
+                name="wilaya"
+                id="wilaya"
+                required
+                placeholder="e.g. Oran, Sidi Bel Abbès, Mostaganem..."
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Contact & Security -->
+        <div class="space-y-4">
+          <div class="border-b border-slate-200 pb-2">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-800">3. Contact & Security</h2>
+            <p class="text-xs text-slate-400">Communication and portal credentials</p>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label for="phone" class="block text-xs font-semibold text-slate-700 mb-1">
+                Mobile Phone <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                id="phone"
+                required
+                placeholder="05 / 06 / 07..."
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition tnum"
+              />
+            </div>
+
+            <div>
+              <label for="email" class="block text-xs font-semibold text-slate-700 mb-1">
+                Email Address (Optional)
+              </label>
+              <input
+                type="email"
+                name="email"
+                id="email"
+                placeholder="student@univ-tlemcen.dz"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition"
+              />
+            </div>
+
+            <div class="sm:col-span-2">
+              <label for="password" class="block text-xs font-semibold text-slate-700 mb-1">
+                Portal Password <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                name="password"
+                id="password"
+                required
+                minlength="8"
+                placeholder="Minimum 8 characters"
+                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition"
+              />
+              <span class="mt-1 block text-[11px] text-slate-400">Must be at least 8 characters long.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="border-t border-slate-200 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <a href="/login" class="text-xs font-medium text-slate-500 hover:text-slate-800">
+            Already registered? Sign in here
+          </a>
+          <button
+            type="submit"
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-xs hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition cursor-pointer"
+          >
+            <Icon name="check-circle" size={18} />
+            <span>Submit Registration</span>
+          </button>
+        </div>
+      </form>
     </div>
-  </form>
+  </div>
 </Layout>

@@ -7,3 +7,6 @@ export const GET: APIRoute = async (context) => {
   await supabase.auth.signOut();
   return context.redirect('/');
 };
+
+export const POST: APIRoute = GET;
+
