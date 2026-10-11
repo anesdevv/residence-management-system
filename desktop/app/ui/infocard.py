@@ -1,6 +1,7 @@
 """
 Residence Tlemcen — Modern Obsidian InfoCard Dialogs
 High-contrast modal dialogs for Student Resident profiles and Room Occupancy inspection.
+Impeccable craft: clean layout hierarchy, zero nested pill artifacts, publication-grade dark obsidian styling.
 """
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -34,34 +36,49 @@ except (ImportError, ValueError):
 
 MODAL_BASE_QSS = """
 QDialog {
-    background-color: #0c0e15;
+    background-color: #0a0c13;
     color: #f8fafc;
 }
+
+/* Master container card */
 QFrame#cardFrame {
-    background-color: #121520;
+    background-color: #10131d;
     border: 1px solid #1c2234;
     border-radius: 12px;
 }
+
+/* Universal label reset: prevents Qt QFrame border cascade */
 QLabel {
+    background: transparent;
+    border: none;
     color: #f8fafc;
 }
+
+/* Subtle panel surfaces */
+QFrame#infoPanel, QFrame#roomPanel, QFrame#statCard {
+    background-color: #0b0d14;
+    border: 1px solid #181d2c;
+    border-radius: 10px;
+}
+
+/* Occupants Table */
 QTableWidget {
     background-color: #0b0d14;
-    border: 1px solid #1c2234;
+    border: 1px solid #181d2c;
     border-radius: 8px;
-    gridline-color: #181d2c;
-    selection-background-color: #222a42;
+    gridline-color: #151924;
+    selection-background-color: #1e2538;
     selection-color: #ffffff;
     alternate-background-color: #0e111a;
     outline: none;
 }
 QTableWidget::item {
     padding: 8px 12px;
-    border-bottom: 1px solid #181d2c;
+    border-bottom: 1px solid #151924;
     color: #e2e8f0;
 }
 QTableWidget::item:selected {
-    background-color: #222a42;
+    background-color: #1e2538;
     color: #ffffff;
 }
 QHeaderView::section {
@@ -73,8 +90,8 @@ QHeaderView::section {
     letter-spacing: 0.5px;
     padding: 8px 12px;
     border: none;
-    border-bottom: 2px solid #1c2234;
-    border-right: 1px solid #181d2c;
+    border-bottom: 2px solid #181d2c;
+    border-right: 1px solid #151924;
 }
 QScrollBar:vertical {
     border: none;
@@ -96,55 +113,63 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 """
 
 
-def _make_info_tile(label: str, value: str, subvalue: str | None = None, icon_name: str | None = None) -> QFrame:
-    """Creates a high-contrast obsidian key-value information card tile."""
-    tile = QFrame()
-    tile.setStyleSheet("""
-        QFrame {
-            background-color: #0d1017;
-            border: 1px solid #1a2032;
-            border-radius: 8px;
-        }
-    """)
-    layout = QVBoxLayout(tile)
-    layout.setContentsMargins(12, 10, 12, 10)
-    layout.setSpacing(4)
+def _create_field_widget(label: str, value: str, subtext: str | None = None, icon_name: str | None = None) -> QWidget:
+    """Creates a clean, borderless data cell with muted label and crisp high-contrast value."""
+    container = QWidget()
+    layout = QVBoxLayout(container)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(3)
 
-    top_row = QHBoxLayout()
-    top_row.setSpacing(6)
+    # Top Label Row with optional micro-icon
+    label_row = QHBoxLayout()
+    label_row.setSpacing(5)
+    label_row.setContentsMargins(0, 0, 0, 0)
+
     if icon_name:
-        icn_lbl = QLabel()
-        icn_lbl.setPixmap(get_pixmap(icon_name, size=13, color="#64748b"))
-        top_row.addWidget(icn_lbl)
+        icn = QLabel()
+        icn.setPixmap(get_pixmap(icon_name, size=12, color="#64748b"))
+        label_row.addWidget(icn)
 
     lbl = QLabel(label.upper())
     lbl.setStyleSheet("color: #64748b; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;")
-    top_row.addWidget(lbl)
-    top_row.addStretch(1)
-    layout.addLayout(top_row)
+    label_row.addWidget(lbl)
+    label_row.addStretch(1)
+    layout.addLayout(label_row)
 
+    # Value
     val = QLabel(value if value else "—")
     val.setWordWrap(True)
     val.setStyleSheet("color: #f8fafc; font-size: 13px; font-weight: 600;")
     layout.addWidget(val)
 
-    if subvalue:
-        sub = QLabel(subvalue)
+    if subtext:
+        sub = QLabel(subtext)
         sub.setWordWrap(True)
         sub.setStyleSheet("color: #94a3b8; font-size: 11px; font-weight: 500;")
         layout.addWidget(sub)
 
-    return tile
+    return container
 
 
-def _make_stat_card(label: str, value: str, color: str = "#f8fafc", bg_color: str = "#0d1017", border_color: str = "#1a2032") -> QFrame:
-    """Creates a numerical metric card for room occupancy overview."""
+def _make_stat_card(
+    label: str,
+    value: str,
+    color: str = "#f8fafc",
+    bg_color: str = "#0b0d14",
+    border_color: str = "#181d2c"
+) -> QFrame:
+    """Creates a numerical metric card for room occupancy overview with zero nested capsules."""
     card = QFrame()
+    card.setObjectName("statCard")
     card.setStyleSheet(f"""
-        QFrame {{
+        QFrame#statCard {{
             background-color: {bg_color};
             border: 1px solid {border_color};
-            border-radius: 8px;
+            border-radius: 10px;
+        }}
+        QLabel {{
+            background: transparent;
+            border: none;
         }}
     """)
     layout = QVBoxLayout(card)
@@ -159,7 +184,7 @@ def _make_stat_card(label: str, value: str, color: str = "#f8fafc", bg_color: st
 
     val = QLabel(str(value))
     val.setAlignment(Qt.AlignCenter)
-    val.setStyleSheet(f"color: {color}; font-size: 22px; font-weight: 800;")
+    val.setStyleSheet(f"color: {color}; font-size: 24px; font-weight: 800;")
     layout.addWidget(val)
 
     return card
@@ -199,7 +224,7 @@ class StudentInfoCardDialog(QDialog):
         card = QFrame()
         card.setObjectName("cardFrame")
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(22, 22, 22, 22)
+        card_layout.setContentsMargins(24, 24, 24, 24)
         card_layout.setSpacing(18)
         root_layout.addWidget(card)
 
@@ -236,14 +261,17 @@ class StudentInfoCardDialog(QDialog):
         header_text_vbox.setSpacing(3)
 
         name_lbl = QLabel(full_name)
-        name_lbl.setStyleSheet("font-size: 18px; font-weight: 700; color: #f8fafc;")
+        name_lbl.setStyleSheet("font-size: 19px; font-weight: 700; color: #f8fafc;")
         header_text_vbox.addWidget(name_lbl)
 
         card_id = str(self.student_data.get("card_id", "—")).strip()
-        sub_text = f"Student Card ID: {card_id}"
+        sub_text = f"Student ID: {card_id}"
         wilaya = self.student_data.get("wilaya")
         if wilaya:
             sub_text += f" • Wilaya {wilaya}"
+        study_level = self.student_data.get("study_level")
+        if study_level:
+            sub_text += f" • {study_level}"
         sub_lbl = QLabel(sub_text)
         sub_lbl.setStyleSheet("font-size: 12px; color: #94a3b8;")
         header_text_vbox.addWidget(sub_lbl)
@@ -269,61 +297,59 @@ class StudentInfoCardDialog(QDialog):
         header_row.addWidget(status_lbl, 0, Qt.AlignVCenter)
         card_layout.addLayout(header_row)
 
-        # Divider
+        # Subtle Divider
         divider1 = QFrame()
         divider1.setFixedHeight(1)
-        divider1.setStyleSheet("background-color: #1c2234;")
+        divider1.setStyleSheet("background-color: #1c2234; border: none;")
         card_layout.addWidget(divider1)
 
         # -------------------------------------------------------------
-        # 2. Academic & Personal Details (2-Column Grid)
+        # 2. Academic & Personal Details Panel
         # -------------------------------------------------------------
-        section_lbl1 = QLabel("STUDENT ACADEMIC & IDENTITY PROFILE")
-        section_lbl1.setStyleSheet("color: #64748b; font-size: 11px; font-weight: 800; letter-spacing: 0.6px;")
-        card_layout.addWidget(section_lbl1)
+        sec_header1 = QLabel("STUDENT ACADEMIC & IDENTITY PROFILE")
+        sec_header1.setStyleSheet("color: #64748b; font-size: 11px; font-weight: 800; letter-spacing: 0.6px;")
+        card_layout.addWidget(sec_header1)
 
         gender_str = str(self.student_data.get("gender", "—")).strip().capitalize()
         univ_str = str(self.student_data.get("university", "—")).strip()
         fac_str = str(self.student_data.get("faculty", "—")).strip()
 
-        # Date of birth: from roster if available, else from student_data
+        # Date of birth
         dob_val = "—"
         if isinstance(self.official_roster_data, dict) and self.official_roster_data.get("birth_date"):
             dob_val = str(self.official_roster_data["birth_date"])
         elif self.student_data.get("birth_date"):
             dob_val = str(self.student_data["birth_date"])
 
-        phone_val = str(self.student_data.get("phone", "")).strip()
-        level_val = str(self.student_data.get("study_level", "")).strip()
-        phone_sub = f"Level: {level_val}" if level_val else None
+        phone_val = str(self.student_data.get("phone", "")).strip() or "—"
 
-        grid = QHBoxLayout()
-        grid.setSpacing(12)
+        info_panel = QFrame()
+        info_panel.setObjectName("infoPanel")
+        grid_layout = QGridLayout(info_panel)
+        grid_layout.setContentsMargins(16, 14, 16, 14)
+        grid_layout.setHorizontalSpacing(24)
+        grid_layout.setVerticalSpacing(14)
 
-        # Col 1
-        col1 = QVBoxLayout()
-        col1.setSpacing(10)
-        col1.addWidget(_make_info_tile("Student Card ID", card_id, icon_name="user"))
-        col1.addWidget(_make_info_tile("University", univ_str, icon_name="crest"))
-        col1.addWidget(_make_info_tile("Date of Birth", dob_val))
-        grid.addLayout(col1, 1)
+        # Row 0: Card ID & Gender
+        grid_layout.addWidget(_create_field_widget("Student Card ID", card_id, icon_name="user"), 0, 0)
+        grid_layout.addWidget(_create_field_widget("Gender", gender_str), 0, 1)
 
-        # Col 2
-        col2 = QVBoxLayout()
-        col2.setSpacing(10)
-        col2.addWidget(_make_info_tile("Gender", gender_str))
-        col2.addWidget(_make_info_tile("Faculty", fac_str))
-        col2.addWidget(_make_info_tile("Contact Phone", phone_val or "—", subvalue=phone_sub, icon_name="phone"))
-        grid.addLayout(col2, 1)
+        # Row 1: University & Faculty
+        grid_layout.addWidget(_create_field_widget("University", univ_str, icon_name="crest"), 1, 0)
+        grid_layout.addWidget(_create_field_widget("Faculty", fac_str), 1, 1)
 
-        card_layout.addLayout(grid)
+        # Row 2: Date of Birth & Phone
+        grid_layout.addWidget(_create_field_widget("Date of Birth", dob_val), 2, 0)
+        grid_layout.addWidget(_create_field_widget("Contact Phone", phone_val, icon_name="phone"), 2, 1)
+
+        card_layout.addWidget(info_panel)
 
         # -------------------------------------------------------------
         # 3. Accommodation & Official Verification Section
         # -------------------------------------------------------------
-        section_lbl2 = QLabel("HOUSING & ADMISSIONS VERIFICATION")
-        section_lbl2.setStyleSheet("color: #64748b; font-size: 11px; font-weight: 800; letter-spacing: 0.6px;")
-        card_layout.addWidget(section_lbl2)
+        sec_header2 = QLabel("HOUSING & ADMISSIONS VERIFICATION")
+        sec_header2.setStyleSheet("color: #64748b; font-size: 11px; font-weight: 800; letter-spacing: 0.6px;")
+        card_layout.addWidget(sec_header2)
 
         # Determine Assigned Room text
         room = self.student_data.get("rooms") or self.student_data.get("room") or {}
@@ -339,94 +365,116 @@ class StudentInfoCardDialog(QDialog):
         if block and number:
             floor_text = f" (Floor {floor})" if floor is not None and str(floor) != "" else ""
             assigned_room_str = f"Block {block} — Room {number}{floor_text}"
+            has_room = True
         elif self.student_data.get("room_str"):
             assigned_room_str = str(self.student_data["room_str"])
+            has_room = True
         else:
-            assigned_room_str = "Not assigned"
+            assigned_room_str = "No room assigned yet"
+            has_room = False
 
-        # Room Card
-        room_card = QFrame()
-        room_card.setStyleSheet("""
-            QFrame {
-                background-color: #0d1017;
-                border: 1px solid #1a2032;
-                border-radius: 8px;
-            }
-        """)
-        rc_layout = QHBoxLayout(room_card)
-        rc_layout.setContentsMargins(14, 10, 14, 10)
-        rc_layout.setSpacing(12)
+        # Room Panel
+        room_panel = QFrame()
+        room_panel.setObjectName("roomPanel")
+        rp_layout = QHBoxLayout(room_panel)
+        rp_layout.setContentsMargins(14, 12, 14, 12)
+        rp_layout.setSpacing(14)
 
-        rc_icon = QLabel()
-        rc_icon.setPixmap(get_pixmap("building", size=20, color="#38bdf8" if assigned_room_str != "Not assigned" else "#64748b"))
-        rc_layout.addWidget(rc_icon)
+        rp_icon_box = QLabel()
+        rp_icon_box.setFixedSize(38, 38)
+        rp_icon_box.setAlignment(Qt.AlignCenter)
+        if has_room:
+            rp_icon_box.setPixmap(get_pixmap("building", size=20, color="#38bdf8"))
+            rp_icon_box.setStyleSheet("background-color: #082f49; border: 1px solid #0284c7; border-radius: 8px;")
+        else:
+            rp_icon_box.setPixmap(get_pixmap("building", size=20, color="#64748b"))
+            rp_icon_box.setStyleSheet("background-color: #141724; border: 1px solid #283145; border-radius: 8px;")
+        rp_layout.addWidget(rp_icon_box)
 
-        rc_vbox = QVBoxLayout()
-        rc_vbox.setSpacing(2)
-        rc_title = QLabel("ASSIGNED RESIDENTIAL ROOM")
-        rc_title.setStyleSheet("color: #64748b; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;")
-        rc_vbox.addWidget(rc_title)
+        rp_text_vbox = QVBoxLayout()
+        rp_text_vbox.setSpacing(2)
+        rp_title = QLabel("ASSIGNED RESIDENTIAL ACCOMMODATION")
+        rp_title.setStyleSheet("color: #64748b; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;")
+        rp_text_vbox.addWidget(rp_title)
 
-        rc_val = QLabel(assigned_room_str)
-        rc_val.setStyleSheet(
-            "color: #f8fafc; font-size: 13px; font-weight: 600;"
-            if assigned_room_str != "Not assigned"
-            else "color: #94a3b8; font-size: 13px; font-weight: 500;"
-        )
-        rc_vbox.addWidget(rc_val)
-        rc_layout.addLayout(rc_vbox, 1)
+        rp_val = QLabel(assigned_room_str)
+        if has_room:
+            rp_val.setStyleSheet("color: #f8fafc; font-size: 14px; font-weight: 700;")
+        else:
+            rp_val.setStyleSheet("color: #94a3b8; font-size: 13px; font-weight: 500; font-style: italic;")
+        rp_text_vbox.addWidget(rp_val)
 
-        card_layout.addWidget(room_card)
+        rp_layout.addLayout(rp_text_vbox, 1)
+        card_layout.addWidget(room_panel)
 
         # Official Roster Match Banner
         roster_banner = QFrame()
+        roster_banner.setObjectName("rosterBanner")
         rb_layout = QHBoxLayout(roster_banner)
-        rb_layout.setContentsMargins(14, 10, 14, 10)
-        rb_layout.setSpacing(12)
+        rb_layout.setContentsMargins(14, 12, 14, 12)
+        rb_layout.setSpacing(14)
 
-        rb_icon = QLabel()
+        rb_icon_box = QLabel()
+        rb_icon_box.setFixedSize(38, 38)
+        rb_icon_box.setAlignment(Qt.AlignCenter)
+
         rb_text_vbox = QVBoxLayout()
         rb_text_vbox.setSpacing(2)
 
-        rb_tag = QLabel("OFFICIAL ROSTER MATCH")
-        rb_tag.setStyleSheet("font-size: 10px; font-weight: 700; letter-spacing: 0.5px;")
-
+        rb_tag = QLabel()
         rb_title = QLabel()
-        rb_title.setStyleSheet("font-size: 13px; font-weight: 700;")
-
+        rb_title.setWordWrap(True)
         rb_desc = QLabel()
-        rb_desc.setStyleSheet("font-size: 11px;")
+        rb_desc.setWordWrap(True)
 
         if is_verified:
             roster_banner.setStyleSheet("""
-                QFrame {
-                    background-color: #052e16;
-                    border: 1px solid #10b981;
-                    border-radius: 8px;
+                QFrame#rosterBanner {
+                    background-color: #042013;
+                    border: 1px solid #059669;
+                    border-radius: 10px;
+                }
+                QLabel {
+                    background: transparent;
+                    border: none;
                 }
             """)
-            rb_icon.setPixmap(get_pixmap("check", size=20, color="#34d399"))
+            rb_icon_box.setPixmap(get_pixmap("check", size=20, color="#34d399"))
+            rb_icon_box.setStyleSheet("background-color: #064e3b; border: 1px solid #10b981; border-radius: 8px;")
+
+            rb_tag.setText("OFFICIAL ROSTER MATCH — VERIFIED")
             rb_tag.setStyleSheet("color: #34d399; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;")
-            rb_title.setText("Verified on Master Admissions List")
-            rb_title.setStyleSheet("color: #34d399; font-size: 13px; font-weight: 700;")
-            rb_desc.setText("Admissions record confirmed against official university master database.")
-            rb_desc.setStyleSheet("color: #86efac; font-size: 11px;")
+
+            rb_title.setText("Verified on Master University Admissions List")
+            rb_title.setStyleSheet("color: #ecfdf5; font-size: 13px; font-weight: 700;")
+
+            rb_desc.setText("Identity and academic records confirmed against official university register.")
+            rb_desc.setStyleSheet("color: #a7f3d0; font-size: 11px;")
         else:
             roster_banner.setStyleSheet("""
-                QFrame {
-                    background-color: #2e1b04;
-                    border: 1px solid #f59e0b;
-                    border-radius: 8px;
+                QFrame#rosterBanner {
+                    background-color: #231505;
+                    border: 1px solid #b45309;
+                    border-radius: 10px;
+                }
+                QLabel {
+                    background: transparent;
+                    border: none;
                 }
             """)
-            rb_icon.setPixmap(get_pixmap("alert", size=20, color="#fbbf24"))
+            rb_icon_box.setPixmap(get_pixmap("alert", size=20, color="#fbbf24"))
+            rb_icon_box.setStyleSheet("background-color: #451a03; border: 1px solid #f59e0b; border-radius: 8px;")
+
+            rb_tag.setText("OFFICIAL ROSTER STATUS — UNMATCHED")
             rb_tag.setStyleSheet("color: #fbbf24; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;")
-            rb_title.setText("Unmatched / Self-Registered")
-            rb_title.setStyleSheet("color: #fbbf24; font-size: 13px; font-weight: 700;")
-            rb_desc.setText("Record not confirmed on admissions roster. Verify physical registration dossier.")
+
+            rb_title.setText("Not Found on Admissions Roster")
+            rb_title.setStyleSheet("color: #fffbeb; font-size: 13px; font-weight: 700;")
+
+            rb_desc.setText("Self-registered record. Audit physical dossier before authorizing room allocation.")
             rb_desc.setStyleSheet("color: #fde68a; font-size: 11px;")
 
-        rb_layout.addWidget(rb_icon)
+        rb_layout.addWidget(rb_icon_box)
         rb_text_vbox.addWidget(rb_tag)
         rb_text_vbox.addWidget(rb_title)
         rb_text_vbox.addWidget(rb_desc)
@@ -442,7 +490,7 @@ class StudentInfoCardDialog(QDialog):
 
         close_btn = QPushButton("Close")
         close_btn.setMinimumWidth(110)
-        close_btn.setFixedHeight(34)
+        close_btn.setFixedHeight(36)
         apply_button_style(close_btn, "secondary")
         close_btn.clicked.connect(self.accept)
         footer_row.addWidget(close_btn)
@@ -488,8 +536,8 @@ class RoomInfoCardDialog(QDialog):
         card = QFrame()
         card.setObjectName("cardFrame")
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(22, 22, 22, 22)
-        card_layout.setSpacing(16)
+        card_layout.setContentsMargins(24, 24, 24, 24)
+        card_layout.setSpacing(18)
         root_layout.addWidget(card)
 
         # Fetch Occupants if client is provided
@@ -497,28 +545,41 @@ class RoomInfoCardDialog(QDialog):
         room_id = self.room_data.get("id")
         if self.client is not None and room_id:
             try:
-                resp = (
-                    self.client.table("students")
-                    .select("card_id, first_name, last_name, faculty")
-                    .eq("room_id", room_id)
-                    .eq("status", "active")
-                    .execute()
-                )
-                occupants = resp.data or []
+                query = self.client.table("students").select("card_id, first_name, last_name, faculty").eq("room_id", room_id)
+                if hasattr(query, "eq"):
+                    # in case chaining .eq("status", "active")
+                    try:
+                        query = query.eq("status", "active")
+                    except Exception:
+                        pass
+                resp = query.execute()
+                if resp and hasattr(resp, "data") and isinstance(resp.data, list):
+                    occupants = resp.data
             except Exception:
-                occupants = self.room_data.get("occupants") or self.room_data.get("residents") or []
-        elif "occupants" in self.room_data and isinstance(self.room_data["occupants"], list):
-            occupants = self.room_data["occupants"]
-        elif "residents" in self.room_data and isinstance(self.room_data["residents"], list):
-            occupants = self.room_data["residents"]
+                pass
+
+        if not occupants:
+            raw_occ = self.room_data.get("occupants") or self.room_data.get("residents")
+            if isinstance(raw_occ, list):
+                occupants = raw_occ
+
+        # Ensure occupants is strictly a list
+        if not isinstance(occupants, list):
+            occupants = []
 
         # Calculate Occupied & Available Beds
-        if occupants:
+        if len(occupants) > 0:
             occupied = len(occupants)
         elif "occupied" in self.room_data and self.room_data["occupied"] is not None:
-            occupied = int(self.room_data["occupied"])
+            try:
+                occupied = int(self.room_data["occupied"])
+            except (ValueError, TypeError):
+                occupied = 0
         elif "occupied_beds" in self.room_data and self.room_data["occupied_beds"] is not None:
-            occupied = int(self.room_data["occupied_beds"])
+            try:
+                occupied = int(self.room_data["occupied_beds"])
+            except (ValueError, TypeError):
+                occupied = 0
         else:
             occupied = 0
 
@@ -547,7 +608,7 @@ class RoomInfoCardDialog(QDialog):
         header_text_vbox.setSpacing(3)
 
         title_lbl = QLabel(f"Block {block} — Room {number}")
-        title_lbl.setStyleSheet("font-size: 18px; font-weight: 700; color: #f8fafc;")
+        title_lbl.setStyleSheet("font-size: 19px; font-weight: 700; color: #f8fafc;")
         header_text_vbox.addWidget(title_lbl)
 
         sub_lbl = QLabel(f"Floor {floor} • Designated for {gender} Students")
@@ -559,13 +620,13 @@ class RoomInfoCardDialog(QDialog):
         # Status Badge ("Full" in crimson or "{N} Bed(s) Available" in emerald)
         badge_lbl = QLabel()
         if available <= 0:
-            badge_lbl.setText("Full")
+            badge_lbl.setText("Room Full")
             badge_lbl.setStyleSheet("""
                 background-color: #360808;
                 color: #f87171;
                 border: 1px solid #ef4444;
                 border-radius: 12px;
-                padding: 4px 10px;
+                padding: 4px 12px;
                 font-size: 11px;
                 font-weight: 700;
             """)
@@ -577,7 +638,7 @@ class RoomInfoCardDialog(QDialog):
                 color: #34d399;
                 border: 1px solid #10b981;
                 border-radius: 12px;
-                padding: 4px 10px;
+                padding: 4px 12px;
                 font-size: 11px;
                 font-weight: 700;
             """)
@@ -588,7 +649,7 @@ class RoomInfoCardDialog(QDialog):
         # Divider
         divider1 = QFrame()
         divider1.setFixedHeight(1)
-        divider1.setStyleSheet("background-color: #1c2234;")
+        divider1.setStyleSheet("background-color: #1c2234; border: none;")
         card_layout.addWidget(divider1)
 
         # -------------------------------------------------------------
@@ -601,12 +662,12 @@ class RoomInfoCardDialog(QDialog):
         stat_row = QHBoxLayout()
         stat_row.setSpacing(12)
 
-        stat_row.addWidget(_make_stat_card("Total Beds", str(capacity), color="#f8fafc"), 1)
+        stat_row.addWidget(_make_stat_card("Total Capacity", str(capacity), color="#f8fafc"), 1)
         stat_row.addWidget(_make_stat_card("Occupied Beds", str(occupied), color="#38bdf8"), 1)
 
         avail_color = "#f87171" if available <= 0 else "#34d399"
-        avail_bg = "#2a0909" if available <= 0 else "#052e16"
-        avail_border = "#ef4444" if available <= 0 else "#10b981"
+        avail_bg = "#230909" if available <= 0 else "#052014"
+        avail_border = "#dc2626" if available <= 0 else "#059669"
         stat_row.addWidget(
             _make_stat_card("Available Beds", str(available), color=avail_color, bg_color=avail_bg, border_color=avail_border),
             1,
@@ -628,11 +689,14 @@ class RoomInfoCardDialog(QDialog):
             table.setSelectionMode(QTableWidget.SingleSelection)
             table.setEditTriggers(QTableWidget.NoEditTriggers)
             table.verticalHeader().setVisible(False)
+            table.setShowGrid(False)
+            table.setAlternatingRowColors(True)
             table.horizontalHeader().setStretchLastSection(True)
             table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
             table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
 
             for i, occ in enumerate(occupants):
+                table.setRowHeight(i, 36)
                 fname = str(occ.get("first_name", "")).strip()
                 lname = str(occ.get("last_name", "")).strip()
                 occ_name = f"{fname} {lname}".strip() or "Resident Student"
@@ -649,17 +713,22 @@ class RoomInfoCardDialog(QDialog):
                 table.setItem(i, 1, card_item)
                 table.setItem(i, 2, fac_item)
 
-            table.setMinimumHeight(120)
-            table.setMaximumHeight(200)
+            table_h = min(220, max(110, 36 + len(occupants) * 36 + 6))
+            table.setFixedHeight(table_h)
             card_layout.addWidget(table)
         else:
             empty_frame = QFrame()
+            empty_frame.setObjectName("emptyFrame")
             empty_frame.setStyleSheet("""
-                QFrame {
-                    background-color: #0d1017;
-                    border: 1px dashed #1f273d;
-                    border-radius: 8px;
-                    padding: 16px;
+                QFrame#emptyFrame {
+                    background-color: #0b0d14;
+                    border: 1px dashed #1e2538;
+                    border-radius: 10px;
+                    padding: 20px;
+                }
+                QLabel {
+                    background: transparent;
+                    border: none;
                 }
             """)
             empty_layout = QVBoxLayout(empty_frame)
@@ -668,13 +737,18 @@ class RoomInfoCardDialog(QDialog):
 
             icon_lbl = QLabel()
             icon_lbl.setAlignment(Qt.AlignCenter)
-            icon_lbl.setPixmap(get_pixmap("rooms", size=24, color="#475569"))
+            icon_lbl.setPixmap(get_pixmap("rooms", size=26, color="#475569"))
             empty_layout.addWidget(icon_lbl)
 
-            empty_lbl = QLabel("No residents currently assigned to this room.")
-            empty_lbl.setAlignment(Qt.AlignCenter)
-            empty_lbl.setStyleSheet("color: #94a3b8; font-size: 13px; font-weight: 500;")
-            empty_layout.addWidget(empty_lbl)
+            empty_title = QLabel("No Residents Assigned")
+            empty_title.setAlignment(Qt.AlignCenter)
+            empty_title.setStyleSheet("color: #94a3b8; font-size: 13px; font-weight: 600;")
+            empty_layout.addWidget(empty_title)
+
+            empty_desc = QLabel("All beds in this room are currently vacant and available for allocation.")
+            empty_desc.setAlignment(Qt.AlignCenter)
+            empty_desc.setStyleSheet("color: #64748b; font-size: 11px;")
+            empty_layout.addWidget(empty_desc)
 
             card_layout.addWidget(empty_frame)
 
@@ -686,7 +760,7 @@ class RoomInfoCardDialog(QDialog):
 
         close_btn = QPushButton("Close")
         close_btn.setMinimumWidth(110)
-        close_btn.setFixedHeight(34)
+        close_btn.setFixedHeight(36)
         apply_button_style(close_btn, "secondary")
         close_btn.clicked.connect(self.accept)
         footer_row.addWidget(close_btn)
