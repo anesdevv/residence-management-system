@@ -1,6 +1,6 @@
 import urllib.request
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLabel, QTextEdit, QInputDialog, QMessageBox, QFrame,
@@ -25,16 +25,16 @@ class MaintenancePage(QWidget):
         header_row = QHBoxLayout()
         header_vbox = QVBoxLayout()
         title_lbl = QLabel("Facility Maintenance & Repairs")
-        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #0f172a;")
+        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc;")
         sub_lbl = QLabel("Triage plumbing, electrical, furniture, and heating repair tickets filed by residents.")
-        sub_lbl.setStyleSheet("font-size: 12px; color: #64748b;")
+        sub_lbl.setStyleSheet("font-size: 12px; color: #94a3b8;")
         header_vbox.addWidget(title_lbl)
         header_vbox.addWidget(sub_lbl)
         header_row.addLayout(header_vbox)
         header_row.addStretch(1)
 
         self.refresh_btn = QPushButton("Refresh")
-        self.refresh_btn.setIcon(get_icon("refresh", size=14, color="#334155"))
+        self.refresh_btn.setIcon(get_icon("refresh", size=14, color="#cbd5e1"))
         apply_button_style(self.refresh_btn, "secondary")
         self.refresh_btn.clicked.connect(self.reload)
         header_row.addWidget(self.refresh_btn)
@@ -94,7 +94,7 @@ class MaintenancePage(QWidget):
         dc_layout.setContentsMargins(16, 16, 16, 16)
 
         detail_title = QLabel("Ticket Inspector")
-        detail_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #0f172a;")
+        detail_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #f8fafc;")
         dc_layout.addWidget(detail_title)
 
         self.detail_text = QTextEdit()
@@ -107,10 +107,10 @@ class MaintenancePage(QWidget):
         self.photo_label = QLabel("No fault photo attached")
         self.photo_label.setAlignment(Qt.AlignCenter)
         self.photo_label.setStyleSheet("""
-            background-color: #f8fafc;
-            border: 1px dashed #cbd5e1;
-            border-radius: 6px;
-            color: #94a3b8;
+            background-color: #0b0d14;
+            border: 1px dashed #22293b;
+            border-radius: 8px;
+            color: #64748b;
             font-size: 12px;
         """)
         self.photo_label.setFixedHeight(180)
@@ -195,11 +195,11 @@ class MaintenancePage(QWidget):
             date_item = QTableWidgetItem(str(r.get("created_at", ""))[:10])
 
             if status == "resolved":
-                status_item.setForeground(Qt.darkGreen)
+                status_item.setForeground(QColor("#34d399"))
             elif status == "in_progress":
-                status_item.setForeground(Qt.blue)
+                status_item.setForeground(QColor("#38bdf8"))
             else:
-                status_item.setForeground(Qt.darkYellow)
+                status_item.setForeground(QColor("#fbbf24"))
 
             self.table.setItem(i, 0, cat_item)
             self.table.setItem(i, 1, student_item)

@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 from ..client import current_role
 from .live_sync import LiveSyncWorker
 from .icons import get_icon, get_pixmap
-from .theme import DESKTOP_STYLESHEET
+from .theme import DESKTOP_STYLESHEET, apply_button_style
 from .pages.overview import OverviewPage
 from .pages.pending import PendingPage
 from .pages.residents import ResidentsPage
@@ -33,28 +33,28 @@ class MainWindow(QMainWindow):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        # 1. Top Institutional Control Header
+        # 1. Top Antigravity Control Header
         header_bar = QWidget()
         header_bar.setStyleSheet("""
             QWidget {
-                background-color: #0f172a;
-                border-bottom: 1px solid #1e293b;
+                background-color: #090a0f;
+                border-bottom: 1px solid #161925;
             }
         """)
         header_layout = QHBoxLayout(header_bar)
-        header_layout.setContentsMargins(16, 12, 16, 12)
-        header_layout.setSpacing(12)
+        header_layout.setContentsMargins(18, 12, 18, 12)
+        header_layout.setSpacing(14)
 
-        # Brand / Emblem
+        # Antigravity Emblem
         crest_label = QLabel()
-        crest_label.setPixmap(get_pixmap("crest", size=24, color="#38bdf8"))
+        crest_label.setPixmap(get_pixmap("antigravity", size=24, color="#38bdf8"))
         header_layout.addWidget(crest_label)
 
         title_container = QVBoxLayout()
         title_container.setSpacing(1)
-        title_lbl = QLabel("Cité Universitaire — Residence Tlemcen")
-        title_lbl.setStyleSheet("color: #ffffff; font-weight: 800; font-size: 14px; letter-spacing: 0.3px;")
-        sub_lbl = QLabel("Dormitory Operations & Facility Management Console")
+        title_lbl = QLabel("ANTIGRAVITY // RESIDENCE OS")
+        title_lbl.setStyleSheet("color: #f8fafc; font-weight: 800; font-size: 14px; letter-spacing: 0.6px;")
+        sub_lbl = QLabel("Dormitory Operations & Automated Facility Console • Tlemcen")
         sub_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
         title_container.addWidget(title_lbl)
         title_container.addWidget(sub_lbl)
@@ -64,25 +64,35 @@ class MainWindow(QMainWindow):
 
         # Operator Role Badge
         role_text = "ADMINISTRATOR" if self.role == "admin" else "HOUSING STAFF"
-        role_color = "#38bdf8" if self.role == "admin" else "#94a3b8"
         role_badge = QLabel(f"● {role_text}")
-        role_badge.setStyleSheet(f"""
-            color: {role_color};
-            background-color: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 12px;
-            padding: 4px 10px;
-            font-size: 11px;
-            font-weight: 700;
-        """)
+        if self.role == "admin":
+            role_badge.setStyleSheet("""
+                color: #38bdf8;
+                background-color: #082f49;
+                border: 1px solid #0284c7;
+                border-radius: 12px;
+                padding: 4px 10px;
+                font-size: 11px;
+                font-weight: 700;
+            """)
+        else:
+            role_badge.setStyleSheet("""
+                color: #94a3b8;
+                background-color: #141724;
+                border: 1px solid #283145;
+                border-radius: 12px;
+                padding: 4px 10px;
+                font-size: 11px;
+                font-weight: 700;
+            """)
         header_layout.addWidget(role_badge)
 
         # Live Mode Indicator
         self.live_pill = QLabel("🟢 LIVE SYNC (2s)")
         self.live_pill.setStyleSheet("""
-            color: #4ade80;
-            background-color: #064e3b;
-            border: 1px solid #059669;
+            color: #34d399;
+            background-color: #052e16;
+            border: 1px solid #10b981;
             border-radius: 12px;
             padding: 4px 10px;
             font-size: 11px;
@@ -92,21 +102,7 @@ class MainWindow(QMainWindow):
 
         # Pause / Resume Live Button
         self.toggle_live_btn = QPushButton("Pause Live")
-        self.toggle_live_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #1e293b;
-                border: 1px solid #334155;
-                color: #e2e8f0;
-                padding: 4px 12px;
-                font-size: 12px;
-                font-weight: 600;
-                border-radius: 6px;
-            }
-            QPushButton:hover {
-                background-color: #334155;
-                color: #ffffff;
-            }
-        """)
+        apply_button_style(self.toggle_live_btn, "secondary")
         self.toggle_live_btn.clicked.connect(self.toggle_live_mode)
         header_layout.addWidget(self.toggle_live_btn)
 
@@ -127,7 +123,7 @@ class MainWindow(QMainWindow):
 
         # Stacked Pages
         self.stack = QStackedWidget()
-        self.stack.setStyleSheet("background-color: #f8fafc;")
+        self.stack.setStyleSheet("background-color: #0c0e15;")
         body_layout.addWidget(self.stack, 1)
 
         root_layout.addWidget(body_widget, 1)
@@ -171,7 +167,7 @@ class MainWindow(QMainWindow):
     def _add_nav_item(self, title: str, icon_name: str, widget: QWidget):
         self.pages[title] = widget
         item = QListWidgetItem(title)
-        item.setIcon(get_icon(icon_name, size=18, color="#94a3b8"))
+        item.setIcon(get_icon(icon_name, size=18, color="#cbd5e1"))
         self.nav.addItem(item)
         self.stack.addWidget(widget)
 
@@ -180,9 +176,9 @@ class MainWindow(QMainWindow):
             self.sync_worker.set_paused(False)
             self.live_pill.setText("🟢 LIVE SYNC (2s)")
             self.live_pill.setStyleSheet("""
-                color: #4ade80;
-                background-color: #064e3b;
-                border: 1px solid #059669;
+                color: #34d399;
+                background-color: #052e16;
+                border: 1px solid #10b981;
                 border-radius: 12px;
                 padding: 4px 10px;
                 font-size: 11px;
@@ -194,9 +190,9 @@ class MainWindow(QMainWindow):
             self.sync_worker.set_paused(True)
             self.live_pill.setText("⏸️ LIVE PAUSED")
             self.live_pill.setStyleSheet("""
-                color: #f97316;
-                background-color: #431407;
-                border: 1px solid #ea580c;
+                color: #fbbf24;
+                background-color: #2e1b04;
+                border: 1px solid #f59e0b;
                 border-radius: 12px;
                 padding: 4px 10px;
                 font-size: 11px;

@@ -13,27 +13,27 @@ class StatCard(QFrame):
         self.setObjectName("cardFrame")
         layout = QVBoxLayout(self)
         layout.setSpacing(6)
-        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setContentsMargins(20, 20, 20, 20)
 
         top_row = QHBoxLayout()
         icon_lbl = QLabel()
         icon_lbl.setPixmap(get_pixmap(icon_name, size=24, color=accent_color))
-        icon_lbl.setStyleSheet(f"background-color: {bg_tint}; border-radius: 6px; padding: 6px;")
+        icon_lbl.setStyleSheet(f"background-color: {bg_tint}; border: 1px solid {accent_color}; border-radius: 8px; padding: 6px;")
 
         top_row.addWidget(icon_lbl)
         top_row.addStretch(1)
         layout.addLayout(top_row)
 
         self.value_lbl = QLabel("0")
-        self.value_lbl.setStyleSheet(f"font-size: 32px; font-weight: 800; color: {accent_color}; margin-top: 4px;")
+        self.value_lbl.setStyleSheet(f"font-size: 32px; font-weight: 800; color: {accent_color}; margin-top: 6px; letter-spacing: -0.5px;")
         layout.addWidget(self.value_lbl)
 
         title_lbl = QLabel(title)
-        title_lbl.setStyleSheet("font-size: 14px; font-weight: 700; color: #0f172a;")
+        title_lbl.setStyleSheet("font-size: 14px; font-weight: 700; color: #f8fafc;")
         layout.addWidget(title_lbl)
 
         sub_lbl = QLabel(subtitle)
-        sub_lbl.setStyleSheet("font-size: 11px; color: #64748b;")
+        sub_lbl.setStyleSheet("font-size: 11px; color: #94a3b8; line-height: 1.3;")
         sub_lbl.setWordWrap(True)
         layout.addWidget(sub_lbl)
 
@@ -47,23 +47,24 @@ class OverviewPage(QWidget):
         self.client = client
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(22, 22, 22, 22)
         layout.setSpacing(20)
 
         # Header with Title and Refresh
         header_row = QHBoxLayout()
         header_vbox = QVBoxLayout()
-        title_lbl = QLabel("Department Operations Dashboard")
-        title_lbl.setStyleSheet("font-size: 20px; font-weight: 800; color: #0f172a;")
+        header_vbox.setSpacing(2)
+        title_lbl = QLabel("Operations Dashboard & Telemetry")
+        title_lbl.setStyleSheet("font-size: 20px; font-weight: 800; color: #f8fafc; letter-spacing: -0.3px;")
         sub_lbl = QLabel("Real-time dormitory metrics, intake triage, and occupancy monitoring.")
-        sub_lbl.setStyleSheet("font-size: 12px; color: #64748b;")
+        sub_lbl.setStyleSheet("font-size: 12px; color: #94a3b8;")
         header_vbox.addWidget(title_lbl)
         header_vbox.addWidget(sub_lbl)
         header_row.addLayout(header_vbox)
         header_row.addStretch(1)
 
-        refresh_btn = QPushButton("Refresh Metrics")
-        refresh_btn.setIcon(get_icon("refresh", size=14, color="#334155"))
+        refresh_btn = QPushButton("Refresh Telemetry")
+        refresh_btn.setIcon(get_icon("refresh", size=14, color="#cbd5e1"))
         apply_button_style(refresh_btn, "secondary")
         refresh_btn.clicked.connect(self.reload)
         header_row.addWidget(refresh_btn)
@@ -77,29 +78,29 @@ class OverviewPage(QWidget):
             title="Pending Registrations",
             subtitle="Student applications awaiting verification & room allocation",
             icon_name="pending",
-            accent_color="#d97706",
-            bg_tint="#fef3c7",
+            accent_color="#fbbf24",
+            bg_tint="#2e1b04",
         )
         self.reports_card = StatCard(
             title="Open Maintenance Tickets",
             subtitle="Facility repairs requiring inspection & technician dispatch",
             icon_name="maintenance",
-            accent_color="#2563eb",
-            bg_tint="#dbeafe",
+            accent_color="#38bdf8",
+            bg_tint="#082f49",
         )
         self.requests_card = StatCard(
             title="Room Transfer Requests",
             subtitle="Approved resident relocation and room swap applications",
             icon_name="room_changes",
-            accent_color="#7c3aed",
-            bg_tint="#ede9fe",
+            accent_color="#a855f7",
+            bg_tint="#2e1065",
         )
         self.occupancy_card = StatCard(
             title="Active Housed Residents",
             subtitle="Current university students occupying designated rooms",
             icon_name="residents",
-            accent_color="#059669",
-            bg_tint="#d1fae5",
+            accent_color="#34d399",
+            bg_tint="#052e16",
         )
 
         grid.addWidget(self.pending_card, 0, 0)
@@ -112,11 +113,11 @@ class OverviewPage(QWidget):
         guideline_card = QFrame()
         guideline_card.setObjectName("cardFrame")
         g_layout = QVBoxLayout(guideline_card)
-        g_layout.setSpacing(10)
-        g_layout.setContentsMargins(18, 18, 18, 18)
+        g_layout.setSpacing(12)
+        g_layout.setContentsMargins(20, 20, 20, 20)
 
-        g_title = QLabel("Housing Administration Protocol")
-        g_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #0f172a;")
+        g_title = QLabel("Antigravity Housing Administration Protocol")
+        g_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #f8fafc;")
         g_layout.addWidget(g_title)
 
         guidelines = [
@@ -128,9 +129,9 @@ class OverviewPage(QWidget):
         for step, desc in guidelines:
             row = QHBoxLayout()
             s_lbl = QLabel(step)
-            s_lbl.setStyleSheet("font-size: 12px; font-weight: 700; color: #1e293b; min-width: 170px;")
+            s_lbl.setStyleSheet("font-size: 12px; font-weight: 700; color: #e2e8f0; min-width: 180px;")
             d_lbl = QLabel(desc)
-            d_lbl.setStyleSheet("font-size: 12px; color: #64748b;")
+            d_lbl.setStyleSheet("font-size: 12px; color: #94a3b8;")
             row.addWidget(s_lbl)
             row.addWidget(d_lbl, 1)
             g_layout.addLayout(row)

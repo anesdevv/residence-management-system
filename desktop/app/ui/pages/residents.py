@@ -1,4 +1,5 @@
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem,
     QLabel, QPushButton, QFrame, QComboBox,
@@ -21,9 +22,9 @@ class ResidentsPage(QWidget):
         header_row = QHBoxLayout()
         header_vbox = QVBoxLayout()
         title_lbl = QLabel("Resident Students Directory")
-        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #0f172a;")
+        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc;")
         sub_lbl = QLabel("Official record of all active students currently accommodated in Residence Tlemcen.")
-        sub_lbl.setStyleSheet("font-size: 12px; color: #64748b;")
+        sub_lbl.setStyleSheet("font-size: 12px; color: #94a3b8;")
         header_vbox.addWidget(title_lbl)
         header_vbox.addWidget(sub_lbl)
         header_row.addLayout(header_vbox)
@@ -31,9 +32,9 @@ class ResidentsPage(QWidget):
 
         self.count_badge = QLabel("0 Residents")
         self.count_badge.setStyleSheet("""
-            background-color: #d1fae5;
-            color: #065f46;
-            border: 1px solid #a7f3d0;
+            background-color: #064e3b;
+            color: #34d399;
+            border: 1px solid #059669;
             border-radius: 12px;
             padding: 4px 10px;
             font-size: 11px;
@@ -42,7 +43,7 @@ class ResidentsPage(QWidget):
         header_row.addWidget(self.count_badge)
 
         refresh = QPushButton("Refresh")
-        refresh.setIcon(get_icon("refresh", size=14, color="#334155"))
+        refresh.setIcon(get_icon("refresh", size=14, color="#cbd5e1"))
         apply_button_style(refresh, "secondary")
         refresh.clicked.connect(self.reload)
         header_row.addWidget(refresh)
@@ -110,19 +111,19 @@ class ResidentsPage(QWidget):
         self.table.setRowCount(len(filtered))
         for i, (r, room) in enumerate(filtered):
             card_item = QTableWidgetItem(str(r.get("card_id", "")))
-            card_item.setIcon(get_icon("user", size=14, color="#64748b"))
+            card_item.setIcon(get_icon("user", size=14, color="#94a3b8"))
             name_item = QTableWidgetItem(f"{r.get('first_name', '')} {r.get('last_name', '')}")
             gender_item = QTableWidgetItem(str(r.get("gender", "")).capitalize())
 
             room_str = f"Block {room.get('block','—')} — Room {room.get('number','—')}"
             room_item = QTableWidgetItem(room_str)
-            room_item.setIcon(get_icon("building", size=14, color="#2563eb"))
+            room_item.setIcon(get_icon("building", size=14, color="#38bdf8"))
 
             univ_str = f"{r.get('faculty', '') or '—'}"
             univ_item = QTableWidgetItem(univ_str)
 
             status_item = QTableWidgetItem("Active Resident")
-            status_item.setForeground(Qt.darkGreen)
+            status_item.setForeground(QColor("#34d399"))
 
             self.table.setItem(i, 0, card_item)
             self.table.setItem(i, 1, name_item)

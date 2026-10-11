@@ -27,17 +27,17 @@ class LoginWindow(QWidget):
         card_layout.setSpacing(16)
         card_layout.setContentsMargins(28, 28, 28, 28)
 
-        # Crest & Header
+        # Antigravity Emblem & Header
         crest_lbl = QLabel()
-        crest_lbl.setPixmap(get_pixmap("crest", size=36, color="#0f172a"))
+        crest_lbl.setPixmap(get_pixmap("antigravity", size=42, color="#38bdf8"))
         crest_lbl.setAlignment(Qt.AlignCenter)
 
-        title_lbl = QLabel("Residence Tlemcen")
-        title_lbl.setStyleSheet("font-size: 19px; font-weight: 800; color: #0f172a; margin-top: 4px;")
+        title_lbl = QLabel("ANTIGRAVITY // RESIDENCE OS")
+        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc; letter-spacing: 0.6px; margin-top: 6px;")
         title_lbl.setAlignment(Qt.AlignCenter)
 
         subtitle_lbl = QLabel("Staff & Housing Operations Console")
-        subtitle_lbl.setStyleSheet("font-size: 12px; font-weight: 500; color: #64748b; margin-bottom: 8px;")
+        subtitle_lbl.setStyleSheet("font-size: 12px; font-weight: 500; color: #94a3b8; margin-bottom: 8px;")
         subtitle_lbl.setAlignment(Qt.AlignCenter)
 
         card_layout.addWidget(crest_lbl)
@@ -64,7 +64,7 @@ class LoginWindow(QWidget):
         # Status Error Banner
         self.status = QLabel("")
         self.status.setWordWrap(True)
-        self.status.setStyleSheet("color: #b91c1c; font-size: 12px; font-weight: 600; padding: 4px;")
+        self.status.setStyleSheet("color: #f87171; font-size: 12px; font-weight: 600; padding: 4px;")
         card_layout.addWidget(self.status)
 
         # Login Action Button
@@ -79,7 +79,7 @@ class LoginWindow(QWidget):
 
         # Security Footer
         security_lbl = QLabel("Direction des Œuvres Universitaires • Tlemcen")
-        security_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
+        security_lbl.setStyleSheet("color: #64748b; font-size: 11px;")
         security_lbl.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(security_lbl)
 

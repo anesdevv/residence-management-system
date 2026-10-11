@@ -22,16 +22,16 @@ class StaffAccountsPage(QWidget):
         header_row = QHBoxLayout()
         header_vbox = QVBoxLayout()
         title_lbl = QLabel("Staff & Administrative Access")
-        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #0f172a;")
+        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc;")
         sub_lbl = QLabel("Manage department officer credentials, assigned positions, and console privileges.")
-        sub_lbl.setStyleSheet("font-size: 12px; color: #64748b;")
+        sub_lbl.setStyleSheet("font-size: 12px; color: #94a3b8;")
         header_vbox.addWidget(title_lbl)
         header_vbox.addWidget(sub_lbl)
         header_row.addLayout(header_vbox)
         header_row.addStretch(1)
 
         refresh_btn = QPushButton("Refresh")
-        refresh_btn.setIcon(get_icon("refresh", size=14, color="#334155"))
+        refresh_btn.setIcon(get_icon("refresh", size=14, color="#cbd5e1"))
         apply_button_style(refresh_btn, "secondary")
         refresh_btn.clicked.connect(self.reload)
         header_row.addWidget(refresh_btn)
@@ -62,7 +62,7 @@ class StaffAccountsPage(QWidget):
         fc_layout.setContentsMargins(16, 16, 16, 16)
 
         form_title = QLabel("Provision Staff Account")
-        form_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #0f172a;")
+        form_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #f8fafc;")
         fc_layout.addWidget(form_title)
 
         form = QFormLayout()
@@ -139,7 +139,7 @@ class StaffAccountsPage(QWidget):
         self.table.setRowCount(len(rows))
         for i, r in enumerate(rows):
             name_item = QTableWidgetItem(str(r.get("full_name", "")))
-            name_item.setIcon(get_icon("staff_accounts", size=14, color="#64748b"))
+            name_item.setIcon(get_icon("staff_accounts", size=14, color="#818cf8"))
             self.table.setItem(i, 0, name_item)
             self.table.setItem(i, 1, QTableWidgetItem(str(r.get("position") or "Officer")))
             self.table.setItem(i, 2, QTableWidgetItem(str(r.get("id", ""))))

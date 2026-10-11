@@ -1,4 +1,5 @@
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLabel, QInputDialog, QMessageBox, QTextEdit, QLineEdit,
@@ -24,16 +25,16 @@ class PendingPage(QWidget):
         header_row = QHBoxLayout()
         header_vbox = QVBoxLayout()
         title_lbl = QLabel("Pending Student Applications")
-        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #0f172a;")
+        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc;")
         sub_lbl = QLabel("Verify student enrollment against official roster, approve and allocate rooms, or reject with reason.")
-        sub_lbl.setStyleSheet("font-size: 12px; color: #64748b;")
+        sub_lbl.setStyleSheet("font-size: 12px; color: #94a3b8;")
         header_vbox.addWidget(title_lbl)
         header_vbox.addWidget(sub_lbl)
         header_row.addLayout(header_vbox)
         header_row.addStretch(1)
 
         self.refresh_btn = QPushButton("Refresh")
-        self.refresh_btn.setIcon(get_icon("refresh", size=14, color="#334155"))
+        self.refresh_btn.setIcon(get_icon("refresh", size=14, color="#cbd5e1"))
         apply_button_style(self.refresh_btn, "secondary")
         self.refresh_btn.clicked.connect(self.reload)
         header_row.addWidget(self.refresh_btn)
@@ -75,7 +76,7 @@ class PendingPage(QWidget):
         dc_layout.setContentsMargins(16, 16, 16, 16)
 
         inspector_title = QLabel("Application Inspector")
-        inspector_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #0f172a;")
+        inspector_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #f8fafc;")
         dc_layout.addWidget(inspector_title)
 
         self.detail_text = QTextEdit()
@@ -139,9 +140,9 @@ class PendingPage(QWidget):
             date_item = QTableWidgetItem(str(s.get("created_at", ""))[:10])
 
             if is_match:
-                match_item.setForeground(Qt.darkGreen)
+                match_item.setForeground(QColor("#34d399"))
             else:
-                match_item.setForeground(Qt.darkRed)
+                match_item.setForeground(QColor("#f87171"))
 
             self.table.setItem(i, 0, card_item)
             self.table.setItem(i, 1, name_item)

@@ -22,9 +22,9 @@ class OfficialListPage(QWidget):
         header_row = QHBoxLayout()
         header_vbox = QVBoxLayout()
         title_lbl = QLabel("Official University Roster")
-        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #0f172a;")
+        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc;")
         sub_lbl = QLabel("Master admissions database used to automatically verify student housing applications.")
-        sub_lbl.setStyleSheet("font-size: 12px; color: #64748b;")
+        sub_lbl.setStyleSheet("font-size: 12px; color: #94a3b8;")
         header_vbox.addWidget(title_lbl)
         header_vbox.addWidget(sub_lbl)
         header_row.addLayout(header_vbox)
@@ -32,9 +32,9 @@ class OfficialListPage(QWidget):
 
         self.count_badge = QLabel("0 Records")
         self.count_badge.setStyleSheet("""
-            background-color: #e0f2fe;
-            color: #0369a1;
-            border: 1px solid #bae6fd;
+            background-color: #0c4a6e;
+            color: #38bdf8;
+            border: 1px solid #0284c7;
             border-radius: 12px;
             padding: 4px 10px;
             font-size: 11px;
@@ -55,7 +55,7 @@ class OfficialListPage(QWidget):
         header_row.addWidget(import_btn)
 
         refresh = QPushButton("Refresh")
-        refresh.setIcon(get_icon("refresh", size=14, color="#334155"))
+        refresh.setIcon(get_icon("refresh", size=14, color="#cbd5e1"))
         apply_button_style(refresh, "secondary")
         refresh.clicked.connect(self.reload)
         header_row.addWidget(refresh)
@@ -100,7 +100,7 @@ class OfficialListPage(QWidget):
 
         for i, r in enumerate(self.rows):
             card_item = QTableWidgetItem(str(r.get("card_id") or ""))
-            card_item.setIcon(get_icon("official_list", size=14, color="#64748b"))
+            card_item.setIcon(get_icon("official_list", size=14, color="#38bdf8"))
             self.table.setItem(i, 0, card_item)
             self.table.setItem(i, 1, QTableWidgetItem(str(r.get("first_name") or "")))
             self.table.setItem(i, 2, QTableWidgetItem(str(r.get("last_name") or "")))

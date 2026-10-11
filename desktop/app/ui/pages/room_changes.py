@@ -1,4 +1,5 @@
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLabel, QInputDialog, QMessageBox, QTextEdit, QFrame,
@@ -23,16 +24,16 @@ class RoomChangesPage(QWidget):
         header_row = QHBoxLayout()
         header_vbox = QVBoxLayout()
         title_lbl = QLabel("Room Transfer Applications")
-        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #0f172a;")
+        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc;")
         sub_lbl = QLabel("Review resident room change justifications and reallocate rooms based on block availability.")
-        sub_lbl.setStyleSheet("font-size: 12px; color: #64748b;")
+        sub_lbl.setStyleSheet("font-size: 12px; color: #94a3b8;")
         header_vbox.addWidget(title_lbl)
         header_vbox.addWidget(sub_lbl)
         header_row.addLayout(header_vbox)
         header_row.addStretch(1)
 
         self.refresh_btn = QPushButton("Refresh")
-        self.refresh_btn.setIcon(get_icon("refresh", size=14, color="#334155"))
+        self.refresh_btn.setIcon(get_icon("refresh", size=14, color="#cbd5e1"))
         apply_button_style(self.refresh_btn, "secondary")
         self.refresh_btn.clicked.connect(self.reload)
         header_row.addWidget(self.refresh_btn)
@@ -70,7 +71,7 @@ class RoomChangesPage(QWidget):
         dc_layout.setContentsMargins(16, 16, 16, 16)
 
         detail_title = QLabel("Transfer Request Inspector")
-        detail_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #0f172a;")
+        detail_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #f8fafc;")
         dc_layout.addWidget(detail_title)
 
         self.detail_text = QTextEdit()
@@ -133,11 +134,11 @@ class RoomChangesPage(QWidget):
             date_item = QTableWidgetItem(str(r.get("created_at", ""))[:10])
 
             if status == "approved":
-                status_item.setForeground(Qt.darkGreen)
+                status_item.setForeground(QColor("#34d399"))
             elif status == "rejected":
-                status_item.setForeground(Qt.darkRed)
+                status_item.setForeground(QColor("#f87171"))
             else:
-                status_item.setForeground(Qt.darkYellow)
+                status_item.setForeground(QColor("#fbbf24"))
 
             self.table.setItem(i, 0, name_item)
             self.table.setItem(i, 1, status_item)

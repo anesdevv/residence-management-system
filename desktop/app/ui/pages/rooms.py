@@ -1,4 +1,5 @@
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLabel, QInputDialog, QMessageBox, QFrame, QLineEdit,
@@ -24,16 +25,16 @@ class RoomsPage(QWidget):
         header_row = QHBoxLayout()
         header_vbox = QVBoxLayout()
         title_lbl = QLabel("Dormitory Rooms & Capacity")
-        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #0f172a;")
+        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc;")
         sub_lbl = QLabel("Manage dormitory residential blocks, room numbers, capacities, and live bed occupancy.")
-        sub_lbl.setStyleSheet("font-size: 12px; color: #64748b;")
+        sub_lbl.setStyleSheet("font-size: 12px; color: #94a3b8;")
         header_vbox.addWidget(title_lbl)
         header_vbox.addWidget(sub_lbl)
         header_row.addLayout(header_vbox)
         header_row.addStretch(1)
 
         refresh_btn = QPushButton("Refresh")
-        refresh_btn.setIcon(get_icon("refresh", size=14, color="#334155"))
+        refresh_btn.setIcon(get_icon("refresh", size=14, color="#cbd5e1"))
         apply_button_style(refresh_btn, "secondary")
         refresh_btn.clicked.connect(self.reload)
         header_row.addWidget(refresh_btn)
@@ -59,7 +60,7 @@ class RoomsPage(QWidget):
         add_btn.clicked.connect(self.on_add)
 
         edit_btn = QPushButton("Edit")
-        edit_btn.setIcon(get_icon("edit", size=14, color="#334155"))
+        edit_btn.setIcon(get_icon("edit", size=14, color="#cbd5e1"))
         apply_button_style(edit_btn, "secondary")
         edit_btn.clicked.connect(self.on_edit)
 
@@ -117,7 +118,7 @@ class RoomsPage(QWidget):
             avail_text = f"{free} bed(s) available" if free > 0 else "Full"
 
             block_item = QTableWidgetItem(f"Block {r['block']}")
-            block_item.setIcon(get_icon("building", size=14, color="#64748b"))
+            block_item.setIcon(get_icon("building", size=14, color="#38bdf8"))
             floor_item = QTableWidgetItem(f"Floor {r['floor']}")
             num_item = QTableWidgetItem(f"Room {r['number']}")
             gender_item = QTableWidgetItem(str(r["gender"]).capitalize())
@@ -126,9 +127,9 @@ class RoomsPage(QWidget):
             avail_item = QTableWidgetItem(avail_text)
 
             if free > 0:
-                avail_item.setForeground(Qt.darkGreen)
+                avail_item.setForeground(QColor("#34d399"))
             else:
-                avail_item.setForeground(Qt.darkGray)
+                avail_item.setForeground(QColor("#94a3b8"))
 
             self.table.setItem(i, 0, block_item)
             self.table.setItem(i, 1, floor_item)
