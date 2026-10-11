@@ -142,10 +142,13 @@ class OverviewPage(QWidget):
         self.reload()
 
     def _count(self, table, **filters) -> int:
-        q = self.client.table(table).select("id", count="exact")
-        for col, val in filters.items():
-            q = q.eq(col, val)
-        return q.execute().count or 0
+        try:
+            q = self.client.table(table).select("id", count="exact")
+            for col, val in filters.items():
+                q = q.eq(col, val)
+            return q.execute().count or 0
+        except Exception:
+            return 0
 
     def apply_live_data(self, pending: int, reports: int, requests: int, occupancy: int | None = None):
         self.pending_card.set_value(pending)
@@ -155,8 +158,11 @@ class OverviewPage(QWidget):
             self.occupancy_card.set_value(occupancy)
 
     def reload(self):
-        pending = self._count("students", status="pending")
-        reports = self.client.table("maintenance_reports").select("id", count="exact").neq("status", "resolved").execute().count or 0
-        requests = self._count("room_change_requests", status="pending")
-        occupancy = sum(room_occupancy(self.client).values())
-        self.apply_live_data(pending, reports, requests, occupancy)
+        try:
+            pending = self._count("students", status="pending")
+            reports = self.client.table("maintenance_reports").select("id", count="exact").neq("status", "resolved").execute().count or 0
+            requests = self._count("room_change_requests", status="pending")
+            occupancy = sum(room_occupancy(self.client).values())
+            self.apply_live_data(pending, reports, requests, occupancy)
+        except Exception:
+            pass

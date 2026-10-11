@@ -91,10 +91,13 @@ class ResidentsPage(QWidget):
         self.reload()
 
     def reload(self):
-        resp = self.client.table("students") \
-            .select("card_id, first_name, last_name, gender, status, university, faculty, rooms(block, number, floor)") \
-            .eq("status", "active").order("last_name").execute()
-        self.rows = resp.data or []
+        try:
+            resp = self.client.table("students") \
+                .select("card_id, first_name, last_name, gender, status, university, faculty, rooms(block, number, floor)") \
+                .eq("status", "active").order("last_name").execute()
+            self.rows = resp.data or []
+        except Exception:
+            return
         self.count_badge.setText(f"{len(self.rows)} Active Residents")
         self.render()
 

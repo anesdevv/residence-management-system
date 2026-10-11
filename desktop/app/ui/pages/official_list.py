@@ -101,7 +101,10 @@ class OfficialListPage(QWidget):
             self.table.setRowHidden(r, needle not in haystack)
 
     def reload(self):
-        self.rows = self.client.table("official_residents").select("*").order("card_id").execute().data or []
+        try:
+            self.rows = self.client.table("official_residents").select("*").order("card_id").execute().data or []
+        except Exception:
+            return
         self.count_badge.setText(f"{len(self.rows)} Verified Records")
         self.table.setRowCount(len(self.rows))
 

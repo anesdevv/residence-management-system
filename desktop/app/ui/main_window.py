@@ -189,7 +189,9 @@ class MainWindow(QMainWindow):
         self.room_changes_page.apply_live_data(pending_requests)
 
     def closeEvent(self, event):
-        if hasattr(self, "sync_worker"):
+        if hasattr(self, "sync_worker") and self.sync_worker.isRunning():
             self.sync_worker.stop()
-            self.sync_worker.wait(1000)
+            if not self.sync_worker.wait(3000):
+                self.sync_worker.terminate()
+                self.sync_worker.wait(1000)
         super().closeEvent(event)

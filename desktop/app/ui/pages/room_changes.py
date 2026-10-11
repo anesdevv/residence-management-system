@@ -149,17 +149,20 @@ class RoomChangesPage(QWidget):
             self.table.setItem(i, 3, date_item)
 
         if restore_row >= 0:
-            self.table.setCurrentRow(restore_row)
+            self.table.selectRow(restore_row)
         else:
             self.detail_text.clear()
 
         self.filter_table()
 
     def reload(self):
-        resp = self.client.table("room_change_requests") \
-            .select("*, students(first_name, last_name, gender, card_id)") \
-            .eq("status", "pending").order("created_at", desc=True).execute()
-        self.apply_live_data(resp.data or [])
+        try:
+            resp = self.client.table("room_change_requests") \
+                .select("*, students(first_name, last_name, gender, card_id)") \
+                .eq("status", "pending").order("created_at", desc=True).execute()
+            self.apply_live_data(resp.data or [])
+        except Exception:
+            pass
 
     def selected(self) -> dict | None:
         r = self.table.currentRow()
@@ -208,9 +211,14 @@ class RoomChangesPage(QWidget):
             QMessageBox.information(self, "Select request", "Please select a transfer request from the table first.")
             return
         gender = (r.get("students") or {}).get("gender", "male")
-        rooms = self.client.table("rooms").select("id, block, number, floor, capacity, gender") \
-            .eq("gender", gender).order("block").order("number").execute().data or []
-        occ = room_occupancy(self.client)
+        try:
+            rooms = self.client.table("rooms").select("id, block, number, floor, capacity, gender") \
+                .eq("gender", gender).order("block").order("number").execute().data or []
+            occ = room_occupancy(self.client)
+        except Exception as exc:
+            QMessageBox.critical(self, "Network Error", f"Failed to fetch room availability: {exc}")
+            return
+
         options = []
         for room in rooms:
             free = room["capacity"] - occ.get(room["id"], 0)
@@ -234,7 +242,10 @@ class RoomChangesPage(QWidget):
             QMessageBox.critical(self, "Error", str(exc))
             return
         QMessageBox.information(self, "Approved", "Room transfer request approved and student reassigned.")
-        self.reload()
+        try:
+            self.reload()
+        except Exception:
+            pass
 
     def on_reject(self):
         r = self.selected()
@@ -250,4 +261,7 @@ class RoomChangesPage(QWidget):
             QMessageBox.critical(self, "Error", str(exc))
             return
         QMessageBox.information(self, "Rejected", "Room transfer request rejected.")
-        self.reload()
+        try:
+            self.reload()
+        except Exception:
+            pass

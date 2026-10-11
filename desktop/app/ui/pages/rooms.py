@@ -207,8 +207,11 @@ class RoomsPage(QWidget):
             self.table.setRowHidden(r, not (matches_text and matches_gender))
 
     def reload(self):
-        self.rows = self.client.table("rooms").select("*").order("block").order("number").execute().data or []
-        self.occupancy_map = room_occupancy(self.client)
+        try:
+            self.rows = self.client.table("rooms").select("*").order("block").order("number").execute().data or []
+            self.occupancy_map = room_occupancy(self.client)
+        except Exception:
+            return
         self.table.setRowCount(len(self.rows))
 
         for i, r in enumerate(self.rows):

@@ -19,15 +19,21 @@ def current_role(client: Client) -> str | None:
 
 
 def room_occupancy(client: Client) -> dict[str, int]:
-    resp = client.table("students").select("room_id").eq("status", "active").execute()
-    counts: dict[str, int] = {}
-    for row in resp.data or []:
-        rid = row["room_id"]
-        if rid:
-            counts[rid] = counts.get(rid, 0) + 1
-    return counts
+    try:
+        resp = client.table("students").select("room_id").eq("status", "active").execute()
+        counts: dict[str, int] = {}
+        for row in resp.data or []:
+            rid = row.get("room_id")
+            if rid:
+                counts[rid] = counts.get(rid, 0) + 1
+        return counts
+    except Exception:
+        return {}
 
 
 def official_lookup(client: Client) -> dict[str, dict]:
-    resp = client.table("official_residents").select("*").execute()
-    return {r["card_id"]: r for r in (resp.data or [])}
+    try:
+        resp = client.table("official_residents").select("*").execute()
+        return {r["card_id"]: r for r in (resp.data or []) if "card_id" in r}
+    except Exception:
+        return {}

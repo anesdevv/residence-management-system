@@ -211,7 +211,7 @@ class MaintenancePage(QWidget):
             self.table.setItem(i, 3, date_item)
 
         if restore_row >= 0:
-            self.table.setCurrentRow(restore_row)
+            self.table.selectRow(restore_row)
         else:
             self.detail_text.clear()
             self.photo_label.setText("No fault photo attached")
@@ -219,10 +219,13 @@ class MaintenancePage(QWidget):
         self.apply_filter()
 
     def reload(self):
-        resp = self.client.table("maintenance_reports") \
-            .select("*, students(first_name, last_name, card_id)") \
-            .order("created_at", desc=True).execute()
-        self.apply_live_data(resp.data or [])
+        try:
+            resp = self.client.table("maintenance_reports") \
+                .select("*, students(first_name, last_name, card_id)") \
+                .order("created_at", desc=True).execute()
+            self.apply_live_data(resp.data or [])
+        except Exception:
+            pass
 
     def selected(self) -> dict | None:
         r = self.table.currentRow()
@@ -252,10 +255,13 @@ class MaintenancePage(QWidget):
                 signed = self.client.storage.from_("maintenance-photos").create_signed_url(r["photo_path"], 300)
                 url = (signed or {}).get("signedURL") or (signed or {}).get("signedUrl")
                 if url:
-                    data = urllib.request.urlopen(url, timeout=10).read()
+                    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                    data = urllib.request.urlopen(req, timeout=10).read()
                     pix = QPixmap()
-                    pix.loadFromData(data)
-                    self.photo_label.setPixmap(pix.scaled(380, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    if pix.loadFromData(data) and not pix.isNull() and pix.width() > 0 and pix.height() > 0:
+                        self.photo_label.setPixmap(pix.scaled(380, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    else:
+                        self.photo_label.setText("Photo preview unavailable")
                 else:
                     self.photo_label.setText("Photo unavailable")
             except Exception:
@@ -293,7 +299,12 @@ class MaintenancePage(QWidget):
             return
 
         note_val = note.strip() or default_note or None
-        user = getattr(self.client.auth.get_user(), "user", None)
+        user = None
+        try:
+            user = getattr(self.client.auth.get_user(), "user", None)
+        except Exception:
+            pass
+
         update_data = {"status": status, "staff_note": note_val}
         if user:
             update_data["handled_by"] = user.id
@@ -301,8 +312,11 @@ class MaintenancePage(QWidget):
         try:
             self.client.table("maintenance_reports").update(update_data).eq("id", r["id"]).execute()
         except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Update Error", str(exc))
+            QMessageBox.critical(self, "Update Error", f"Network error updating ticket: {exc}")
             return
 
         QMessageBox.information(self, "Status Updated", f"Maintenance ticket updated to '{status.replace('_', ' ')}'.")
-        self.reload()
+        try:
+            self.reload()
+        except Exception:
+            pass

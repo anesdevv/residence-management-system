@@ -110,4 +110,8 @@ class LiveSyncWorker(QThread):
                     # Ignore transient network timeouts to keep the thread running smoothly
                     pass
 
-            self.msleep(self.interval_ms)
+            # Responsive sleep so thread exits cleanly without hanging
+            sleep_elapsed = 0
+            while self._running and sleep_elapsed < self.interval_ms:
+                self.msleep(100)
+                sleep_elapsed += 100
