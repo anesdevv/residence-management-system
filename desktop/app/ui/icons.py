@@ -3,11 +3,6 @@ from PySide6.QtGui import QIcon, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 
 SVG_CATALOG = {
-    "antigravity": """<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="12 2 2 22 22 22" />
-        <line x1="12" y1="2" x2="12" y2="16" />
-        <circle cx="12" cy="18" r="1.5" fill="currentColor" />
-    </svg>""",
     "crest": """<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 2L4 6v6c0 5.5 3.8 10 8 11 4.2-1 8-5.5 8-11V6l-8-4z" />
         <path d="M12 7v8" />

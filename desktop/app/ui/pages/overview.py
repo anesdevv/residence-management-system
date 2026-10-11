@@ -116,7 +116,7 @@ class OverviewPage(QWidget):
         g_layout.setSpacing(12)
         g_layout.setContentsMargins(20, 20, 20, 20)
 
-        g_title = QLabel("Antigravity Housing Administration Protocol")
+        g_title = QLabel("Housing Administration Protocol")
         g_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #f8fafc;")
         g_layout.addWidget(g_title)
 

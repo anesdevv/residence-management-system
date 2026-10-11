@@ -1,7 +1,7 @@
 """
-Residence Tlemcen — Antigravity Developer Suite PySide6 Dark QSS Theme
-Re-engineered using REA insights: deep obsidian cosmic canvas, electric indigo/cyan
-accents, glassmorphism card surfaces, glowing badges, and high-contrast typography.
+Residence Tlemcen — Modern High-Contrast PySide6 Dark QSS Theme
+Deep obsidian canvas, electric indigo/cyan accents, glassmorphic card surfaces,
+glowing badges, and high-contrast typography.
 """
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QPushButton
@@ -175,7 +175,7 @@ def apply_button_style(btn: QPushButton, style_key: str):
 
 
 def get_badge_qss(status_kind: str) -> str:
-    """Returns Antigravity glowing pill badge styling."""
+    """Returns glowing pill badge styling."""
     if status_kind in ("approved", "resolved", "active", "success"):
         return """
             background-color: #052e16;

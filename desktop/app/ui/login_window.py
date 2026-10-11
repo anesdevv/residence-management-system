@@ -27,13 +27,13 @@ class LoginWindow(QWidget):
         card_layout.setSpacing(16)
         card_layout.setContentsMargins(28, 28, 28, 28)
 
-        # Antigravity Emblem & Header
+        # Crest & Header
         crest_lbl = QLabel()
-        crest_lbl.setPixmap(get_pixmap("antigravity", size=42, color="#38bdf8"))
+        crest_lbl.setPixmap(get_pixmap("crest", size=42, color="#38bdf8"))
         crest_lbl.setAlignment(Qt.AlignCenter)
 
-        title_lbl = QLabel("ANTIGRAVITY // RESIDENCE OS")
-        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc; letter-spacing: 0.6px; margin-top: 6px;")
+        title_lbl = QLabel("Residence Tlemcen")
+        title_lbl.setStyleSheet("font-size: 20px; font-weight: 800; color: #f8fafc; letter-spacing: 0.4px; margin-top: 6px;")
         title_lbl.setAlignment(Qt.AlignCenter)
 
         subtitle_lbl = QLabel("Staff & Housing Operations Console")

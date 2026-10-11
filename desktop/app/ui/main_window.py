@@ -33,7 +33,7 @@ class MainWindow(QMainWindow):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        # 1. Top Antigravity Control Header
+        # 1. Top Institutional Control Header
         header_bar = QWidget()
         header_bar.setStyleSheet("""
             QWidget {
@@ -45,16 +45,16 @@ class MainWindow(QMainWindow):
         header_layout.setContentsMargins(18, 12, 18, 12)
         header_layout.setSpacing(14)
 
-        # Antigravity Emblem
+        # Brand / Institutional Crest
         crest_label = QLabel()
-        crest_label.setPixmap(get_pixmap("antigravity", size=24, color="#38bdf8"))
+        crest_label.setPixmap(get_pixmap("crest", size=24, color="#38bdf8"))
         header_layout.addWidget(crest_label)
 
         title_container = QVBoxLayout()
         title_container.setSpacing(1)
-        title_lbl = QLabel("ANTIGRAVITY // RESIDENCE OS")
-        title_lbl.setStyleSheet("color: #f8fafc; font-weight: 800; font-size: 14px; letter-spacing: 0.6px;")
-        sub_lbl = QLabel("Dormitory Operations & Automated Facility Console • Tlemcen")
+        title_lbl = QLabel("Cité Universitaire — Residence Tlemcen")
+        title_lbl.setStyleSheet("color: #f8fafc; font-weight: 800; font-size: 14px; letter-spacing: 0.3px;")
+        sub_lbl = QLabel("Dormitory Operations & Facility Management Console")
         sub_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
         title_container.addWidget(title_lbl)
         title_container.addWidget(sub_lbl)
