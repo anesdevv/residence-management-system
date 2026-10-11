@@ -2,12 +2,106 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
-    QPushButton, QLabel, QInputDialog, QMessageBox, QFrame, QLineEdit,
-    QComboBox,
+    QPushButton, QLabel, QMessageBox, QFrame, QLineEdit,
+    QComboBox, QSpinBox, QDialog, QFormLayout,
 )
 from ...client import room_occupancy
 from ..icons import get_icon, get_pixmap
-from ..theme import apply_button_style
+from ..theme import apply_button_style, DESKTOP_STYLESHEET
+from ..infocard import RoomInfoCardDialog
+
+
+class RoomSetupDialog(QDialog):
+    def __init__(self, parent=None, room=None, current_occupancy=0):
+        super().__init__(parent)
+        self.setWindowTitle("Edit Room Configuration" if room else "Add Dormitory Room")
+        self.setMinimumWidth(400)
+        self.setStyleSheet(DESKTOP_STYLESHEET)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+
+        card = QFrame()
+        card.setObjectName("cardFrame")
+        c_layout = QVBoxLayout(card)
+        c_layout.setContentsMargins(20, 20, 20, 20)
+        c_layout.setSpacing(14)
+
+        header_lbl = QLabel("Edit Room Configuration" if room else "Configure New Dormitory Room")
+        header_lbl.setStyleSheet("font-size: 16px; font-weight: 800; color: #f8fafc;")
+        c_layout.addWidget(header_lbl)
+
+        form = QFormLayout()
+        form.setSpacing(12)
+
+        self.block_edit = QLineEdit(room.get("block", "A") if room else "A")
+        self.block_edit.setPlaceholderText("e.g. A, B, C...")
+
+        self.floor_spin = QSpinBox()
+        self.floor_spin.setRange(0, 15)
+        self.floor_spin.setValue(int(room.get("floor", 0)) if room else 0)
+
+        self.num_edit = QLineEdit(str(room.get("number", "")) if room else "")
+        self.num_edit.setPlaceholderText("e.g. 101, 204...")
+
+        min_cap = max(1, current_occupancy)
+        self.cap_spin = QSpinBox()
+        self.cap_spin.setRange(min_cap, 8)
+        self.cap_spin.setValue(int(room.get("capacity", 2)) if room else 2)
+
+        self.gender_combo = QComboBox()
+        self.gender_combo.addItems(["Male", "Female"])
+        current_gender = room.get("gender", "male") if room else "male"
+        self.gender_combo.setCurrentText(current_gender.capitalize())
+
+        form.addRow("Dormitory Block:", self.block_edit)
+        form.addRow("Floor Level:", self.floor_spin)
+        form.addRow("Room Number:", self.num_edit)
+        form.addRow(f"Bed Capacity (Min {min_cap}):", self.cap_spin)
+        form.addRow("Designated Gender:", self.gender_combo)
+
+        c_layout.addLayout(form)
+
+        if current_occupancy > 0:
+            self.gender_combo.setEnabled(False)
+            lock_note = QLabel(f"🔒 Gender locked: Room currently has {current_occupancy} active occupant(s).")
+            lock_note.setStyleSheet("font-size: 11px; color: #fbbf24; padding-top: 4px;")
+            c_layout.addWidget(lock_note)
+
+        layout.addWidget(card)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch(1)
+
+        cancel_btn = QPushButton("Cancel")
+        apply_button_style(cancel_btn, "secondary")
+        cancel_btn.clicked.connect(self.reject)
+        btn_row.addWidget(cancel_btn)
+
+        save_btn = QPushButton("Save Room" if room else "Create Room")
+        apply_button_style(save_btn, "primary")
+        save_btn.clicked.connect(self.on_save)
+        btn_row.addWidget(save_btn)
+
+        layout.addLayout(btn_row)
+
+        self.result_data = None
+
+    def on_save(self):
+        block = self.block_edit.text().strip().upper()
+        num = self.num_edit.text().strip()
+        if not block or not num:
+            QMessageBox.warning(self, "Missing Data", "Block and Room Number cannot be empty.")
+            return
+        self.result_data = {
+            "block": block,
+            "floor": self.floor_spin.value(),
+            "number": num,
+            "capacity": self.cap_spin.value(),
+            "gender": self.gender_combo.currentText().lower(),
+        }
+        self.accept()
 
 
 class RoomsPage(QWidget):
@@ -85,9 +179,15 @@ class RoomsPage(QWidget):
         self.table.setHorizontalHeaderLabels(["Block", "Floor", "Room No.", "Gender", "Total Beds", "Occupied", "Availability"])
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
         self.table.horizontalHeader().setStretchLastSection(True)
         tc_layout.addWidget(self.table)
         layout.addWidget(table_card, 1)
+
+        tip_lbl = QLabel("💡 Tip: Double-click any room to inspect active occupants and bed allocation.")
+        tip_lbl.setStyleSheet("font-size: 11px; color: #64748b; padding-left: 2px;")
+        layout.addWidget(tip_lbl)
 
         self.reload()
 
@@ -141,54 +241,25 @@ class RoomsPage(QWidget):
 
         self.filter_table()
 
-    def _prompt(self, block="", floor="0", number="", capacity="1", gender="male"):
-        block, ok = QInputDialog.getText(self, "Room Setup", "Block (e.g. A, B, C):", text=block)
-        if not ok:
-            return None
-        floor_s, ok = QInputDialog.getText(self, "Room Setup", "Floor (0, 1, 2...):", text=floor)
-        if not ok:
-            return None
-        number, ok = QInputDialog.getText(self, "Room Setup", "Room Number:", text=number)
-        if not ok:
-            return None
-        cap_s, ok = QInputDialog.getText(self, "Room Setup", "Bed Capacity:", text=capacity)
-        if not ok:
-            return None
-        try:
-            floor_val = int(floor_s or 0)
-            cap_val = int(cap_s or 1)
-        except ValueError:
-            QMessageBox.warning(self, "Invalid Entry", "Floor and capacity must be valid integers.")
-            return None
-        if not block.strip() or not number.strip():
-            QMessageBox.warning(self, "Missing Data", "Block and Room Number cannot be empty.")
-            return None
-        if cap_val <= 0:
-            QMessageBox.warning(self, "Invalid Capacity", "Capacity must be at least 1.")
-            return None
-        gender_idx = 0 if gender == "male" else 1
-        gender, ok = QInputDialog.getItem(self, "Room Setup", "Designated Block Gender:", ["male", "female"], gender_idx, False)
-        if not ok:
-            return None
-        return {
-            "block": block.strip(),
-            "floor": floor_val,
-            "number": number.strip(),
-            "capacity": cap_val,
-            "gender": gender,
-        }
+    def on_row_double_clicked(self, row: int, col: int):
+        if 0 <= row < len(self.rows):
+            room = self.rows[row]
+            room_copy = dict(room)
+            room_copy["occupied"] = self.occupancy_map.get(room["id"], 0)
+            dlg = RoomInfoCardDialog(self, room_copy, self.client)
+            dlg.exec()
 
     def on_add(self):
-        data = self._prompt()
-        if not data:
-            return
-        try:
-            self.client.table("rooms").insert(data).execute()
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Error", str(exc))
-            return
-        QMessageBox.information(self, "Room Created", f"Room {data['block']}-{data['number']} configured successfully.")
-        self.reload()
+        dlg = RoomSetupDialog(self)
+        if dlg.exec() and dlg.result_data:
+            data = dlg.result_data
+            try:
+                self.client.table("rooms").insert(data).execute()
+            except Exception as exc:  # noqa: BLE001
+                QMessageBox.critical(self, "Error", str(exc))
+                return
+            QMessageBox.information(self, "Room Created", f"Room {data['block']}-{data['number']} configured successfully.")
+            self.reload()
 
     def on_edit(self):
         r = self.table.currentRow()
@@ -196,16 +267,17 @@ class RoomsPage(QWidget):
             QMessageBox.information(self, "Select room", "Please select a room from the table to edit.")
             return
         room = self.rows[r]
-        data = self._prompt(room["block"], str(room["floor"]), room["number"], str(room["capacity"]), room["gender"])
-        if not data:
-            return
-        try:
-            self.client.table("rooms").update(data).eq("id", room["id"]).execute()
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Error", str(exc))
-            return
-        QMessageBox.information(self, "Room Updated", f"Room {data['block']}-{data['number']} updated successfully.")
-        self.reload()
+        occ = self.occupancy_map.get(room["id"], 0)
+        dlg = RoomSetupDialog(self, room=room, current_occupancy=occ)
+        if dlg.exec() and dlg.result_data:
+            data = dlg.result_data
+            try:
+                self.client.table("rooms").update(data).eq("id", room["id"]).execute()
+            except Exception as exc:  # noqa: BLE001
+                QMessageBox.critical(self, "Error", str(exc))
+                return
+            QMessageBox.information(self, "Room Updated", f"Room {data['block']}-{data['number']} updated successfully.")
+            self.reload()
 
     def on_delete(self):
         r = self.table.currentRow()

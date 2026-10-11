@@ -6,8 +6,10 @@ from PySide6.QtWidgets import (
     QPushButton, QLabel, QTextEdit, QInputDialog, QMessageBox, QFrame,
     QSplitter, QLineEdit,
 )
+from ...client import official_lookup
 from ..icons import get_icon, get_pixmap
 from ..theme import apply_button_style
+from ..infocard import StudentInfoCardDialog
 
 
 class MaintenancePage(QWidget):
@@ -80,7 +82,9 @@ class MaintenancePage(QWidget):
         self.table.setHorizontalHeaderLabels(["Category", "Resident", "Status", "Reported"])
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.itemSelectionChanged.connect(self.show_detail)
+        self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
         self.table.horizontalHeader().setStretchLastSection(True)
         tc_layout.addWidget(self.table)
         splitter.addWidget(table_card)
@@ -258,6 +262,19 @@ class MaintenancePage(QWidget):
                 self.photo_label.setText("Failed to load photo")
         else:
             self.photo_label.setText("No photo attached by resident")
+
+    def on_row_double_clicked(self, row: int, col: int):
+        r = self.selected()
+        if r and r.get("students"):
+            st = dict(r.get("students"))
+            roster_map = {}
+            try:
+                roster_map = official_lookup(self.client)
+            except Exception:
+                pass
+            roster_match = roster_map.get(st.get("card_id"))
+            dlg = StudentInfoCardDialog(self, st, roster_match)
+            dlg.exec()
 
     def set_status(self, status: str):
         r = self.selected()

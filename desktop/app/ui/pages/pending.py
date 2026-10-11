@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 from ...client import room_occupancy, official_lookup
 from ..icons import get_icon, get_pixmap
 from ..theme import apply_button_style
+from ..infocard import StudentInfoCardDialog
 
 
 class PendingPage(QWidget):
@@ -61,7 +62,9 @@ class PendingPage(QWidget):
         self.table.setHorizontalHeaderLabels(["Card ID", "Student Name", "Gender", "Roster Status", "Submitted"])
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.itemSelectionChanged.connect(self.show_detail)
+        self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
         self.table.horizontalHeader().setStretchLastSection(True)
         tc_layout.addWidget(self.table)
 
@@ -191,6 +194,13 @@ class PendingPage(QWidget):
             f"----------------------------------------\n"
             f"{official_str}"
         )
+
+    def on_row_double_clicked(self, row: int, col: int):
+        s = self.selected()
+        if s:
+            o = self.official.get(s.get("card_id"))
+            dlg = StudentInfoCardDialog(self, s, o)
+            dlg.exec()
 
     def on_approve(self):
         s = self.selected()

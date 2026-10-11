@@ -49,6 +49,7 @@ class StaffAccountsPage(QWidget):
         self.table.setHorizontalHeaderLabels(["Staff Member", "Position / Role", "System Account ID"])
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.horizontalHeader().setStretchLastSection(True)
         tc_layout.addWidget(self.table)
         splitter.addWidget(table_card)

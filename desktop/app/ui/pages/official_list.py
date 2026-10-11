@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 from ...importers.official_list import read_official_file
 from ..icons import get_icon, get_pixmap
 from ..theme import apply_button_style
+from ..infocard import StudentInfoCardDialog
 
 
 class OfficialListPage(QWidget):
@@ -80,9 +81,15 @@ class OfficialListPage(QWidget):
         ])
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
         self.table.horizontalHeader().setStretchLastSection(True)
         tc_layout.addWidget(self.table)
         layout.addWidget(table_card, 1)
+
+        tip_lbl = QLabel("💡 Tip: Double-click any official record to view their profile card.")
+        tip_lbl.setStyleSheet("font-size: 11px; color: #64748b; padding-left: 2px;")
+        layout.addWidget(tip_lbl)
 
         self.reload()
 
@@ -110,6 +117,22 @@ class OfficialListPage(QWidget):
             self.table.setItem(i, 6, QTableWidgetItem(str(r.get("faculty") or "")))
 
         self.filter_table()
+
+    def on_row_double_clicked(self, row: int, col: int):
+        if 0 <= row < len(self.rows):
+            r = self.rows[row]
+            st_data = {
+                "card_id": r.get("card_id"),
+                "first_name": r.get("first_name"),
+                "last_name": r.get("last_name"),
+                "birth_date": r.get("birth_date"),
+                "gender": r.get("gender"),
+                "university": r.get("university"),
+                "faculty": r.get("faculty"),
+                "status": "active",
+            }
+            dlg = StudentInfoCardDialog(self, st_data, r)
+            dlg.exec()
 
     def on_import(self):
         from ...client import current_role

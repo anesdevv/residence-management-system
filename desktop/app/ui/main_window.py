@@ -1,12 +1,12 @@
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QListWidget, QListWidgetItem,
-    QStackedWidget, QStatusBar, QLabel, QPushButton, QFrame,
+    QStackedWidget, QStatusBar, QLabel,
 )
 from ..client import current_role
 from .live_sync import LiveSyncWorker
 from .icons import get_icon, get_pixmap
-from .theme import DESKTOP_STYLESHEET, apply_button_style
+from .theme import DESKTOP_STYLESHEET
 from .pages.overview import OverviewPage
 from .pages.pending import PendingPage
 from .pages.residents import ResidentsPage
@@ -87,25 +87,6 @@ class MainWindow(QMainWindow):
             """)
         header_layout.addWidget(role_badge)
 
-        # Live Mode Indicator
-        self.live_pill = QLabel("🟢 LIVE SYNC (2s)")
-        self.live_pill.setStyleSheet("""
-            color: #34d399;
-            background-color: #052e16;
-            border: 1px solid #10b981;
-            border-radius: 12px;
-            padding: 4px 10px;
-            font-size: 11px;
-            font-weight: 700;
-        """)
-        header_layout.addWidget(self.live_pill)
-
-        # Pause / Resume Live Button
-        self.toggle_live_btn = QPushButton("Pause Live")
-        apply_button_style(self.toggle_live_btn, "secondary")
-        self.toggle_live_btn.clicked.connect(self.toggle_live_mode)
-        header_layout.addWidget(self.toggle_live_btn)
-
         root_layout.addWidget(header_bar)
 
         # 2. Main Body: Sidebar + Stacked Pages
@@ -170,36 +151,6 @@ class MainWindow(QMainWindow):
         item.setIcon(get_icon(icon_name, size=18, color="#cbd5e1"))
         self.nav.addItem(item)
         self.stack.addWidget(widget)
-
-    def toggle_live_mode(self):
-        if self.sync_worker.is_paused():
-            self.sync_worker.set_paused(False)
-            self.live_pill.setText("🟢 LIVE SYNC (2s)")
-            self.live_pill.setStyleSheet("""
-                color: #34d399;
-                background-color: #052e16;
-                border: 1px solid #10b981;
-                border-radius: 12px;
-                padding: 4px 10px;
-                font-size: 11px;
-                font-weight: 700;
-            """)
-            self.toggle_live_btn.setText("Pause Live")
-            self.status_bar.showMessage("Live sync resumed.", 3000)
-        else:
-            self.sync_worker.set_paused(True)
-            self.live_pill.setText("⏸️ LIVE PAUSED")
-            self.live_pill.setStyleSheet("""
-                color: #fbbf24;
-                background-color: #2e1b04;
-                border: 1px solid #f59e0b;
-                border-radius: 12px;
-                padding: 4px 10px;
-                font-size: 11px;
-                font-weight: 700;
-            """)
-            self.toggle_live_btn.setText("Resume Live")
-            self.status_bar.showMessage("Live sync paused.", 3000)
 
     def on_live_alert(self, msg: str):
         self.status_bar.showMessage(f"🔔 LIVE EVENT: {msg}", 10000)

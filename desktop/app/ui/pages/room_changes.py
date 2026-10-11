@@ -5,9 +5,10 @@ from PySide6.QtWidgets import (
     QPushButton, QLabel, QInputDialog, QMessageBox, QTextEdit, QFrame,
     QSplitter, QLineEdit,
 )
-from ...client import room_occupancy
+from ...client import room_occupancy, official_lookup
 from ..icons import get_icon, get_pixmap
 from ..theme import apply_button_style
+from ..infocard import StudentInfoCardDialog
 
 
 class RoomChangesPage(QWidget):
@@ -57,7 +58,9 @@ class RoomChangesPage(QWidget):
         self.table.setHorizontalHeaderLabels(["Resident", "Status", "Reason Excerpt", "Date"])
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.itemSelectionChanged.connect(self.show_detail)
+        self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
         self.table.horizontalHeader().setStretchLastSection(True)
         tc_layout.addWidget(self.table)
         splitter.addWidget(table_card)
@@ -186,6 +189,18 @@ class RoomChangesPage(QWidget):
             f"STATED REASON FOR TRANSFER:\n{r.get('reason', '')}\n\n"
             f"Decision Note: {r.get('decision_note') or 'None'}"
         )
+    def on_row_double_clicked(self, row: int, col: int):
+        r = self.selected()
+        if r and r.get("students"):
+            st = dict(r.get("students"))
+            roster_map = {}
+            try:
+                roster_map = official_lookup(self.client)
+            except Exception:
+                pass
+            roster_match = roster_map.get(st.get("card_id"))
+            dlg = StudentInfoCardDialog(self, st, roster_match)
+            dlg.exec()
 
     def on_approve(self):
         r = self.selected()

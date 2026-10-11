@@ -4,8 +4,10 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem,
     QLabel, QPushButton, QFrame, QComboBox,
 )
+from ...client import official_lookup
 from ..icons import get_icon, get_pixmap
 from ..theme import apply_button_style
+from ..infocard import StudentInfoCardDialog
 
 
 class ResidentsPage(QWidget):
@@ -13,6 +15,7 @@ class ResidentsPage(QWidget):
         super().__init__()
         self.client = client
         self.rows: list[dict] = []
+        self.filtered_rows: list[tuple[dict, dict]] = []
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -75,9 +78,15 @@ class ResidentsPage(QWidget):
         self.table.setHorizontalHeaderLabels(["Student Card ID", "Full Name", "Gender", "Assigned Room", "Faculty / University", "Status"])
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
         self.table.horizontalHeader().setStretchLastSection(True)
         tc_layout.addWidget(self.table)
         layout.addWidget(table_card, 1)
+
+        tip_lbl = QLabel("💡 Tip: Double-click any resident to view their complete profile card.")
+        tip_lbl.setStyleSheet("font-size: 11px; color: #64748b; padding-left: 2px;")
+        layout.addWidget(tip_lbl)
 
         self.reload()
 
@@ -108,6 +117,7 @@ class ResidentsPage(QWidget):
             if matches_text and matches_gender:
                 filtered.append((r, room))
 
+        self.filtered_rows = filtered
         self.table.setRowCount(len(filtered))
         for i, (r, room) in enumerate(filtered):
             card_item = QTableWidgetItem(str(r.get("card_id", "")))
@@ -131,3 +141,17 @@ class ResidentsPage(QWidget):
             self.table.setItem(i, 3, room_item)
             self.table.setItem(i, 4, univ_item)
             self.table.setItem(i, 5, status_item)
+
+    def on_row_double_clicked(self, row: int, col: int):
+        if 0 <= row < len(self.filtered_rows):
+            student, room = self.filtered_rows[row]
+            st_data = dict(student)
+            st_data["rooms"] = room
+            roster_map = {}
+            try:
+                roster_map = official_lookup(self.client)
+            except Exception:
+                pass
+            roster_item = roster_map.get(st_data.get("card_id"))
+            dlg = StudentInfoCardDialog(self, st_data, roster_item)
+            dlg.exec()
