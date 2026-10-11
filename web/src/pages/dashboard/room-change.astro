@@ -37,23 +37,21 @@ const rawCurrentRoom = student?.rooms;
 const currentRoom = (Array.isArray(rawCurrentRoom) ? rawCurrentRoom[0] : rawCurrentRoom) as { block: string; floor: string | number; number: string } | null | undefined;
 ---
 
-<Layout title="Room Transfer Requests — Residence Tlemcen" activeNav="room-change">
+<Layout title="Room Transfer Portal — Residence Tlemcen" activeNav="room-change">
   <!-- Header -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-5">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/90 pb-5">
     <div>
-      <div class="flex items-center gap-2">
-        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-          Room Transfer Requests
-        </h1>
-      </div>
+      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+        Room Transfer Portal
+      </h1>
       <p class="mt-1 text-xs sm:text-sm text-slate-500">
-        Apply for room reassignment or transfer between residential blocks.
+        Apply for room reassignment or transfer within your designated dormitory block.
       </p>
     </div>
 
     <a
       href="/dashboard"
-      class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-xs transition self-start sm:self-auto"
+      class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3.5 py-2 rounded-xl shadow-xs transition self-start sm:self-auto min-h-[40px]"
     >
       <Icon name="arrow-left" size={14} />
       <span>Back to Dashboard</span>
@@ -62,37 +60,37 @@ const currentRoom = (Array.isArray(rawCurrentRoom) ? rawCurrentRoom[0] : rawCurr
 
   <!-- Feedback Alerts -->
   {created && (
-    <div class="mt-6 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
-      <Icon name="check-circle" size={20} class="text-emerald-700 shrink-0 mt-0.5" />
+    <div class="mt-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:p-5 text-emerald-950">
+      <Icon name="check-circle" size={22} class="text-emerald-700 shrink-0 mt-0.5" />
       <div class="text-xs sm:text-sm">
         <span class="font-bold">Transfer Request Submitted!</span>
-        <p class="mt-0.5 text-emerald-800">Your room-change request has been submitted to the housing administration for review.</p>
+        <p class="mt-0.5 text-emerald-800 leading-relaxed">Your transfer application has been filed in the administrative docket. Housing officers will review bed availability and notify you here.</p>
       </div>
     </div>
   )}
 
   {error && (
-    <div class="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-900">
-      <Icon name="alert-circle" size={20} class="text-red-700 shrink-0 mt-0.5" />
+    <div class="mt-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 sm:p-5 text-red-950">
+      <Icon name="alert-circle" size={22} class="text-red-700 shrink-0 mt-0.5" />
       <div class="text-xs sm:text-sm">
         <span class="font-bold">Unable to Process Request</span>
-        <p class="mt-0.5 text-red-800">{error}</p>
+        <p class="mt-0.5 text-red-800 leading-relaxed">{error}</p>
       </div>
     </div>
   )}
 
   <!-- Locked State or Application Form -->
   {!isActive ? (
-    <div class="mt-6 rounded-xl border border-amber-300 bg-amber-50/80 p-5 sm:p-6 text-amber-950 shadow-xs">
-      <div class="flex items-start gap-3.5">
-        <div class="rounded-lg bg-amber-100 p-2 text-amber-700 shrink-0">
-          <Icon name="lock" size={22} />
+    <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-6 sm:p-8 text-amber-950 shadow-xs">
+      <div class="flex items-start gap-4">
+        <div class="rounded-xl bg-amber-100 p-3 text-amber-700 shrink-0">
+          <Icon name="lock" size={24} />
         </div>
         <div>
-          <h2 class="text-base font-bold text-amber-950">Room-Change Submissions Locked</h2>
-          <p class="mt-1 text-xs sm:text-sm text-amber-900 leading-relaxed">
+          <h2 class="text-base sm:text-lg font-bold text-amber-950">Room Relocation Portal Locked</h2>
+          <p class="mt-1.5 text-xs sm:text-sm text-amber-900 leading-relaxed max-w-2xl">
             Your account status is <span class="font-bold uppercase tracking-wider">{student?.status ?? 'pending'}</span>.
-            Room transfer requests can only be filed by approved residents currently occupying an allocated dormitory room.
+            Room transfer requests can only be filed by approved residents who currently occupy an allocated dormitory room.
           </p>
         </div>
       </div>
@@ -101,42 +99,83 @@ const currentRoom = (Array.isArray(rawCurrentRoom) ? rawCurrentRoom[0] : rawCurr
     <div class="mt-6 space-y-6">
       <!-- Current Room Info Bar -->
       {currentRoom && (
-        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
-              <Icon name="building" size={20} />
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div class="flex items-center gap-3.5">
+            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-700 shrink-0">
+              <Icon name="building" size={24} />
             </div>
             <div>
-              <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Current Assigned Room</span>
-              <p class="text-sm font-bold text-slate-900">Block {currentRoom.block} — Room {currentRoom.number} (Floor {currentRoom.floor})</p>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Current Room Assignment</span>
+              <p class="text-base sm:text-lg font-bold text-slate-900 mt-0.5">
+                Block {currentRoom.block} — Room {currentRoom.number}
+              </p>
+              <span class="text-xs text-slate-500">Floor {currentRoom.floor} • Designated for {student?.gender === 'female' ? 'Female' : 'Male'} Residents</span>
             </div>
           </div>
-          <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">Active Occupant</span>
+          <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-700 self-start sm:self-auto">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            <span>Current Occupant</span>
+          </span>
         </div>
       )}
 
       <!-- Submission Card -->
       <div class="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
         <div class="border-b border-slate-100 pb-4 mb-6">
-          <h2 class="text-base font-bold text-slate-900">Submit a Room Transfer Request</h2>
-          <p class="text-xs text-slate-500">Provide an objective justification (medical, study schedule, floor proximity).</p>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900">File a Relocation Request</h2>
+          <p class="text-xs text-slate-500 mt-0.5">All requests are reviewed based on space availability and administrative eligibility.</p>
         </div>
 
         <form method="POST" action="/api/room-change" class="space-y-6">
+          <!-- Motive Quick Selector Pills -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
+              Select Primary Motive
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5" id="motivePills">
+              <button
+                type="button"
+                data-motive="Academic Schedule & Study Hours (Requires quieter floor for exam preparation)"
+                class="motive-pill text-left p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-100 text-xs font-medium text-slate-700 transition cursor-pointer"
+              >
+                <span class="font-bold text-slate-900 block mb-0.5">📚 Academic Needs</span>
+                <span class="text-[11px] text-slate-500">Study environment / exams</span>
+              </button>
+              <button
+                type="button"
+                data-motive="Medical / Physical Accessibility (Requires lower floor or proximity to entrance)"
+                class="motive-pill text-left p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-100 text-xs font-medium text-slate-700 transition cursor-pointer"
+              >
+                <span class="font-bold text-slate-900 block mb-0.5">🏥 Health / Accessibility</span>
+                <span class="text-[11px] text-slate-500">Floor height / mobility</span>
+              </button>
+              <button
+                type="button"
+                data-motive="Proximity to Department Facilities & Study Partners"
+                class="motive-pill text-left p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-slate-100 text-xs font-medium text-slate-700 transition cursor-pointer"
+              >
+                <span class="font-bold text-slate-900 block mb-0.5">🔄 Roommate / Location</span>
+                <span class="text-[11px] text-slate-500">Study group proximity</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Stated Reason Textarea -->
           <div>
             <label for="reason" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-              Reason for Transfer Request <span class="text-red-500">*</span>
+              Detailed Justification <span class="text-red-500">*</span>
             </label>
             <textarea
               name="reason"
               id="reason"
               required
               rows="3"
-              placeholder="Provide a detailed explanation for requesting a room change..."
-              class="w-full rounded-lg border border-slate-300 p-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition"
+              placeholder="Provide a comprehensive explanation for your transfer request (e.g. Preparing Master thesis requiring quiet wing, medical documentation on file, etc.)..."
+              class="w-full rounded-xl border border-slate-300 p-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition min-h-[96px]"
             ></textarea>
           </div>
 
+          <!-- Preferred Room Selector -->
           <div>
             <label for="preferred_room_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
               Preferred Room (Optional)
@@ -144,27 +183,28 @@ const currentRoom = (Array.isArray(rawCurrentRoom) ? rawCurrentRoom[0] : rawCurr
             <select
               name="preferred_room_id"
               id="preferred_room_id"
-              class="w-full rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition bg-white"
+              class="w-full min-h-[44px] rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition bg-white"
             >
               <option value="">No preference (Assign any available room in my block)</option>
               {(rooms ?? []).map((r) => (
                 <option value={r.id}>
-                  Block {r.block} — Room {r.number} (Floor {r.floor}, Capacity {r.capacity})
+                  Block {r.block} — Room {r.number} (Floor {r.floor}, Capacity: {r.capacity} beds)
                 </option>
               ))}
             </select>
-            <span class="mt-1 block text-[11px] text-slate-400">
-              Only rooms matching your residential block gender ({student?.gender}) are listed.
+            <span class="mt-1.5 block text-[11px] text-slate-400">
+              Only rooms matching your residential block gender ({student?.gender === 'female' ? 'Female' : 'Male'}) are listed.
             </span>
           </div>
 
+          <!-- Submit Button -->
           <div class="pt-2">
             <button
               type="submit"
-              class="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition cursor-pointer"
+              class="min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-7 py-3 text-sm font-semibold text-white shadow-xs hover:bg-blue-600 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition cursor-pointer"
             >
-              <Icon name="check-circle" size={16} />
-              <span>Submit Transfer Request</span>
+              <Icon name="check-circle" size={18} />
+              <span>Submit Relocation Request</span>
             </button>
           </div>
         </form>
@@ -172,76 +212,101 @@ const currentRoom = (Array.isArray(rawCurrentRoom) ? rawCurrentRoom[0] : rawCurr
     </div>
   )}
 
-  <!-- Request History -->
-  <div class="mt-10 space-y-4">
+  <!-- Request History Docket -->
+  <div class="mt-10 sm:mt-12 space-y-4">
     <div class="flex items-center justify-between">
-      <h2 class="text-lg font-bold text-slate-900">Your Transfer Requests</h2>
-      <span class="text-xs text-slate-400 font-medium">({requests?.length ?? 0} total requests)</span>
+      <h2 class="text-lg font-bold text-slate-900">Your Relocation Requests</h2>
+      <span class="text-xs text-slate-400">({requests?.length ?? 0} total requests)</span>
     </div>
 
     {(!requests || requests.length === 0) ? (
-      <div class="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-400">
-        <Icon name="bed" size={32} class="mx-auto text-slate-300 mb-2" />
-        <p class="text-sm font-medium text-slate-600">No transfer requests submitted</p>
-        <p class="text-xs text-slate-400 mt-1">When you apply for a room transfer, status updates will appear here.</p>
+      <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 sm:p-10 text-center text-slate-400">
+        <Icon name="swap" size={36} class="mx-auto text-slate-300 mb-2" />
+        <p class="text-sm font-semibold text-slate-700">No transfer requests submitted</p>
+        <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">When you apply for a room change, the status of your petition will appear here.</p>
       </div>
     ) : (
       <div class="space-y-4">
         {requests.map((r) => {
           const pref = Array.isArray(r.rooms) ? r.rooms[0] : r.rooms;
           return (
-            <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3">
-                <div class="flex items-center gap-2.5">
-                  <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-                    <Icon name="bed" size={16} />
+            <article class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 shrink-0">
+                    <Icon name="swap" size={20} />
                   </div>
                   <div>
-                    <span class="font-bold text-sm text-slate-900">Room Transfer Request</span>
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-sm sm:text-base text-slate-900">Room Transfer Petition</span>
+                      <span class="text-xs font-medium text-slate-400">#TR-{r.id.slice(0, 8)}</span>
+                    </div>
                     {pref ? (
-                      <span class="text-xs text-slate-500 ml-2">Requested: Block {pref.block} — Room {pref.number}</span>
+                      <span class="text-xs text-blue-600 font-medium block mt-0.5">
+                        Requested Target: Block {pref.block} — Room {pref.number} (Floor {pref.floor})
+                      </span>
                     ) : (
-                      <span class="text-xs text-slate-400 ml-2">No room preference specified</span>
+                      <span class="text-xs text-slate-400 block mt-0.5">No specific room requested (Open assignment)</span>
                     )}
                   </div>
                 </div>
 
                 <div>
                   {r.status === 'approved' ? (
-                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-800">
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3.5 py-1 text-xs font-semibold text-emerald-800">
                       <Icon name="check-circle" size={14} class="text-emerald-600" /> Approved
                     </span>
                   ) : r.status === 'rejected' ? (
-                    <span class="inline-flex items-center gap-1 rounded-full bg-red-50 border border-red-200 px-3 py-1 text-xs font-semibold text-red-800">
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-3.5 py-1 text-xs font-semibold text-red-800">
                       <Icon name="x-circle" size={14} class="text-red-600" /> Rejected
                     </span>
                   ) : (
-                    <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-800">
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3.5 py-1 text-xs font-semibold text-amber-800">
                       <Icon name="clock" size={14} class="text-amber-600" /> Under Review
                     </span>
                   )}
                 </div>
               </div>
 
-              <div class="mt-3">
-                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Stated Reason:</span>
-                <p class="text-sm text-slate-700 leading-relaxed">{r.reason}</p>
+              <!-- Stated Reason -->
+              <div class="mt-4">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Stated Justification</span>
+                <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">{r.reason}</p>
               </div>
 
+              <!-- Administration Decision Note -->
               {r.decision_note && (
-                <div class="mt-3.5 rounded-lg border border-blue-200 bg-blue-50/60 p-3 text-xs text-blue-950">
-                  <span class="font-bold uppercase tracking-wider text-blue-900 block text-[10px] mb-0.5">Administration Decision Note:</span>
-                  <p class="font-medium">{r.decision_note}</p>
+                <div class="mt-4 rounded-xl border border-blue-200 bg-blue-50/70 p-3.5 text-xs text-blue-950">
+                  <span class="font-bold uppercase tracking-wider text-blue-900 block text-[10px] mb-0.5">Housing Administration Decision:</span>
+                  <p class="font-medium leading-relaxed">{r.decision_note}</p>
                 </div>
               )}
 
-              <div class="mt-3 pt-3 border-t border-slate-50 text-[11px] text-slate-400">
+              <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
                 Submitted on {new Date(r.created_at).toLocaleDateString()}
               </div>
-            </div>
+            </article>
           );
         })}
       </div>
     )}
   </div>
+
+  <!-- Client-side Motive Fill Script -->
+  <script>
+    const motivePills = document.querySelectorAll('.motive-pill');
+    const reasonTextarea = document.getElementById('reason') as HTMLTextAreaElement | null;
+
+    if (reasonTextarea) {
+      motivePills.forEach((pill) => {
+        pill.addEventListener('click', () => {
+          const motiveText = pill.getAttribute('data-motive');
+          if (motiveText) {
+            reasonTextarea.value = motiveText;
+            reasonTextarea.focus();
+          }
+        });
+      });
+    }
+  </script>
 </Layout>

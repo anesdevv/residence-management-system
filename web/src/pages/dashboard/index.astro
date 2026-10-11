@@ -38,13 +38,11 @@ const isRejected = student?.status === 'rejected';
 
 <Layout title="Dashboard — Residence Tlemcen" activeNav="dashboard">
   <!-- Header with Greeting & Academic Pill -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/90 pb-6">
     <div>
-      <div class="flex items-center gap-2">
-        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-          Welcome, {student?.first_name} {student?.last_name}
-        </h1>
-      </div>
+      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+        Welcome, {student?.first_name || 'Resident'} {student?.last_name || ''}
+      </h1>
       <p class="mt-1 text-xs sm:text-sm text-slate-500">
         Student Resident Portal • {student?.faculty ? `${student.faculty} • ` : ''}{student?.university || 'Université de Tlemcen'}
       </p>
@@ -52,21 +50,20 @@ const isRejected = student?.status === 'rejected';
 
     <!-- Student Status Pill -->
     <div class="flex items-center gap-2 self-start sm:self-auto">
-      <span class="text-xs text-slate-400 font-medium">Status:</span>
       {isActive && (
-        <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-800">
-          <Icon name="check-circle" size={14} class="text-emerald-600" />
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3.5 py-1 text-xs font-semibold text-emerald-800">
+          <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
           <span>Active Resident</span>
         </span>
       )}
       {isPending && (
-        <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-800">
-          <Icon name="clock" size={14} class="text-amber-600" />
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3.5 py-1 text-xs font-semibold text-amber-800">
+          <span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
           <span>Pending Verification</span>
         </span>
       )}
       {isRejected && (
-        <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-3 py-1 text-xs font-semibold text-red-800">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-3.5 py-1 text-xs font-semibold text-red-800">
           <Icon name="x-circle" size={14} class="text-red-600" />
           <span>Application Rejected</span>
         </span>
@@ -74,41 +71,50 @@ const isRejected = student?.status === 'rejected';
     </div>
   </div>
 
-  <!-- Primary Resident Status Card / Notice -->
+  <!-- Primary Resident Status Hero Card -->
   <div class="mt-6">
     {isPending && (
-      <div class="rounded-xl border border-amber-300 bg-amber-50/80 p-5 sm:p-6 shadow-xs text-amber-950">
-        <div class="flex items-start gap-3.5">
-          <div class="rounded-lg bg-amber-100 p-2 text-amber-700 shrink-0">
-            <Icon name="clock" size={24} />
+      <div class="rounded-2xl border border-amber-200 bg-amber-50/70 p-6 sm:p-8 shadow-xs text-amber-950">
+        <div class="flex items-start gap-4">
+          <div class="rounded-xl bg-amber-100 p-3 text-amber-700 shrink-0">
+            <Icon name="clock" size={26} />
           </div>
-          <div class="space-y-3 flex-1">
+          <div class="space-y-4 flex-1">
             <div>
-              <h2 class="text-base font-bold text-amber-950">Registration Under Review</h2>
-              <p class="mt-1 text-xs sm:text-sm text-amber-900 leading-relaxed">
-                Your accommodation file is currently being processed by the Residence Administration. Once verified against the university admission roster, your room will be assigned.
+              <h2 class="text-base sm:text-lg font-bold text-amber-950">Registration Under Review</h2>
+              <p class="mt-1 text-xs sm:text-sm text-amber-900/90 leading-relaxed max-w-2xl">
+                Your accommodation file is currently being processed by the Residence Administration. Once verified against the university admission roster, your room will be officially assigned.
               </p>
             </div>
 
             <!-- Review Steps Visual Tracker -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
-              <div class="flex items-center gap-2 rounded-lg bg-white/80 border border-amber-200 p-2.5">
-                <Icon name="check-circle" size={16} class="text-emerald-600 shrink-0" />
-                <span class="font-medium text-slate-800">1. Form Submitted</span>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
+              <div class="flex items-center gap-2.5 rounded-xl bg-white/90 border border-amber-200 p-3">
+                <Icon name="check-circle" size={18} class="text-emerald-600 shrink-0" />
+                <div>
+                  <span class="font-bold text-slate-900 block">1. Form Submitted</span>
+                  <span class="text-[11px] text-slate-500">Record received</span>
+                </div>
               </div>
-              <div class="flex items-center gap-2 rounded-lg bg-amber-100 border border-amber-300 p-2.5">
-                <Icon name="clock" size={16} class="text-amber-700 shrink-0 animate-pulse" />
-                <span class="font-semibold text-amber-950">2. Roster Matching</span>
+              <div class="flex items-center gap-2.5 rounded-xl bg-amber-100/80 border border-amber-300 p-3">
+                <Icon name="clock" size={18} class="text-amber-800 shrink-0 animate-pulse" />
+                <div>
+                  <span class="font-bold text-amber-950 block">2. Roster Matching</span>
+                  <span class="text-[11px] text-amber-800">Verification in progress</span>
+                </div>
               </div>
-              <div class="flex items-center gap-2 rounded-lg bg-white/40 border border-amber-200/60 p-2.5 text-amber-800/60">
-                <Icon name="lock" size={16} class="shrink-0" />
-                <span>3. Key & Room Handover</span>
+              <div class="flex items-center gap-2.5 rounded-xl bg-white/40 border border-amber-200/60 p-3 text-amber-900/50">
+                <Icon name="lock" size={18} class="shrink-0" />
+                <div>
+                  <span class="font-bold block">3. Room Handover</span>
+                  <span class="text-[11px]">Key collection desk</span>
+                </div>
               </div>
             </div>
 
-            <div class="inline-flex items-center gap-2 rounded-md bg-amber-100/90 border border-amber-300 px-3 py-1.5 text-xs font-semibold text-amber-900">
-              <Icon name="lock" size={14} class="text-amber-700" />
-              <span>Service requests (Maintenance & Room Transfer) are locked until your room is officially assigned.</span>
+            <div class="inline-flex items-center gap-2 rounded-xl bg-amber-100/70 border border-amber-200/80 px-3.5 py-2 text-xs font-semibold text-amber-950">
+              <Icon name="lock" size={14} class="text-amber-700 shrink-0" />
+              <span>Service requests (Maintenance & Room Transfer) unlock automatically upon room assignment.</span>
             </div>
           </div>
         </div>
@@ -116,21 +122,21 @@ const isRejected = student?.status === 'rejected';
     )}
 
     {isRejected && (
-      <div class="rounded-xl border border-red-300 bg-red-50 p-5 sm:p-6 shadow-xs text-red-950">
-        <div class="flex items-start gap-3.5">
-          <div class="rounded-lg bg-red-100 p-2 text-red-700 shrink-0">
-            <Icon name="x-circle" size={24} />
+      <div class="rounded-2xl border border-red-200 bg-red-50 p-6 sm:p-8 shadow-xs text-red-950">
+        <div class="flex items-start gap-4">
+          <div class="rounded-xl bg-red-100 p-3 text-red-700 shrink-0">
+            <Icon name="x-circle" size={26} />
           </div>
-          <div class="space-y-2 flex-1">
-            <h2 class="text-base font-bold text-red-950">Registration Could Not Be Approved</h2>
+          <div class="space-y-3 flex-1">
+            <h2 class="text-base sm:text-lg font-bold text-red-950">Registration Could Not Be Approved</h2>
             <p class="text-xs sm:text-sm text-red-900 leading-relaxed">
-              Your application was reviewed and rejected with the following official note:
+              Your application was reviewed by the housing admissions board with the following note:
             </p>
-            <div class="rounded-lg border border-red-200 bg-white p-3 text-xs sm:text-sm font-medium text-red-900">
-              "{student?.rejection_reason || 'Official records could not be verified.'}"
+            <div class="rounded-xl border border-red-200 bg-white p-3.5 text-xs sm:text-sm font-medium text-red-900">
+              "{student?.rejection_reason || 'Official records could not be verified on the current year admissions list.'}"
             </div>
             <p class="text-xs text-red-800 pt-1">
-              If you believe this is an administrative discrepancy, please visit the Housing Office (Bloc Administration) with your matriculation certificate.
+              If you believe this is an administrative discrepancy, please visit the Housing Bureau (Administration Bloc A) with your official matriculation certificate.
             </p>
           </div>
         </div>
@@ -138,36 +144,35 @@ const isRejected = student?.status === 'rejected';
     )}
 
     {isActive && room && (
-      <div class="rounded-xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div class="flex items-start gap-3.5">
-            <div class="rounded-lg bg-blue-50 p-2 text-blue-700 shrink-0">
-              <Icon name="building" size={24} />
+      <div class="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <div class="flex items-start gap-4">
+            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-700 shrink-0">
+              <Icon name="building" size={26} />
             </div>
             <div>
               <div class="flex items-center gap-2">
-                <span class="text-xs font-bold uppercase tracking-wider text-blue-600">Official Allocation</span>
-                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                <span class="text-xs text-emerald-700 font-medium">Occupied</span>
+                <span class="inline-block h-2 w-2 rounded-full bg-emerald-500"></span>
+                <span class="text-xs font-bold text-emerald-800 uppercase tracking-wider">Officially Assigned Quarters</span>
               </div>
-              <h2 class="text-lg font-bold text-slate-900 mt-0.5">
+              <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
                 Block {room.block} — Room {room.number}
               </h2>
-              <p class="text-xs text-slate-500 mt-0.5">
-                Floor {room.floor} • Key issued for Academic Year
+              <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+                Floor {room.floor} • Key issued for Academic Year 2024–2025
               </p>
             </div>
           </div>
 
-          <div class="flex items-center gap-4 text-xs font-medium text-slate-600 bg-slate-50 px-4 py-2.5 rounded-lg border border-slate-200/80">
+          <div class="flex items-center gap-5 text-xs text-slate-600 bg-slate-50 px-5 py-3 rounded-xl border border-slate-200/80 self-start sm:self-auto">
             <div>
-              <span class="text-slate-400 block text-[10px] uppercase">Card ID</span>
-              <span class="font-bold text-slate-900 tnum">{student?.card_id}</span>
+              <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Student Card ID</span>
+              <span class="font-bold text-slate-900 text-sm tnum">{student?.card_id}</span>
             </div>
-            <div class="h-6 w-[1px] bg-slate-200"></div>
+            <div class="h-7 w-[1px] bg-slate-200"></div>
             <div>
-              <span class="text-slate-400 block text-[10px] uppercase">Level</span>
-              <span class="font-semibold text-slate-900">{student?.study_level || 'L1'}</span>
+              <span class="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Study Level</span>
+              <span class="font-bold text-slate-900 text-sm">{student?.study_level || 'L1'}</span>
             </div>
           </div>
         </div>
@@ -175,51 +180,51 @@ const isRejected = student?.status === 'rejected';
     )}
   </div>
 
-  <!-- Quick Action Navigation Cards -->
-  <div class="mt-8">
+  <!-- Resident Quick Service Cards -->
+  <div class="mt-8 sm:mt-10">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-bold text-slate-900">Resident Services</h2>
-      <span class="text-xs text-slate-500">Quick Portal Shortcuts</span>
+      <span class="text-xs text-slate-400 font-medium">Quick Shortcuts</span>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
       <!-- Maintenance Card -->
       {isActive ? (
         <a
           href="/dashboard/maintenance"
-          class="group rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition hover:border-blue-300 hover:shadow-md flex flex-col justify-between"
+          class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-xs transition hover:border-blue-300 hover:shadow-md flex flex-col justify-between"
         >
           <div>
-            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-              <Icon name="wrench" size={20} />
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+              <Icon name="wrench" size={22} />
             </div>
-            <h3 class="mt-4 font-semibold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
+            <h3 class="mt-4 font-bold text-slate-900 text-base group-hover:text-blue-600 transition-colors">
               Maintenance Reports
             </h3>
-            <p class="mt-1 text-xs text-slate-500 leading-relaxed">
+            <p class="mt-1.5 text-xs text-slate-500 leading-relaxed">
               Report plumbing, electricity, furniture, heating, or internet faults with attached photos.
             </p>
           </div>
-          <div class="mt-4 flex items-center gap-1 text-xs font-semibold text-blue-600">
+          <div class="mt-5 pt-3 border-t border-slate-100 flex items-center gap-1 text-xs font-semibold text-blue-600">
             <span>Manage tickets</span>
-            <Icon name="arrow-right" size={14} />
+            <Icon name="chevron-right" size={14} />
           </div>
         </a>
       ) : (
-        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5 shadow-xs flex flex-col justify-between opacity-80 cursor-not-allowed">
+        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 shadow-xs flex flex-col justify-between opacity-75 cursor-not-allowed">
           <div>
-            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-200 text-slate-500">
-              <Icon name="wrench" size={20} />
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-200 text-slate-500">
+              <Icon name="wrench" size={22} />
             </div>
             <div class="mt-4 flex items-center gap-2">
-              <h3 class="font-semibold text-slate-700 text-sm">Maintenance Reports</h3>
-              <span class="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 uppercase">Locked</span>
+              <h3 class="font-bold text-slate-700 text-base">Maintenance Reports</h3>
+              <span class="rounded bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase">Locked</span>
             </div>
-            <p class="mt-1 text-xs text-slate-500 leading-relaxed">
+            <p class="mt-1.5 text-xs text-slate-500 leading-relaxed">
               Requires an active assigned room before reporting faults.
             </p>
           </div>
-          <div class="mt-4 flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+          <div class="mt-5 pt-3 border-t border-slate-200/60 flex items-center gap-1.5 text-xs text-slate-400 font-medium">
             <Icon name="lock" size={14} />
             <span>Disabled pending approval</span>
           </div>
@@ -230,39 +235,39 @@ const isRejected = student?.status === 'rejected';
       {isActive ? (
         <a
           href="/dashboard/room-change"
-          class="group rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition hover:border-blue-300 hover:shadow-md flex flex-col justify-between"
+          class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-xs transition hover:border-emerald-300 hover:shadow-md flex flex-col justify-between"
         >
           <div>
-            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-              <Icon name="bed" size={20} />
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+              <Icon name="swap" size={22} />
             </div>
-            <h3 class="mt-4 font-semibold text-slate-900 text-sm group-hover:text-emerald-700 transition-colors">
+            <h3 class="mt-4 font-bold text-slate-900 text-base group-hover:text-emerald-700 transition-colors">
               Room Transfer
             </h3>
-            <p class="mt-1 text-xs text-slate-500 leading-relaxed">
-              Submit a formal request to transfer to a different room or floor within your block.
+            <p class="mt-1.5 text-xs text-slate-500 leading-relaxed">
+              Submit a formal request to transfer to a different room or floor within your residential block.
             </p>
           </div>
-          <div class="mt-4 flex items-center gap-1 text-xs font-semibold text-emerald-700">
+          <div class="mt-5 pt-3 border-t border-slate-100 flex items-center gap-1 text-xs font-semibold text-emerald-700">
             <span>Request transfer</span>
-            <Icon name="arrow-right" size={14} />
+            <Icon name="chevron-right" size={14} />
           </div>
         </a>
       ) : (
-        <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-5 shadow-xs flex flex-col justify-between opacity-80 cursor-not-allowed">
+        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 shadow-xs flex flex-col justify-between opacity-75 cursor-not-allowed">
           <div>
-            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-200 text-slate-500">
-              <Icon name="bed" size={20} />
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-200 text-slate-500">
+              <Icon name="swap" size={22} />
             </div>
             <div class="mt-4 flex items-center gap-2">
-              <h3 class="font-semibold text-slate-700 text-sm">Room Transfer</h3>
-              <span class="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 uppercase">Locked</span>
+              <h3 class="font-bold text-slate-700 text-base">Room Transfer</h3>
+              <span class="rounded bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase">Locked</span>
             </div>
-            <p class="mt-1 text-xs text-slate-500 leading-relaxed">
+            <p class="mt-1.5 text-xs text-slate-500 leading-relaxed">
               Available after official approval and initial room check-in.
             </p>
           </div>
-          <div class="mt-4 flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+          <div class="mt-5 pt-3 border-t border-slate-200/60 flex items-center gap-1.5 text-xs text-slate-400 font-medium">
             <Icon name="lock" size={14} />
             <span>Disabled pending approval</span>
           </div>
@@ -272,43 +277,43 @@ const isRejected = student?.status === 'rejected';
       <!-- Profile Card -->
       <a
         href="/dashboard/profile"
-        class="group rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition hover:border-blue-300 hover:shadow-md flex flex-col justify-between"
+        class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-xs transition hover:border-slate-300 hover:shadow-md flex flex-col justify-between"
       >
         <div>
-          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700 group-hover:bg-slate-900 group-hover:text-white transition-colors">
-            <Icon name="user" size={20} />
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700 group-hover:bg-slate-900 group-hover:text-white transition-colors">
+            <Icon name="user" size={22} />
           </div>
-          <h3 class="mt-4 font-semibold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
+          <h3 class="mt-4 font-bold text-slate-900 text-base group-hover:text-blue-600 transition-colors">
             Resident Profile
           </h3>
-          <p class="mt-1 text-xs text-slate-500 leading-relaxed">
-            View academic records, civil status, and update your mobile phone and contact email.
+          <p class="mt-1.5 text-xs text-slate-500 leading-relaxed">
+            Review academic records, civil status, and update your mobile phone and contact email.
           </p>
         </div>
-        <div class="mt-4 flex items-center gap-1 text-xs font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">
+        <div class="mt-5 pt-3 border-t border-slate-100 flex items-center gap-1 text-xs font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">
           <span>Edit profile info</span>
-          <Icon name="arrow-right" size={14} />
+          <Icon name="chevron-right" size={14} />
         </div>
       </a>
     </div>
   </div>
 
   <!-- Activity & Tickets Stream -->
-  <div class="mt-10 space-y-4">
+  <div class="mt-10 sm:mt-12 space-y-4">
     <div class="flex items-center justify-between">
       <h2 class="text-lg font-bold text-slate-900">Recent Activity</h2>
       {isActive && (
         <a href="/dashboard/maintenance" class="text-xs font-semibold text-blue-600 hover:underline">
-          View all maintenance tickets →
+          View all tickets →
         </a>
       )}
     </div>
 
     {(!recentReports || recentReports.length === 0) && (!recentRoomChanges || recentRoomChanges.length === 0) ? (
-      <div class="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-400">
-        <Icon name="file-text" size={32} class="mx-auto text-slate-300 mb-2" />
-        <p class="text-sm font-medium text-slate-600">No requests submitted yet</p>
-        <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+      <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 sm:p-10 text-center text-slate-400">
+        <Icon name="file-text" size={36} class="mx-auto text-slate-300 mb-3" />
+        <p class="text-sm font-semibold text-slate-700">No requests submitted yet</p>
+        <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
           {isActive
             ? "When you submit maintenance tickets or room change requests, they will appear here with live resolution status."
             : "Your activity timeline will activate once your registration is approved."}
@@ -317,29 +322,29 @@ const isRejected = student?.status === 'rejected';
     ) : (
       <div class="space-y-3">
         {recentReports && recentReports.map((r) => (
-          <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-            <div class="flex items-center gap-3">
-              <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-700 shrink-0">
-                <Icon name="wrench" size={18} />
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs">
+            <div class="flex items-start sm:items-center gap-3.5">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700 shrink-0">
+                <Icon name="wrench" size={20} />
               </div>
               <div>
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Maintenance • {r.category}</span>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Maintenance • {r.category}</span>
                 <p class="text-sm font-semibold text-slate-900 line-clamp-1">{r.description}</p>
-                <span class="text-[11px] text-slate-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                <span class="text-[11px] text-slate-400 mt-0.5 block">{new Date(r.created_at).toLocaleDateString()}</span>
               </div>
             </div>
             <div>
               {r.status === 'resolved' ? (
-                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-                  <Icon name="check-circle" size={12} /> Resolved
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-800">
+                  <Icon name="check-circle" size={13} /> Resolved
                 </span>
               ) : r.status === 'in_progress' ? (
-                <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-                  <Icon name="clock" size={12} /> In Progress
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-800">
+                  <Icon name="clock" size={13} /> In Progress
                 </span>
               ) : (
-                <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
-                  <Icon name="clock" size={12} /> Pending Triage
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-800">
+                  <Icon name="clock" size={13} /> Pending Triage
                 </span>
               )}
             </div>
@@ -347,29 +352,29 @@ const isRejected = student?.status === 'rejected';
         ))}
 
         {recentRoomChanges && recentRoomChanges.map((rc) => (
-          <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-            <div class="flex items-center gap-3">
-              <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 shrink-0">
-                <Icon name="bed" size={18} />
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs">
+            <div class="flex items-start sm:items-center gap-3.5">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 shrink-0">
+                <Icon name="swap" size={20} />
               </div>
               <div>
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Room Transfer Request</span>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Room Transfer Request</span>
                 <p class="text-sm font-semibold text-slate-900 line-clamp-1">{rc.reason}</p>
-                <span class="text-[11px] text-slate-400">{new Date(rc.created_at).toLocaleDateString()}</span>
+                <span class="text-[11px] text-slate-400 mt-0.5 block">{new Date(rc.created_at).toLocaleDateString()}</span>
               </div>
             </div>
             <div>
               {rc.status === 'approved' ? (
-                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-                  <Icon name="check-circle" size={12} /> Approved
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-800">
+                  <Icon name="check-circle" size={13} /> Approved
                 </span>
               ) : rc.status === 'rejected' ? (
-                <span class="inline-flex items-center gap-1 rounded-full bg-red-50 border border-red-200 px-2.5 py-0.5 text-xs font-semibold text-red-800">
-                  <Icon name="x-circle" size={12} /> Rejected
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-3 py-1 text-xs font-semibold text-red-800">
+                  <Icon name="x-circle" size={13} /> Rejected
                 </span>
               ) : (
-                <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
-                  <Icon name="clock" size={12} /> Under Review
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-800">
+                  <Icon name="clock" size={13} /> Under Review
                 </span>
               )}
             </div>

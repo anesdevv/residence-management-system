@@ -5,37 +5,40 @@ import Icon from '../components/Icon.astro';
 
 <Layout title="Residence Tlemcen — Official Student Housing Portal" activeNav="home">
   <!-- Hero Section -->
-  <section class="py-6 sm:py-10">
-    <div class="rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-xs">
-      <div class="max-w-2xl space-y-4">
-        <div class="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/80 px-3 py-1 text-xs font-semibold text-blue-800">
-          <Icon name="crest" size={14} class="text-blue-700" />
-          <span>Official University Housing Portal • DOU Tlemcen</span>
+  <section class="py-4 sm:py-8 lg:py-10">
+    <div class="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 lg:p-12 shadow-xs relative overflow-hidden">
+      <!-- Background subtle decorative pattern -->
+      <div class="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-blue-50/60 blur-3xl pointer-events-none"></div>
+
+      <div class="max-w-2xl space-y-5 relative">
+        <div class="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/80 px-3.5 py-1 text-xs font-semibold text-blue-900">
+          <Icon name="crest" size={15} class="text-blue-700" />
+          <span>Direction des Œuvres Universitaires • Cité Universitaire Tlemcen</span>
         </div>
 
-        <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">
-          University Residence — Tlemcen
+        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 leading-tight">
+          Student Residence Portal
         </h1>
 
-        <p class="text-base sm:text-lg text-slate-600 leading-relaxed">
-          Welcome to Cité Universitaire Tlemcen. Register your official student card ID, monitor application approval in real-time, view assigned room details, and submit campus living requests.
+        <p class="text-sm sm:text-base text-slate-600 leading-relaxed max-w-xl">
+          Welcome to the official dormitory management system. Register your student card ID, monitor admission verification in real time, view your assigned residential block and room, and file facility service requests.
         </p>
 
-        <div class="pt-2 flex flex-wrap items-center gap-3">
+        <div class="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <a
             href="/register"
-            class="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-xs hover:bg-blue-600 transition"
+            class="min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-xs hover:bg-blue-600 active:scale-[0.99] transition"
           >
             <Icon name="user" size={18} />
-            <span>Register as a resident</span>
+            <span>Register as Resident</span>
             <Icon name="arrow-right" size={16} />
           </a>
           <a
             href="/login"
-            class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+            class="min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
           >
             <Icon name="login" size={18} />
-            <span>Sign in to dashboard</span>
+            <span>Sign In to Dashboard</span>
           </a>
         </div>
       </div>
@@ -43,84 +46,106 @@ import Icon from '../components/Icon.astro';
   </section>
 
   <!-- Key Services Overview Grid -->
-  <section class="mt-8 space-y-4">
-    <div class="flex items-center justify-between">
-      <h2 class="text-xl font-bold tracking-tight text-slate-900">Department Housing Services</h2>
-      <span class="text-xs font-medium text-slate-500">Residence Administration & Living Services</span>
+  <section class="mt-8 sm:mt-12 space-y-5">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-1">
+      <div>
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Department Housing Services</h2>
+        <p class="text-xs text-slate-500 mt-1">Integrated facilities management for student residents</p>
+      </div>
+      <span class="text-xs font-medium text-slate-400">Campus Residence Services</span>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
       <!-- Card 1 -->
-      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition hover:border-slate-300">
-        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
-          <Icon name="building" size={20} />
+      <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs transition hover:border-slate-300 hover:shadow-md flex flex-col justify-between">
+        <div>
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+            <Icon name="building" size={22} />
+          </div>
+          <h3 class="mt-5 font-bold text-slate-900 text-base">Verified Room Allocation</h3>
+          <p class="mt-2 text-xs text-slate-500 leading-relaxed">
+            Allocations are automatically cross-referenced with official university admission rosters. Residential blocks are designated with strict capacity limits.
+          </p>
         </div>
-        <h3 class="mt-4 font-semibold text-slate-900 text-base">Verified Room Allocation</h3>
-        <p class="mt-2 text-xs text-slate-500 leading-relaxed">
-          Allocations are cross-referenced with official university admission rosters. Residential blocks are designated with strict capacity limits.
-        </p>
+        <div class="mt-6 pt-4 border-t border-slate-100 flex items-center text-xs font-semibold text-blue-600">
+          <span>Official Roster Matching</span>
+        </div>
       </div>
 
       <!-- Card 2 -->
-      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition hover:border-slate-300">
-        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
-          <Icon name="wrench" size={20} />
+      <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs transition hover:border-slate-300 hover:shadow-md flex flex-col justify-between">
+        <div>
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+            <Icon name="wrench" size={22} />
+          </div>
+          <h3 class="mt-5 font-bold text-slate-900 text-base">24/7 Facility Maintenance</h3>
+          <p class="mt-2 text-xs text-slate-500 leading-relaxed">
+            Report plumbing, electrical, furniture, or connectivity issues directly through your dashboard with fault photos. Track triage in real-time.
+          </p>
         </div>
-        <h3 class="mt-4 font-semibold text-slate-900 text-base">24/7 Facility Maintenance</h3>
-        <p class="mt-2 text-xs text-slate-500 leading-relaxed">
-          Report plumbing, electrical, furniture, or connectivity issues directly through your dashboard with fault photos. Track triage in real-time.
-        </p>
+        <div class="mt-6 pt-4 border-t border-slate-100 flex items-center text-xs font-semibold text-emerald-700">
+          <span>Live Technician Triage</span>
+        </div>
       </div>
 
       <!-- Card 3 -->
-      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition hover:border-slate-300">
-        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
-          <Icon name="bed" size={20} />
+      <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs transition hover:border-slate-300 hover:shadow-md flex flex-col justify-between">
+        <div>
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
+            <Icon name="swap" size={22} />
+          </div>
+          <h3 class="mt-5 font-bold text-slate-900 text-base">Room Transfer Requests</h3>
+          <p class="mt-2 text-xs text-slate-500 leading-relaxed">
+            Active residents may apply for room changes based on preferred blocks and medical or academic justifications, reviewed by housing officers.
+          </p>
         </div>
-        <h3 class="mt-4 font-semibold text-slate-900 text-base">Room Transfer Requests</h3>
-        <p class="mt-2 text-xs text-slate-500 leading-relaxed">
-          Active residents may apply for room changes based on preferred blocks and medical or academic justifications, reviewed by housing officers.
-        </p>
+        <div class="mt-6 pt-4 border-t border-slate-100 flex items-center text-xs font-semibold text-indigo-600">
+          <span>Direct Relocation Docket</span>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- Intake Workflow Progression -->
-  <section class="mt-10 rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
-    <h2 class="text-base font-bold text-slate-900 mb-4">Application & Move-In Workflow</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-      <div class="flex items-start gap-3">
-        <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
+  <section class="mt-10 sm:mt-14 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
+    <div class="border-b border-slate-100 pb-4 mb-6">
+      <h2 class="text-base sm:text-lg font-bold text-slate-900">Application & Move-In Workflow</h2>
+      <p class="text-xs text-slate-500 mt-0.5">The three-step process from online registration to dormitory room key handover</p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+      <div class="flex items-start gap-3.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-xs font-bold text-white shadow-xs">
           1
         </div>
         <div>
-          <h3 class="text-sm font-semibold text-slate-900">Student Registration</h3>
+          <h3 class="text-sm font-bold text-slate-900">Student Registration</h3>
           <p class="mt-1 text-xs text-slate-500 leading-relaxed">
-            Create an account using your valid Student Card ID, academic department, and personal contact info.
+            Submit your student card ID, academic faculty, and personal details via the online intake form.
           </p>
         </div>
       </div>
 
-      <div class="flex items-start gap-3">
-        <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
+      <div class="flex items-start gap-3.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-xs font-bold text-white shadow-xs">
           2
         </div>
         <div>
-          <h3 class="text-sm font-semibold text-slate-900">Administrative Triage</h3>
+          <h3 class="text-sm font-bold text-slate-900">Administrative Triage</h3>
           <p class="mt-1 text-xs text-slate-500 leading-relaxed">
-            Housing staff cross-reference your record with university rosters and approve valid applications into rooms.
+            Housing officers cross-reference your record with official admission lists and allocate an available room.
           </p>
         </div>
       </div>
 
-      <div class="flex items-start gap-3">
-        <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
+      <div class="flex items-start gap-3.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-xs font-bold text-white shadow-xs">
           3
         </div>
         <div>
-          <h3 class="text-sm font-semibold text-slate-900">Dormitory Check-In</h3>
+          <h3 class="text-sm font-bold text-slate-900">Dormitory Check-In</h3>
           <p class="mt-1 text-xs text-slate-500 leading-relaxed">
-            Access your assigned Block & Room number directly on your dashboard and present your ID at the reception desk.
+            View your allocated block and room number on the student portal, then collect your key at the housing bureau.
           </p>
         </div>
       </div>
@@ -128,15 +153,15 @@ import Icon from '../components/Icon.astro';
   </section>
 
   <!-- Institutional Notice Card -->
-  <section class="mt-8 rounded-xl border border-blue-200 bg-blue-50/60 p-5 text-slate-800">
+  <section class="mt-8 rounded-2xl border border-blue-200 bg-blue-50/60 p-5 sm:p-6 text-slate-800">
     <div class="flex items-start gap-3.5">
-      <div class="rounded-lg bg-blue-100 p-2 text-blue-700 shrink-0">
-        <Icon name="shield" size={20} />
+      <div class="rounded-xl bg-blue-100 p-2.5 text-blue-700 shrink-0">
+        <Icon name="shield" size={22} />
       </div>
       <div class="space-y-1">
         <h3 class="text-sm font-bold text-blue-950">Intake Policy & Identification Requirement</h3>
         <p class="text-xs text-blue-900/90 leading-relaxed">
-          Accommodation is strictly reserved for actively enrolled students who appear on the official university matriculation list for the current academic year. Applications with unverified student card IDs will remain pending until official records are verified by the administration.
+          Accommodation is strictly reserved for actively matriculated university students appearing on the official university admission list for the current academic year. Unmatched registrations remain pending until physical verification by the administration.
         </p>
       </div>
     </div>

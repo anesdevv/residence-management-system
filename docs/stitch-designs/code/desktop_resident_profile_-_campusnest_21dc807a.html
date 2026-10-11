@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      "colors": {
+        "outline-variant": "#c5c6d0",
+        "on-tertiary-fixed-variant": "#003ea8",
+        "surface": "#f8f9ff",
+        "on-background": "#0b1c30",
+        "on-tertiary-fixed": "#00174b",
+        "surface-container-high": "#dce9ff",
+        "error-container": "#ffdad6",
+        "outline": "#75777f",
+        "surface-container-lowest": "#ffffff",
+        "secondary-fixed-dim": "#ffb77d",
+        "on-tertiary-container": "#5583ff",
+        "on-tertiary": "#ffffff",
+        "on-surface": "#0b1c30",
+        "tertiary-fixed-dim": "#b4c5ff",
+        "primary": "#000b2b",
+        "tertiary": "#000a2c",
+        "primary-fixed-dim": "#b5c5f8",
+        "on-error-container": "#93000a",
+        "on-secondary-fixed-variant": "#6e3900",
+        "on-secondary": "#ffffff",
+        "on-primary": "#ffffff",
+        "tertiary-container": "#001e5b",
+        "tertiary-fixed": "#dbe1ff",
+        "error": "#ba1a1a",
+        "surface-variant": "#d3e4fe",
+        "on-primary-container": "#7989b8",
+        "secondary-container": "#fe932c",
+        "surface-container": "#e5eeff",
+        "primary-fixed": "#dae2ff",
+        "on-secondary-fixed": "#2f1500",
+        "surface-bright": "#f8f9ff",
+        "surface-container-highest": "#d3e4fe",
+        "secondary": "#904d00",
+        "surface-dim": "#cbdbf5",
+        "on-secondary-container": "#663500",
+        "secondary-fixed": "#ffdcc3",
+        "inverse-primary": "#b5c5f8",
+        "on-primary-fixed-variant": "#354570",
+        "surface-container-low": "#eff4ff",
+        "inverse-on-surface": "#eaf1ff",
+        "surface-tint": "#4d5d89",
+        "on-primary-fixed": "#051942",
+        "background": "#f8f9ff",
+        "primary-container": "#0f214a",
+        "on-surface-variant": "#45464f",
+        "on-error": "#ffffff",
+        "inverse-surface": "#213145"
+      },
+      "borderRadius": {
+        "DEFAULT": "0.25rem",
+        "lg": "0.5rem",
+        "xl": "0.75rem",
+        "full": "9999px"
+      },
+      "spacing": {
+        "space-xs": "0.25rem",
+        "space-lg": "1.5rem",
+        "gutter": "1.5rem",
+        "space-sm": "0.5rem",
+        "margin-sm": "1rem",
+        "margin": "2rem",
+        "space-xl": "2.5rem",
+        "space-md": "1rem",
+        "gutter-sm": "1rem"
+      },
+      "fontFamily": {
+        "headline-sm": [
+          "Plus Jakarta Sans"
+        ],
+        "display-lg": [
+          "Plus Jakarta Sans"
+        ],
+        "display-lg-mobile": [
+          "Plus Jakarta Sans"
+        ],
+        "body-sm": [
+          "Inter"
+        ],
+        "label-md": [
+          "Plus Jakarta Sans"
+        ],
+        "headline-lg-mobile": [
+          "Plus Jakarta Sans"
+        ],
+        "headline-md": [
+          "Plus Jakarta Sans"
+        ],
+        "body-md": [
+          "Inter"
+        ],
+        "title-md": [
+          "Plus Jakarta Sans"
+        ],
+        "body-lg": [
+          "Inter"
+        ],
+        "label-sm": [
+          "Plus Jakarta Sans"
+        ],
+        "headline-lg": [
+          "Plus Jakarta Sans"
+        ]
+      },
+      "fontSize": {
+        "headline-sm": [
+          "20px",
+          {
+            "lineHeight": "28px",
+            "fontWeight": "600"
+          }
+        ],
+        "display-lg": [
+          "48px",
+          {
+            "lineHeight": "56px",
+            "fontWeight": "800"
+          }
+        ],
+        "display-lg-mobile": [
+          "34px",
+          {
+            "lineHeight": "42px",
+            "fontWeight": "800"
+          }
+        ],
+        "body-sm": [
+          "13px",
+          {
+            "lineHeight": "20px",
+            "fontWeight": "400"
+          }
+        ],
+        "label-md": [
+          "14px",
+          {
+            "lineHeight": "20px",
+            "fontWeight": "600"
+          }
+        ],
+        "headline-lg-mobile": [
+          "26px",
+          {
+            "lineHeight": "34px",
+            "fontWeight": "700"
+          }
+        ],
+        "headline-md": [
+          "24px",
+          {
+            "lineHeight": "32px",
+            "fontWeight": "600"
+          }
+        ],
+        "body-md": [
+          "15px",
+          {
+            "lineHeight": "24px",
+            "fontWeight": "400"
+          }
+        ],
+        "title-md": [
+          "16px",
+          {
+            "lineHeight": "24px",
+            "fontWeight": "600"
+          }
+        ],
+        "body-lg": [
+          "18px",
+          {
+            "lineHeight": "28px",
+            "fontWeight": "400"
+          }
+        ],
+        "label-sm": [
+          "11px",
+          {
+            "lineHeight": "16px",
+            "fontWeight": "700"
+          }
+        ],
+        "headline-lg": [
+          "32px",
+          {
+            "lineHeight": "40px",
+            "fontWeight": "700"
+          }
+        ]
+      }
+    },
+  },
+}</script></head><body class="bg-surface text-on-surface font-body-md text-body-md"><aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between py-space-lg"><div class="flex flex-col gap-space-lg"><div class="flex items-center gap-space-sm px-space-lg"><img alt="CampusNest Residence Portal Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAssam9Ppv9qN6CeBYOyI9MJhkvyDfwGVncRbzEOOfzMIojNVuELe9IlHVz2ZOU_F1WjSLKCeQvoPWZu78Ejxh2L9eenm1_bhGN2wQvaoDtlrw6eg3ATdHjXyTc7BAO3-UbJYRlg8CTpQ62MV06HaW_dXEmexRx8FzBQ1_yhpa3FD8Cl2yhGTAbx1koUNFUC3LyhHP6mKmkKqyGwiuQWCnvKhwNi5tgtrZZr4CbF9b1t8Kq-KMFsFAK"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary tracking-tight">CampusNest</span><span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Housing Portal</span></div></div><div class="px-space-md"><div class="rounded-lg bg-surface-container-low p-space-md flex flex-col gap-space-xs"><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-secondary text-base">apartment</span><span class="font-label-md text-label-md text-primary font-semibold">Maple Hall • Room 412-B</span></div><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-outline text-sm">calendar_today</span><span class="font-body-sm text-body-sm text-on-surface-variant">Fall 2024 / Spring 2025</span></div></div></div><nav class="flex flex-col gap-space-xs px-space-md" data-active-classes="bg-primary-container text-on-primary font-semibold rounded-lg shadow-sm"><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="dashboard" href="#"><span class="material-symbols-outlined text-xl">grid_view</span><span class="font-label-md text-label-md">Dashboard</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="maintenance" href="#"><span class="material-symbols-outlined text-xl">handyman</span><span class="font-label-md text-label-md">Maintenance</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="room-change" href="#"><span class="material-symbols-outlined text-xl">swap_horiz</span><span class="font-label-md text-label-md">Room Change</span></a><a aria-current="page" class="flex items-center gap-space-md px-space-md py-space-sm transition-all bg-primary-container text-on-primary font-semibold rounded-lg shadow-sm" data-path="profile" href="#"><span class="material-symbols-outlined text-xl">person</span><span class="font-label-md text-label-md">Profile</span></a></nav></div><div class="px-space-md flex flex-col gap-space-sm"><div class="rounded-lg bg-surface-container p-space-sm flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-secondary text-sm">verified_user</span><span class="font-label-sm text-label-sm text-on-surface">Lease Active</span></div><span class="font-label-sm text-label-sm text-on-surface-variant">Ends May '25</span></div><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-error-container hover:text-on-error-container transition-all" data-path="auth" href="#"><span class="material-symbols-outlined text-xl">logout</span><span class="font-label-md text-label-md">Sign Out</span></a></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40"><div class="w-full h-16 px-space-margin flex items-center justify-between"><div class="flex items-center gap-space-md"><div class="hidden lg:flex items-center gap-space-xs rounded-full bg-surface-container px-space-md py-space-xs"><span class="material-symbols-outlined text-secondary text-base">school</span><span class="font-label-sm text-label-sm text-on-surface">Campus Resident Hub</span></div></div><div class="flex items-center gap-space-lg"><button aria-label="Notifications" class="relative p-space-xs rounded-full hover:bg-surface-container-high transition-colors flex items-center justify-center text-on-surface-variant hover:text-on-surface" type="button"><span class="material-symbols-outlined text-2xl">notifications</span><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-secondary-container"></span></button><div class="flex items-center gap-space-sm pl-space-sm"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4mnCBzkHG699jTBjDgGV5TS6Y999UT8l3xtNKsK3CpNMu0GvXtwfovfEU2nIKWr0WfXl9OOylJB_BrgiUzbhpVIzIKcUMqCIpW6Nx80djn3c-uzyi9m3aFpNg95tIH0xYQ5boGj2mV--gThDAXyz2-SMRyl2RhYExSuQF4VRsMvfKTzQxq2ikclvFNEwq7EAXFtGaxeBzkMu19vntJtljABwB0Di7H5DQ9lRlY8tFKp2wLz2VuYSZ"/><div class="flex flex-col text-left"><span class="font-label-md text-label-md text-on-surface leading-tight">Maya Lin</span><span class="font-label-sm text-label-sm text-on-surface-variant leading-tight">Student Resident</span></div></div></div></div></header><main class="w-full pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<div class="px-space-margin py-space-lg max-w-[1280px] mx-auto w-full flex flex-col gap-space-lg">
+<!-- Profile Header Banner Bento -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-lowest p-space-lg lg:p-space-xl shadow-sm flex flex-col lg:flex-row gap-space-lg justify-between items-start lg:items-center">
+<div class="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-gradient-to-br from-secondary-container/10 via-primary-container/5 to-transparent pointer-events-none"></div>
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-space-lg z-10">
+<div class="relative group">
+<div class="w-28 h-28 lg:w-32 lg:h-32 rounded-xl overflow-hidden shadow-md bg-surface-container">
+<img alt="Maya Lin resident headshot" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4mnCBzkHG699jTBjDgGV5TS6Y999UT8l3xtNKsK3CpNMu0GvXtwfovfEU2nIKWr0WfXl9OOylJB_BrgiUzbhpVIzIKcUMqCIpW6Nx80djn3c-uzyi9m3aFpNg95tIH0xYQ5boGj2mV--gThDAXyz2-SMRyl2RhYExSuQF4VRsMvfKTzQxq2ikclvFNEwq7EAXFtGaxeBzkMu19vntJtljABwB0Di7H5DQ9lRlY8tFKp2wLz2VuYSZ"/>
+</div>
+<span class="absolute -bottom-2 -right-2 bg-secondary text-on-secondary px-space-sm py-0.5 rounded-full font-label-sm text-label-sm shadow-sm flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-white"></span> Junior
+          </span>
+</div>
+<div class="flex flex-col gap-space-xs">
+<div class="flex flex-wrap items-center gap-space-sm">
+<h1 class="font-headline-lg text-headline-lg text-primary tracking-tight">Maya Lin</h1>
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-surface-container font-label-sm text-label-sm text-on-surface">
+<span class="material-symbols-outlined text-sm text-secondary">verified</span>
+              ID #90248819
+            </span>
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-sm">medical_services</span>
+              Medical Alert: Nut Allergy
+            </span>
+</div>
+<p class="font-body-lg text-body-lg text-on-surface-variant font-medium">
+            Class of 2026 • B.S. Computer Science &amp; Human-Centered Design
+          </p>
+<div class="flex flex-wrap items-center gap-space-md pt-space-xs">
+<div class="flex items-center gap-1.5 text-on-surface">
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+<span class="font-label-md text-label-md font-semibold text-primary">Good Academic &amp; Housing Standing</span>
+</div>
+<span class="text-outline-variant">•</span>
+<div class="flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-sm">cottage</span>
+<span>Maple Hall • Room 412-B</span>
+</div>
+<span class="text-outline-variant">•</span>
+<div class="flex items-center gap-1 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-sm">nfc</span>
+<span class="text-secondary font-semibold">Active Apple Wallet NFC</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Action Deck -->
+<div class="flex flex-wrap sm:flex-nowrap lg:flex-col gap-space-sm w-full lg:w-auto z-10 shrink-0">
+<button class="flex-1 lg:flex-none flex items-center justify-center gap-space-xs px-space-md py-space-sm rounded-lg bg-primary-container text-on-primary font-label-md text-label-md hover:bg-tertiary-container shadow-sm transition-all" type="button">
+<span class="material-symbols-outlined text-base">edit</span>
+<span>Edit Profile</span>
+</button>
+<button class="flex-1 lg:flex-none flex items-center justify-center gap-space-xs px-space-md py-space-sm rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-dim transition-all" type="button">
+<span class="material-symbols-outlined text-base">description</span>
+<span>Residency Letter</span>
+</button>
+<button class="flex-1 lg:flex-none flex items-center justify-center gap-space-xs px-space-md py-space-sm rounded-lg bg-surface-container-low text-secondary font-label-md text-label-md hover:bg-surface-container transition-all" type="button">
+<span class="material-symbols-outlined text-base">contacts</span>
+<span>Update Contacts</span>
+</button>
+</div>
+</div>
+<!-- Navigation Bar for Profile Subsections -->
+<div class="w-full overflow-x-auto pb-1" id="tab-nav-container">
+<div class="inline-flex min-w-full sm:min-w-0 bg-surface-container-low p-1.5 rounded-xl gap-1">
+<button class="tab-button flex items-center gap-2 px-space-md py-space-sm rounded-lg font-label-md text-label-md transition-all bg-surface-container-lowest text-primary shadow-sm font-bold" data-tab-target="tab-contact" type="button">
+<span class="material-symbols-outlined text-base">badge</span>
+<span>Personal &amp; Emergency</span>
+</button>
+<button class="tab-button flex items-center gap-2 px-space-md py-space-sm rounded-lg font-label-md text-label-md transition-all text-on-surface-variant hover:text-on-surface" data-tab-target="tab-housing" type="button">
+<span class="material-symbols-outlined text-base">apartment</span>
+<span>Housing &amp; Assignment</span>
+</button>
+<button class="tab-button flex items-center gap-2 px-space-md py-space-sm rounded-lg font-label-md text-label-md transition-all text-on-surface-variant hover:text-on-surface" data-tab-target="tab-roommate" type="button">
+<span class="material-symbols-outlined text-base">group</span>
+<span>Roommate Compatibility</span>
+</button>
+<button class="tab-button flex items-center gap-2 px-space-md py-space-sm rounded-lg font-label-md text-label-md transition-all text-on-surface-variant hover:text-on-surface" data-tab-target="tab-dining" type="button">
+<span class="material-symbols-outlined text-base">restaurant</span>
+<span>Dining &amp; Ledger</span>
+</button>
+<button class="tab-button flex items-center gap-2 px-space-md py-space-sm rounded-lg font-label-md text-label-md transition-all text-on-surface-variant hover:text-on-surface" data-tab-target="tab-notifications" type="button">
+<span class="material-symbols-outlined text-base">tune</span>
+<span>Notification Rules</span>
+</button>
+</div>
+</div>
+<!-- Tab Panels Area -->
+<div class="w-full flex flex-col gap-space-lg">
+<!-- TAB 1: Personal & Emergency Contact -->
+<section class="tab-panel flex flex-col gap-space-lg" id="tab-contact">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+<!-- Student Details Card -->
+<div class="lg:col-span-6 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center justify-between pb-space-sm border-b-0">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">account_circle</span>
+<h2 class="font-headline-sm text-headline-sm text-primary">Resident Identity</h2>
+</div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">FERPA Verified</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+<div class="flex flex-col gap-1 p-space-sm rounded-lg bg-surface-container-low">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Campus Email</span>
+<span class="font-body-md text-body-md text-on-surface font-semibold truncate">maya.lin@campus.edu</span>
+<span class="font-body-sm text-body-sm text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">check_circle</span> SSO 2FA Enabled
+                </span>
+</div>
+<div class="flex flex-col gap-1 p-space-sm rounded-lg bg-surface-container-low">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Mobile Phone</span>
+<span class="font-body-md text-body-md text-on-surface font-semibold">+1 (555) 234-8901</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Verified SMS Device</span>
+</div>
+</div>
+<div class="flex flex-col gap-1 p-space-sm rounded-lg bg-surface-container-low">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Permanent Residential Address</span>
+<span class="font-label-sm text-label-sm text-primary font-semibold">In-State Resident</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface">
+                742 Evergreen Terrace, Suite 3B<br/>
+                Seattle, WA 98101 • United States
+              </p>
+</div>
+<div class="flex items-center gap-space-sm p-space-md rounded-lg bg-surface-container-high text-on-surface">
+<span class="material-symbols-outlined text-secondary shrink-0">info</span>
+<p class="font-body-sm text-body-sm">
+                Address modifications require official Registrar submission with certified verification documents.
+              </p>
+</div>
+</div>
+<!-- Emergency Contacts Card -->
+<div class="lg:col-span-6 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center justify-between pb-space-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-error">emergency</span>
+<h2 class="font-headline-sm text-headline-sm text-primary">Emergency Contacts</h2>
+</div>
+<button class="text-secondary font-label-md text-label-md flex items-center gap-1 hover:underline" type="button">
+<span class="material-symbols-outlined text-sm">add</span> Add New
+              </button>
+</div>
+<!-- Primary Contact -->
+<div class="p-space-md rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="font-headline-sm text-headline-sm text-on-surface text-base">Dr. Eleanor Lin</span>
+</div>
+<span class="px-space-sm py-0.5 rounded-full bg-surface-container font-label-sm text-label-sm text-primary font-bold uppercase">Primary • Mother</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-xs pt-space-xs text-on-surface-variant font-body-sm text-body-sm">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm">phone</span>
+<span>+1 (555) 987-6543</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm">mail</span>
+<span class="truncate">e.lin.md@pacificcare.org</span>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-secondary pt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">verified</span> Authorized for Medical Release &amp; Evacuation
+              </span>
+</div>
+<!-- Secondary Contact -->
+<div class="p-space-md rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<span class="font-headline-sm text-headline-sm text-on-surface text-base">David Lin</span>
+</div>
+<span class="px-space-sm py-0.5 rounded-full bg-surface-container font-label-sm text-label-sm text-on-surface-variant font-bold uppercase">Secondary • Father</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-xs pt-space-xs text-on-surface-variant font-body-sm text-body-sm">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm">phone</span>
+<span>+1 (555) 441-2099</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm">mail</span>
+<span class="truncate">david.lin@techcorp.com</span>
+</div>
+</div>
+</div>
+<div class="p-space-sm rounded-lg bg-error-container text-on-error-container flex items-center gap-space-sm">
+<span class="material-symbols-outlined shrink-0">priority_high</span>
+<p class="font-body-sm text-body-sm">
+                Severe Tree Nut Allergy noted in Health Portal. Epipen carrier protocol on file with Maple Hall RA staff.
+              </p>
+</div>
+</div>
+</div>
+</section>
+<!-- TAB 2: Housing & Dorm Assignment -->
+<section class="tab-panel hidden flex-col gap-space-lg" id="tab-housing">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+<!-- Room Specification Card -->
+<div class="lg:col-span-8 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-lg">
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-space-sm pb-space-sm">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Current Dorm Assignment</span>
+<h2 class="font-headline-md text-headline-md text-primary">Maple Hall — Room 412, Bed B</h2>
+</div>
+<span class="px-space-md py-1 rounded-full bg-surface-container-high text-primary font-label-md text-label-md flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-sm">key</span> Keyless NFC Enabled
+              </span>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-md">
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Building</span>
+<span class="font-headline-sm text-headline-sm text-primary mt-1">Maple Hall</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">North Quad</span>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Room Layout</span>
+<span class="font-headline-sm text-headline-sm text-primary mt-1">Double Suite</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Shared Bath</span>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Move-in Date</span>
+<span class="font-headline-sm text-headline-sm text-primary mt-1">Aug 26, 2024</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Completed</span>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Contract End</span>
+<span class="font-headline-sm text-headline-sm text-secondary mt-1">May 18, 2025</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Spring Move-out</span>
+</div>
+</div>
+<!-- Smart Access / Digital Keycard Component -->
+<div class="p-space-lg rounded-xl bg-primary-container text-on-primary flex flex-col sm:flex-row items-start sm:items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-surface-container/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-3xl text-secondary-container">contactless</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-title-md text-title-md font-bold text-white">Apple Wallet Residence Key</span>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold">Active</span>
+</div>
+<span class="font-body-sm text-body-sm text-primary-fixed-dim">Installed on iPhone 15 Pro • Last unlocked 22m ago at Maple North Portal</span>
+</div>
+</div>
+<button class="px-space-md py-space-sm rounded-lg bg-surface-container-lowest text-primary font-label-md text-label-md hover:bg-surface-container transition-all shrink-0" type="button">
+                Re-sync Key
+              </button>
+</div>
+<!-- Lease Documents & Letters -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-bold">Official Residence Documents</span>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+<div class="p-space-md rounded-lg bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary text-2xl">picture_as_pdf</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">2024-25_Housing_Lease.pdf</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Signed Aug 12 • 2.4 MB</span>
+</div>
+</div>
+<button aria-label="Download Lease" class="p-2 rounded-lg hover:bg-surface-container text-primary" type="button">
+<span class="material-symbols-outlined text-xl">download</span>
+</button>
+</div>
+<div class="p-space-md rounded-lg bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary text-2xl">verified</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Official_Proof_Residency.pdf</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Campus Registrar Seal • 1.1 MB</span>
+</div>
+</div>
+<button aria-label="Download Proof" class="p-2 rounded-lg hover:bg-surface-container text-primary" type="button">
+<span class="material-symbols-outlined text-xl">download</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Room Floorplan & Community Info -->
+<div class="lg:col-span-4 flex flex-col gap-space-lg">
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-bold">Hall Staff &amp; RA</span>
+<div class="flex items-center gap-space-md p-space-sm rounded-lg bg-surface-container-low">
+<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-primary">
+                  KR
+                </div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Kaelen Rivera</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Resident Advisor • Room 401</span>
+<span class="font-body-sm text-body-sm text-secondary">Duty Hours: 7 PM - 11 PM</span>
+</div>
+</div>
+<button class="w-full py-space-sm px-space-md rounded-lg bg-surface-container text-primary font-label-md text-label-md hover:bg-surface-container-high transition-all flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined text-base">chat</span>
+<span>Direct Message RA</span>
+</button>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-bold">Dorm Amenities Status</span>
+<div class="flex flex-col gap-space-sm">
+<div class="flex justify-between items-center text-body-sm font-body-sm">
+<span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-base text-secondary">local_laundry_service</span> 4th Floor Laundry</span>
+<span class="text-secondary font-semibold">3 of 6 Washers Free</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-2">
+<div class="bg-secondary h-2 rounded-full" style="width: 50%"></div>
+</div>
+<div class="flex justify-between items-center text-body-sm font-body-sm pt-2">
+<span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-base text-primary">local_cafe</span> Maple Study Lounge</span>
+<span class="text-on-surface-variant">Moderate Occupancy</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-2">
+<div class="bg-primary-container h-2 rounded-full" style="width: 65%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- TAB 3: Roommate Profile & Living Preferences -->
+<section class="tab-panel hidden flex-col gap-space-lg" id="tab-roommate">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+<!-- Roommate Pairing Card -->
+<div class="lg:col-span-7 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-lg">
+<div class="flex items-center justify-between">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Current Assigned Roommate</span>
+<h2 class="font-headline-md text-headline-md text-primary">Zoe Chen (Bed 412-A)</h2>
+</div>
+<span class="px-space-md py-1 rounded-full bg-surface-container text-primary font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-secondary">favorite</span> 94% Match Score
+              </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+              “Senior in Bioengineering. Quiet daytime studying, fond of brewing loose-leaf tea, clean counter enthusiast. Let’s coordinate fridge space anytime!”
+            </p>
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col gap-space-sm">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-bold">Room Agreement Status</span>
+<div class="flex items-center justify-between text-body-sm font-body-sm">
+<span class="text-on-surface">Fall Living Compact &amp; Quiet Hours Pact</span>
+<span class="text-secondary font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">check_circle</span> Both Co-Signed
+                </span>
+</div>
+</div>
+<!-- Maya's Roommate Profile Bio & Tags -->
+<div class="flex flex-col gap-space-md pt-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm text-primary">My Public Roommate Persona</span>
+<button class="text-secondary font-label-md text-label-md hover:underline" type="button">Edit Bio</button>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md italic">
+                “Hi! I balance studio design courses with CS labs. I’m usually up early with oatmeal and headphones. Big on plants and keep my desk organized. Always down for weekend hikes or chill study sessions!”
+              </div>
+<div class="flex flex-col gap-space-xs">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-bold">My Living Habits &amp; Tags</span>
+<div class="flex flex-wrap gap-2 pt-1">
+<span class="px-space-md py-1.5 rounded-full bg-surface-container font-label-md text-label-md text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-base">menu_book</span> Quiet Study in Room
+                  </span>
+<span class="px-space-md py-1.5 rounded-full bg-surface-container font-label-md text-label-md text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-base">alarm</span> Early Riser (7:00 AM)
+                  </span>
+<span class="px-space-md py-1.5 rounded-full bg-surface-container font-label-md text-label-md text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-base">eco</span> Vegetarian Cooking
+                  </span>
+<span class="px-space-md py-1.5 rounded-full bg-surface-container font-label-md text-label-md text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-base">headphones</span> Enjoys Weekend Music
+                  </span>
+<span class="px-space-md py-1.5 rounded-full bg-surface-container font-label-md text-label-md text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-base">bedtime</span> Lights Out 11:30 PM
+                  </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Compatibility Radar Visualizer -->
+<div class="lg:col-span-5 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between gap-space-lg">
+<div class="flex flex-col gap-space-xs">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Compatibility Metrics</span>
+<h3 class="font-headline-sm text-headline-sm text-primary">Harmony Assessment</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Computed through CampusNest Resident Intake Questionnaire.</p>
+</div>
+<!-- Inline SVG Metric Visual -->
+<div class="py-space-md flex flex-col gap-space-md">
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface">
+<span>Sleep &amp; Wake Cycles</span>
+<span class="font-bold text-secondary">98% Synced</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-2.5">
+<div class="bg-secondary h-2.5 rounded-full" style="width: 98%"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface">
+<span>Cleanliness &amp; Chores Expectations</span>
+<span class="font-bold text-primary">92% Synced</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-2.5">
+<div class="bg-primary-container h-2.5 rounded-full" style="width: 92%"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface">
+<span>Guest &amp; Social Policies</span>
+<span class="font-bold text-primary">89% Synced</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-2.5">
+<div class="bg-primary-container h-2.5 rounded-full" style="width: 89%"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface">
+<span>Noise &amp; Study Ambience</span>
+<span class="font-bold text-secondary">96% Synced</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-2.5">
+<div class="bg-secondary h-2.5 rounded-full" style="width: 96%"></div>
+</div>
+</div>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-low flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Looking ahead to Spring ’25?</span>
+<button class="font-label-md text-label-md text-secondary font-semibold hover:underline" type="button">
+                Re-Pairing Form
+              </button>
+</div>
+</div>
+</div>
+</section>
+<!-- TAB 4: Dining & Housing Billing Summary -->
+<section class="tab-panel hidden flex-col gap-space-lg" id="tab-dining">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+<!-- Meal Plan Overview -->
+<div class="lg:col-span-6 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">fastfood</span>
+<h2 class="font-headline-sm text-headline-sm text-primary">Meal Plan &amp; Dining Bucks</h2>
+</div>
+<span class="px-space-sm py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold uppercase">Gold Unlimited</span>
+</div>
+<div class="p-space-lg rounded-xl bg-gradient-to-br from-primary-container to-tertiary-container text-on-primary flex flex-col gap-space-md">
+<div class="flex justify-between items-start">
+<div>
+<span class="font-label-sm text-label-sm text-primary-fixed-dim uppercase tracking-wider">Semester Dining Bucks Remaining</span>
+<div class="font-display-lg text-display-lg font-bold text-white tracking-tight mt-1">$482.50</div>
+</div>
+<span class="material-symbols-outlined text-4xl text-secondary-container">credit_card</span>
+</div>
+<div class="flex items-center justify-between text-body-sm font-body-sm pt-2 text-surface-container">
+<span>Refreshed automatically each Monday</span>
+<span>Includes 5 Guest Passes/term</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-space-md">
+<div class="p-space-md rounded-lg bg-surface-container-low flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Dining Hall Swipes</span>
+<span class="font-headline-sm text-headline-sm text-primary mt-1">Unlimited</span>
+<span class="font-body-sm text-body-sm text-secondary">All 4 campus commons</span>
+</div>
+<div class="p-space-md rounded-lg bg-surface-container-low flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Dietary Preference</span>
+<span class="font-headline-sm text-headline-sm text-primary mt-1">Strict Veg</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Nut-Free station flag</span>
+</div>
+</div>
+<button class="w-full py-space-sm px-space-md rounded-lg bg-surface-container text-primary font-label-md text-label-md hover:bg-surface-container-high transition-all flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined text-base">add_card</span>
+<span>Add Dining Bucks with Student Bursar</span>
+</button>
+</div>
+<!-- Housing Billing & Deposit Status -->
+<div class="lg:col-span-6 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">account_balance_wallet</span>
+<h2 class="font-headline-sm text-headline-sm text-primary">Housing Ledger &amp; Deposit</h2>
+</div>
+<span class="px-space-sm py-0.5 rounded-full bg-surface-container text-on-surface font-label-sm text-label-sm">Bursar Synced</span>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col gap-space-sm">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface">Housing Security Deposit</span>
+<span class="font-title-md text-title-md text-primary font-bold">$300.00</span>
+</div>
+<div class="flex items-center gap-2 text-body-sm font-body-sm text-secondary">
+<span class="material-symbols-outlined text-sm">lock_clock</span>
+<span>Refundable on file • Released post Spring inspection</span>
+</div>
+</div>
+<!-- Ledger Table Summary -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-bold">Fall 2024 Installments</span>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center p-space-sm rounded-lg bg-surface-container-low">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Installment #1 (Room + Board)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Paid Aug 15 via Auto-Pay ACH</span>
+</div>
+<span class="px-space-sm py-0.5 rounded-full bg-surface-container-high font-label-sm text-label-sm text-primary font-bold">Paid $4,850.00</span>
+</div>
+<div class="flex justify-between items-center p-space-sm rounded-lg bg-surface-container-low">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Installment #2 (Room + Board)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Scheduled for Nov 15</span>
+</div>
+<span class="px-space-sm py-0.5 rounded-full bg-surface-container font-label-sm text-label-sm text-secondary font-bold">Scheduled $4,850.00</span>
+</div>
+</div>
+</div>
+<!-- Auto-pay Switch Mockup -->
+<div class="flex items-center justify-between p-space-md rounded-xl bg-surface-container-high text-on-surface">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">autorenew</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-bold">Bursar Direct Auto-Pay</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Chase Bank ending in •••• 4091</span>
+</div>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<div class="w-11 h-6 bg-primary-container rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- TAB 5: Notification & Quiet Hours Preferences -->
+<section class="tab-panel hidden flex-col gap-space-lg" id="tab-notifications">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+<div class="lg:col-span-8 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-lg">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Communication Protocol</span>
+<h2 class="font-headline-md text-headline-md text-primary">Resident Notification Preferences</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Configure emergency broadcasts, maintenance notifications, and front desk parcel alerts.</p>
+</div>
+<div class="flex flex-col gap-space-md">
+<!-- Item 1: Package delivery -->
+<div class="flex items-center justify-between p-space-md rounded-xl bg-surface-container-low">
+<div class="flex items-center gap-space-md">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">inventory_2</span>
+</div>
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface">Smart Locker &amp; Parcel Arrival</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Instant SMS notification with pickup QR code token</span>
+</div>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<div class="w-11 h-6 bg-primary-container rounded-full after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+</div>
+</div>
+<!-- Item 2: Maintenance Notice -->
+<div class="flex items-center justify-between p-space-md rounded-xl bg-surface-container-low">
+<div class="flex items-center gap-space-md">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">handyman</span>
+</div>
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface">Room Entry &amp; Work Orders</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">24-hour advance SMS and email alerts prior to technician entry</span>
+</div>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<div class="w-11 h-6 bg-primary-container rounded-full after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+</div>
+</div>
+<!-- Item 3: Quad & Quiet Hours Alerts -->
+<div class="flex items-center justify-between p-space-md rounded-xl bg-surface-container-low">
+<div class="flex items-center gap-space-md">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">notifications_paused</span>
+</div>
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface">Exam Quiet Hours Reminders</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Push notifications when 24/7 quiet hours take effect during finals</span>
+</div>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<div class="w-11 h-6 bg-primary-container rounded-full after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+</div>
+</div>
+<!-- Item 4: Emergency Alert -->
+<div class="flex items-center justify-between p-space-md rounded-xl bg-surface-container-low">
+<div class="flex items-center gap-space-md">
+<div class="w-10 h-10 rounded-lg bg-error-container flex items-center justify-center text-error">
+<span class="material-symbols-outlined">crisis_alert</span>
+</div>
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface">Campus Emergency Broadcasts</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Weather emergencies, severe campus notices (Mandatory by University)</span>
+</div>
+</div>
+<span class="px-space-sm py-1 rounded-md bg-surface-container text-on-surface-variant font-label-sm text-label-sm">Locked ON</span>
+</div>
+</div>
+</div>
+<!-- Schedule & Quiet Hours Summary Panel -->
+<div class="lg:col-span-4 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between gap-space-lg">
+<div class="flex flex-col gap-space-md">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Maple Hall Policy</span>
+<h3 class="font-headline-sm text-headline-sm text-primary">Building Quiet Windows</h3>
+<div class="flex flex-col gap-space-sm pt-2">
+<div class="p-space-sm rounded-lg bg-surface-container-low flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface">Sun – Thu</span>
+<span class="font-label-md text-label-md font-semibold text-primary">10:00 PM – 8:00 AM</span>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface">Fri – Sat</span>
+<span class="font-label-md text-label-md font-semibold text-primary">12:00 AM – 9:00 AM</span>
+</div>
+</div>
+<div class="p-space-md rounded-lg bg-surface-container-high text-on-surface flex items-start gap-2">
+<span class="material-symbols-outlined text-secondary text-base shrink-0 mt-0.5">volume_off</span>
+<p class="font-body-sm text-body-sm">
+                  Designated courtesy hours are in effect 24/7. Contact RA on duty for decibel concerns.
+                </p>
+</div>
+</div>
+<button class="w-full py-space-sm px-space-md rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container shadow-sm transition-all" type="button">
+              Save Notification Matrix
+            </button>
+</div>
+</div>
+</section>
+</div>
+</div>
+<script>
+    (function () {
+      const tabButtons = document.querySelectorAll('#tab-nav-container .tab-button');
+      const tabPanels = document.querySelectorAll('.tab-panel');
+
+      tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const targetId = button.getAttribute('data-tab-target');
+
+          tabButtons.forEach(btn => {
+            btn.classList.remove('bg-surface-container-lowest', 'text-primary', 'shadow-sm', 'font-bold');
+            btn.classList.add('text-on-surface-variant');
+          });
+
+          button.classList.add('bg-surface-container-lowest', 'text-primary', 'shadow-sm', 'font-bold');
+          button.classList.remove('text-on-surface-variant');
+
+          tabPanels.forEach(panel => {
+            if (panel.id === targetId) {
+              panel.classList.remove('hidden');
+              panel.classList.add('flex');
+            } else {
+              panel.classList.add('hidden');
+              panel.classList.remove('flex');
+            }
+          });
+        });
+      });
+    })();
+  </script>
+</div></main></div></body></html>

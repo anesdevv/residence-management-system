@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_blank" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      "colors": {
+        "outline-variant": "#c5c6d0",
+        "on-tertiary-fixed-variant": "#003ea8",
+        "surface": "#f8f9ff",
+        "on-background": "#0b1c30",
+        "on-tertiary-fixed": "#00174b",
+        "surface-container-high": "#dce9ff",
+        "error-container": "#ffdad6",
+        "outline": "#75777f",
+        "surface-container-lowest": "#ffffff",
+        "secondary-fixed-dim": "#ffb77d",
+        "on-tertiary-container": "#5583ff",
+        "on-tertiary": "#ffffff",
+        "on-surface": "#0b1c30",
+        "tertiary-fixed-dim": "#b4c5ff",
+        "primary": "#000b2b",
+        "tertiary": "#000a2c",
+        "primary-fixed-dim": "#b5c5f8",
+        "on-error-container": "#93000a",
+        "on-secondary-fixed-variant": "#6e3900",
+        "on-secondary": "#ffffff",
+        "on-primary": "#ffffff",
+        "tertiary-container": "#001e5b",
+        "tertiary-fixed": "#dbe1ff",
+        "error": "#ba1a1a",
+        "surface-variant": "#d3e4fe",
+        "on-primary-container": "#7989b8",
+        "secondary-container": "#fe932c",
+        "surface-container": "#e5eeff",
+        "primary-fixed": "#dae2ff",
+        "on-secondary-fixed": "#2f1500",
+        "surface-bright": "#f8f9ff",
+        "surface-container-highest": "#d3e4fe",
+        "secondary": "#904d00",
+        "surface-dim": "#cbdbf5",
+        "on-secondary-container": "#663500",
+        "secondary-fixed": "#ffdcc3",
+        "inverse-primary": "#b5c5f8",
+        "on-primary-fixed-variant": "#354570",
+        "surface-container-low": "#eff4ff",
+        "inverse-on-surface": "#eaf1ff",
+        "surface-tint": "#4d5d89",
+        "on-primary-fixed": "#051942",
+        "background": "#f8f9ff",
+        "primary-container": "#0f214a",
+        "on-surface-variant": "#45464f",
+        "on-error": "#ffffff",
+        "inverse-surface": "#213145"
+      },
+      "borderRadius": {
+        "DEFAULT": "0.25rem",
+        "lg": "0.5rem",
+        "xl": "0.75rem",
+        "full": "9999px"
+      },
+      "spacing": {
+        "space-xs": "0.25rem",
+        "space-lg": "1.5rem",
+        "gutter": "1.5rem",
+        "space-sm": "0.5rem",
+        "margin-sm": "1rem",
+        "margin": "2rem",
+        "space-xl": "2.5rem",
+        "space-md": "1rem",
+        "gutter-sm": "1rem"
+      },
+      "fontFamily": {
+        "headline-sm": [
+          "Plus Jakarta Sans"
+        ],
+        "display-lg": [
+          "Plus Jakarta Sans"
+        ],
+        "display-lg-mobile": [
+          "Plus Jakarta Sans"
+        ],
+        "body-sm": [
+          "Inter"
+        ],
+        "label-md": [
+          "Plus Jakarta Sans"
+        ],
+        "headline-lg-mobile": [
+          "Plus Jakarta Sans"
+        ],
+        "headline-md": [
+          "Plus Jakarta Sans"
+        ],
+        "body-md": [
+          "Inter"
+        ],
+        "title-md": [
+          "Plus Jakarta Sans"
+        ],
+        "body-lg": [
+          "Inter"
+        ],
+        "label-sm": [
+          "Plus Jakarta Sans"
+        ],
+        "headline-lg": [
+          "Plus Jakarta Sans"
+        ]
+      },
+      "fontSize": {
+        "headline-sm": [
+          "20px",
+          {
+            "lineHeight": "28px",
+            "fontWeight": "600"
+          }
+        ],
+        "display-lg": [
+          "48px",
+          {
+            "lineHeight": "56px",
+            "fontWeight": "800"
+          }
+        ],
+        "display-lg-mobile": [
+          "34px",
+          {
+            "lineHeight": "42px",
+            "fontWeight": "800"
+          }
+        ],
+        "body-sm": [
+          "13px",
+          {
+            "lineHeight": "20px",
+            "fontWeight": "400"
+          }
+        ],
+        "label-md": [
+          "14px",
+          {
+            "lineHeight": "20px",
+            "fontWeight": "600"
+          }
+        ],
+        "headline-lg-mobile": [
+          "26px",
+          {
+            "lineHeight": "34px",
+            "fontWeight": "700"
+          }
+        ],
+        "headline-md": [
+          "24px",
+          {
+            "lineHeight": "32px",
+            "fontWeight": "600"
+          }
+        ],
+        "body-md": [
+          "15px",
+          {
+            "lineHeight": "24px",
+            "fontWeight": "400"
+          }
+        ],
+        "title-md": [
+          "16px",
+          {
+            "lineHeight": "24px",
+            "fontWeight": "600"
+          }
+        ],
+        "body-lg": [
+          "18px",
+          {
+            "lineHeight": "28px",
+            "fontWeight": "400"
+          }
+        ],
+        "label-sm": [
+          "11px",
+          {
+            "lineHeight": "16px",
+            "fontWeight": "700"
+          }
+        ],
+        "headline-lg": [
+          "32px",
+          {
+            "lineHeight": "40px",
+            "fontWeight": "700"
+          }
+        ]
+      }
+    },
+  },
+}</script></head><body class="bg-surface text-on-surface font-body-md text-body-md"><main class="min-h-screen w-full flex items-center justify-center p-space-margin"><div class="flex flex-col w-full max-w-7xl mx-auto py-6">
+<div class="relative grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+<!-- Left Column: Authentication Form Container -->
+<div class="lg:col-span-7 flex flex-col justify-between">
+<div class="bg-surface-container-lowest rounded-xl p-6 sm:p-10 shadow-md">
+<!-- Header Branding & Institutional Crest Badge -->
+<div class="flex items-center justify-between mb-8">
+<div class="flex items-center gap-3">
+<div class="w-11 h-11 rounded-lg bg-primary text-on-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-2xl">apartment</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-outline block">Quadrangle ResLife</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">Campus Housing Portal</span>
+</div>
+</div>
+<div class="hidden sm:flex items-center gap-1.5 bg-surface-container-low px-3 py-1.5 rounded-full text-on-surface-variant font-label-sm text-label-sm">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span>Academic Year 2025–26</span>
+</div>
+</div>
+<!-- Mode Segmented Control Switcher -->
+<div class="bg-surface-container p-1 rounded-lg flex items-center mb-8">
+<button class="flex-1 py-2.5 px-4 rounded-md font-label-md text-label-md text-center transition-all bg-surface-container-lowest text-on-surface shadow-sm flex items-center justify-center gap-2" id="tab-signin" onclick="setAuthMode('signin')" type="button">
+<span class="material-symbols-outlined text-base">login</span>
+<span>Sign In</span>
+</button>
+<button class="flex-1 py-2.5 px-4 rounded-md font-label-md text-label-md text-center transition-all text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-2" id="tab-register" onclick="setAuthMode('register')" type="button">
+<span class="material-symbols-outlined text-base">how_to_reg</span>
+<span>Register New Resident</span>
+</button>
+</div>
+<!-- Single Sign-On Primary CTA -->
+<div class="mb-6">
+<button class="w-full bg-primary hover:bg-tertiary-container text-on-primary py-3.5 px-6 rounded-lg font-label-md text-label-md flex items-center justify-center gap-3 shadow-sm transition-all hover:shadow-md" type="button">
+<span class="material-symbols-outlined text-xl">shield_person</span>
+<span>Sign in with University ID (SSO)</span>
+</button>
+<div class="flex items-center my-6">
+<div class="flex-1 h-px bg-surface-container-high"></div>
+<span class="px-4 font-label-sm text-label-sm text-outline uppercase tracking-wider">or direct portal access</span>
+<div class="flex-1 h-px bg-surface-container-high"></div>
+</div>
+</div>
+<!-- Auth Form -->
+<form class="space-y-4" id="auth-form" onsubmit="event.preventDefault();">
+<!-- Registration Only: Full Name -->
+<div class="hidden flex-col gap-1.5" id="field-fullname">
+<label class="font-label-md text-label-md text-on-surface flex items-center justify-between">
+<span>Full Name</span>
+<span class="font-body-sm text-body-sm text-outline">As shown on student card</span>
+</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-xl">badge</span>
+<input class="w-full bg-surface-container-lowest text-on-surface pl-11 pr-4 py-3 rounded-lg font-body-md text-body-md bg-surface-container-lowest focus:outline-none focus:bg-surface-container-lowest focus:ring-0" placeholder="e.g. Jordan Ellis Hayes" type="text"/>
+</div>
+</div>
+<!-- Registration Only: Student ID Number -->
+<div class="hidden flex-col gap-1.5" id="field-studentid">
+<label class="font-label-md text-label-md text-on-surface flex items-center justify-between">
+<span>Student ID Number</span>
+<span class="font-label-sm text-label-sm text-secondary">9-Digit Matriculation ID</span>
+</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-xl">fingerprint</span>
+<input class="w-full bg-surface-container-lowest text-on-surface pl-11 pr-4 py-3 rounded-lg font-body-md text-body-md bg-surface-container-lowest focus:outline-none" maxlength="9" placeholder="900827364" type="text"/>
+</div>
+</div>
+<!-- Common: Email Field -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface flex items-center justify-between">
+<span>University Email</span>
+<span class="font-body-sm text-body-sm text-outline">@campus.edu or affiliate</span>
+</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-xl">alternate_email</span>
+<input class="w-full bg-surface-container-lowest text-on-surface pl-11 pr-4 py-3 rounded-lg font-body-md text-body-md focus:outline-none" placeholder="jordan.hayes@campus.edu" required="" type="email"/>
+</div>
+</div>
+<!-- Registration Only: Dorm Selection Dropdown -->
+<div class="hidden flex-col gap-1.5" id="field-dorm">
+<label class="font-label-md text-label-md text-on-surface flex items-center justify-between">
+<span>Assigned Hall / Quad Complex</span>
+<span class="font-body-sm text-body-sm text-outline">Refer to housing assignment memo</span>
+</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-xl">holiday_village</span>
+<select class="w-full bg-surface-container-lowest text-on-surface pl-11 pr-10 py-3 rounded-lg font-body-md text-body-md appearance-none focus:outline-none">
+<option disabled="" selected="" value="">Select assigned residence building...</option>
+<option value="founders">Founders Hall • South Quad (First-Year Suites)</option>
+<option value="bechdel">Bechdel Commons • North Campus (Pod Style)</option>
+<option value="laurel">Laurel Heights • East Quad (Upperclass Studio)</option>
+<option value="oakwood">Oakwood Tower • Central Campus (Double Classic)</option>
+<option value="unassigned">Incoming Transfer / Non-Assigned Pending Review</option>
+</select>
+<span class="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-outline pointer-events-none text-xl">expand_more</span>
+</div>
+</div>
+<!-- Common: Password Field -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface flex items-center justify-between">
+<span>Portal Password</span>
+<span class="hidden font-body-sm text-body-sm text-outline" id="pwd-help">Min. 10 chars with numerals</span>
+</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-xl">lock</span>
+<input class="w-full bg-surface-container-lowest text-on-surface pl-11 pr-11 py-3 rounded-lg font-body-md text-body-md focus:outline-none" id="pwd-input" placeholder="••••••••••••" required="" type="password"/>
+<button class="absolute right-3.5 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface" onclick="togglePasswordVisibility()" type="button">
+<span class="material-symbols-outlined text-xl" id="pwd-eye-icon">visibility</span>
+</button>
+</div>
+</div>
+<!-- Options Row: Remember Me & Forgot Password -->
+<div class="flex items-center justify-between pt-2">
+<label class="flex items-center gap-2 cursor-pointer select-none">
+<input checked="" class="w-4 h-4 rounded bg-surface-container text-primary accent-primary cursor-pointer" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Remember device for 30 days</span>
+</label>
+<a class="font-label-md text-label-md text-secondary hover:text-on-secondary-container underline underline-offset-4 decoration-secondary/30" href="javascript:void(0)" id="link-forgot">
+              Forgot password?
+            </a>
+</div>
+<!-- Submit CTA -->
+<div class="pt-4">
+<button class="w-full bg-secondary hover:bg-on-secondary-container text-on-secondary py-3.5 px-6 rounded-lg font-label-md text-label-md shadow-sm transition-all hover:shadow-md flex items-center justify-center gap-2" id="btn-submit" type="submit">
+<span>Sign In to Housing Dashboard</span>
+<span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</div>
+</form>
+<!-- Terms Footer Switcher Copy -->
+<p class="text-center font-body-sm text-body-sm text-outline-variant mt-6 text-on-surface-variant" id="toggle-copy">
+          New student moving into campus housing this semester?
+          <button class="text-primary font-label-md text-label-md underline underline-offset-4 ml-1" onclick="setAuthMode('register')" type="button">Create resident profile</button>
+</p>
+</div>
+<!-- Security & Accreditation Banner -->
+<div class="mt-4 bg-surface-container-low rounded-xl p-4 flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high text-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-xl">verified_user</span>
+</div>
+<div class="min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-title-md text-title-md text-on-surface">FERPA &amp; ISO 27001 Verified Student Record System</span>
+<span class="hidden sm:inline-block bg-primary text-on-primary text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">Gov Grade</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline truncate">
+            Biometric-ready SSO layer protecting room assignments, roommate rosters, and financial aid ledgers.
+          </p>
+</div>
+</div>
+</div>
+<!-- Right Column: Campus Living Perks Bento & Campus Lifestyle Card -->
+<div class="lg:col-span-5 flex flex-col gap-6">
+<!-- Lifestyle Hero Card -->
+<div class="relative bg-primary text-on-primary rounded-xl overflow-hidden shadow-md p-7 flex flex-col justify-between min-h-[340px]">
+<div class="absolute inset-0 z-0">
+<div class="w-full h-full bg-cover bg-center opacity-30 mix-blend-overlay" data-alt="Vibrant modern university student residential courtyard and brick dorm buildings during golden hour sunset, with diverse undergraduate students sitting on pristine lawn benches with books and tablets under sunlit campus trees." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAEpUArDIb2soLVECUSEwDVA35kaRWvuKQ-UK0IuQ0y5U6eDHaJ6KAJSsfurHZPmuOlajgTNZvATY7RI3ykrUfqapxykcElVt_jwyK64i-5YS3TH598gYRQDAvugOCR_zYpUBdPW8arp2mtQHfvqFewOxPapngi6cAOZaLHZw6hoI2l4bZPcnp7COHtL8Y6wf6a_vQu7g0-WiQGrEc9y-TB4ol0pgpy9LBxiEet71lWH_9-gWRz-woS')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-primary via-primary/80 to-transparent"></div>
+</div>
+<div class="relative z-10 flex items-start justify-between">
+<div class="inline-flex items-center gap-2 bg-primary-container/80 backdrop-blur-md px-3.5 py-1.5 rounded-full text-on-primary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-sm text-secondary-fixed">cottage</span>
+<span>Residential Life &amp; Amenities</span>
+</div>
+<div class="w-9 h-9 rounded-full bg-surface/10 backdrop-blur-sm flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-lg">school</span>
+</div>
+</div>
+<div class="relative z-10 mt-12">
+<h2 class="font-headline-md text-headline-md font-bold leading-tight mb-2 text-on-primary">
+            Your home at the center of campus.
+          </h2>
+<p class="font-body-md text-body-md text-on-primary-container max-w-sm">
+            Access secure roommate discovery, maintenance requests, laundry metrics, and package notifications under one consolidated pass.
+          </p>
+<div class="flex items-center gap-4 mt-6 pt-5 border-t border-primary-container/50">
+<div>
+<span class="font-headline-sm text-headline-sm font-bold text-on-primary">4,820+</span>
+<span class="block font-label-sm text-label-sm text-on-primary-container">On-Campus Residents</span>
+</div>
+<div class="w-px h-8 bg-surface-variant/20"></div>
+<div>
+<span class="font-headline-sm text-headline-sm font-bold text-secondary-fixed">98.4%</span>
+<span class="block font-label-sm text-label-sm text-on-primary-container">Roommate Satisfaction</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Perks Feature Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3.5">
+<!-- Perk 1: 24/7 Front Desk -->
+<div class="bg-surface-container-lowest rounded-xl p-4.5 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high text-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl">support_agent</span>
+</div>
+<div>
+<div class="flex items-center justify-between">
+<h3 class="font-title-md text-title-md text-on-surface">24/7 Concierge &amp; Desk</h3>
+<span class="bg-surface-container px-2 py-0.5 rounded text-[11px] font-bold text-on-surface-variant uppercase">All Halls</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline mt-0.5">
+              Lockout assists, safety dispatch, and room equipment borrow desks operate non-stop.
+            </p>
+</div>
+</div>
+<!-- Perk 2: Smart Package Lockers -->
+<div class="bg-surface-container-lowest rounded-xl p-4.5 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow">
+<div class="w-12 h-12 rounded-lg bg-surface-container text-secondary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl">local_post_office</span>
+</div>
+<div>
+<div class="flex items-center justify-between">
+<h3 class="font-title-md text-title-md text-on-surface">Smart Package Lockers</h3>
+<span class="bg-surface-container px-2 py-0.5 rounded text-[11px] font-bold text-on-surface-variant uppercase">Automated</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline mt-0.5">
+              Contactless barcode locker retrieval for shipments with SMS push reminders.
+            </p>
+</div>
+</div>
+<!-- Perk 3: Acoustic Study Lounges -->
+<div class="bg-surface-container-lowest rounded-xl p-4.5 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow">
+<div class="w-12 h-12 rounded-lg bg-surface-variant text-on-tertiary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl">menu_book</span>
+</div>
+<div>
+<div class="flex items-center justify-between">
+<h3 class="font-title-md text-title-md text-on-surface">Soundproof Study Havens</h3>
+<span class="bg-surface-container px-2 py-0.5 rounded text-[11px] font-bold text-on-surface-variant uppercase">Gigabit WiFi</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline mt-0.5">
+              Dedicated silent pods, dry-erase collaboration zones, and free color cloud printers.
+            </p>
+</div>
+</div>
+</div>
+<!-- Quick Desk Assistance Note -->
+<div class="bg-surface-container-lowest rounded-xl p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary text-2xl">help_center</span>
+<div>
+<span class="font-title-md text-title-md text-on-surface block leading-tight">Need Move-In Support?</span>
+<span class="font-body-sm text-body-sm text-outline">Housing Office: (555) 019-2830</span>
+</div>
+</div>
+<a class="font-label-md text-label-md text-primary hover:text-tertiary-container flex items-center gap-1" href="javascript:void(0)">
+<span>Live Chat</span>
+<span class="material-symbols-outlined text-base">chevron_right</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+<script>
+  function setAuthMode(mode) {
+    const tabSignIn = document.getElementById('tab-signin');
+    const tabRegister = document.getElementById('tab-register');
+    const fieldFullName = document.getElementById('field-fullname');
+    const fieldStudentId = document.getElementById('field-studentid');
+    const fieldDorm = document.getElementById('field-dorm');
+    const pwdHelp = document.getElementById('pwd-help');
+    const linkForgot = document.getElementById('link-forgot');
+    const btnSubmit = document.getElementById('btn-submit');
+    const toggleCopy = document.getElementById('toggle-copy');
+
+    if (mode === 'register') {
+      tabRegister.className = "flex-1 py-2.5 px-4 rounded-md font-label-md text-label-md text-center transition-all bg-surface-container-lowest text-on-surface shadow-sm flex items-center justify-center gap-2";
+      tabSignIn.className = "flex-1 py-2.5 px-4 rounded-md font-label-md text-label-md text-center transition-all text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-2";
+
+      fieldFullName.classList.remove('hidden');
+      fieldFullName.classList.add('flex');
+      fieldStudentId.classList.remove('hidden');
+      fieldStudentId.classList.add('flex');
+      fieldDorm.classList.remove('hidden');
+      fieldDorm.classList.add('flex');
+      pwdHelp.classList.remove('hidden');
+      linkForgot.classList.add('invisible');
+
+      btnSubmit.innerHTML = '<span>Create &amp; Confirm Resident Account</span><span class="material-symbols-outlined text-lg">check_circle</span>';
+      toggleCopy.innerHTML = 'Already hold housing credentials? <button type="button" onclick="setAuthMode(\'signin\')" class="text-primary font-label-md text-label-md underline underline-offset-4 ml-1">Sign in here</button>';
+    } else {
+      tabSignIn.className = "flex-1 py-2.5 px-4 rounded-md font-label-md text-label-md text-center transition-all bg-surface-container-lowest text-on-surface shadow-sm flex items-center justify-center gap-2";
+      tabRegister.className = "flex-1 py-2.5 px-4 rounded-md font-label-md text-label-md text-center transition-all text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-2";
+
+      fieldFullName.classList.add('hidden');
+      fieldFullName.classList.remove('flex');
+      fieldStudentId.classList.add('hidden');
+      fieldStudentId.classList.remove('flex');
+      fieldDorm.classList.add('hidden');
+      fieldDorm.classList.remove('flex');
+      pwdHelp.classList.add('hidden');
+      linkForgot.classList.remove('invisible');
+
+      btnSubmit.innerHTML = '<span>Sign In to Housing Dashboard</span><span class="material-symbols-outlined text-lg">arrow_forward</span>';
+      toggleCopy.innerHTML = 'New student moving into campus housing this semester? <button type="button" onclick="setAuthMode(\'register\')" class="text-primary font-label-md text-label-md underline underline-offset-4 ml-1">Create resident profile</button>';
+    }
+  }
+
+  function togglePasswordVisibility() {
+    const pwdInput = document.getElementById('pwd-input');
+    const pwdIcon = document.getElementById('pwd-eye-icon');
+    if (pwdInput.type === 'password') {
+      pwdInput.type = 'text';
+      pwdIcon.textContent = 'visibility_off';
+    } else {
+      pwdInput.type = 'password';
+      pwdIcon.textContent = 'visibility';
+    }
+  }
+</script></main></body></html>
