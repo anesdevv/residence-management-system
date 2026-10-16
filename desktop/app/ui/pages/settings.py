@@ -2,7 +2,7 @@ import urllib.request
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton,
     QVBoxLayout, QWidget,
@@ -335,6 +335,54 @@ class SettingsPage(QWidget):
         footer.setWordWrap(True)
         footer.setStyleSheet(MUTED_QSS)
         outer.addWidget(footer)
+
+        # -----------------------------------------------------------------
+        # About — brand, creator credit, and links
+        # -----------------------------------------------------------------
+        outer.addWidget(self._divider())
+        about = QWidget()
+        about.setObjectName("aboutSection")
+        about_layout = QVBoxLayout(about)
+        about_layout.setContentsMargins(0, 0, 0, 0)
+        about_layout.setSpacing(10)
+
+        about_layout.addWidget(self._section_title("About RÉSIVO"))
+
+        about_row = QHBoxLayout()
+        about_row.setSpacing(16)
+
+        about_logo = QLabel()
+        about_logo.setObjectName("aboutLogo")
+        about_logo_px = QPixmap(str(Path(__file__).parent.parent / "assets" / "resivo_logo.png"))
+        about_logo.setPixmap(about_logo_px.scaled(96, 96, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        about_logo.setAlignment(Qt.AlignTop)
+        about_row.addWidget(about_logo)
+
+        about_text = QVBoxLayout()
+        about_text.setSpacing(6)
+        about_text.addWidget(self._step_title("Created by SEBAI ANES"))
+
+        # External links open in the OS browser/mail client (QLabel delegates to QDesktopServices.openUrl)
+        github_lbl = QLabel(
+            '<a href="https://github.com/anesdevv" style="color: #818cf8;">GitHub: github.com/anesdevv</a>'
+        )
+        github_lbl.setObjectName("aboutGithubLink")
+        github_lbl.setTextFormat(Qt.RichText)
+        github_lbl.setOpenExternalLinks(True)
+        about_text.addWidget(github_lbl)
+
+        email_lbl = QLabel(
+            '<a href="mailto:anes4tlm@gmail.com" style="color: #818cf8;">Email: anes4tlm@gmail.com</a>'
+        )
+        email_lbl.setObjectName("aboutEmailLink")
+        email_lbl.setTextFormat(Qt.RichText)
+        email_lbl.setOpenExternalLinks(True)
+        about_text.addWidget(email_lbl)
+
+        about_text.addStretch(1)
+        about_row.addLayout(about_text, 1)
+        about_layout.addLayout(about_row)
+        outer.addWidget(about)
 
         return content
 
