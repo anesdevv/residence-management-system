@@ -1,16 +1,22 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    --font-body: 'Inter', system-ui, -apple-system, sans-serif;
-    --color-canvas: #f8fafc;
-    --color-surface: #ffffff;
-    --color-primary: #0f172a;
-    --color-accent: #2563eb;
-    --color-border: #e2e8f0;
-  }
+/* RÉSIVO design tokens (Tailwind v4 theme) */
+@theme {
+  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 
+  --color-canvas: #f8f9ff;
+  --color-surface: #ffffff;
+  --color-navy: #000b2b;
+  --color-navy-2: #0f214a;
+  --color-amber: #fe932c;
+  --color-amber-ink: #904d00;
+  --color-ink: #0b1c30;
+  --color-muted: #45464f;
+  --color-line: #c5c6d0;
+}
+
+@layer base {
   html {
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
@@ -20,8 +26,8 @@
 
   body {
     background-color: var(--color-canvas);
-    color: #0f172a;
-    font-family: var(--font-body);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
@@ -31,8 +37,8 @@
   }
 
   ::selection {
-    background-color: #2563eb;
-    color: #ffffff;
+    background-color: var(--color-amber);
+    color: var(--color-navy);
   }
 
   /* Custom subtle scrollbar */
@@ -44,11 +50,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: #b8bac4;
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    background: #a3a5af;
   }
 }
 
@@ -59,4 +65,4 @@
 /* Ensure mobile safe area support */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0.75rem);
-}
+}

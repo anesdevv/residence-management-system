@@ -43,19 +43,19 @@
 **Interfaces:**
 - Produces: live endpoint `https://resivo-mcp.anes4tlm.workers.dev/mcp`; `SERVER_NAME = "RÉSIVO Admin"` — consumed by Task 3 (settings constant), Task 5 (docs), Task 16 (verification).
 
-- [ ] **Step 1: Update the pinned strings.**
+- [x] **Step 1: Update the pinned strings.**
   - `wrangler.jsonc`: `"name": "resivo-mcp"`; `PUBLIC_URL` → `"https://resivo-mcp.anes4tlm.workers.dev"`; comment → `// RÉSIVO admin MCP server (read + admin-confirmed write tools).` Keep `OAUTH_KV` (same namespace id) and all other settings unchanged.
   - `mcp.ts`: `SERVER_NAME = "RÉSIVO Admin"`; `SERVER_INSTRUCTIONS` → `"Administrator tools for RÉSIVO, the university residence management system. You can read data freely; when the administrator has enabled changes you can also approve or reject registrations and room-change requests, manage rooms, and update maintenance tickets. Before any change, show the user exactly what will change and get their explicit confirmation. All data comes from the live Supabase project; every call is logged."`
   - `oauth.ts`: titles → `RÉSIVO MCP` / `Sign in — RÉSIVO MCP`; `<h1>` → `RÉSIVO Admin`; every "Read-only MCP server" subtitle → `Administrator MCP server for the university residence`.
   - `index.ts`: `resource_name: "RÉSIVO Admin"`; fix the stale read-only comment.
   - `package.json`: description → `RÉSIVO admin MCP server (6 read + 8 admin-confirmed write tools) on Cloudflare Workers`.
   - `verify_remote.py` + `README.md`: replace old name/URL in docstrings, examples, endpoint lines.
-- [ ] **Step 2: Update test pins; run the suite.** `cd mcp-worker; npm test; npm run typecheck` → Expected: 212 pass, tsc clean.
-- [ ] **Step 3: Deploy.** `cd mcp-worker; npx wrangler deploy` → Expected: success, worker `resivo-mcp`.
-- [ ] **Step 4: Replicate the worker secrets onto the new worker.** Follow `docs/mcp-handoff.md` ("Worker secrets"): temp JSON built from `mcp/.env` with keys `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `MCP_AUTH_TOKEN`; `npx wrangler secret bulk <tempfile>`; delete the temp file; **never print values**.
-- [ ] **Step 5: Acceptance against the new URL** (repo root): `& "mcp\.venv\Scripts\python.exe" "mcp-worker\scripts\verify_remote.py" https://resivo-mcp.anes4tlm.workers.dev` → Expected: `SUMMARY: 30 passed, 0 failed, 1 skipped` (this run also exercises the OAuth pages end-to-end).
-- [ ] **Step 6: Stale-wording check.** `git grep -n "Read-only\|Residence Tlemcen\|residence-mcp" -- mcp-worker/` → matches only where intended (none in source; `verify_remote.py` examples updated).
-- [ ] **Step 7: Commit** — `feat(worker): rename to RÉSIVO (resivo-mcp), set secrets, redeploy`
+- [x] **Step 2: Update test pins; run the suite.** `cd mcp-worker; npm test; npm run typecheck` → Expected: 212 pass, tsc clean.
+- [x] **Step 3: Deploy.** `cd mcp-worker; npx wrangler deploy` → Expected: success, worker `resivo-mcp`.
+- [x] **Step 4: Replicate the worker secrets onto the new worker.** Follow `docs/mcp-handoff.md` ("Worker secrets"): temp JSON built from `mcp/.env` with keys `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `MCP_AUTH_TOKEN`; `npx wrangler secret bulk <tempfile>`; delete the temp file; **never print values**.
+- [x] **Step 5: Acceptance against the new URL** (repo root): `& "mcp\.venv\Scripts\python.exe" "mcp-worker\scripts\verify_remote.py" https://resivo-mcp.anes4tlm.workers.dev` → Expected: `SUMMARY: 30 passed, 0 failed, 1 skipped` (this run also exercises the OAuth pages end-to-end).
+- [x] **Step 6: Stale-wording check.** `git grep -n "Read-only\|Residence Tlemcen\|residence-mcp" -- mcp-worker/` → matches only where intended (none in source; `verify_remote.py` examples updated).
+- [x] **Step 7: Commit** — `feat(worker): rename to RÉSIVO (resivo-mcp), set secrets, redeploy`
 
 ### Task 2: Local read-only MCP rename
 
@@ -65,11 +65,11 @@
 
 **Interfaces:** none new (name/instructions only).
 
-- [ ] **Step 1:** `server.py`: SERVER_NAME → `"RÉSIVO Admin"`; instructions → `"Read-only administrator tools for RÉSIVO, the university residence management system. ..."` (keep the remaining original sentences); docstring → `"""RÉSIVO admin MCP server (read-only)."""`
-- [ ] **Step 2:** update the remaining comments (`formatting.py`, `requirements.txt`, `.env.example`).
-- [ ] **Step 3: Parity check.** `git diff mcp/server.py` must not touch any tool-description block (the 6 read tool descriptions stay byte-identical to the worker); `git grep -n "Residence Tlemcen" -- mcp/` → no matches.
-- [ ] **Step 4: Run mcp tests** — `& "mcp\.venv\Scripts\python.exe" -m pytest mcp\tests` → 97 pass.
-- [ ] **Step 5: Commit** — `feat(mcp): rename local read-only server to RÉSIVO`
+- [x] **Step 1:** `server.py`: SERVER_NAME → `"RÉSIVO Admin"`; instructions → `"Read-only administrator tools for RÉSIVO, the university residence management system. ..."` (keep the remaining original sentences); docstring → `"""RÉSIVO admin MCP server (read-only)."""`
+- [x] **Step 2:** update the remaining comments (`formatting.py`, `requirements.txt`, `.env.example`).
+- [x] **Step 3: Parity check.** `git diff mcp/server.py` must not touch any tool-description block (the 6 read tool descriptions stay byte-identical to the worker); `git grep -n "Residence Tlemcen" -- mcp/` → no matches.
+- [x] **Step 4: Run mcp tests** — `& "mcp\.venv\Scripts\python.exe" -m pytest mcp\tests` → 97 pass.
+- [x] **Step 5: Commit** — `feat(mcp): rename local read-only server to RÉSIVO`
 
 ### Task 3: Desktop rename + logo + hosted URL
 
@@ -88,11 +88,11 @@ Pinned strings:
 - `residents.py`: `"Official record of all active students currently accommodated in the Cité Universitaire."`
 - `settings.py`: `MCP_HOSTED_URL = "https://resivo-mcp.anes4tlm.workers.dev/mcp"` + every other old-URL occurrence in the file.
 
-- [ ] **Step 1:** copy the logo; load it via `Path(__file__).parent / "assets" / "resivo_logo.png"`; place it in the main header brand area (≈28–36px tall, replacing the crest icon) and in the login card (≈80–96px, replacing the crest icon).
-- [ ] **Step 2:** apply the pinned strings + comments; `git grep -n "Residence Tlemcen" -- desktop/` → no matches.
-- [ ] **Step 3:** update/extend the smoke script (`C:\Users\Admin\AppData\Local\Temp\opencode\settings_smoke.py`): window title contains `RÉSIVO`; header label `RÉSIVO`; login window title; logo pixmap loads (not null); settings URL == new URL. Run it → all pass; screenshot to `C:\Users\Admin\AppData\Local\Temp\opencode\shots\`.
-- [ ] **Step 4:** `& "desktop\.venv\Scripts\python.exe" -m pytest desktop\tests` → pass.
-- [ ] **Step 5: Commit** — `feat(desktop): RÉSIVO branding, logo, and new hosted URL`
+- [x] **Step 1:** copy the logo; load it via `Path(__file__).parent / "assets" / "resivo_logo.png"`; place it in the main header brand area (≈28–36px tall, replacing the crest icon) and in the login card (≈80–96px, replacing the crest icon).
+- [x] **Step 2:** apply the pinned strings + comments; `git grep -n "Residence Tlemcen" -- desktop/` → no matches.
+- [x] **Step 3:** update/extend the smoke script (`C:\Users\Admin\AppData\Local\Temp\opencode\settings_smoke.py`): window title contains `RÉSIVO`; header label `RÉSIVO`; login window title; logo pixmap loads (not null); settings URL == new URL. Run it → all pass; screenshot to `C:\Users\Admin\AppData\Local\Temp\opencode\shots\`.
+- [x] **Step 4:** `& "desktop\.venv\Scripts\python.exe" -m pytest desktop\tests` → pass.
+- [x] **Step 5: Commit** — `feat(desktop): RÉSIVO branding, logo, and new hosted URL`
 
 ### Task 4: About section in Settings
 
@@ -102,18 +102,18 @@ Pinned strings:
 **Interfaces:**
 - Consumes: `desktop/app/ui/assets/resivo_logo.png` (Task 3).
 
-- [ ] **Step 1:** add the About card: logo (≈96px), heading `About RÉSIVO`, line `Created by SEBAI ANES`, clickable `GitHub: github.com/anesdevv` → `QDesktopServices.openUrl("https://github.com/anesdevv")`, clickable `Email: anes4tlm@gmail.com` → `QDesktopServices.openUrl("mailto:anes4tlm@gmail.com")`; styling matches existing section cards.
-- [ ] **Step 2:** extend the smoke: About labels present; link targets are the exact URLs above (assert strings; don't open anything).
-- [ ] **Step 3:** run smoke + pytest → pass; screenshot.
-- [ ] **Step 4: Commit** — `feat(desktop): About section with creator credit and links`
+- [x] **Step 1:** add the About card: logo (≈96px), heading `About RÉSIVO`, line `Created by SEBAI ANES`, clickable `GitHub: github.com/anesdevv` → `QDesktopServices.openUrl("https://github.com/anesdevv")`, clickable `Email: anes4tlm@gmail.com` → `QDesktopServices.openUrl("mailto:anes4tlm@gmail.com")`; styling matches existing section cards.
+- [x] **Step 2:** extend the smoke: About labels present; link targets are the exact URLs above (assert strings; don't open anything).
+- [x] **Step 3:** run smoke + pytest → pass; screenshot.
+- [x] **Step 4: Commit** — `feat(desktop): About section with creator credit and links`
 
 ### Task 5: Living docs rename
 
 **Files:** `README.md`, `PRODUCT.md`, `DESIGN.md`, `docs/mcp-handoff.md`, `docs/manual-test-desktop.md`, `docs/manual-test-mcp.md`, `docs/manual-test-web.md`
 
-- [ ] **Step 1:** apply the rename rules: `README.md` title → `# RÉSIVO — University Residence Management System (Tlemcen)`; endpoint lines → new URL; `PRODUCT.md`: institution = `Cité Universitaire` / DOU Tlemcen, product = RÉSIVO; `DESIGN.md`: name line + references; `mcp-handoff.md`: name/URL + fix the stale read-only line; manual-test files: new URL/name; `manual-test-mcp.md` gains the ChatGPT reconnection step (edit connector URL → Refresh → sign in).
-- [ ] **Step 2:** `git grep -in "residence tlemcen" -- README.md PRODUCT.md DESIGN.md docs/mcp-handoff.md docs/manual-test-*.md` → no matches.
-- [ ] **Step 3: Commit** — `docs: rename to RÉSIVO across living docs`
+- [x] **Step 1:** apply the rename rules: `README.md` title → `# RÉSIVO — University Residence Management System (Tlemcen)`; endpoint lines → new URL; `PRODUCT.md`: institution = `Cité Universitaire` / DOU Tlemcen, product = RÉSIVO; `DESIGN.md`: name line + references; `mcp-handoff.md`: name/URL + fix the stale read-only line; manual-test files: new URL/name; `manual-test-mcp.md` gains the ChatGPT reconnection step (edit connector URL → Refresh → sign in).
+- [x] **Step 2:** `git grep -in "residence tlemcen" -- README.md PRODUCT.md DESIGN.md docs/mcp-handoff.md docs/manual-test-*.md` → no matches.
+- [x] **Step 3: Commit** — `docs: rename to RÉSIVO across living docs`
 
 ### Task 6: Web design foundation + dashboard shell
 
@@ -125,11 +125,11 @@ Pinned strings:
 **Interfaces:**
 - Produces (consumed by Tasks 7–12): Tailwind v4 `@theme` tokens — `canvas #f8f9ff`, `surface #ffffff`, `navy #000b2b`, `navy-2 #0f214a`, `amber #fe932c`, `amber-ink #904d00`, `ink #0b1c30`, `muted #45464f`, `line #c5c6d0`; `DashboardShell.astro` (props: `title: string`, `activeNav: 'dashboard'|'maintenance'|'room-change'|'profile'`; default slot); `/resivo-logo.svg`; new favicon.
 
-- [ ] **Step 1:** add the token set to `global.css` (keep the already-loaded fonts; body background → `canvas`).
-- [ ] **Step 2:** assets: copy `docs/resivo_logo.svg` → `web/public/resivo-logo.svg`; `favicon.svg` → the RÉSIVO mark; regenerate `favicon.ico` from the PNG (use Pillow in `mcp\.venv`, install if missing).
-- [ ] **Step 3:** `Layout.astro` renders by `activeNav`: public (`home`) → restyled institutional banner + header (logo + RÉSIVO + nav) + footer; auth (`login`, `register`) → minimal chrome; dashboard (`dashboard`, `maintenance`, `room-change`, `profile`) → `DashboardShell`: sidebar (logo top, nav items with navy active pill, Sign out → `/logout` at the bottom) + slim top bar with the student's identity + content slot. Page usage (`<Layout title activeNav>`) stays unchanged. Keep the DOU institutional line visible in the shell/footer.
-- [ ] **Step 4:** browser check (dev server + login as the seeded student from `docs/manual-test-web.md`): shell renders on a dashboard page, nav works, logo shows, mobile width collapses per `docs/stitch-designs/screenshots/mobile_*.png`; no console errors. `cd web; npm run build` → passes.
-- [ ] **Step 5: Commit** — `feat(web): RÉSIVO design foundation and dashboard shell`
+- [x] **Step 1:** add the token set to `global.css` (keep the already-loaded fonts; body background → `canvas`).
+- [x] **Step 2:** assets: copy `docs/resivo_logo.svg` → `web/public/resivo-logo.svg`; `favicon.svg` → the RÉSIVO mark; regenerate `favicon.ico` from the PNG (use Pillow in `mcp\.venv`, install if missing).
+- [x] **Step 3:** `Layout.astro` renders by `activeNav`: public (`home`) → restyled institutional banner + header (logo + RÉSIVO + nav) + footer; auth (`login`, `register`) → minimal chrome; dashboard (`dashboard`, `maintenance`, `room-change`, `profile`) → `DashboardShell`: sidebar (logo top, nav items with navy active pill, Sign out → `/logout` at the bottom) + slim top bar with the student's identity + content slot. Page usage (`<Layout title activeNav>`) stays unchanged. Keep the DOU institutional line visible in the shell/footer.
+- [x] **Step 4:** browser check (dev server + login as the seeded student from `docs/manual-test-web.md`): shell renders on a dashboard page, nav works, logo shows, mobile width collapses per `docs/stitch-designs/screenshots/mobile_*.png`; no console errors. `cd web; npm run build` → passes.
+- [x] **Step 5: Commit** — `feat(web): RÉSIVO design foundation and dashboard shell`
 
 ### Task 7: Login + Register redesign
 

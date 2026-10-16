@@ -1,13 +1,14 @@
 ---
 import '../styles/global.css';
 import Icon from '../components/Icon.astro';
+import DashboardShell from '../components/DashboardShell.astro';
 
 interface Props {
   title?: string;
   activeNav?: 'dashboard' | 'maintenance' | 'room-change' | 'profile' | 'login' | 'register' | 'home';
 }
 
-const { title = 'Residence Tlemcen — Cité Universitaire', activeNav } = Astro.props;
+const { title = 'RÉSIVO — Cité Universitaire Tlemcen', activeNav } = Astro.props;
 const user = Astro.locals.user;
 const pathname = Astro.url.pathname;
 
@@ -20,260 +21,239 @@ const currentNav = activeNav || (
   pathname.startsWith('/login') ? 'login' :
   pathname.startsWith('/register') ? 'register' : 'home'
 );
+
+type DashboardNav = 'dashboard' | 'maintenance' | 'room-change' | 'profile';
+
+const dashNav = (['dashboard', 'maintenance', 'room-change', 'profile'] as const).includes(currentNav as DashboardNav)
+  ? (currentNav as DashboardNav)
+  : null;
+const isAuth = currentNav === 'login' || currentNav === 'register';
+const isLogin = currentNav === 'login';
+const isHome = currentNav === 'home';
+
+const sectionTitles: Record<DashboardNav, string> = {
+  dashboard: 'Dashboard',
+  maintenance: 'Maintenance',
+  'room-change': 'Room Change',
+  profile: 'Profile',
+};
 ---
+
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#000b2b" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
     <title>{title}</title>
   </head>
-  <body class="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans antialiased selection:bg-blue-600 selection:text-white">
-    <!-- Top Institutional Banner (Desktop only) -->
-    <div class="hidden md:block border-b border-slate-200/80 bg-slate-900 text-slate-300 text-xs py-1.5 px-4 sm:px-6">
-      <div class="mx-auto flex max-w-5xl items-center justify-between">
-        <div class="flex items-center gap-2 tracking-wide font-medium">
-          <span class="inline-block h-2 w-2 rounded-full bg-emerald-400"></span>
-          <span>DOU Tlemcen • Direction des Œuvres Universitaires</span>
-        </div>
-        <div class="flex items-center gap-4 text-slate-400">
-          <span>Desk: Sun–Thu 08:30–16:30</span>
-          <span>•</span>
-          <span class="text-slate-300 font-medium">24/7 Security Hotline: +213 (0) 43 21 00 00</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Navigation Header -->
-    <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-md shadow-xs">
-      <div class="mx-auto flex max-w-5xl items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3">
-        <!-- Brand / Insignia -->
-        <a href={user ? "/dashboard" : "/"} class="group flex items-center gap-3 transition">
-          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-xs group-hover:bg-blue-600 transition-colors">
-            <Icon name="crest" size={22} />
-          </div>
-          <div class="flex flex-col">
-            <span class="font-bold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors text-base leading-tight">
-              Residence Tlemcen
-            </span>
-            <span class="text-xs text-slate-500 font-medium">Cité Universitaire • Student Portal</span>
-          </div>
-        </a>
-
-        <!-- Desktop Navigation -->
-        <nav class="hidden md:flex items-center gap-1 text-sm font-medium">
-          {user ? (
-            <>
-              <a
-                href="/dashboard"
-                class={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${currentNav === 'dashboard' ? 'bg-slate-100 text-slate-900 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-              >
-                <Icon name="dashboard" size={17} class={currentNav === 'dashboard' ? 'text-blue-600' : 'text-slate-400'} />
-                <span>Dashboard</span>
-              </a>
-              <a
-                href="/dashboard/maintenance"
-                class={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${currentNav === 'maintenance' ? 'bg-slate-100 text-slate-900 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-              >
-                <Icon name="wrench" size={17} class={currentNav === 'maintenance' ? 'text-blue-600' : 'text-slate-400'} />
-                <span>Maintenance</span>
-              </a>
-              <a
-                href="/dashboard/room-change"
-                class={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${currentNav === 'room-change' ? 'bg-slate-100 text-slate-900 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-              >
-                <Icon name="swap" size={17} class={currentNav === 'room-change' ? 'text-blue-600' : 'text-slate-400'} />
-                <span>Room Change</span>
-              </a>
-              <a
-                href="/dashboard/profile"
-                class={`flex items-center gap-2 px-3 py-2 rounded-lg transition ${currentNav === 'profile' ? 'bg-slate-100 text-slate-900 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-              >
-                <Icon name="user" size={17} class={currentNav === 'profile' ? 'text-blue-600' : 'text-slate-400'} />
-                <span>Profile</span>
-              </a>
-
-              <div class="h-4 w-[1px] bg-slate-200 mx-2"></div>
-
-              <a
-                href="/logout"
-                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-red-700 hover:bg-red-50 border border-slate-200 transition"
-                title="Log out of student portal"
-              >
-                <Icon name="logout" size={14} />
-                <span>Log out</span>
-              </a>
-            </>
-          ) : (
-            <>
-              <a
-                href="/"
-                class={`px-3 py-2 rounded-lg transition ${currentNav === 'home' ? 'text-slate-900 font-semibold bg-slate-100' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-              >
-                Home
-              </a>
-              <a
-                href="/login"
-                class={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition ${currentNav === 'login' ? 'text-slate-900 font-semibold bg-slate-100' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-              >
-                <Icon name="login" size={16} />
-                <span>Sign in</span>
-              </a>
-              <a
-                href="/register"
-                class="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-white font-medium hover:bg-blue-600 shadow-xs transition"
-              >
-                <Icon name="user" size={16} />
-                <span>Register as Resident</span>
-              </a>
-            </>
-          )}
-        </nav>
-
-        <!-- Mobile Header Quick Controls -->
-        <div class="flex items-center gap-2 md:hidden">
-          {user ? (
-            <div class="flex items-center gap-2">
-              <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">
-                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Active</span>
+  <body class="flex min-h-screen flex-col bg-canvas font-sans text-ink antialiased">
+    {dashNav ? (
+      <DashboardShell title={sectionTitles[dashNav]} activeNav={dashNav}>
+        <slot />
+      </DashboardShell>
+    ) : isAuth ? (
+      <>
+        <!-- Minimal auth chrome -->
+        <header class="border-b border-line/60 bg-surface/85 backdrop-blur-xl">
+          <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+            <a href="/" class="flex items-center gap-3">
+              <img src="/favicon.svg" alt="" class="h-9 w-9 shrink-0 object-contain" />
+              <span class="flex flex-col">
+                <span class="font-display text-base font-extrabold leading-tight tracking-tight text-navy">RÉSIVO</span>
+                <span class="text-[11px] font-medium text-muted">Cité Universitaire • Student Portal</span>
               </span>
-              <a
-                href="/logout"
-                class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:text-red-600 hover:bg-red-50 transition"
-                aria-label="Log out"
-              >
-                <Icon name="logout" size={16} />
-              </a>
+            </a>
+            <span class="hidden items-center gap-2 text-xs font-medium text-muted sm:flex">
+              <span class="inline-block h-1.5 w-1.5 rounded-full bg-amber"></span>
+              <span>Student Portal</span>
+            </span>
+          </div>
+        </header>
+
+        <main class="w-full flex-1">
+          <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+            <slot />
+          </div>
+        </main>
+
+        <footer class="border-t border-line/60 bg-surface">
+          <p class="mx-auto max-w-7xl px-4 py-4 text-center text-[11px] text-muted sm:px-6">
+            Direction des Œuvres Universitaires (DOU) • Cité Universitaire Tlemcen
+          </p>
+        </footer>
+      </>
+    ) : (
+      <>
+        <!-- Institutional banner (desktop) -->
+        <div class="hidden border-b border-white/10 bg-navy text-[11px] text-white/70 md:block">
+          <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 sm:px-6">
+            <div class="flex items-center gap-2 font-medium tracking-wide">
+              <span class="inline-block h-1.5 w-1.5 rounded-full bg-amber"></span>
+              <span>DOU Tlemcen • Direction des Œuvres Universitaires</span>
             </div>
-          ) : (
-            <div class="flex items-center gap-2 text-xs font-semibold">
-              <a href="/login" class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 min-h-[36px] flex items-center">
-                Sign in
-              </a>
-              <a href="/register" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white min-h-[36px] flex items-center">
-                Register
-              </a>
+            <div class="flex items-center gap-4">
+              <span>Desk: Sun–Thu 08:30–16:30</span>
+              <span aria-hidden="true">•</span>
+              <span class="font-medium text-white/85">24/7 Security Hotline: +213 (0) 43 21 00 00</span>
             </div>
-          )}
+          </div>
         </div>
-      </div>
-    </header>
 
-    <!-- Main Content Slot -->
-    <main class="flex-1 mx-auto w-full max-w-5xl px-4 sm:px-6 py-6 sm:py-8 pb-24 md:pb-12">
-      <slot />
-    </main>
+        <!-- Public header -->
+        <header class="sticky top-0 z-40 border-b border-line/60 bg-surface/90 backdrop-blur-md">
+          <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+            <a href={user ? '/dashboard' : '/'} class="group flex items-center gap-3">
+              <img src="/favicon.svg" alt="" class="h-10 w-10 shrink-0 object-contain" />
+              <span class="flex flex-col">
+                <span class="font-display text-base font-extrabold leading-tight tracking-tight text-navy">RÉSIVO</span>
+                <span class="text-[11px] font-medium text-muted">Cité Universitaire • Student Portal</span>
+              </span>
+            </a>
 
-    <!-- Fixed Mobile Bottom Navigation Bar (Logged in residents) -->
-    {user && (
-      <nav class="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/95 backdrop-blur-xl border-t border-slate-200/90 shadow-[0_-2px_12px_rgba(15,23,42,0.06)] pb-safe">
-        <div class="grid grid-cols-4 h-16 max-w-lg mx-auto px-2">
-          <a
-            href="/dashboard"
-            class={`flex flex-col items-center justify-center min-h-[48px] gap-1 transition ${currentNav === 'dashboard' ? 'text-blue-600 font-semibold' : 'text-slate-500 hover:text-slate-800'}`}
-          >
-            <div class={`p-1 rounded-lg ${currentNav === 'dashboard' ? 'bg-blue-50 text-blue-600' : ''}`}>
-              <Icon name="dashboard" size={20} />
+            <!-- Desktop navigation -->
+            <nav class="hidden items-center gap-1 text-sm font-medium md:flex">
+              {user ? (
+                <>
+                  <a
+                    href="/dashboard"
+                    class="flex items-center gap-2 rounded-lg px-3 py-2 text-muted transition-colors hover:bg-canvas hover:text-ink"
+                  >
+                    <Icon name="dashboard" size={17} />
+                    <span>Dashboard</span>
+                  </a>
+                  <a
+                    href="/logout"
+                    class="flex items-center gap-1.5 rounded-lg border border-line px-3.5 py-2 text-xs font-semibold text-muted transition-colors hover:border-amber/60 hover:text-amber-ink"
+                  >
+                    <Icon name="logout" size={14} />
+                    <span>Sign out</span>
+                  </a>
+                </>
+              ) : (
+                <>
+                  <a
+                    href="/"
+                    class={`rounded-lg px-3 py-2 transition-colors ${isHome ? 'bg-canvas font-semibold text-navy' : 'text-muted hover:bg-canvas hover:text-ink'}`}
+                  >
+                    Home
+                  </a>
+                  <a
+                    href="/login"
+                    class={`flex items-center gap-1.5 rounded-lg px-3 py-2 transition-colors ${isLogin ? 'bg-canvas font-semibold text-navy' : 'text-muted hover:bg-canvas hover:text-ink'}`}
+                  >
+                    <Icon name="login" size={16} />
+                    <span>Sign in</span>
+                  </a>
+                  <a
+                    href="/register"
+                    class="flex items-center gap-1.5 rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-navy-2"
+                  >
+                    <Icon name="user" size={16} />
+                    <span>Register as Resident</span>
+                  </a>
+                </>
+              )}
+            </nav>
+
+            <!-- Mobile quick controls -->
+            <div class="flex items-center gap-2 md:hidden">
+              {user ? (
+                <div class="flex items-center gap-2">
+                  <a
+                    href="/dashboard"
+                    class="flex min-h-[36px] items-center rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-muted"
+                  >
+                    Dashboard
+                  </a>
+                  <a
+                    href="/logout"
+                    class="flex h-9 w-9 items-center justify-center rounded-lg border border-line text-muted transition-colors hover:text-amber-ink"
+                    aria-label="Sign out"
+                  >
+                    <Icon name="logout" size={16} />
+                  </a>
+                </div>
+              ) : (
+                <div class="flex items-center gap-2 text-xs font-semibold">
+                  <a href="/login" class="flex min-h-[36px] items-center rounded-lg border border-line px-3 py-1.5 text-muted">
+                    Sign in
+                  </a>
+                  <a href="/register" class="flex min-h-[36px] items-center rounded-lg bg-navy px-3 py-1.5 text-white">
+                    Register
+                  </a>
+                </div>
+              )}
             </div>
-            <span class="text-[11px] leading-none">Dashboard</span>
-          </a>
+          </div>
+        </header>
 
-          <a
-            href="/dashboard/maintenance"
-            class={`flex flex-col items-center justify-center min-h-[48px] gap-1 transition ${currentNav === 'maintenance' ? 'text-blue-600 font-semibold' : 'text-slate-500 hover:text-slate-800'}`}
-          >
-            <div class={`p-1 rounded-lg ${currentNav === 'maintenance' ? 'bg-blue-50 text-blue-600' : ''}`}>
-              <Icon name="wrench" size={20} />
-            </div>
-            <span class="text-[11px] leading-none">Tickets</span>
-          </a>
+        <!-- Public content slot -->
+        <main class="w-full flex-1">
+          <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+            <slot />
+          </div>
+        </main>
 
-          <a
-            href="/dashboard/room-change"
-            class={`flex flex-col items-center justify-center min-h-[48px] gap-1 transition ${currentNav === 'room-change' ? 'text-blue-600 font-semibold' : 'text-slate-500 hover:text-slate-800'}`}
-          >
-            <div class={`p-1 rounded-lg ${currentNav === 'room-change' ? 'bg-blue-50 text-blue-600' : ''}`}>
-              <Icon name="swap" size={20} />
-            </div>
-            <span class="text-[11px] leading-none">Room Swap</span>
-          </a>
-
-          <a
-            href="/dashboard/profile"
-            class={`flex flex-col items-center justify-center min-h-[48px] gap-1 transition ${currentNav === 'profile' ? 'text-blue-600 font-semibold' : 'text-slate-500 hover:text-slate-800'}`}
-          >
-            <div class={`p-1 rounded-lg ${currentNav === 'profile' ? 'bg-blue-50 text-blue-600' : ''}`}>
-              <Icon name="user" size={20} />
-            </div>
-            <span class="text-[11px] leading-none">Profile</span>
-          </a>
-        </div>
-      </nav>
-    )}
-
-    <!-- Global Institutional Footer -->
-    <footer class="mt-auto border-t border-slate-200 bg-white text-slate-600 text-sm">
-      <div class="mx-auto max-w-5xl px-4 py-10">
-        <div class="grid grid-cols-1 gap-8 md:grid-cols-4">
-          <div class="space-y-3 md:col-span-2">
-            <div class="flex items-center gap-2">
-              <div class="flex h-7 w-7 items-center justify-center rounded bg-slate-900 text-white">
-                <Icon name="crest" size={16} />
+        <!-- Institutional footer -->
+        <footer class="border-t border-line/70 bg-surface text-sm text-muted">
+          <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+            <div class="grid grid-cols-1 gap-8 md:grid-cols-4">
+              <div class="space-y-3 md:col-span-2">
+                <img src="/resivo-logo.svg" alt="RÉSIVO" class="h-20 w-20" width="80" height="80" loading="lazy" />
+                <p class="max-w-md text-xs leading-relaxed text-muted">
+                  Official university accommodation system for enrolled students. Providing secure housing, streamlined room allocations, and 24/7 facility maintenance services in Tlemcen.
+                </p>
+                <div class="pt-1 text-xs text-muted/80">
+                  Direction des Œuvres Universitaires (DOU) • Ministère de l'Enseignement Supérieur et de la Recherche Scientifique
+                </div>
               </div>
-              <span class="font-bold text-slate-900 text-base">Cité Universitaire — Residence Tlemcen</span>
+
+              <div>
+                <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-navy">Resident Services</h3>
+                <ul class="space-y-2 text-xs">
+                  <li><a href="/register" class="transition-colors hover:text-amber-ink">Online Registration</a></li>
+                  <li><a href="/login" class="transition-colors hover:text-amber-ink">Application Status Check</a></li>
+                  <li><a href="/dashboard/maintenance" class="transition-colors hover:text-amber-ink">Maintenance &amp; Repairs</a></li>
+                  <li><a href="/dashboard/room-change" class="transition-colors hover:text-amber-ink">Room Transfer Requests</a></li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-navy">Department Contact</h3>
+                <ul class="space-y-2 text-xs text-muted">
+                  <li class="flex items-center gap-2">
+                    <Icon name="building" size={14} class="shrink-0 text-muted/70" />
+                    <span>Housing Bureau, Administration Bloc A</span>
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <Icon name="phone" size={14} class="shrink-0 text-muted/70" />
+                    <span>+213 (0) 43 21 00 00</span>
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <Icon name="mail" size={14} class="shrink-0 text-muted/70" />
+                    <span>residence.tlemcen@dou-univ.dz</span>
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <Icon name="clock" size={14} class="shrink-0 text-muted/70" />
+                    <span>Emergency Desk: Open 24/7</span>
+                  </li>
+                </ul>
+              </div>
             </div>
-            <p class="text-xs text-slate-500 leading-relaxed max-w-md">
-              Official university accommodation system for enrolled students. Providing secure housing, streamlined room allocations, and 24/7 facility maintenance services in Tlemcen.
-            </p>
-            <div class="pt-2 text-xs text-slate-400">
-              Direction des Œuvres Universitaires (DOU) • Ministère de l'Enseignement Supérieur et de la Recherche Scientifique
+
+            <div class="mt-8 flex flex-col items-center justify-between gap-3 border-t border-line/50 pt-6 text-xs text-muted sm:flex-row">
+              <p>© {new Date().getFullYear()} Cité Universitaire Tlemcen. All rights reserved.</p>
+              <p>RÉSIVO — Student Residence Management Platform</p>
             </div>
           </div>
-
-          <div>
-            <h3 class="font-semibold text-slate-900 text-xs uppercase tracking-wider mb-3">Resident Services</h3>
-            <ul class="space-y-2 text-xs">
-              <li><a href="/register" class="hover:text-blue-600 transition">Online Registration</a></li>
-              <li><a href="/login" class="hover:text-blue-600 transition">Application Status Check</a></li>
-              <li><a href="/dashboard/maintenance" class="hover:text-blue-600 transition">Maintenance & Repairs</a></li>
-              <li><a href="/dashboard/room-change" class="hover:text-blue-600 transition">Room Transfer Requests</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 class="font-semibold text-slate-900 text-xs uppercase tracking-wider mb-3">Department Contact</h3>
-            <ul class="space-y-2 text-xs text-slate-500">
-              <li class="flex items-center gap-2">
-                <Icon name="building" size={14} class="text-slate-400 shrink-0" />
-                <span>Housing Bureau, Administration Bloc A</span>
-              </li>
-              <li class="flex items-center gap-2">
-                <Icon name="phone" size={14} class="text-slate-400 shrink-0" />
-                <span>+213 (0) 43 21 00 00</span>
-              </li>
-              <li class="flex items-center gap-2">
-                <Icon name="mail" size={14} class="text-slate-400 shrink-0" />
-                <span>residence.tlemcen@dou-univ.dz</span>
-              </li>
-              <li class="flex items-center gap-2">
-                <Icon name="clock" size={14} class="text-slate-400 shrink-0" />
-                <span>Emergency Desk: Open 24/7</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="mt-8 border-t border-slate-100 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-3">
-          <p>© {new Date().getFullYear()} Cité Universitaire Tlemcen. All rights reserved.</p>
-          <p>Official Student Residence Management Platform</p>
-        </div>
-      </div>
-    </footer>
+        </footer>
+      </>
+    )}
   </body>
 </html>
