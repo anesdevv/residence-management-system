@@ -1,5 +1,5 @@
 """
-Residence Tlemcen — Modern Obsidian InfoCard Dialogs
+RÉSIVO — Modern Obsidian InfoCard Dialogs
 High-contrast modal dialogs for Student Resident profiles and Room Occupancy inspection.
 Impeccable craft: clean layout hierarchy, zero nested pill artifacts, publication-grade dark obsidian styling.
 """

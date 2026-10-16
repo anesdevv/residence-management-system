@@ -1,17 +1,20 @@
+from pathlib import Path
+
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLineEdit,
     QPushButton, QLabel, QFrame,
 )
 from ..client import make_client, sign_in, current_role
-from .icons import get_pixmap, get_icon
+from .icons import get_icon
 from .theme import DESKTOP_STYLESHEET, apply_button_style
 
 
 class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Staff Login — Cité Universitaire Tlemcen")
+        self.setWindowTitle("Staff Login — RÉSIVO")
         self.resize(440, 520)
         self.setStyleSheet(DESKTOP_STYLESHEET)
         self.client = make_client()
@@ -27,12 +30,14 @@ class LoginWindow(QWidget):
         card_layout.setSpacing(16)
         card_layout.setContentsMargins(28, 28, 28, 28)
 
-        # Crest & Header
-        crest_lbl = QLabel()
-        crest_lbl.setPixmap(get_pixmap("crest", size=42, color="#38bdf8"))
-        crest_lbl.setAlignment(Qt.AlignCenter)
+        # Brand logo & header
+        logo_lbl = QLabel()
+        logo_lbl.setObjectName("brandLogo")
+        logo_pixmap = QPixmap(str(Path(__file__).parent / "assets" / "resivo_logo.png"))
+        logo_lbl.setPixmap(logo_pixmap.scaled(88, 88, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        logo_lbl.setAlignment(Qt.AlignCenter)
 
-        title_lbl = QLabel("Residence Tlemcen")
+        title_lbl = QLabel("RÉSIVO")
         title_lbl.setStyleSheet("font-size: 20px; font-weight: 800; color: #f8fafc; letter-spacing: 0.4px; margin-top: 6px;")
         title_lbl.setAlignment(Qt.AlignCenter)
 
@@ -40,7 +45,7 @@ class LoginWindow(QWidget):
         subtitle_lbl.setStyleSheet("font-size: 12px; font-weight: 500; color: #94a3b8; margin-bottom: 8px;")
         subtitle_lbl.setAlignment(Qt.AlignCenter)
 
-        card_layout.addWidget(crest_lbl)
+        card_layout.addWidget(logo_lbl)
         card_layout.addWidget(title_lbl)
         card_layout.addWidget(subtitle_lbl)
 

@@ -14,7 +14,7 @@ from ..theme import apply_button_style, get_badge_qss
 MCP_HEALTH_URL = "http://127.0.0.1:8000/health"
 MCP_HEALTH_TIMEOUT_S = 2.0
 MCP_HEALTH_INTERVAL_MS = 5000
-MCP_HOSTED_URL = "https://residence-mcp.anes4tlm.workers.dev/mcp"
+MCP_HOSTED_URL = "https://resivo-mcp.anes4tlm.workers.dev/mcp"
 
 MUTED_QSS = "font-size: 11px; color: #64748b;"
 STEP_TITLE_QSS = "font-size: 13px; font-weight: 600; color: #e2e8f0;"

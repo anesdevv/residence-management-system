@@ -26,7 +26,7 @@ class ResidentsPage(QWidget):
         header_vbox = QVBoxLayout()
         title_lbl = QLabel("Resident Students Directory")
         title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc;")
-        sub_lbl = QLabel("Official record of all active students currently accommodated in Residence Tlemcen.")
+        sub_lbl = QLabel("Official record of all active students currently accommodated in the Cité Universitaire.")
         sub_lbl.setStyleSheet("font-size: 12px; color: #94a3b8;")
         header_vbox.addWidget(title_lbl)
         header_vbox.addWidget(sub_lbl)

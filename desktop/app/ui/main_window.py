@@ -1,11 +1,14 @@
+from pathlib import Path
+
 from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QListWidget, QListWidgetItem,
     QStackedWidget, QStatusBar, QLabel,
 )
 from ..client import current_role
 from .live_sync import LiveSyncWorker
-from .icons import get_icon, get_pixmap
+from .icons import get_icon
 from .theme import DESKTOP_STYLESHEET
 from .pages.overview import OverviewPage
 from .pages.pending import PendingPage
@@ -23,7 +26,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.client = client
         self.role = current_role(client)
-        self.setWindowTitle("Residence Staff Console — Tlemcen [LIVE MODE]")
+        self.setWindowTitle("RÉSIVO Staff Console [LIVE MODE]")
         self.resize(1180, 760)
         self.setStyleSheet(DESKTOP_STYLESHEET)
 
@@ -46,16 +49,18 @@ class MainWindow(QMainWindow):
         header_layout.setContentsMargins(18, 12, 18, 12)
         header_layout.setSpacing(14)
 
-        # Brand / Institutional Crest
-        crest_label = QLabel()
-        crest_label.setPixmap(get_pixmap("crest", size=24, color="#38bdf8"))
-        header_layout.addWidget(crest_label)
+        # Brand logo
+        logo_label = QLabel()
+        logo_label.setObjectName("brandLogo")
+        logo_pixmap = QPixmap(str(Path(__file__).parent / "assets" / "resivo_logo.png"))
+        logo_label.setPixmap(logo_pixmap.scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        header_layout.addWidget(logo_label)
 
         title_container = QVBoxLayout()
         title_container.setSpacing(1)
-        title_lbl = QLabel("Cité Universitaire — Residence Tlemcen")
+        title_lbl = QLabel("RÉSIVO")
         title_lbl.setStyleSheet("color: #f8fafc; font-weight: 800; font-size: 14px; letter-spacing: 0.3px;")
-        sub_lbl = QLabel("Dormitory Operations & Facility Management Console")
+        sub_lbl = QLabel("Cité Universitaire • Dormitory Operations & Facility Management Console")
         sub_lbl.setStyleSheet("color: #94a3b8; font-size: 11px;")
         title_container.addWidget(title_lbl)
         title_container.addWidget(sub_lbl)

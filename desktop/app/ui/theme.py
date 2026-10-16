@@ -1,5 +1,5 @@
 """
-Residence Tlemcen — Modern High-Contrast PySide6 Dark QSS Theme
+RÉSIVO — Modern High-Contrast PySide6 Dark QSS Theme
 Deep obsidian canvas, electric indigo/cyan accents, glassmorphic card surfaces,
 glowing badges, and high-contrast typography.
 """
