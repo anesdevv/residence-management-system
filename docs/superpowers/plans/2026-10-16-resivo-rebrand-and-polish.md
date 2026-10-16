@@ -162,9 +162,9 @@ Pinned strings:
 
 **Files:** `web/src/pages/dashboard/maintenance.astro`
 
-- [ ] **Step 1:** title → `Maintenance Requests — RÉSIVO`; request cards with photo thumbnails (existing signed URLs), status badges; restyle the upload form; keep submit + validation + empty/error states.
-- [ ] **Step 2:** browser check incl. one submit with a photo (a test row is acceptable); no console errors.
-- [ ] **Step 3: Commit** — `feat(web): redesign maintenance page`
+- [x] **Step 1:** title → `Maintenance Requests — RÉSIVO`; request cards with photo thumbnails (existing signed URLs), status badges; restyle the upload form; keep submit + validation + empty/error states.
+- [x] **Step 2:** browser check incl. one submit with a photo (a test row is acceptable); no console errors.
+- [x] **Step 3: Commit** — `feat(web): redesign maintenance page`
 
 ### Task 11: Room-change redesign
 
