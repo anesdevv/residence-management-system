@@ -236,7 +236,7 @@ class SettingsPage(QWidget):
             "Open chatgpt.com/plugins, click “+”, then “Add custom MCP server”. Custom MCP servers "
             "need a ChatGPT plan that supports them (Plus/Pro).",
         ))
-        hoc.addLayout(self._numbered_line("2.", "Give it a name and description — anything you like, for example “Residence Admin”."))
+        hoc.addLayout(self._numbered_line("2.", "Give it a name and description — anything you like, for example “RÉSIVO Admin”."))
         hoc.addLayout(self._numbered_line("3.", "Connection — paste the server URL below (it already ends in /mcp)."))
         hoc.addLayout(self._static_url_row(MCP_HOSTED_URL))
         hoc.addLayout(self._numbered_line("4.", "A login page opens once — paste the token below, then click Allow."))
