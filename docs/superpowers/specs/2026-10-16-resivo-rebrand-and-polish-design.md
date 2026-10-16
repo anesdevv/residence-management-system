@@ -1,7 +1,7 @@
 # RÉSIVO — rebrand, web redesign, desktop polish (design)
 
 Date: 2026-10-16
-Status: Draft — awaiting the admin's approval (brainstorming output; builder-checked 2026-10-16 — both findings resolved inside)
+Status: Approved by the admin 2026-10-16 (log-out button added at approval); builder-checked 2026-10-16 — both findings resolved inside
 Related: `docs/stitch-designs/` (design reference), `docs/superpowers/specs/2026-10-15-mcp-write-tools-design.md` (previous project), `docs/mcp-handoff.md`
 
 ## Why
@@ -12,7 +12,7 @@ The system gets a real identity — **RÉSIVO** — and a presentation-ready loo
 
 - Rename the product to RÉSIVO everywhere it names itself: desktop console, web portal, the hosted ChatGPT connector (worker renamed `resivo-mcp`), the local read-only MCP server, and the living docs. The provided logo (SVG + transparent PNG) replaces text branding.
 - Redesign the web portal to the Stitch look and layout (`docs/stitch-designs`), keeping every real feature and dropping mock-only ones.
-- Desktop console: maintenance photo preview becomes a proper viewer; the window becomes flexible (resizes/maximizes cleanly); Settings gains an About section (creator SEBAI ANES, GitHub, email).
+- Desktop console: maintenance photo preview becomes a proper viewer; the window becomes flexible (resizes/maximizes cleanly); a log-out button returns to the login screen; Settings gains an About section (creator SEBAI ANES, GitHub, email).
 - Everything keeps working: all existing tests green, the ChatGPT connector functional on the new URL after the admin's one-time URL edit, acceptance script green.
 
 ## Non-goals
@@ -51,8 +51,8 @@ The system gets a real identity — **RÉSIVO** — and a presentation-ready loo
 1. Rename to RÉSIVO on: desktop, web, ChatGPT connector (worker → `resivo-mcp`, new URL), local read-only MCP, living docs. Logo replaces text branding. Keep-list (institutional context): DOU Tlemcen / Cité Universitaire lines, `univ-tlemcen.dz` and `@students.residence.local` emails, seeded staff test accounts.
 2. The admin edits the ChatGPT connector URL once after the redeploy (and signs in again if asked); no other setup changes.
 3. Web redesign: Stitch look + layout; real features only; mock-only features removed; landing page (no mockup exists) restyled to match; separate login/register routes kept (styled like the mock's split screen).
-4. Desktop: photo preview upgrade (click to open a full-size viewer), flexible window, About section in Settings (SEBAI ANES; github.com/anesdevv; anes4tlm@gmail.com).
-5. Order: 1) rename + logo + About, 2) web redesign, 3) desktop photo preview + flexible window.
+4. Desktop: photo preview upgrade (click to open a full-size viewer), flexible window, log-out button (bottom of the sidebar, mirroring the web design's Sign out — signs out and returns to the login screen), About section in Settings (SEBAI ANES; github.com/anesdevv; anes4tlm@gmail.com).
+5. Order: 1) rename + logo + About, 2) web redesign, 3) desktop photo preview + flexible window + log-out button.
 
 ## The how
 
@@ -85,6 +85,7 @@ Rule: "RÉSIVO" (always with the É) replaces the product name wherever it names
 - **C1. Maintenance photo preview**: keep the inline thumbnail in the Ticket Inspector; make it clickable → a full-size viewer dialog (image scaled to fit, zoom controls, close), reusing the existing dialog styling (`infocard.py` patterns). Handle loading / no-photo / failure states explicitly. Extend the smoke test to cover it.
 - **C2. Flexible window**: sensible minimum main-window size; fixed-width panels become stretch/min-max so they scale; splitters proportional; tables fill space; login window resizes gracefully. Check at small / default / maximized sizes (smoke screenshots).
 - **C3. About in Settings**: new section at the bottom of the Settings page — RÉSIVO logo, "Created by SEBAI ANES", GitHub link (clickable, opens the browser) to `https://github.com/anesdevv`, email `anes4tlm@gmail.com` (mailto link).
+- **C4. Log out**: a "Sign out" button at the bottom of the sidebar (mirroring the web shell) — signs out the Supabase client and returns to the login window; background workers (live sync, MCP health) stop cleanly on the way out. The login window's existing behavior is unchanged.
 
 ### D. Verification
 
