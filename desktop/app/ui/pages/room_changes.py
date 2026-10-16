@@ -95,8 +95,16 @@ class RoomChangesPage(QWidget):
         apply_button_style(self.reject_btn, "danger")
         self.reject_btn.clicked.connect(self.on_reject)
 
+        self.delete_btn = QPushButton("Delete Transfer Request")
+        self.delete_btn.setFixedHeight(40)
+        self.delete_btn.setIcon(get_icon("trash", size=16, color="#ffffff"))
+        apply_button_style(self.delete_btn, "danger")
+        self.delete_btn.clicked.connect(self.on_delete)
+        self.delete_btn.setEnabled(False)
+
         dc_layout.addWidget(self.approve_btn)
         dc_layout.addWidget(self.reject_btn)
+        dc_layout.addWidget(self.delete_btn)
 
         splitter.addWidget(detail_card)
         splitter.setStretchFactor(0, 3)
@@ -134,7 +142,9 @@ class RoomChangesPage(QWidget):
 
             name_item = QTableWidgetItem(f"{st.get('first_name', '')} {st.get('last_name', '')}")
             status_item = QTableWidgetItem(status_text)
-            reason_item = QTableWidgetItem(str(r.get("reason", ""))[:45] + "...")
+            reason = str(r.get("reason", ""))
+            reason_disp = (reason[:42] + "...") if len(reason) > 45 else reason
+            reason_item = QTableWidgetItem(reason_disp)
             date_item = QTableWidgetItem(str(r.get("created_at", ""))[:10])
 
             if status == "approved":
@@ -173,7 +183,14 @@ class RoomChangesPage(QWidget):
         r = self.selected()
         if not r:
             self.detail_text.clear()
+            self.approve_btn.setEnabled(False)
+            self.reject_btn.setEnabled(False)
+            self.delete_btn.setEnabled(False)
             return
+
+        self.approve_btn.setEnabled(True)
+        self.reject_btn.setEnabled(True)
+        self.delete_btn.setEnabled(True)
         st = r.get("students") or {}
         pref_id = r.get("preferred_room_id")
         pref_info = "No specific room requested"
@@ -266,3 +283,24 @@ class RoomChangesPage(QWidget):
             self.reload()
         except Exception:
             pass
+
+    def on_delete(self):
+        r = self.selected()
+        if not r:
+            return
+        ans = QMessageBox.question(
+            self,
+            "Confirm Deletion",
+            "Are you sure you want to permanently delete this room change request?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if ans != QMessageBox.Yes:
+            return
+        try:
+            self.client.table("room_change_requests").delete().eq("id", r["id"]).execute()
+            QMessageBox.information(self, "Deleted", "Room change request deleted successfully.")
+            self.reload()
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.critical(self, "Error", f"Failed to delete request: {exc}")
+

@@ -1,0 +1,41 @@
+card_id,first_name,last_name,birth_date,gender,university,faculty
+202437010001,Amine,Benali,2003-04-12,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Technologie
+202437010002,Yasmine,Mansouri,2004-09-25,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Médecine
+202437010003,Mohamed,Belkacem,2002-11-15,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences
+202437010004,Sarah,Saidi,2003-01-30,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences Économiques
+202437010005,Karim,Boudiaf,2001-07-18,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Droit
+202437010006,Ines,Brahimi,2004-03-22,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Lettres et des Langues
+202437010007,Youcef,Cherif,2002-05-14,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences de la Nature et de la Vie
+202437010008,Nour,Dahmani,2005-02-19,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Médecine
+202437010009,Walid,Khelifi,2003-08-08,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Technologie
+202437010010,Meriem,Meziane,2004-12-03,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences
+202437010011,Sofiane,Slimani,2002-10-29,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences Économiques
+202437010012,Fatima,Zahraoui,2003-06-17,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Lettres et des Langues
+202437010013,Mehdi,Haddad,2001-12-05,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Droit
+202437010014,Chaima,Boussaid,2004-08-11,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences de la Nature et de la Vie
+202437010015,Hamza,Mebarki,2002-03-09,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Technologie
+202437010016,Lina,Boukhezar,2005-01-21,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Médecine
+202437010017,Rayan,Bennaceur,2003-11-04,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences
+202437010018,Rania,Tebbal,2004-05-16,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences Économiques
+202437010019,Anis,Benhammou,2002-09-01,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Technologie
+202437010020,Amina,Ghezzal,2003-07-27,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Droit
+202437010021,Oussama,Belhadj,2001-04-15,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences de la Nature et de la Vie
+202437010022,Kenza,Moussaoui,2004-10-10,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Lettres et des Langues
+202437010023,Adel,Larbi,2002-02-28,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences
+202437010024,Manel,Chaib,2005-06-14,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Médecine
+202437010025,Nassim,Hamidi,2003-12-20,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Technologie
+202437010026,Ikram,Djellouli,2004-04-05,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences Économiques
+202437010027,Billel,Allam,2001-08-30,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Droit
+202437010028,Sabrina,Ferhani,2003-03-12,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences de la Nature et de la Vie
+202437010029,Zakaria,Mokhtari,2002-06-23,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Technologie
+202437010030,Hana,Benslimane,2005-09-18,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Médecine
+202437010031,Tarek,Zerrouki,2003-05-07,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences
+202437010032,Nesrine,Abdelkader,2004-11-24,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Lettres et des Langues
+202437010033,Fares,Touati,2001-10-19,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences Économiques
+202437010034,Imene,Kadri,2003-02-02,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Droit
+202437010035,Houssam,Guendouz,2002-08-14,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences de la Nature et de la Vie
+202437010036,Wassila,Amrani,2004-01-15,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Technologie
+202437010037,Ayoub,Senoussi,2005-07-09,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Médecine
+202437010038,Soumia,Berrached,2003-10-06,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences
+202437010039,Moncef,Yahi,2002-01-25,male,Université Abou Bekr Belkaïd - Tlemcen,Faculté des Sciences Économiques
+202437010040,Selma,Rahmani,2004-07-31,female,Université Abou Bekr Belkaïd - Tlemcen,Faculté de Technologie

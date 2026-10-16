@@ -150,8 +150,16 @@ class MaintenancePage(QWidget):
         apply_button_style(self.resolved_btn, "success")
         self.resolved_btn.clicked.connect(lambda: self.set_status("resolved"))
 
+        self.delete_btn = QPushButton("Delete Maintenance Ticket")
+        self.delete_btn.setFixedHeight(40)
+        self.delete_btn.setIcon(get_icon("trash", size=16, color="#ffffff"))
+        apply_button_style(self.delete_btn, "danger")
+        self.delete_btn.clicked.connect(self.on_delete)
+        self.delete_btn.setEnabled(False)
+
         actions_box.addWidget(self.in_progress_btn)
         actions_box.addWidget(self.resolved_btn)
+        actions_box.addWidget(self.delete_btn)
         dc_layout.addLayout(actions_box)
 
         splitter.addWidget(detail_card)
@@ -237,6 +245,7 @@ class MaintenancePage(QWidget):
             self.photo_label.setText("No fault photo attached")
             self.photo_label.setCursor(Qt.ArrowCursor)
             self.photo_label.setToolTip("")
+            self.delete_btn.setEnabled(False)
 
         self.apply_filter()
 
@@ -279,8 +288,10 @@ class MaintenancePage(QWidget):
             self.photo_label.setText("No fault photo attached")
             self.photo_label.setCursor(Qt.ArrowCursor)
             self.photo_label.setToolTip("")
+            self.delete_btn.setEnabled(False)
             return
 
+        self.delete_btn.setEnabled(True)
         st = r.get("students") or {}
         staff_note = r.get("staff_note") or "No technician notes recorded."
         self.detail_text.setPlainText(
@@ -438,3 +449,27 @@ class MaintenancePage(QWidget):
             self.reload()
         except Exception:
             pass
+
+    def on_delete(self):
+        t = self.selected()
+        if not t:
+            return
+
+        ticket_id = str(t.get("id", ""))[:8]
+        ans = QMessageBox.question(
+            self,
+            "Confirm Deletion",
+            f"Are you sure you want to permanently delete maintenance ticket #{ticket_id}?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if ans != QMessageBox.Yes:
+            return
+
+        try:
+            self.client.table("maintenance_reports").delete().eq("id", t["id"]).execute()
+            QMessageBox.information(self, "Deleted", "Maintenance ticket deleted successfully.")
+            self.reload()
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.critical(self, "Error", f"Failed to delete ticket: {exc}")
+

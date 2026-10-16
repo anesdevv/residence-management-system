@@ -81,6 +81,36 @@ Deno.serve(async (req) => {
     });
   }
 
+  if (body.action === "delete_staff") {
+    const { id } = body;
+    if (!id) {
+      return new Response(JSON.stringify({ error: "id required" }), {
+        status: 400, headers: { ...CORS, "Content-Type": "application/json" },
+      });
+    }
+
+    if (id === userData.user.id) {
+      return new Response(JSON.stringify({ error: "cannot delete yourself" }), {
+        status: 400, headers: { ...CORS, "Content-Type": "application/json" },
+      });
+    }
+
+    // Explicitly delete from staff and profiles to prevent foreign key errors or orphaned rows
+    await admin.from("staff").delete().eq("id", id);
+    await admin.from("profiles").delete().eq("id", id);
+
+    const { error: delError } = await admin.auth.admin.deleteUser(id);
+    if (delError) {
+      return new Response(JSON.stringify({ error: delError.message }), {
+        status: 500, headers: { ...CORS, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { ...CORS, "Content-Type": "application/json" },
+    });
+  }
+
   return new Response(JSON.stringify({ error: "unknown action" }), {
     status: 400, headers: { ...CORS, "Content-Type": "application/json" },
   });

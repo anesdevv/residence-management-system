@@ -13,6 +13,7 @@ class StaffAccountsPage(QWidget):
     def __init__(self, client):
         super().__init__()
         self.client = client
+        self.rows: list[dict] = []
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -44,6 +45,7 @@ class StaffAccountsPage(QWidget):
         table_card.setObjectName("cardFrame")
         tc_layout = QVBoxLayout(table_card)
         tc_layout.setContentsMargins(0, 0, 0, 0)
+        tc_layout.setSpacing(10)
 
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["Staff Member", "Position / Role", "System Account ID"])
@@ -51,7 +53,22 @@ class StaffAccountsPage(QWidget):
         self.table.setSelectionMode(QTableWidget.SingleSelection)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.itemSelectionChanged.connect(self.on_selection_changed)
         tc_layout.addWidget(self.table)
+
+        # Bottom action row for table
+        btn_row = QHBoxLayout()
+        btn_row.setContentsMargins(12, 0, 12, 12)
+        btn_row.addStretch(1)
+        self.delete_btn = QPushButton("Delete Selected Staff Account")
+        self.delete_btn.setFixedHeight(36)
+        self.delete_btn.setIcon(get_icon("trash", size=14, color="#ffffff"))
+        apply_button_style(self.delete_btn, "danger")
+        self.delete_btn.setEnabled(False)
+        self.delete_btn.clicked.connect(self.on_delete)
+        btn_row.addWidget(self.delete_btn)
+        tc_layout.addLayout(btn_row)
+
         splitter.addWidget(table_card)
 
         # Creation Form Card
@@ -106,6 +123,29 @@ class StaffAccountsPage(QWidget):
 
         self.reload()
 
+    def selected(self) -> dict | None:
+        r = self.table.currentRow()
+        return self.rows[r] if 0 <= r < len(self.rows) else None
+
+    def on_selection_changed(self):
+        staff = self.selected()
+        if not staff:
+            self.delete_btn.setEnabled(False)
+            self.delete_btn.setToolTip("")
+            return
+
+        current_uid = None
+        user_resp = getattr(self.client.auth, "get_user", lambda: None)()
+        if user_resp and hasattr(user_resp, "user") and user_resp.user:
+            current_uid = user_resp.user.id
+
+        if staff.get("id") == current_uid:
+            self.delete_btn.setEnabled(False)
+            self.delete_btn.setToolTip("You cannot delete your own staff account.")
+        else:
+            self.delete_btn.setEnabled(True)
+            self.delete_btn.setToolTip("")
+
     def reload(self):
         rows = []
         try:
@@ -138,13 +178,81 @@ class StaffAccountsPage(QWidget):
         except Exception as exc:  # noqa: BLE001
             QMessageBox.warning(self, "Error", str(exc))
 
-        self.table.setRowCount(len(rows))
-        for i, r in enumerate(rows):
+        self.rows = rows
+        self.table.setRowCount(len(self.rows))
+        for i, r in enumerate(self.rows):
             name_item = QTableWidgetItem(str(r.get("full_name", "")))
             name_item.setIcon(get_icon("staff_accounts", size=14, color="#818cf8"))
             self.table.setItem(i, 0, name_item)
             self.table.setItem(i, 1, QTableWidgetItem(str(r.get("position") or "Officer")))
             self.table.setItem(i, 2, QTableWidgetItem(str(r.get("id", ""))))
+
+        self.on_selection_changed()
+
+    def on_delete(self):
+        staff = self.selected()
+        if not staff:
+            return
+
+        current_uid = None
+        user_resp = getattr(self.client.auth, "get_user", lambda: None)()
+        if user_resp and hasattr(user_resp, "user") and user_resp.user:
+            current_uid = user_resp.user.id
+
+        if staff.get("id") == current_uid:
+            QMessageBox.warning(self, "Cannot Delete", "You cannot delete your own staff account.")
+            return
+
+        name = staff.get("full_name") or "this staff member"
+        ans = QMessageBox.question(
+            self,
+            "Confirm Deletion",
+            f"Are you sure you want to delete staff account '{name}'?\n\nThis will permanently revoke their access.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if ans != QMessageBox.Yes:
+            return
+
+        deleted = False
+        last_error = None
+        # Try calling admin-users function first
+        try:
+            resp = self.client.functions.invoke(
+                "admin-users",
+                invoke_options={"body": {"action": "delete_staff", "id": staff["id"]}, "responseType": "json"},
+            )
+            if isinstance(resp, (bytes, bytearray)):
+                try:
+                    resp = json.loads(resp.decode("utf-8"))
+                except Exception:
+                    pass
+            elif isinstance(resp, str):
+                try:
+                    resp = json.loads(resp)
+                except Exception:
+                    pass
+            if isinstance(resp, dict) and "error" in resp:
+                last_error = resp["error"]
+            else:
+                deleted = True
+        except Exception as exc:
+            last_error = exc
+
+        # If edge function failed or had error, try rpc fallback
+        if not deleted:
+            try:
+                self.client.rpc("delete_staff", {"p_staff": staff["id"]}).execute()
+                deleted = True
+            except Exception as rpc_exc:
+                last_error = rpc_exc
+
+        if not deleted:
+            QMessageBox.critical(self, "Error Deleting Staff", f"Failed to delete staff account: {last_error}")
+            return
+
+        QMessageBox.information(self, "Staff Account Deleted", "Staff account deleted successfully.")
+        self.reload()
 
     def on_create(self):
         body = {
