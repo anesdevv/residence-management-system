@@ -15,6 +15,7 @@ from .pages.maintenance import MaintenancePage
 from .pages.room_changes import RoomChangesPage
 from .pages.official_list import OfficialListPage
 from .pages.staff_accounts import StaffAccountsPage
+from .pages.settings import SettingsPage
 
 
 class MainWindow(QMainWindow):
@@ -131,6 +132,9 @@ class MainWindow(QMainWindow):
             self.staff_accounts_page = StaffAccountsPage(client)
             self._add_nav_item("Staff accounts", "staff_accounts", self.staff_accounts_page)
 
+        self.settings_page = SettingsPage(client)
+        self._add_nav_item("Settings", "settings", self.settings_page)
+
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
         self.nav.setCurrentRow(0)
 
@@ -194,4 +198,9 @@ class MainWindow(QMainWindow):
             if not self.sync_worker.wait(3000):
                 self.sync_worker.terminate()
                 self.sync_worker.wait(1000)
+        if hasattr(self, "settings_page") and self.settings_page.health_worker.isRunning():
+            self.settings_page.health_worker.stop()
+            if not self.settings_page.health_worker.wait(3000):
+                self.settings_page.health_worker.terminate()
+                self.settings_page.health_worker.wait(1000)
         super().closeEvent(event)
