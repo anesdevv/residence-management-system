@@ -219,9 +219,9 @@ Pinned strings:
 
 ### Task 16: Rename sweep + final verification + handover
 
-- [ ] **Step 1: Sweep.** `git grep -in "residence tlemcen"` and `git grep -in "residence-mcp"` → matches only in allow-listed files (historical dated docs under `docs/superpowers/`, `supabase/migrations/*` comments). Anything else → fix.
-- [ ] **Step 2: Full suites.** Worker `npm test` + `npm run typecheck`; mcp pytest; desktop pytest + smoke; web `npm run build` + `npm test`; acceptance vs the new URL once more → all baselines met.
-- [ ] **Step 3: Browser pass** of all 7 pages at desktop + mobile widths (dev server): login, dashboard, maintenance submit + photo, room change, profile save, logout.
-- [ ] **Step 4: Handover content confirmed** in `docs/manual-test-mcp.md`: edit the connector URL in ChatGPT → Refresh → sign in → one read + one write test.
-- [ ] **Step 5: Commit** — `chore: RÉSIVO rename sweep and final verification`
+- [x] **Step 1: Sweep.** `git grep -in "residence tlemcen"` and `git grep -in "residence-mcp"` → matches only in allow-listed files (historical dated docs under `docs/superpowers/`, `supabase/migrations/*` comments). Anything else → fix.
+- [x] **Step 2: Full suites.** Worker `npm test` + `npm run typecheck`; mcp pytest; desktop pytest + smoke; web `npm run build` + `npm test`; acceptance vs the new URL once more → all baselines met.
+- [x] **Step 3: Browser pass** of all 7 pages at desktop + mobile widths (dev server): login, dashboard, maintenance submit + photo, room change, profile save, logout.
+- [x] **Step 4: Handover content confirmed** in `docs/manual-test-mcp.md`: edit the connector URL in ChatGPT → Refresh → sign in → one read + one write test.
+- [x] **Step 5: Commit** — `chore: RÉSIVO rename sweep and final verification`
 - [ ] **Step 6 (after the admin confirms ChatGPT on the new URL):** delete the old worker (`npx wrangler delete --name residence-mcp` from `mcp-worker/`; verify with `npx wrangler deployments list`). Then, per the admin's call: merge `resivo-update` → `main` locally and push.

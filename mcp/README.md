@@ -21,8 +21,8 @@ Two backends serve the admin tools:
 
 ## Hosted server (recommended)
 
-Permanent URL: `https://residence-mcp.anes4tlm.workers.dev/mcp`
-Health (public): `https://residence-mcp.anes4tlm.workers.dev/health` → `{"status":"ok"}`.
+Permanent URL: `https://resivo-mcp.anes4tlm.workers.dev/mcp`
+Health (public): `https://resivo-mcp.anes4tlm.workers.dev/health` → `{"status":"ok"}`.
 
 Connect ChatGPT once:
 
