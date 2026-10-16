@@ -1,4 +1,4 @@
-"""Pure helpers for the Residence Tlemcen admin MCP server.
+"""Pure helpers for the RÉSIVO admin MCP server.
 
 Everything in this module is dependency-free and network-free so it can be
 unit-tested with plain pytest (see tests/test_formatting.py).

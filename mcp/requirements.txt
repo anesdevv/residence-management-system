@@ -1,4 +1,4 @@
-# Residence Tlemcen admin MCP server (read-only).
+# RÉSIVO admin MCP server (read-only).
 # Install:  pip install -r requirements.txt
 #
 # NOTE: this project deliberately stays on the MCP Python SDK 1.x line.

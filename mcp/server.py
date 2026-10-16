@@ -1,4 +1,4 @@
-"""Residence Tlemcen admin MCP server (read-only).
+"""RÉSIVO admin MCP server (read-only).
 
 Exposes 6 read-only admin tools from the existing Supabase project over the
 MCP streamable HTTP transport:
@@ -224,10 +224,10 @@ def call_admin_rpc(function: str, params: dict, empty_entity=None, status=None, 
 # MCP server and tools
 # ---------------------------------------------------------------------------
 mcp = FastMCP(
-    "Residence Tlemcen Admin",
+    "RÉSIVO Admin",
     instructions=(
-        "Read-only administrator tools for the Residence Tlemcen university "
-        "residence (maintenance tickets, room change requests, pending "
+        "Read-only administrator tools for RÉSIVO, the university residence "
+        "management system. (maintenance tickets, room change requests, pending "
         "registrations, student lookup, rooms and an overall summary). "
         "All data comes from the live Supabase project. The tools never "
         "modify anything."
