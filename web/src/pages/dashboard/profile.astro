@@ -18,21 +18,25 @@ const error = Astro.url.searchParams.get('error');
 const updated = Astro.url.searchParams.get('updated');
 ---
 
-<Layout title="Resident Profile — Residence Tlemcen" activeNav="profile">
+<Layout title="Resident Profile — RÉSIVO" activeNav="profile">
   <!-- Header -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/90 pb-5">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-line/60 pb-5">
     <div>
-      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-        Resident Profile & Credentials
+      <div class="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-ink">
+        <span class="inline-block h-2 w-2 rounded-full bg-amber"></span>
+        <span>Cité Universitaire Tlemcen</span>
+      </div>
+      <h1 class="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-navy">
+        Resident Profile &amp; Credentials
       </h1>
-      <p class="mt-1 text-xs sm:text-sm text-slate-500">
+      <p class="mt-1 text-xs sm:text-sm text-muted">
         Review your official academic enrollment details and keep your contact info up to date.
       </p>
     </div>
 
     <a
       href="/dashboard"
-      class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3.5 py-2 rounded-xl shadow-xs transition self-start sm:self-auto min-h-[40px]"
+      class="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink bg-surface border border-line px-3.5 py-2 rounded-xl shadow-xs transition self-start sm:self-auto min-h-[40px]"
     >
       <Icon name="arrow-left" size={14} />
       <span>Back to Dashboard</span>
@@ -45,7 +49,9 @@ const updated = Astro.url.searchParams.get('updated');
       <Icon name="check-circle" size={22} class="text-emerald-700 shrink-0 mt-0.5" />
       <div class="text-xs sm:text-sm">
         <span class="font-bold">Contact Details Updated!</span>
-        <p class="mt-0.5 text-emerald-800 leading-relaxed">Your mobile phone number and email address have been saved successfully to the residence registry.</p>
+        <p class="mt-0.5 text-emerald-800 leading-relaxed">
+          Your mobile phone number and email address have been saved successfully to the residence registry.
+        </p>
       </div>
     </div>
   )}
@@ -63,69 +69,69 @@ const updated = Astro.url.searchParams.get('updated');
   <div class="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
     <!-- Official Academic Resident ID Card (Left / Top) -->
     <div class="lg:col-span-7 space-y-6">
-      <div class="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
+      <div class="rounded-2xl border border-line/70 bg-surface p-6 sm:p-8 shadow-sm">
         <!-- Card Top Bar -->
-        <div class="flex items-start justify-between border-b border-slate-100 pb-5 mb-6">
+        <div class="flex items-start justify-between border-b border-line/50 pb-5 mb-6">
           <div class="flex items-center gap-3.5">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-white shadow-xs">
+            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-navy text-white shadow-xs">
               <Icon name="crest" size={24} />
             </div>
             <div>
-              <h2 class="text-base sm:text-lg font-bold text-slate-900">Academic Resident Pass</h2>
-              <span class="text-xs text-slate-400 font-medium">Direction des Œuvres Universitaires — Tlemcen</span>
+              <h2 class="font-display text-base sm:text-lg font-bold text-navy">Academic Resident Pass</h2>
+              <span class="text-xs text-muted font-medium">Direction des Œuvres Universitaires • Cité Universitaire Tlemcen</span>
             </div>
           </div>
 
-          <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 uppercase tracking-wider">
+          <span class="rounded-full bg-canvas border border-line/70 px-3.5 py-1 text-xs font-semibold text-navy uppercase tracking-wider">
             {s?.status ?? 'Pending'}
           </span>
         </div>
 
         <!-- Student Data Grid -->
         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-sm">
-          <div class="rounded-xl bg-slate-50/80 p-3.5 border border-slate-200/80">
-            <dt class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Student Card ID</dt>
-            <dd class="mt-1 font-bold text-slate-900 text-base tnum">{s?.card_id}</dd>
+          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60">
+            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">Student Card ID</dt>
+            <dd class="mt-1 font-display font-bold text-navy text-base tnum">{s?.card_id}</dd>
           </div>
 
-          <div class="rounded-xl bg-slate-50/80 p-3.5 border border-slate-200/80">
-            <dt class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Full Name</dt>
-            <dd class="mt-1 font-bold text-slate-900 text-base">{s?.first_name} {s?.last_name}</dd>
+          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60">
+            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">Full Name</dt>
+            <dd class="mt-1 font-display font-bold text-navy text-base">{s?.first_name} {s?.last_name}</dd>
           </div>
 
-          <div class="rounded-xl bg-slate-50/80 p-3.5 border border-slate-200/80 sm:col-span-2">
-            <dt class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">University</dt>
-            <dd class="mt-1 font-semibold text-slate-800">{s?.university}</dd>
+          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60 sm:col-span-2">
+            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">University</dt>
+            <dd class="mt-1 font-semibold text-ink">{s?.university}</dd>
           </div>
 
-          <div class="rounded-xl bg-slate-50/80 p-3.5 border border-slate-200/80">
-            <dt class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Faculty / Department</dt>
-            <dd class="mt-1 font-semibold text-slate-800">{s?.faculty}</dd>
+          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60">
+            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">Faculty / Department</dt>
+            <dd class="mt-1 font-semibold text-ink">{s?.faculty}</dd>
           </div>
 
-          <div class="rounded-xl bg-slate-50/80 p-3.5 border border-slate-200/80">
-            <dt class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Study Level</dt>
-            <dd class="mt-1 font-semibold text-slate-800">{s?.study_level}</dd>
+          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60">
+            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">Study Level</dt>
+            <dd class="mt-1 font-semibold text-ink">{s?.study_level}</dd>
           </div>
 
-          <div class="rounded-xl bg-slate-50/80 p-3.5 border border-slate-200/80">
-            <dt class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Gender</dt>
-            <dd class="mt-1 font-semibold text-slate-800 capitalize">{s?.gender}</dd>
+          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60">
+            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">Gender</dt>
+            <dd class="mt-1 font-semibold text-ink capitalize">{s?.gender}</dd>
           </div>
 
-          <div class="rounded-xl bg-slate-50/80 p-3.5 border border-slate-200/80">
-            <dt class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Date of Birth</dt>
-            <dd class="mt-1 font-semibold text-slate-800 tnum">{s?.birth_date}</dd>
+          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60">
+            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">Date of Birth</dt>
+            <dd class="mt-1 font-semibold text-ink tnum">{s?.birth_date}</dd>
           </div>
 
-          <div class="rounded-xl bg-slate-50/80 p-3.5 border border-slate-200/80 sm:col-span-2">
-            <dt class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Wilaya of Origin</dt>
-            <dd class="mt-1 font-semibold text-slate-800">{s?.wilaya}</dd>
+          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60 sm:col-span-2">
+            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">Wilaya of Origin</dt>
+            <dd class="mt-1 font-semibold text-ink">{s?.wilaya}</dd>
           </div>
         </dl>
 
-        <div class="mt-6 pt-4 border-t border-slate-100 flex items-start gap-2.5 text-xs text-slate-500">
-          <Icon name="shield" size={16} class="text-slate-400 shrink-0 mt-0.5" />
+        <div class="mt-6 pt-4 border-t border-line/50 flex items-start gap-2.5 text-xs text-muted">
+          <Icon name="shield" size={16} class="text-amber-ink shrink-0 mt-0.5" />
           <p class="leading-relaxed">
             Academic credentials are tied to the official university matriculation register. To request modifications, present supporting documents at the campus housing registry.
           </p>
@@ -135,16 +141,16 @@ const updated = Astro.url.searchParams.get('updated');
 
     <!-- Editable Contact Form & Bureau Info (Right / Bottom) -->
     <div class="lg:col-span-5 space-y-6">
-      <div class="rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xs">
-        <div class="border-b border-slate-100 pb-4 mb-5">
-          <h2 class="text-base font-bold text-slate-900">Contact Information</h2>
-          <p class="text-xs text-slate-500 mt-0.5">Used for urgent SMS notifications and maintenance updates.</p>
+      <div class="rounded-2xl border border-line/70 bg-surface p-6 sm:p-7 shadow-sm">
+        <div class="border-b border-line/50 pb-4 mb-5">
+          <h2 class="font-display text-base font-bold text-navy">Contact Information</h2>
+          <p class="text-xs text-muted mt-0.5">Used for urgent SMS notifications and maintenance updates.</p>
         </div>
 
         <form method="POST" action="/api/profile" class="space-y-4">
           <div>
-            <label for="phone" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-              Mobile Phone <span class="text-red-500">*</span>
+            <label for="phone" class="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
+              Mobile Phone <span class="text-red-500" aria-hidden="true">*</span>
             </label>
             <input
               type="tel"
@@ -153,12 +159,12 @@ const updated = Astro.url.searchParams.get('updated');
               required
               value={s?.phone ?? ''}
               placeholder="05 / 06 / 07..."
-              class="w-full min-h-[44px] rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition tnum"
+              class="w-full min-h-[44px] rounded-xl border border-line bg-canvas/40 px-3.5 py-2.5 text-sm text-ink placeholder:text-muted/60 focus:border-navy focus:bg-surface focus:ring-2 focus:ring-navy/15 focus:outline-none transition tnum"
             />
           </div>
 
           <div>
-            <label for="email" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+            <label for="email" class="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
               Email Address
             </label>
             <input
@@ -167,14 +173,14 @@ const updated = Astro.url.searchParams.get('updated');
               id="email"
               value={s?.email ?? ''}
               placeholder="student@univ-tlemcen.dz"
-              class="w-full min-h-[44px] rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition"
+              class="w-full min-h-[44px] rounded-xl border border-line bg-canvas/40 px-3.5 py-2.5 text-sm text-ink placeholder:text-muted/60 focus:border-navy focus:bg-surface focus:ring-2 focus:ring-navy/15 focus:outline-none transition"
             />
           </div>
 
           <div class="pt-2">
             <button
               type="submit"
-              class="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-blue-600 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition cursor-pointer"
+              class="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-navy-2 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-navy focus:ring-offset-2 transition cursor-pointer"
             >
               <Icon name="check-circle" size={16} />
               <span>Save Contact Updates</span>
@@ -184,19 +190,19 @@ const updated = Astro.url.searchParams.get('updated');
       </div>
 
       <!-- Campus Bureau Info Card -->
-      <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-3">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Housing Administration Bureau</h3>
-        <ul class="space-y-2.5 text-xs text-slate-600">
+      <div class="rounded-2xl border border-line/70 bg-surface p-6 shadow-sm space-y-3">
+        <h3 class="font-display text-xs font-bold uppercase tracking-wider text-navy">Housing Administration Bureau</h3>
+        <ul class="space-y-2.5 text-xs text-muted">
           <li class="flex items-center gap-2.5">
-            <Icon name="building" size={15} class="text-slate-400 shrink-0" />
+            <Icon name="building" size={15} class="text-amber-ink shrink-0" />
             <span>Administration Bloc A, Ground Floor Desk</span>
           </li>
           <li class="flex items-center gap-2.5">
-            <Icon name="clock" size={15} class="text-slate-400 shrink-0" />
+            <Icon name="clock" size={15} class="text-amber-ink shrink-0" />
             <span>In-person hours: Sun–Thu 08:30–16:30</span>
           </li>
           <li class="flex items-center gap-2.5">
-            <Icon name="phone" size={15} class="text-slate-400 shrink-0" />
+            <Icon name="phone" size={15} class="text-amber-ink shrink-0" />
             <span>Direct Desk: +213 (0) 43 21 00 00</span>
           </li>
         </ul>

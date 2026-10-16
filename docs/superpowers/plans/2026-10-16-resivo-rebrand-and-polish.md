@@ -178,9 +178,9 @@ Pinned strings:
 
 **Files:** `web/src/pages/dashboard/profile.astro`
 
-- [ ] **Step 1:** title → `Resident Profile — RÉSIVO`; restyle identity card + form (real fields only); keep the save flow + validation.
-- [ ] **Step 2:** browser check incl. a save; no console errors.
-- [ ] **Step 3: Commit** — `feat(web): redesign profile page`
+- [x] **Step 1:** title → `Resident Profile — RÉSIVO`; restyle identity card + form (real fields only); keep the save flow + validation.
+- [x] **Step 2:** browser check incl. a save; no console errors.
+- [x] **Step 3: Commit** — `feat(web): redesign profile page`
 
 ### Task 13: Maintenance photo viewer (desktop)
 
