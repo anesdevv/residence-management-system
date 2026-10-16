@@ -3,7 +3,7 @@
 Two servers expose the admin tools:
 
 - **Hosted Cloudflare Worker** (primary) — what ChatGPT connects to:
-  `https://residence-mcp.anes4tlm.workers.dev/mcp` (health: same origin, `/health`).
+  `https://resivo-mcp.anes4tlm.workers.dev/mcp` (health: same origin, `/health`).
   14 tools: 6 read-only + 8 admin-confirmed write tools (writes can be switched off in the
   desktop Settings).
 - **Local Python server** (development/testing only) — bearer-token clients such as the
@@ -15,14 +15,15 @@ staff `staff@residence.test` / `Staff1234!`, student
 
 ## A. Hosted server (primary — ChatGPT)
 
-- [ ] 1. Health check: `curl.exe -s https://residence-mcp.anes4tlm.workers.dev/health` → `{"status":"ok"}` (no login required).
-- [ ] 2. Connect in ChatGPT (needs a plan with custom MCP servers — Plus/Pro): `chatgpt.com/plugins` → “+” → *Add custom MCP server* → name + description → Connection: paste `https://residence-mcp.anes4tlm.workers.dev/mcp` (the `/mcp` path is required) → a login page opens **once** → paste the token from the desktop app (Settings → Developer mode → Copy) → *Allow* → *“I understand and want to continue”* → *“Create as a plugin”*.
+- [ ] 0. (One-time migration — existing ChatGPT connectors) The hosted worker moved to RÉSIVO and its URL changed. In ChatGPT: open the connector → *Settings* → connection URL → paste the new URL `https://resivo-mcp.anes4tlm.workers.dev/mcp` → **Refresh** → sign in again if ChatGPT asks → run one read check (e.g. “How many pending registrations are there?”) and one write check (e.g. update a maintenance ticket) to confirm the connector is back. Building a new connector? Skip this step.
+- [ ] 1. Health check: `curl.exe -s https://resivo-mcp.anes4tlm.workers.dev/health` → `{"status":"ok"}` (no login required).
+- [ ] 2. Connect in ChatGPT (needs a plan with custom MCP servers — Plus/Pro): `chatgpt.com/plugins` → “+” → *Add custom MCP server* → name + description → Connection: paste `https://resivo-mcp.anes4tlm.workers.dev/mcp` (the `/mcp` path is required) → a login page opens **once** → paste the token from the desktop app (Settings → Developer mode → Copy) → *Allow* → *“I understand and want to continue”* → *“Create as a plugin”*.
 - [ ] 3. “How many pending registrations are there?” → matches the desktop Registrations page.
 - [ ] 4. “Show me the pending maintenance tickets” → matches the desktop Maintenance page (pending = status `pending`).
 - [ ] 5. Spot-check more: “Any pending room change requests?” and “Which student is in room B-101?” → match the desktop Room Changes / Students pages.
 - [ ] 6. Metadata refresh flow: after any worker redeploy, the only step in ChatGPT is **Refresh** on the connection → the new tool list appears (14 tools); no re-login, no reconnect.
 - [ ] 7. After reboot: nothing to do — the Worker is always on, ChatGPT holds its own OAuth tokens, and there is no local terminal or tunnel to restart.
-- [ ] 8. (Optional evidence) Every call appears in `public.mcp_audit_log` (tool + arguments + timestamp; never results, never tokens). Full automated check: `& "mcp\.venv\Scripts\python.exe" "mcp-worker\scripts\verify_remote.py" https://residence-mcp.anes4tlm.workers.dev` → `SUMMARY: 30 passed, 0 failed, 1 skipped` (the single skip is the rate-limit probe — the same behavior as the read-only era).
+- [ ] 8. (Optional evidence) Every call appears in `public.mcp_audit_log` (tool + arguments + timestamp; never results, never tokens). Full automated check: `& "mcp\.venv\Scripts\python.exe" "mcp-worker\scripts\verify_remote.py" https://resivo-mcp.anes4tlm.workers.dev` → `SUMMARY: 30 passed, 0 failed, 1 skipped` (the single skip is the rate-limit probe — the same behavior as the read-only era).
 - [ ] 9. Write checklist (ChatGPT asks for explicit confirmation before every change). Create a test room: “create a test room 999 in block Z with 2 places” → ChatGPT shows what will change and asks you to confirm → the room (Z-999, capacity 2) appears in the desktop Rooms page.
 - [ ] 10. Edit then delete it: “change room Z-999 to 3 places” → confirm → capacity 3 in the desktop; then “delete that test room” → confirm → it disappears from the desktop Rooms page.
 - [ ] 11. Approve/reject a registration: pick a pending registration, ask ChatGPT to approve it into a room with a free place and matching gender, and reject another one with a reason → confirm each → the desktop Registrations page reflects both.

@@ -6,14 +6,14 @@
 > for the current state and evidence.
 
 Repo: `C:\Users\Admin\Documents\OpenCode\my school project THE MAIN` (Windows, PowerShell).
-Task: read-only ADMIN MCP server for the "Residence Tlemcen" project (ChatGPT custom MCP server).
+Task: ADMIN MCP server for the "RÉSIVO" project (ChatGPT custom MCP server; hosted worker = 6 read + 8 admin-confirmed write tools; local Python server read-only by design).
 Original task spec: see the user's previous message (Steps 0–6 + Definition of Done). Everything below follows it.
 
 ---
 
 ## Hard rules (do not violate)
 
-1. READ-ONLY tools (no insert/update/delete anywhere).
+1. Read tools never insert/update/delete. The only writes are the hosted worker's 8 admin-confirmed tools (Session 4 — desktop switch gate + two-phase audit). The local Python server stays strictly read-only by design.
 2. Admin only: every SQL function raises unless `profiles.role = 'admin'`.
 3. Full student details allowed; truncate only free text (`description`, `staff_note`, `reason`,
    `decision_note`, `rejection_reason`) to 500 chars.
@@ -288,7 +288,7 @@ Plus two `# NOTE: possible bug` tests documenting behavior unreachable via the s
 **Goal:** make the admin MCP server "always live" so ChatGPT keeps working after reboots with zero local setup. **Chosen:** rewrite as a stateless Cloudflare Worker in `mcp-worker/`; the local Python server stays as the dev/testing fallback.
 
 ### Architecture (verified against live docs, 2026-10-15)
-- **Endpoint:** `https://residence-mcp.anes4tlm.workers.dev/mcp` (worker `residence-mcp`); public `GET /health` → `{"status":"ok"}`.
+- **Endpoint:** `https://resivo-mcp.anes4tlm.workers.dev/mcp` (worker `resivo-mcp`); public `GET /health` → `{"status":"ok"}`.
 - **Auth = OAuth 2.1** (`@cloudflare/workers-oauth-provider` 1.2.3, single-worker shape). ChatGPT custom MCP servers accept **OAuth or no auth only** — there is no static-bearer field (developers.openai.com apps-sdk auth + MCP 2026-07-28 authz spec). ChatGPT does dynamic client registration + PKCE; a consent page opens **once** in the browser asking for `MCP_AUTH_TOKEN` (the same token the desktop app shows). After that ChatGPT holds refreshable tokens; reboots change nothing.
 - **MCP:** stateless `createMcpHandler` (`agents` 0.28.1) + MCP SDK v2 (`@modelcontextprotocol/server` 2.3.1). `McpAgent` is deprecated — not used.
 - **Tools:** same 6 read-only tools ported 1:1 from `mcp/server.py` (names/descriptions/validation/truncation/empty messages/error strings — parity table in `docs/superpowers/plans/2026-10-15-cloudflare-worker-mcp.md`).
@@ -313,7 +313,7 @@ Worker secrets (set via `wrangler secret bulk` from a temp JSON built out of `mc
 ### Evidence (all green)
 - Worker: **134/134** vitest tests; `tsc --noEmit` clean; `wrangler deploy --dry-run` OK.
 - Local end-to-end (`wrangler dev --ip ::1` → `scripts/verify_remote.py http://localhost:8788`): **18/18 PASS** — OAuth discovery → DCR → consent → PKCE token → initialize → 6 tools (real data) → invalid-arg messages → refresh grant → rate-limit 429.
-- Production (`scripts/verify_remote.py https://residence-mcp.anes4tlm.workers.dev`, run twice): **17 PASS / 0 FAIL** (in-script rate-limit SKIP on the fast burst — covered by the paced probe).
+- Production (read-only era, `scripts/verify_remote.py https://resivo-mcp.anes4tlm.workers.dev`, run twice): **17 PASS / 0 FAIL** (in-script rate-limit SKIP on the fast burst — covered by the paced probe).
 - Paced rate probe: `PASS rate limit: first 429 on request 167 after 43.2s`.
 - Audit semantics (`verify_mcp_audit.py`): admin insert **204**; anon **401**; invalid JWT **401**; staff **403 `admin only`** — ALL PASS.
 - Audit rows read back from the live system via `mcp_list_audit`: **8 rows written by the deployed Worker's production tool calls** + 1 probe row (e.g. `#7 get_summary @ 2026-10-15T21:40:23Z`) — ChatGPT-equivalent traffic is audited end-to-end.
@@ -321,14 +321,14 @@ Worker secrets (set via `wrangler secret bulk` from a temp JSON built out of `mc
 
 ### What the user must do
 1. **Restart the desktop app** to see the new Settings page: `& "desktop\.venv\Scripts\python.exe" "desktop\main.py"`.
-2. **Connect once in ChatGPT** (needs a plan with custom MCP servers — Plus/Pro): chatgpt.com/plugins → `+` → *Add custom MCP server* → paste `https://residence-mcp.anes4tlm.workers.dev/mcp` → the login page opens → paste the token from the Settings page → Allow → *I understand and want to continue* → *Create as a plugin*. After this: **reboots require nothing** (no server, no tunnel).
+2. **Connect once in ChatGPT** (needs a plan with custom MCP servers — Plus/Pro): chatgpt.com/plugins → `+` → *Add custom MCP server* → paste `https://resivo-mcp.anes4tlm.workers.dev/mcp` → the login page opens → paste the token from the Settings page → Allow → *I understand and want to continue* → *Create as a plugin*. After this: **reboots require nothing** (no server, no tunnel).
 3. Optional: audit trail via `mcp_list_audit` RPC or the dashboard; after code changes `npx wrangler deploy` + *Refresh* on the ChatGPT connection.
 
 ---
 
 ## Session 4 progress log (2026-10-16) — write tools + desktop off-switch ✅ COMPLETE
 
-**Goal:** let the admin manage the residence from ChatGPT — approve/reject registrations and room changes, manage rooms, update maintenance tickets — with explicit ChatGPT-side confirmations, DB-enforced rules, a two-phase audit trail and a desktop kill switch. **Same connector, same URL, no new setup.** This session supersedes "Hard rule 1" for the **hosted worker only**: the local Python server in `mcp/` remains strictly read-only by design, and `web/` was untouched.
+**Goal:** let the admin manage the residence from ChatGPT — approve/reject registrations and room changes, manage rooms, update maintenance tickets — with explicit ChatGPT-side confirmations, DB-enforced rules, a two-phase audit trail and a desktop kill switch. **Same connector, same URL, no new setup.** This session lifted the original "Hard rule 1" (read-only) for the **hosted worker only**: the local Python server in `mcp/` remains strictly read-only by design, and `web/` was untouched.
 
 ### What shipped
 - **8 write tools** on the hosted worker (14 total: the 6 reads + `approve_registration`, `reject_registration`, `approve_room_change`, `reject_room_change`, `create_room`, `update_room`, `delete_room`, `update_ticket`). Every description tells ChatGPT to show the user exactly what will change and get explicit confirmation first; `reject_registration`, `reject_room_change` and `delete_room` carry `destructiveHint: true`.
@@ -347,8 +347,8 @@ Worker secrets (set via `wrangler secret bulk` from a temp JSON built out of `mc
 
 ### Evidence (all green)
 - Worker: **212/212** vitest tests, `tsc --noEmit` clean, `wrangler deploy --dry-run` OK.
-- Deployed version: **`b2b44936-98f2-4b8a-b25f-54cef48e7809`** (URL unchanged: `https://residence-mcp.anes4tlm.workers.dev`).
-- Production acceptance ×2 (`scripts/verify_remote.py`): **`SUMMARY: 30 passed, 0 failed, 1 skipped`** both runs — 14 tools, annotations, room ids, write round-trip (create → duplicate → update → list → delete), negative probes, gate refusal + re-enable, audit outcomes. The single SKIP is the rate-limit probe (same behavior as the read-only era).
+- Deployed version: **`d6f649ec-10e9-4d5e-a623-104ca5efc3cd`** (worker `resivo-mcp` — `https://resivo-mcp.anes4tlm.workers.dev`; current deployment after the RÉSIVO rename, superseding `b2b44936…`).
+- Production acceptance (`scripts/verify_remote.py https://resivo-mcp.anes4tlm.workers.dev`): **`SUMMARY: 30 passed, 0 failed, 1 skipped`** — verified twice in this session and re-verified after the RÉSIVO rename (2026-10-16). Coverage: 14 tools, annotations, room ids, write round-trip (create → duplicate → update → list → delete), negative probes, gate refusal + re-enable, audit outcomes. The single SKIP is the rate-limit probe (same behavior as the read-only era).
 - Desktop: settings smoke **53 PASS / 0 FAIL** (`RESULT: PASS`); the off-switch toggles read back from the DB and are restored after the run; screenshot `%TEMP%\opencode\shots\settings_writes.png`.
 - Manual: the write checklist in `docs/manual-test-mcp.md` (the ticket update is the only write path the acceptance script does not exercise — do that one by hand).
 

@@ -1,4 +1,4 @@
-﻿# University Residence Management System (Tlemcen)
+﻿# RÉSIVO — University Residence Management System (Tlemcen)
 
 Backend: Supabase (Postgres + Auth + Storage).
 Websites/clients: `web/` (Astro, students), `desktop/` (PySide6, staff).
@@ -14,7 +14,7 @@ Websites/clients: `web/` (Astro, students), `desktop/` (PySide6, staff).
 ## Ask ChatGPT (MCP)
 Admins can ask ChatGPT about maintenance tickets, room changes, pending approvals,
 students and rooms through an admin MCP server. The primary path is the **hosted
-Cloudflare Worker** at `https://residence-mcp.anes4tlm.workers.dev/mcp` — connect it once
+Cloudflare Worker** at `https://resivo-mcp.anes4tlm.workers.dev/mcp` — connect it once
 in ChatGPT (`chatgpt.com/plugins` → “+” → *Add custom MCP server*; requires an
 MCP-capable plan such as Plus/Pro) and it works even when your PC is off. Deploy/ops:
 [`mcp-worker/README.md`](mcp-worker/README.md). The local Python server in `mcp/` is kept

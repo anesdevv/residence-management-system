@@ -1,5 +1,5 @@
 ---
-name: Residence Tlemcen Design System
+name: RÉSIVO Design System
 description: Institutional, high-trust student accommodation and facility operations design system
 colors:
   primary: "#1e293b"
@@ -74,7 +74,7 @@ components:
 
 ## Overview
 
-The visual design system for **Residence Tlemcen** reflects the civic dignity, dependability, and structured efficiency of a major higher-education student housing authority.
+The visual design system for **RÉSIVO** reflects the civic dignity, dependability, and structured efficiency of a major higher-education student housing authority.
 
 The system powers both:
 1. **The Web Portal (Students)**: Clean, reassuring, mobile-responsive, and accessible.

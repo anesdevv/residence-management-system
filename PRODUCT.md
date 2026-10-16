@@ -13,7 +13,7 @@ web
 
 ## Product Purpose
 
-A complete, dual-surface student accommodation & facility management system for Cité Universitaire (Residence Tlemcen). It digitizes student housing applications, eliminates manual paperwork, accelerates maintenance triage, provides real-time department situational awareness, and ensures fair room occupancy management.
+A complete, dual-surface student accommodation & facility management system for Cité Universitaire (RÉSIVO). It digitizes student housing applications, eliminates manual paperwork, accelerates maintenance triage, provides real-time department situational awareness, and ensures fair room occupancy management.
 
 ## Positioning
 
@@ -46,7 +46,7 @@ Tailored specifically for higher-education university residences with gender-seg
 
 ## Brand Commitments
 
-- **Institution Name**: *Cité Universitaire — Residence Tlemcen* (Direction des Œuvres Universitaires / University Dormitory Department).
+- **Institution Name**: *Cité Universitaire — RÉSIVO* (Direction des Œuvres Universitaires / University Dormitory Department).
 - **Tone**: Trustworthy, institutional, clear, organized, accessible, and respectful of students.
 - **Palette Foundation**: Deep institutional navy/slate (`#0f172a`, `#1e293b`), crisp clean whites, subtle cool grays (`#f8fafc`, `#f1f5f9`), with clear functional semantic indicators (Emerald `#10b981` for active/resolved, Amber `#f59e0b` for pending review, Rose `#ef4444` for rejected/urgent, Blue `#2563eb` for primary department actions).
 
