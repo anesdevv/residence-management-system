@@ -137,10 +137,10 @@ Pinned strings:
 
 **Interfaces:** consumes Task 6 tokens/logo/shell.
 
-- [ ] **Step 1:** restyle both as the split screen: left = white card with the existing form; right = navy hero panel — RÉSIVO logo, tagline, 3–4 real feature bullets (room assignment & transfers, maintenance triage with photos, secure resident portal, Cité Universitaire • Tlemcen). No fake statistics. Titles: `Resident Sign In — RÉSIVO` / `Resident Registration — RÉSIVO`.
-- [ ] **Step 2:** keep every field, validation rule, error state, and form action untouched (login → `/api/login`, register → `/api/register`).
-- [ ] **Step 3:** browser check at desktop + mobile widths: login end-to-end with the seeded student; register shows validation states; no console errors.
-- [ ] **Step 4: Commit** — `feat(web): redesign login and register pages`
+- [x] **Step 1:** restyle both as the split screen: left = white card with the existing form; right = navy hero panel — RÉSIVO logo, tagline, 3–4 real feature bullets (room assignment & transfers, maintenance triage with photos, secure resident portal, Cité Universitaire • Tlemcen). No fake statistics. Titles: `Resident Sign In — RÉSIVO` / `Resident Registration — RÉSIVO`.
+- [x] **Step 2:** keep every field, validation rule, error state, and form action untouched (login → `/api/login`, register → `/api/register`).
+- [x] **Step 3:** browser check at desktop + mobile widths: login end-to-end with the seeded student; register shows validation states; no console errors.
+- [x] **Step 4: Commit** — `feat(web): redesign login and register pages`
 
 ### Task 8: Landing page redesign
 
