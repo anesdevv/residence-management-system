@@ -146,9 +146,9 @@ Pinned strings:
 
 **Files:** `web/src/pages/index.astro`
 
-- [ ] **Step 1:** title → `RÉSIVO — Official Student Housing Portal`; restyle the existing sections (hero, features, how-it-works, CTA) in the tokens; logo in header/hero; keep institutional lines; keep all links.
-- [ ] **Step 2:** browser check desktop + mobile; no console errors.
-- [ ] **Step 3: Commit** — `feat(web): redesign landing page`
+- [x] **Step 1:** title → `RÉSIVO — Official Student Housing Portal`; restyle the existing sections (hero, features, how-it-works, CTA) in the tokens; logo in header/hero; keep institutional lines; keep all links.
+- [x] **Step 2:** browser check desktop + mobile; no console errors.
+- [x] **Step 3: Commit** — `feat(web): redesign landing page`
 
 ### Task 9: Dashboard redesign
 
