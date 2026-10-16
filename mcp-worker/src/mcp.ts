@@ -11,7 +11,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 import { z } from "zod";
 
-import type { AuditLog, RpcCall } from "./audit";
+import type { AuditTrail, RpcCall } from "./audit";
 import { friendlyError } from "./errors";
 import {
   ROOM_CHANGE_STATUSES,
@@ -36,8 +36,12 @@ export const SERVER_INSTRUCTIONS =
 export interface ToolDeps {
   /** Admin rpc from `createSupabaseAdmin(...).rpc` / `createSupabaseAdmin`. */
   rpc: RpcCall;
-  /** Audit logger from `createAuditLogger`, awaited before each tool runs. */
-  audit: AuditLog;
+  /**
+   * Two-phase audit trail from `createAuditLogger`. Reads open a row via
+   * `begin` (best-effort, result ignored); the write flow (Task 5) completes
+   * it via `complete`.
+   */
+  audit: AuditTrail;
 }
 
 interface EmptyHint {
@@ -79,7 +83,7 @@ async function runListMaintenanceTickets(
   status: string | undefined,
   limit: number | undefined,
 ): Promise<string> {
-  await deps.audit("list_maintenance_tickets", { status: status ?? null, limit: limit ?? 20 });
+  await deps.audit.begin("list_maintenance_tickets", { status: status ?? null, limit: limit ?? 20 });
   let normalized: string | null;
   let capped: number;
   try {
@@ -101,7 +105,7 @@ async function runListRoomChangeRequests(
   status: string | undefined,
   limit: number | undefined,
 ): Promise<string> {
-  await deps.audit("list_room_change_requests", { status: status ?? null, limit: limit ?? 20 });
+  await deps.audit.begin("list_room_change_requests", { status: status ?? null, limit: limit ?? 20 });
   let normalized: string | null;
   let capped: number;
   try {
@@ -122,7 +126,7 @@ async function runListPendingRegistrations(
   deps: ToolDeps,
   limit: number | undefined,
 ): Promise<string> {
-  await deps.audit("list_pending_registrations", { limit: limit ?? 20 });
+  await deps.audit.begin("list_pending_registrations", { limit: limit ?? 20 });
   let capped: number;
   try {
     capped = capLimit(limit, 20);
@@ -142,7 +146,7 @@ async function runSearchStudents(
   query: string,
   limit: number | undefined,
 ): Promise<string> {
-  await deps.audit("search_students", { query, limit: limit ?? 10 });
+  await deps.audit.begin("search_students", { query, limit: limit ?? 10 });
   if (!query || query.trim() === "") {
     return "Invalid request: query is required (a name, card ID or room label such as 'B-101').";
   }
@@ -165,7 +169,7 @@ async function runListRooms(
   block: string | undefined,
   onlyAvailable: boolean | undefined,
 ): Promise<string> {
-  await deps.audit("list_rooms", {
+  await deps.audit.begin("list_rooms", {
     block: block ?? null,
     only_available: onlyAvailable ?? false,
   });
@@ -179,7 +183,7 @@ async function runListRooms(
 }
 
 async function runGetSummary(deps: ToolDeps): Promise<string> {
-  await deps.audit("get_summary", {});
+  await deps.audit.begin("get_summary", {});
   return renderRpcResult(deps, "mcp_summary", {});
 }
 

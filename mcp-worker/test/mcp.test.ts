@@ -52,7 +52,10 @@ function captureTools(deps: ToolDeps): Registered[] {
 }
 
 function makeDeps() {
-  const audit = vi.fn(async (_tool: string, _args: Record<string, unknown>) => {});
+  const audit = {
+    begin: vi.fn(async (_tool: string, _args: Record<string, unknown>) => 1),
+    complete: vi.fn(async (_id: number | null, _ok: boolean, _detail: string) => {}),
+  };
   const rpc = vi.fn(async (_fn: string, _params?: Record<string, unknown>): Promise<unknown> => []);
   const deps: ToolDeps = { audit, rpc };
   return { deps, audit, rpc };
@@ -112,8 +115,8 @@ describe("list_maintenance_tickets", () => {
 
     const result = await tool.handler({});
 
-    expect(audit).toHaveBeenCalledBefore(rpc);
-    expect(audit).toHaveBeenCalledExactlyOnceWith("list_maintenance_tickets", {
+    expect(audit.begin).toHaveBeenCalledBefore(rpc);
+    expect(audit.begin).toHaveBeenCalledExactlyOnceWith("list_maintenance_tickets", {
       status: null,
       limit: 20,
     });
@@ -167,7 +170,7 @@ describe("list_maintenance_tickets", () => {
     expect(result.content[0]!.text).toBe(
       "Invalid request: invalid status 'bogus': expected one of pending, in_progress, resolved",
     );
-    expect(audit).toHaveBeenCalledExactlyOnceWith("list_maintenance_tickets", {
+    expect(audit.begin).toHaveBeenCalledExactlyOnceWith("list_maintenance_tickets", {
       status: "bogus",
       limit: 20,
     });
@@ -233,7 +236,7 @@ describe("search_students", () => {
     expect(result.content[0]!.text).toBe(
       "Invalid request: query is required (a name, card ID or room label such as 'B-101').",
     );
-    expect(audit).toHaveBeenCalledExactlyOnceWith("search_students", {
+    expect(audit.begin).toHaveBeenCalledExactlyOnceWith("search_students", {
       query: "   ",
       limit: 10,
     });
@@ -302,7 +305,7 @@ describe("get_summary", () => {
     const tool = captureTools(deps).find((t) => t.name === "get_summary")!;
 
     const result = await tool.handler({});
-    expect(audit).toHaveBeenCalledExactlyOnceWith("get_summary", {});
+    expect(audit.begin).toHaveBeenCalledExactlyOnceWith("get_summary", {});
     expect(rpc).toHaveBeenCalledExactlyOnceWith("mcp_summary", {});
     expect(result.content[0]!.text).toBe('{"residents":120,"blocks":{"A":40}}');
   });
@@ -317,30 +320,90 @@ describe("get_summary", () => {
 });
 
 describe("createAuditLogger", () => {
-  it("calls mcp_log_audit with p_tool/p_args and a timeout signal, awaited", async () => {
-    const rpc = vi.fn(async (_fn: string, _params?: Record<string, unknown>, _opts?: unknown) => null);
-    const audit = createAuditLogger(rpc);
+  describe("begin", () => {
+    it("calls mcp_log_audit with p_tool/p_args and a timeout signal, returns the row id", async () => {
+      const rpc = vi.fn(async (_fn: string, _params?: Record<string, unknown>, _opts?: unknown) => 7);
+      const audit = createAuditLogger(rpc);
 
-    await audit("get_summary", { answer: 42 });
+      await expect(audit.begin("get_summary", { answer: 42 })).resolves.toBe(7);
 
-    expect(rpc).toHaveBeenCalledTimes(1);
-    const [fn, params, options] = rpc.mock.calls[0]!;
-    expect(fn).toBe("mcp_log_audit");
-    expect(params).toEqual({ p_tool: "get_summary", p_args: { answer: 42 } });
-    expect((options as { signal: unknown }).signal).toBeInstanceOf(AbortSignal);
+      expect(rpc).toHaveBeenCalledTimes(1);
+      const [fn, params, options] = rpc.mock.calls[0]!;
+      expect(fn).toBe("mcp_log_audit");
+      expect(params).toEqual({ p_tool: "get_summary", p_args: { answer: 42 } });
+      expect((options as { signal: unknown }).signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it("accepts a numeric string id (PostgREST bigint)", async () => {
+      const audit = createAuditLogger(async () => "42");
+      await expect(audit.begin("get_summary", {})).resolves.toBe(42);
+    });
+
+    it("returns null when rpc resolves null", async () => {
+      const audit = createAuditLogger(async () => null);
+      await expect(audit.begin("get_summary", {})).resolves.toBeNull();
+    });
+
+    it("returns null for empty or non-numeric bodies", async () => {
+      const audit = createAuditLogger(async () => "");
+      await expect(audit.begin("get_summary", {})).resolves.toBeNull();
+    });
+
+    it("returns null for unexpected bodies", async () => {
+      const audit = createAuditLogger(async () => ({ id: 3 }));
+      await expect(audit.begin("get_summary", {})).resolves.toBeNull();
+    });
+
+    it("returns null on async failure", async () => {
+      const audit = createAuditLogger(async () => {
+        throw new Error("network error: boom");
+      });
+      await expect(audit.begin("get_summary", {})).resolves.toBeNull();
+    });
+
+    it("returns null on synchronous failure", async () => {
+      const audit = createAuditLogger(() => {
+        throw new Error("sync boom");
+      });
+      await expect(audit.begin("get_summary", {})).resolves.toBeNull();
+    });
   });
 
-  it("swallows async failures", async () => {
-    const audit = createAuditLogger(async () => {
-      throw new Error("network error: boom");
-    });
-    await expect(audit("get_summary", {})).resolves.toBeUndefined();
-  });
+  describe("complete", () => {
+    it("calls mcp_complete_audit with p_id/p_ok/p_detail and a timeout signal", async () => {
+      const rpc = vi.fn(async (_fn: string, _params?: Record<string, unknown>, _opts?: unknown) => null);
+      const audit = createAuditLogger(rpc);
 
-  it("swallows synchronous failures", async () => {
-    const audit = createAuditLogger(() => {
-      throw new Error("sync boom");
+      await audit.complete(7, true, "ticket resolved");
+
+      expect(rpc).toHaveBeenCalledTimes(1);
+      const [fn, params, options] = rpc.mock.calls[0]!;
+      expect(fn).toBe("mcp_complete_audit");
+      expect(params).toEqual({ p_id: 7, p_ok: true, p_detail: "ticket resolved" });
+      expect((options as { signal: unknown }).signal).toBeInstanceOf(AbortSignal);
     });
-    await expect(audit("get_summary", {})).resolves.toBeUndefined();
+
+    it("does nothing when the id is null", async () => {
+      const rpc = vi.fn(async () => 1);
+      const audit = createAuditLogger(rpc);
+
+      await audit.complete(null, false, "refused");
+
+      expect(rpc).not.toHaveBeenCalled();
+    });
+
+    it("swallows async failures", async () => {
+      const audit = createAuditLogger(async () => {
+        throw new Error("network error: boom");
+      });
+      await expect(audit.complete(7, false, "boom")).resolves.toBeUndefined();
+    });
+
+    it("swallows synchronous failures", async () => {
+      const audit = createAuditLogger(() => {
+        throw new Error("sync boom");
+      });
+      await expect(audit.complete(7, false, "boom")).resolves.toBeUndefined();
+    });
   });
 });
