@@ -1,0 +1,35 @@
+{
+  // Residence Tlemcen admin MCP server (read-only).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "residence-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  // nodejs_compat: agents/mcp/server imports node:async_hooks (installed
+  // agents docs). global_fetch_strictly_public: required by
+  // workers-oauth-provider 1.2.3 for Client ID Metadata Document fetches
+  // (node_modules/@cloudflare/workers-oauth-provider/docs/authorization-server.md).
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "vars": {
+    // Deployed origin (Task 7). For local `wrangler dev`, override with
+    // `--var PUBLIC_URL:http://localhost:8788` so metadata matches localhost.
+    "PUBLIC_URL": "https://residence-mcp.anes4tlm.workers.dev"
+  },
+  // OAuth state/grants/tokens (workers-oauth-provider requires OAUTH_KV).
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
+      "id": "cb254f18663a4486a18803e7dad49b9d"
+    }
+  ],
+  // D8: 60 requests / 60 s per client IP on /mcp.
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 60,
+        "period": 60
+      }
+    }
+  ]
+}
