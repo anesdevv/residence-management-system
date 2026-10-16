@@ -4,7 +4,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
-    QCheckBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton,
+    QCheckBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton,
     QVBoxLayout, QWidget,
 )
 from ...client import current_role
@@ -126,6 +126,7 @@ class SettingsPage(QWidget):
         self.role = current_role(client)
         self._token = ""
         self._token_revealed = False
+        self._writes_loading = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -168,6 +169,20 @@ class SettingsPage(QWidget):
         self.enable_note.setStyleSheet(MUTED_QSS)
         card_layout.addWidget(self.enable_note)
 
+        # ChatGPT write off-switch — admin only, outside the developer-mode gate
+        self.writes_checkbox = QCheckBox("Allow ChatGPT to change data")
+        self.writes_checkbox.setStyleSheet(CHECKBOX_QSS)
+        self.writes_checkbox.toggled.connect(self._on_writes_toggled)
+        card_layout.addWidget(self.writes_checkbox)
+
+        self.writes_note = QLabel(
+            "ChatGPT asks you to confirm every change first. "
+            "Turn this off to make ChatGPT read-only again."
+        )
+        self.writes_note.setWordWrap(True)
+        self.writes_note.setStyleSheet(MUTED_QSS)
+        card_layout.addWidget(self.writes_note)
+
         self.content = self._build_content()
         card_layout.addWidget(self.content)
 
@@ -180,6 +195,9 @@ class SettingsPage(QWidget):
         else:
             self.dev_checkbox.setEnabled(False)
             self.enable_note.setVisible(False)
+        self.writes_checkbox.setVisible(self.role == "admin")
+        self.writes_note.setVisible(self.role == "admin")
+        self.writes_checkbox.setEnabled(False)  # enabled once the setting loads
         self.content.setVisible(False)
 
         # Background health poller (admins only)
@@ -310,8 +328,9 @@ class SettingsPage(QWidget):
 
         outer.addWidget(self._divider())
         footer = QLabel(
-            "The connection is read-only and admin-only — ChatGPT can look at data, never change it. "
-            "Full guides: mcp-worker/README.md (hosted) and mcp/README.md (local)."
+            "Admin-only. ChatGPT can read data, and — when you allow it here — make changes: it asks "
+            "you to confirm every change first, and every action is logged. Full guides: "
+            "mcp-worker/README.md (hosted) and mcp/README.md (local)."
         )
         footer.setWordWrap(True)
         footer.setStyleSheet(MUTED_QSS)
@@ -432,12 +451,53 @@ class SettingsPage(QWidget):
     # Behavior
     # -------------------------------------------------------------
     def reload(self):
-        """Refresh the token row (mcp/.env is re-read on demand)."""
+        """Refresh the token row (mcp/.env is re-read on demand) and the writes off-switch."""
         if self.role == "admin":
             self._token = _read_mcp_token()
         else:
             self._token = ""
         self._render_token_row()
+        self._load_writes_setting()
+
+    def _load_writes_setting(self):
+        """Read the ChatGPT off-switch from the DB. Failure leaves the checkbox disabled (fail-safe)."""
+        if self.role != "admin":
+            return
+        self.writes_checkbox.setEnabled(False)  # no interaction while loading
+        ok = True
+        try:
+            resp = self.client.rpc("mcp_get_settings", {}).execute()
+            writes_enabled = bool((resp.data or {}).get("writes_enabled", False))
+        except Exception:  # noqa: BLE001
+            # Fail-safe: never show a state we could not verify.
+            ok = False
+            writes_enabled = False
+            self.writes_note.setText("Could not load this setting — check the connection.")
+        else:
+            self.writes_note.setText(
+                "ChatGPT asks you to confirm every change first. "
+                "Turn this off to make ChatGPT read-only again."
+            )
+        self._writes_loading = True
+        try:
+            self.writes_checkbox.blockSignals(True)
+            self.writes_checkbox.setChecked(writes_enabled)
+        finally:
+            self.writes_checkbox.blockSignals(False)
+            self._writes_loading = False
+        self.writes_checkbox.setEnabled(ok)
+
+    def _on_writes_toggled(self, checked: bool):
+        if self._writes_loading or self.role != "admin":
+            return
+        try:
+            self.client.rpc("mcp_set_writes_enabled", {"p_enabled": checked}).execute()
+        except Exception as exc:  # noqa: BLE001
+            # DB is the source of truth — revert the UI and tell the admin.
+            self.writes_checkbox.blockSignals(True)
+            self.writes_checkbox.setChecked(not checked)
+            self.writes_checkbox.blockSignals(False)
+            QMessageBox.warning(self, "Settings", f"Could not save the setting: {exc}")
 
     def _on_dev_mode_toggled(self, checked: bool):
         if self.role != "admin":
