@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QGuiApplication, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton,
-    QVBoxLayout, QWidget,
+    QScrollArea, QVBoxLayout, QWidget,
 )
 from ...client import current_role
 from ..theme import apply_button_style, get_badge_qss
@@ -128,7 +128,32 @@ class SettingsPage(QWidget):
         self._token_revealed = False
         self._writes_loading = False
 
-        layout = QVBoxLayout(self)
+        # Root layout hosting the QScrollArea
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
+
+        # Smooth scroll area ensuring all settings and developer mode steps
+        # remain fully visible and comfortable across all window sizes without clipping.
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setObjectName("settingsScrollArea")
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setStyleSheet("""
+            QScrollArea#settingsScrollArea {
+                background-color: transparent;
+                border: none;
+            }
+            QScrollArea#settingsScrollArea > QWidget > QWidget {
+                background-color: transparent;
+            }
+        """)
+
+        scroll_content = QWidget()
+        scroll_content.setObjectName("settingsScrollContent")
+        layout = QVBoxLayout(scroll_content)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(14)
 
@@ -193,6 +218,9 @@ class SettingsPage(QWidget):
 
         layout.addWidget(card)
         layout.addStretch(1)
+
+        self.scroll_area.setWidget(scroll_content)
+        root_layout.addWidget(self.scroll_area)
 
         # Role gating — developer mode is session-only, never persisted
         if self.role == "admin":
