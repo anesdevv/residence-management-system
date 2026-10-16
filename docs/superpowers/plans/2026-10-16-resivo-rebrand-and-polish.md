@@ -211,11 +211,11 @@ Pinned strings:
 
 **Files:** `desktop/app/ui/main_window.py`
 
-- [ ] **Step 1:** extract `_shutdown_workers()` (stop sync + health workers with the existing bounded waits; used by `closeEvent` and sign-out).
-- [ ] **Step 2:** add a `Sign out` button (objectName `signOutButton`) at the bottom of the sidebar; click → `_shutdown_workers()`, `client.auth.sign_out()` (guarded), open a fresh `LoginWindow`, close self.
-- [ ] **Step 3:** smoke: button exists; click → login window visible, main window closed, `sync_worker.isRunning()` is False; screenshot.
-- [ ] **Step 4:** pytest + smoke pass.
-- [ ] **Step 5: Commit** — `feat(desktop): sign out button`
+- [x] **Step 1:** extract `_shutdown_workers()` (stop sync + health workers with the existing bounded waits; used by `closeEvent` and sign-out).
+- [x] **Step 2:** add a `Sign out` button (objectName `signOutButton`) at the bottom of the sidebar; click → `_shutdown_workers()`, `client.auth.sign_out()` (guarded), open a fresh `LoginWindow`, close self.
+- [x] **Step 3:** smoke: button exists; click → login window visible, main window closed, `sync_worker.isRunning()` is False; screenshot.
+- [x] **Step 4:** pytest + smoke pass.
+- [x] **Step 5: Commit** — `feat(desktop): sign out button`
 
 ### Task 16: Rename sweep + final verification + handover
 

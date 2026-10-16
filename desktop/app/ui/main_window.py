@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QListWidget, QListWidgetItem,
-    QStackedWidget, QStatusBar, QLabel,
+    QStackedWidget, QStatusBar, QLabel, QPushButton,
 )
 from ..client import current_role
 from .live_sync import LiveSyncWorker
@@ -102,12 +102,72 @@ class MainWindow(QMainWindow):
         body_layout.setContentsMargins(0, 0, 0, 0)
         body_layout.setSpacing(0)
 
+        # Left Sidebar Container (Navigation List + Sign Out Button)
+        sidebar_container = QWidget()
+        sidebar_container.setObjectName("sidebarContainer")
+        sidebar_container.setFixedWidth(230)
+        sidebar_container.setStyleSheet("""
+            QWidget#sidebarContainer {
+                background-color: #07080e;
+                border-right: 1px solid #161925;
+            }
+        """)
+        sidebar_layout = QVBoxLayout(sidebar_container)
+        sidebar_layout.setContentsMargins(0, 0, 0, 0)
+        sidebar_layout.setSpacing(0)
+
         # Left Sidebar Navigation
         self.nav = QListWidget()
         self.nav.setObjectName("sidebarNav")
-        self.nav.setFixedWidth(230)
         self.nav.setIconSize(QSize(18, 18))
-        body_layout.addWidget(self.nav)
+        sidebar_layout.addWidget(self.nav, 1)
+
+        # Bottom section with Sign out button
+        sidebar_footer = QWidget()
+        sidebar_footer.setObjectName("sidebarFooter")
+        sidebar_footer.setStyleSheet("""
+            QWidget#sidebarFooter {
+                background-color: #07080e;
+                border-top: 1px solid #161925;
+                border-right: 1px solid #161925;
+            }
+        """)
+        footer_layout = QVBoxLayout(sidebar_footer)
+        footer_layout.setContentsMargins(12, 10, 12, 12)
+        footer_layout.setSpacing(0)
+
+        self.sign_out_btn = QPushButton("Sign out")
+        self.sign_out_btn.setObjectName("signOutButton")
+        self.sign_out_btn.setIcon(get_icon("logout", size=16, color="#94a3b8"))
+        self.sign_out_btn.setIconSize(QSize(16, 16))
+        self.sign_out_btn.setCursor(Qt.PointingHandCursor)
+        self.sign_out_btn.setStyleSheet("""
+            QPushButton#signOutButton {
+                background-color: #10131d;
+                color: #cbd5e1;
+                border: 1px solid #23293d;
+                border-radius: 7px;
+                padding: 8px 14px;
+                font-size: 12px;
+                font-weight: 600;
+                text-align: left;
+            }
+            QPushButton#signOutButton:hover {
+                background-color: #1c2133;
+                border-color: #3e4c6c;
+                color: #ffffff;
+            }
+            QPushButton#signOutButton:pressed {
+                background-color: #0f121d;
+                border-color: #283145;
+                color: #94a3b8;
+            }
+        """)
+        self.sign_out_btn.clicked.connect(self.on_sign_out_clicked)
+        footer_layout.addWidget(self.sign_out_btn)
+
+        sidebar_layout.addWidget(sidebar_footer)
+        body_layout.addWidget(sidebar_container)
 
         # Stacked Pages
         self.stack = QStackedWidget()
@@ -198,7 +258,7 @@ class MainWindow(QMainWindow):
         self.maintenance_page.apply_live_data(reports)
         self.room_changes_page.apply_live_data(pending_requests)
 
-    def closeEvent(self, event):
+    def _shutdown_workers(self):
         if hasattr(self, "sync_worker") and self.sync_worker.isRunning():
             self.sync_worker.stop()
             if not self.sync_worker.wait(3000):
@@ -209,4 +269,20 @@ class MainWindow(QMainWindow):
             if not self.settings_page.health_worker.wait(3000):
                 self.settings_page.health_worker.terminate()
                 self.settings_page.health_worker.wait(1000)
+
+    def on_sign_out_clicked(self):
+        self._shutdown_workers()
+        try:
+            if hasattr(self.client, "auth") and hasattr(self.client.auth, "sign_out"):
+                self.client.auth.sign_out()
+        except Exception:
+            pass
+
+        from .login_window import LoginWindow
+        self.login_window = LoginWindow()
+        self.login_window.show()
+        self.close()
+
+    def closeEvent(self, event):
+        self._shutdown_workers()
         super().closeEvent(event)
