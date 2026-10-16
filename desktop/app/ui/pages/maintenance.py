@@ -1,4 +1,3 @@
-import urllib.request
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap, QColor
 from PySide6.QtWidgets import (
@@ -10,6 +9,7 @@ from ...client import official_lookup
 from ..icons import get_icon, get_pixmap
 from ..theme import apply_button_style
 from ..infocard import StudentInfoCardDialog
+from ..photo_viewer import ClickablePhotoLabel, PhotoViewerDialog, PhotoFetchWorker
 
 
 class MaintenancePage(QWidget):
@@ -18,6 +18,12 @@ class MaintenancePage(QWidget):
         self.client = client
         self.rows: list[dict] = []
         self.filter_mode = "all"
+        self._thumb_worker: PhotoFetchWorker | None = None
+        self._photo_req_id: int = 0
+        self._current_photo_url: str | None = None
+        self._current_pixmap: QPixmap | None = None
+        self._photo_fetch_failed: bool = False
+        self._photo_loading: bool = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -108,16 +114,23 @@ class MaintenancePage(QWidget):
         dc_layout.addWidget(self.detail_text)
 
         # Photo Inspector
-        self.photo_label = QLabel("No fault photo attached")
+        self.photo_label = ClickablePhotoLabel("No fault photo attached")
+        self.photo_label.setObjectName("maintenancePhotoLabel")
         self.photo_label.setAlignment(Qt.AlignCenter)
         self.photo_label.setStyleSheet("""
-            background-color: #0b0d14;
-            border: 1px dashed #22293b;
-            border-radius: 8px;
-            color: #64748b;
-            font-size: 12px;
+            QLabel#maintenancePhotoLabel {
+                background-color: #0b0d14;
+                border: 1px dashed #22293b;
+                border-radius: 8px;
+                color: #64748b;
+                font-size: 12px;
+            }
+            QLabel#maintenancePhotoLabel:hover {
+                border-color: #38bdf8;
+            }
         """)
         self.photo_label.setFixedHeight(180)
+        self.photo_label.clicked.connect(self.on_photo_clicked)
         dc_layout.addWidget(self.photo_label)
 
         # Status Update Actions
@@ -213,10 +226,28 @@ class MaintenancePage(QWidget):
         if restore_row >= 0:
             self.table.selectRow(restore_row)
         else:
+            self._cleanup_thumb_worker()
+            self._current_pixmap = None
+            self._current_photo_url = None
+            self._photo_fetch_failed = False
+            self._photo_loading = False
             self.detail_text.clear()
+            self.photo_label.clear()
             self.photo_label.setText("No fault photo attached")
+            self.photo_label.setCursor(Qt.ArrowCursor)
+            self.photo_label.setToolTip("")
 
         self.apply_filter()
+
+    def _cleanup_thumb_worker(self):
+        if self._thumb_worker is not None:
+            try:
+                self._thumb_worker.loaded.disconnect()
+                self._thumb_worker.failed.disconnect()
+            except RuntimeError:
+                pass
+            self._thumb_worker.stop()
+            self._thumb_worker = None
 
     def reload(self):
         try:
@@ -232,10 +263,21 @@ class MaintenancePage(QWidget):
         return self.rows[r] if 0 <= r < len(self.rows) else None
 
     def show_detail(self):
+        self._cleanup_thumb_worker()
+        self._photo_req_id += 1
+        current_req = self._photo_req_id
+        self._current_pixmap = None
+        self._current_photo_url = None
+        self._photo_fetch_failed = False
+        self._photo_loading = False
+
         r = self.selected()
         if not r:
             self.detail_text.clear()
+            self.photo_label.clear()
             self.photo_label.setText("No fault photo attached")
+            self.photo_label.setCursor(Qt.ArrowCursor)
+            self.photo_label.setToolTip("")
             return
 
         st = r.get("students") or {}
@@ -249,25 +291,100 @@ class MaintenancePage(QWidget):
         )
 
         self.photo_label.clear()
-        self.photo_label.setText("Loading photo...")
-        if r.get("photo_path"):
-            try:
-                signed = self.client.storage.from_("maintenance-photos").create_signed_url(r["photo_path"], 300)
-                url = (signed or {}).get("signedURL") or (signed or {}).get("signedUrl")
-                if url:
-                    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-                    data = urllib.request.urlopen(req, timeout=10).read()
-                    pix = QPixmap()
-                    if pix.loadFromData(data) and not pix.isNull() and pix.width() > 0 and pix.height() > 0:
-                        self.photo_label.setPixmap(pix.scaled(380, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-                    else:
-                        self.photo_label.setText("Photo preview unavailable")
-                else:
-                    self.photo_label.setText("Photo unavailable")
-            except Exception:
-                self.photo_label.setText("Failed to load photo")
-        else:
+        if not r.get("photo_path"):
             self.photo_label.setText("No photo attached by resident")
+            self.photo_label.setCursor(Qt.PointingHandCursor)
+            self.photo_label.setToolTip("Click to view fault details")
+            return
+
+        self.photo_label.setText("Loading photo...")
+        self.photo_label.setCursor(Qt.PointingHandCursor)
+        self.photo_label.setToolTip("Loading photo preview…")
+        self._photo_loading = True
+
+        url = None
+        try:
+            signed = self.client.storage.from_("maintenance-photos").create_signed_url(r["photo_path"], 300)
+            url = (signed or {}).get("signedURL") or (signed or {}).get("signedUrl")
+        except Exception:
+            url = None
+
+        if not url:
+            self._photo_loading = False
+            self._photo_fetch_failed = True
+            self.photo_label.setText("Photo unavailable")
+            self.photo_label.setToolTip("Failed to retrieve signed URL")
+            return
+
+        self._current_photo_url = url
+
+        def on_loaded(data: bytes, req=current_req, img_url=url):
+            if self._photo_req_id != req:
+                return
+            self._photo_loading = False
+            pix = QPixmap()
+            if pix.loadFromData(data) and not pix.isNull() and pix.width() > 0 and pix.height() > 0:
+                self._current_pixmap = pix
+                self._current_photo_url = img_url
+                scaled = pix.scaled(380, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                self.photo_label.setPixmap(scaled)
+                self.photo_label.setCursor(Qt.PointingHandCursor)
+                self.photo_label.setToolTip("Click to open full-size photo viewer")
+            else:
+                self._photo_fetch_failed = True
+                self.photo_label.setText("Photo preview unavailable")
+
+        def on_failed(err_msg: str, req=current_req):
+            if self._photo_req_id != req:
+                return
+            self._photo_loading = False
+            self._photo_fetch_failed = True
+            self.photo_label.setText("Failed to load photo")
+
+        worker = PhotoFetchWorker(url, parent=None)
+        worker.finished.connect(worker.deleteLater)
+        self._thumb_worker = worker
+        worker.loaded.connect(on_loaded)
+        worker.failed.connect(on_failed)
+        worker.start()
+
+    def on_photo_clicked(self):
+        r = self.selected()
+        if not r:
+            return
+
+        if not r.get("photo_path"):
+            QMessageBox.information(
+                self,
+                "Fault Photo",
+                "No photo was attached to this maintenance ticket by the resident.",
+            )
+            return
+
+        if self._photo_fetch_failed and not self._current_pixmap:
+            QMessageBox.information(
+                self,
+                "Fault Photo",
+                "Fault photo could not be loaded from storage. Please check the network connection.",
+            )
+            return
+
+        dlg = PhotoViewerDialog(
+            parent=self,
+            initial_pixmap=self._current_pixmap,
+            image_url=self._current_photo_url,
+        )
+        try:
+            dlg.exec()
+        finally:
+            dlg.deleteLater()
+
+    def closeEvent(self, event):
+        worker = self._thumb_worker
+        self._cleanup_thumb_worker()
+        if worker is not None and worker.isRunning():
+            worker.wait(2000)
+        super().closeEvent(event)
 
     def on_row_double_clicked(self, row: int, col: int):
         r = self.selected()

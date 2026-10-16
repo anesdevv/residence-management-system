@@ -191,11 +191,11 @@ Pinned strings:
 **Interfaces:**
 - Produces: `PhotoViewerDialog(parent, initial_pixmap: QPixmap | None, image_url: str | None)` — shows the thumbnail instantly; if `image_url`, fetches bytes on a background `QThread` and swaps in the full-size image; zoom controls (fit / − / +, 25%–400%) + Close. Also `PhotoFetchWorker(QThread)` with `loaded = Signal(bytes)` / `failed = Signal(str)` for the inspector.
 
-- [ ] **Step 1:** make the inspector thumbnail load async (no main-thread `urlopen`); explicit loading / no-photo / failed states; selection changes ignore stale results.
-- [ ] **Step 2:** clicking the thumbnail opens `PhotoViewerDialog`; wire zoom + close; never block the main thread.
-- [ ] **Step 3:** extend the smoke: click opens the viewer; zoom changes scale; no-photo ticket → message; failed fetch → message with no hang; screenshots.
-- [ ] **Step 4:** pytest + smoke pass.
-- [ ] **Step 5: Commit** — `feat(desktop): maintenance photo viewer with async loading`
+- [x] **Step 1:** make the inspector thumbnail load async (no main-thread `urlopen`); explicit loading / no-photo / failed states; selection changes ignore stale results.
+- [x] **Step 2:** clicking the thumbnail opens `PhotoViewerDialog`; wire zoom + close; never block the main thread.
+- [x] **Step 3:** extend the smoke: click opens the viewer; zoom changes scale; no-photo ticket → message; failed fetch → message with no hang; screenshots.
+- [x] **Step 4:** pytest + smoke pass.
+- [x] **Step 5: Commit** — `feat(desktop): maintenance photo viewer with async loading`
 
 ### Task 14: Flexible window
 
