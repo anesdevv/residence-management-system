@@ -154,9 +154,9 @@ Pinned strings:
 
 **Files:** `web/src/pages/dashboard/index.astro`
 
-- [ ] **Step 1:** title → `Dashboard — RÉSIVO`; restyle per the Stitch dashboard: welcome header, status chips, room overview, maintenance overview, quick actions — real data only; drop mock-only cards; keep every link and flow.
-- [ ] **Step 2:** browser check: real data renders; no console errors.
-- [ ] **Step 3: Commit** — `feat(web): redesign student dashboard`
+- [x] **Step 1:** title → `Dashboard — RÉSIVO`; restyle per the Stitch dashboard: welcome header, status chips, room overview, maintenance overview, quick actions — real data only; drop mock-only cards; keep every link and flow.
+- [x] **Step 2:** browser check: real data renders; no console errors.
+- [x] **Step 3: Commit** — `feat(web): redesign student dashboard`
 
 ### Task 10: Maintenance redesign
 
