@@ -186,9 +186,9 @@ describe("tool registration", () => {
   });
 
   it("uses the new 14-tool server instructions (reads stay char-for-char; this text diverges)", () => {
-    expect(SERVER_NAME).toBe("Residence Tlemcen Admin");
+    expect(SERVER_NAME).toBe("RÉSIVO Admin");
     expect(SERVER_INSTRUCTIONS).toBe(
-      "Administrator tools for the Residence Tlemcen university residence. " +
+      "Administrator tools for RÉSIVO, the university residence management system. " +
         "You can read data freely; when the administrator has enabled changes " +
         "you can also approve or reject registrations and room-change requests, " +
         "manage rooms, and update maintenance tickets. Before any change, show " +

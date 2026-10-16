@@ -119,13 +119,13 @@ function errorPage(message: string, status: number): Response {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Residence Tlemcen MCP</title>
+<title>RÉSIVO MCP</title>
 <style>${PAGE_CSS}</style>
 </head>
 <body>
 <main class="card">
-<h1>Residence Tlemcen Admin</h1>
-<p class="sub">Read-only MCP server</p>
+<h1>RÉSIVO Admin</h1>
+<p class="sub">Administrator MCP server for the university residence</p>
 <p class="error" role="alert">${escapeHtml(message)}</p>
 </main>
 </body>
@@ -158,13 +158,13 @@ function consentPage(details: ConsentDescription, action: string, error?: string
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign in — Residence Tlemcen MCP</title>
+<title>Sign in — RÉSIVO MCP</title>
 <style>${PAGE_CSS}</style>
 </head>
 <body>
 <main class="card">
-<h1>Residence Tlemcen Admin</h1>
-<p class="sub">Read-only MCP server sign-in</p>
+<h1>RÉSIVO Admin</h1>
+<p class="sub">Administrator MCP server for the university residence</p>
 <p><strong>${clientName}</strong> wants to connect to the residence admin tools.</p>
 ${publishedBy}
 ${redirectLine}

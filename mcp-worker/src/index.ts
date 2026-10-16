@@ -36,7 +36,7 @@ const DEFAULT_PUBLIC_URL = "http://localhost:8788";
 /** The one protected route (plan D1/D5). */
 const MCP_ROUTE = "/mcp";
 
-/** Scopes this authorization server can grant (plan D5: read-only admin). */
+/** Scopes this authorization server can grant (plan D5: admin). */
 const SUPPORTED_SCOPES = ["mcp:read", "offline_access"] as const;
 
 function publicBaseUrl(env: Env): string {
@@ -103,7 +103,7 @@ function getOAuthProvider(env: Env): OAuthProvider<Env> {
         scopesSupported: [...SUPPORTED_SCOPES],
         resourceMetadata: {
           resource,
-          resource_name: "Residence Tlemcen Admin",
+          resource_name: "RÉSIVO Admin",
         },
         requiredScopes: ["mcp:read"],
       }),

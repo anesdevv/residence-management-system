@@ -26,12 +26,12 @@ import {
 } from "./formatting";
 
 /** Copied verbatim from `mcp/server.py` (FastMCP(...) call). */
-export const SERVER_NAME = "Residence Tlemcen Admin";
+export const SERVER_NAME = "RÉSIVO Admin";
 export const SERVER_VERSION = "1.0.0";
 
 /** The 14-tool instructions (deliberately diverges from the read-only Python text). */
 export const SERVER_INSTRUCTIONS =
-  "Administrator tools for the Residence Tlemcen university residence. " +
+  "Administrator tools for RÉSIVO, the university residence management system. " +
   "You can read data freely; when the administrator has enabled changes " +
   "you can also approve or reject registrations and room-change requests, " +
   "manage rooms, and update maintenance tickets. Before any change, show " +

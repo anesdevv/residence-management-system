@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""End-to-end acceptance checks for the hosted Residence Tlemcen MCP worker.
+"""End-to-end acceptance checks for the hosted RÉSIVO MCP worker.
 
 Usage:
     python verify_remote.py <BASE_URL> [--token TOKEN] [--timeout SECONDS]
 
 Examples:
-    python verify_remote.py https://residence-mcp.example.workers.dev
+    python verify_remote.py https://resivo-mcp.example.workers.dev
     python verify_remote.py http://localhost:8788 --token <token>
 
 The consent token is read from the repository's ``mcp/.env`` (``MCP_AUTH_TOKEN``
@@ -37,7 +37,7 @@ import urllib.request
 import uuid
 from pathlib import Path
 
-USER_AGENT = "residence-mcp-verify/1.0 (stdlib urllib acceptance script)"
+USER_AGENT = "resivo-mcp-verify/1.0 (stdlib urllib acceptance script)"
 DEFAULT_PROTOCOL_VERSION = "2025-06-18"
 DEFAULT_TIMEOUT = 15.0
 PROBE_TIMEOUT = 10.0
@@ -549,7 +549,7 @@ def register_client(client: Client, as_meta: dict):
             "host a client_id metadata document, so the CIMD flow is unavailable"
         )
     payload = {
-        "client_name": "residence-mcp verify_remote.py",
+        "client_name": "resivo-mcp verify_remote.py",
         "redirect_uris": [REDIRECT_URI],
         "grant_types": ["authorization_code", "refresh_token"],
         "response_types": ["code"],
@@ -1518,9 +1518,9 @@ def normalize_base(raw: str) -> str:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="verify_remote.py",
-        description="Acceptance checks for the hosted Residence Tlemcen MCP worker (stdlib only).",
+        description="Acceptance checks for the hosted RÉSIVO MCP worker (stdlib only).",
     )
-    parser.add_argument("base_url", help="Base URL, e.g. https://residence-mcp.example.workers.dev or http://localhost:8788")
+    parser.add_argument("base_url", help="Base URL, e.g. https://resivo-mcp.example.workers.dev or http://localhost:8788")
     parser.add_argument("--token", help="Consent token (default: MCP_AUTH_TOKEN from mcp/.env). Never printed.")
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT, help="Per-request timeout in seconds (default: 15)")
     return parser.parse_args(argv)

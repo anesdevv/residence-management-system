@@ -1,8 +1,8 @@
 {
-  "name": "residence-mcp",
+  "name": "resivo-mcp",
   "version": "1.0.0",
   "private": true,
-  "description": "Residence Tlemcen admin MCP server (6 read + 8 admin-confirmed write tools) on Cloudflare Workers",
+  "description": "RÉSIVO admin MCP server (6 read + 8 admin-confirmed write tools) on Cloudflare Workers",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",

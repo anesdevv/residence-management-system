@@ -4,8 +4,8 @@ Always-on, permanent-URL replacement for the local Python MCP server in `mcp/`. 
 14 admin tools — the same six read-only tools as the local server plus 8 admin-confirmed
 write tools — deployed on Cloudflare Workers.
 
-- **MCP endpoint:** `https://residence-mcp.anes4tlm.workers.dev/mcp`
-- **Health (public):** `https://residence-mcp.anes4tlm.workers.dev/health` → `{"status":"ok"}`
+- **MCP endpoint:** `https://resivo-mcp.anes4tlm.workers.dev/mcp`
+- **Health (public):** `https://resivo-mcp.anes4tlm.workers.dev/health` → `{"status":"ok"}`
 
 ## What it is
 
@@ -123,7 +123,7 @@ End-to-end acceptance script (stdlib-only; reads the consent token from `mcp/.en
 never prints it):
 
 ```powershell
-& "mcp\.venv\Scripts\python.exe" "mcp-worker\scripts\verify_remote.py" https://residence-mcp.anes4tlm.workers.dev
+& "mcp\.venv\Scripts\python.exe" "mcp-worker\scripts\verify_remote.py" https://resivo-mcp.anes4tlm.workers.dev
 ```
 
 It checks: `/health` 200, `/mcp` without auth → 401, the full OAuth dance (discovery →

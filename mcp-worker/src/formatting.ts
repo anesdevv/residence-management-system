@@ -1,5 +1,5 @@
 /**
- * Pure helpers for the Residence Tlemcen admin MCP worker.
+ * Pure helpers for the RÉSIVO admin MCP worker.
  *
  * TypeScript port of `mcp/formatting.py` (the parity source of truth):
  * everything here is dependency-free, network-free and deterministic so it
