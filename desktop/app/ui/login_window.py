@@ -15,6 +15,7 @@ class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Staff Login — RÉSIVO")
+        self.setMinimumSize(380, 480)
         self.resize(440, 520)
         self.setStyleSheet(DESKTOP_STYLESHEET)
         self.client = make_client()

@@ -98,7 +98,8 @@ class MaintenancePage(QWidget):
         # Inspector Card
         detail_card = QFrame()
         detail_card.setObjectName("cardFrame")
-        detail_card.setFixedWidth(420)
+        detail_card.setMinimumWidth(360)
+        detail_card.setMaximumWidth(520)
         dc_layout = QVBoxLayout(detail_card)
         dc_layout.setSpacing(12)
         dc_layout.setContentsMargins(16, 16, 16, 16)

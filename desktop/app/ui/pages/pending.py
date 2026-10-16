@@ -73,7 +73,8 @@ class PendingPage(QWidget):
         # Right Container: Inspector & Actions
         detail_container = QFrame()
         detail_container.setObjectName("cardFrame")
-        detail_container.setFixedWidth(380)
+        detail_container.setMinimumWidth(340)
+        detail_container.setMaximumWidth(460)
         dc_layout = QVBoxLayout(detail_container)
         dc_layout.setSpacing(12)
         dc_layout.setContentsMargins(16, 16, 16, 16)

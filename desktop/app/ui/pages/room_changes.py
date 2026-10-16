@@ -68,7 +68,8 @@ class RoomChangesPage(QWidget):
         # Inspector Card
         detail_card = QFrame()
         detail_card.setObjectName("cardFrame")
-        detail_card.setFixedWidth(400)
+        detail_card.setMinimumWidth(340)
+        detail_card.setMaximumWidth(480)
         dc_layout = QVBoxLayout(detail_card)
         dc_layout.setSpacing(12)
         dc_layout.setContentsMargins(16, 16, 16, 16)

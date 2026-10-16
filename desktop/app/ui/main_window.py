@@ -27,6 +27,7 @@ class MainWindow(QMainWindow):
         self.client = client
         self.role = current_role(client)
         self.setWindowTitle("RÉSIVO Staff Console [LIVE MODE]")
+        self.setMinimumSize(980, 640)
         self.resize(1180, 760)
         self.setStyleSheet(DESKTOP_STYLESHEET)
 
@@ -203,7 +204,7 @@ class MainWindow(QMainWindow):
             if not self.sync_worker.wait(3000):
                 self.sync_worker.terminate()
                 self.sync_worker.wait(1000)
-        if hasattr(self, "settings_page") and self.settings_page.health_worker.isRunning():
+        if hasattr(self, "settings_page") and hasattr(self.settings_page, "health_worker") and self.settings_page.health_worker.isRunning():
             self.settings_page.health_worker.stop()
             if not self.settings_page.health_worker.wait(3000):
                 self.settings_page.health_worker.terminate()

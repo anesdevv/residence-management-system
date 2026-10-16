@@ -201,11 +201,11 @@ Pinned strings:
 
 **Files:** `desktop/app/ui/main_window.py`, `desktop/app/ui/pages/maintenance.py`, `desktop/app/ui/pages/pending.py`, `desktop/app/ui/pages/room_changes.py`, `desktop/app/ui/pages/staff_accounts.py`, `desktop/app/ui/login_window.py`
 
-- [ ] **Step 1:** convert fixed widths to min/max + stretch: maintenance inspector 420 → min 360 / max 520; pending detail 380 → min 340 / max 460; room-changes detail 400 → min 340 / max 480; staff form 380 → min 340 / max 460. Keep splitter stretch factors.
-- [ ] **Step 2:** `MainWindow.setMinimumSize(980, 640)`; `LoginWindow.setMinimumSize(380, 480)`.
-- [ ] **Step 3:** smoke: resize to minimum, default, and maximized — assert the inspector stays visible and the table grows at max; screenshots at all three sizes for review.
-- [ ] **Step 4:** pytest + smoke pass.
-- [ ] **Step 5: Commit** — `feat(desktop): flexible window layout`
+- [x] **Step 1:** convert fixed widths to min/max + stretch: maintenance inspector 420 → min 360 / max 520; pending detail 380 → min 340 / max 460; room-changes detail 400 → min 340 / max 480; staff form 380 → min 340 / max 460. Keep splitter stretch factors.
+- [x] **Step 2:** `MainWindow.setMinimumSize(980, 640)`; `LoginWindow.setMinimumSize(380, 480)`.
+- [x] **Step 3:** smoke: resize to minimum, default, and maximized — assert the inspector stays visible and the table grows at max; screenshots at all three sizes for review.
+- [x] **Step 4:** pytest + smoke pass.
+- [x] **Step 5: Commit** — `feat(desktop): flexible window layout`
 
 ### Task 15: Sign-out button
 

@@ -57,7 +57,8 @@ class StaffAccountsPage(QWidget):
         # Creation Form Card
         form_card = QFrame()
         form_card.setObjectName("cardFrame")
-        form_card.setFixedWidth(380)
+        form_card.setMinimumWidth(340)
+        form_card.setMaximumWidth(460)
         fc_layout = QVBoxLayout(form_card)
         fc_layout.setSpacing(14)
         fc_layout.setContentsMargins(16, 16, 16, 16)
