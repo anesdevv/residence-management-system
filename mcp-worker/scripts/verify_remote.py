@@ -9,9 +9,13 @@ Examples:
     python verify_remote.py http://localhost:8788 --token <token>
 
 The consent token is read from the repository's ``mcp/.env`` (``MCP_AUTH_TOKEN``
-line) or from ``--token``. It is never printed, logged, or written anywhere.
+line) or from ``--token``. The write-surface checks also read ``SUPABASE_URL``,
+``SUPABASE_ANON_KEY``, ``ADMIN_EMAIL`` and ``ADMIN_PASSWORD`` from the same
+file for direct PostgREST probes as the seeded admin (off-switch + audit
+read-back). No value from ``mcp/.env`` is ever printed, logged, or written
+anywhere.
 
-Stdlib only: urllib, json, base64, hashlib, secrets, pathlib, html.parser.
+Stdlib only: urllib, json, base64, hashlib, secrets, uuid, pathlib, html.parser.
 
 Exit status: 0 when every check passed or was skipped; non-zero when any FAIL.
 """
@@ -30,6 +34,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from pathlib import Path
 
 USER_AGENT = "residence-mcp-verify/1.0 (stdlib urllib acceptance script)"
@@ -39,12 +44,32 @@ PROBE_TIMEOUT = 10.0
 PROBE_REQUESTS = 65
 REDIRECT_URI = "http://127.0.0.1:8976/oauth/callback"
 EXPECTED_TOOLS = (
+    # Reads (6) then writes (8), in worker registration order.
     "list_maintenance_tickets",
     "list_room_change_requests",
     "list_pending_registrations",
     "search_students",
     "list_rooms",
     "get_summary",
+    "approve_registration",
+    "reject_registration",
+    "approve_room_change",
+    "reject_room_change",
+    "create_room",
+    "update_room",
+    "delete_room",
+    "update_ticket",
+)
+READ_TOOLS = EXPECTED_TOOLS[:6]
+# destructiveHint must be true exactly on these three write tools.
+DESTRUCTIVE_TOOLS = ("reject_registration", "reject_room_change", "delete_room")
+# Write tools whose ok:true audit rows the audit read-back expects.
+ROUND_TRIP_TOOLS = ("create_room", "update_room", "delete_room")
+SCRATCH_BLOCK = "ZZT"
+WRITING_DISABLED_PREFIX = "Writing is currently disabled."
+UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
 )
 TOKEN_FIELD_CANDIDATES = ("access_token", "token", "password")
 TOOL_CALLS = (
@@ -262,8 +287,33 @@ def result_text(result: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Token resolution (never printed)
+# Environment: mcp/.env parsing + token resolution (values never printed)
 # ---------------------------------------------------------------------------
+def load_env() -> dict:
+    """Parse ``mcp/.env`` into a dict (tolerates ``export`` and quotes).
+
+    Returns an empty dict when the file is missing. Values are secrets: never
+    print or log them.
+    """
+    script_dir = Path(__file__).resolve().parent
+    env_path = script_dir.parent.parent / "mcp" / ".env"
+    values: dict = {}
+    if not env_path.is_file():
+        return values
+    for raw in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if line.startswith("export "):
+            line = line[len("export "):].strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        values[key.strip()] = value
+    return values
+
+
 def resolve_token(cli_token: str | None):
     if cli_token:
         token = cli_token.strip()
@@ -286,6 +336,91 @@ def resolve_token(cli_token: str | None):
             value = value[1:-1]
         return (value or None), "mcp/.env (MCP_AUTH_TOKEN)"
     return None, None
+
+
+# ---------------------------------------------------------------------------
+# Direct PostgREST as the seeded admin (off-switch + audit read-back)
+# ---------------------------------------------------------------------------
+def admin_token(env: dict):
+    """Password-grant login as the seeded admin; returns (token, detail).
+
+    Uses the shared Client; neither the token nor the credentials are ever
+    printed. ``env`` is the ``load_env()`` dict.
+    """
+    url = str(env.get("SUPABASE_URL") or "").rstrip("/")
+    anon = str(env.get("SUPABASE_ANON_KEY") or "")
+    email = str(env.get("ADMIN_EMAIL") or "")
+    password = str(env.get("ADMIN_PASSWORD") or "")
+    missing = [
+        key
+        for key, value in (
+            ("SUPABASE_URL", url),
+            ("SUPABASE_ANON_KEY", anon),
+            ("ADMIN_EMAIL", email),
+            ("ADMIN_PASSWORD", password),
+        )
+        if not value
+    ]
+    if missing:
+        return None, "mcp/.env is missing " + ", ".join(missing)
+    payload = {"email": email, "password": password}
+    try:
+        resp = Client().request(
+            "POST",
+            url + "/auth/v1/token?grant_type=password",
+            headers={
+                "apikey": anon,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            body=json.dumps(payload).encode("utf-8"),
+        )
+    except Exception as exc:
+        return None, f"admin login request error: {short_error(exc)}"
+    if resp.status != 200:
+        return None, f"admin login returned HTTP {resp.status}"
+    data = try_json(resp)
+    token = data.get("access_token") if isinstance(data, dict) else None
+    if not token:
+        return None, "admin login response has no access_token"
+    return str(token), "ok"
+
+
+def admin_rpc(env: dict, fn: str, params: dict, token: str | None = None):
+    """POST one PostgREST rpc as the admin; returns (parsed_json, detail).
+
+    Logs in first when no token is given. Only status codes and short SQL
+    messages are reported - never a value from ``mcp/.env``.
+    """
+    if token is None:
+        token, error = admin_token(env)
+        if token is None:
+            return None, error
+    url = str(env.get("SUPABASE_URL") or "").rstrip("/")
+    anon = str(env.get("SUPABASE_ANON_KEY") or "")
+    if not url or not anon:
+        return None, "mcp/.env is missing SUPABASE_URL or SUPABASE_ANON_KEY"
+    try:
+        resp = Client().request(
+            "POST",
+            f"{url}/rest/v1/rpc/{fn}",
+            headers={
+                "apikey": anon,
+                "Authorization": "Bearer " + token,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            body=json.dumps(params).encode("utf-8"),
+        )
+    except Exception as exc:
+        return None, f"{fn} request error: {short_error(exc)}"
+    if resp.status != 200:
+        message = ""
+        data = try_json(resp)
+        if isinstance(data, dict) and isinstance(data.get("message"), str):
+            message = f" ({data['message'][:80]})"
+        return None, f"{fn} returned HTTP {resp.status}{message}"
+    return try_json(resp), "ok"
 
 
 # ---------------------------------------------------------------------------
@@ -951,6 +1086,376 @@ def check_refresh(client: Client, base: str, oauth, protocol_hint: str, report: 
 
 
 # ---------------------------------------------------------------------------
+# Write surface: annotations, room ids, round-trip, probes, gate, audit
+# ---------------------------------------------------------------------------
+def try_json_text(text: str):
+    """Parse a tool result that should be compact JSON; None when it is not."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return None
+
+
+def parse_room_list(text: str):
+    """Parse a list_rooms result; returns (rooms, error).
+
+    The worker renders an empty list as a sentence ("No rooms found..."), so
+    that maps to an empty list here; anything else must be a JSON array.
+    """
+    stripped = text.strip()
+    if stripped.startswith("No rooms"):
+        return [], None
+    data = try_json_text(stripped)
+    if data is None:
+        return None, f"not JSON: {stripped[:80]!r}"
+    if not isinstance(data, list):
+        return None, f"expected a JSON array, got {type(data).__name__}"
+    return [item for item in data if isinstance(item, dict)], None
+
+
+def check_tool_annotations(tools: list, report: Report) -> None:
+    by_name = {str(tool.get("name")): tool for tool in tools}
+    problems: list[str] = []
+    for name in EXPECTED_TOOLS:
+        tool = by_name.get(name)
+        if tool is None:
+            problems.append(f"{name}: missing")
+            continue
+        annotations = tool.get("annotations")
+        if not isinstance(annotations, dict):
+            problems.append(f"{name}: no annotations")
+            continue
+        expect_read_only = name in READ_TOOLS
+        if annotations.get("readOnlyHint") is not expect_read_only:
+            problems.append(f"{name}: readOnlyHint={annotations.get('readOnlyHint')!r}")
+        if (annotations.get("destructiveHint") is True) != (name in DESTRUCTIVE_TOOLS):
+            problems.append(f"{name}: destructiveHint={annotations.get('destructiveHint')!r}")
+    if problems:
+        detail = "; ".join(problems[:4])
+        if len(problems) > 4:
+            detail += f" (+{len(problems) - 4} more)"
+        report.add("FAIL", "tool annotations", detail)
+        return
+    report.add(
+        "PASS",
+        "tool annotations",
+        "reads readOnlyHint true; writes false; destructiveHint only on "
+        + ", ".join(DESTRUCTIVE_TOOLS),
+    )
+
+
+def check_room_ids(client: Client, base: str, token: str, session: dict, protocol_version: str, report: Report) -> None:
+    result, error = call_tool(client, base, token, session, protocol_version, 100, "list_rooms", {})
+    if result is None:
+        report.add("FAIL", "room ids in list_rooms", error or "no result")
+        return
+    rooms, parse_error = parse_room_list(result_text(result))
+    if rooms is None:
+        report.add("FAIL", "room ids in list_rooms", parse_error)
+        return
+    if not rooms:
+        report.add("SKIP", "room ids in list_rooms", "no rooms to check")
+        return
+    missing = [room for room in rooms if not UUID_RE.match(str(room.get("id") or ""))]
+    if missing:
+        first = missing[0]
+        report.add(
+            "FAIL",
+            "room ids in list_rooms",
+            f"{len(missing)}/{len(rooms)} items without a uuid id (first: {str(first.get('label') or '?')[:40]})",
+        )
+        return
+    report.add("PASS", "room ids in list_rooms", f"all {len(rooms)} items carry a uuid id")
+
+
+def check_write_round_trip(
+    client: Client, base: str, token: str, session: dict, protocol_version: str, report: Report, cleanup_ids: list
+) -> None:
+    number = "MCP-" + secrets.token_hex(4)
+    args = {"block": SCRATCH_BLOCK, "floor": 9, "number": number, "capacity": 2, "gender": "male"}
+
+    result, error = call_tool(client, base, token, session, protocol_version, 110, "create_room", args)
+    room_id = None
+    if result is None:
+        report.add("FAIL", "write round-trip create", error or "no result")
+    else:
+        data = try_json_text(result_text(result))
+        candidate = data.get("id") if isinstance(data, dict) else None
+        if isinstance(candidate, str) and UUID_RE.match(candidate):
+            room_id = candidate
+            cleanup_ids.append(room_id)
+            report.add("PASS", "write round-trip create", f"{SCRATCH_BLOCK}/{number} id {room_id[:8]}...")
+        else:
+            report.add("FAIL", "write round-trip create", f"result has no uuid id: {result_text(result)[:100]!r}")
+
+    if room_id is None:
+        report.add("FAIL", "write round-trip duplicate", "not reached (create gave no room id)")
+    else:
+        result, error = call_tool(client, base, token, session, protocol_version, 111, "create_room", args)
+        if result is None:
+            report.add("FAIL", "write round-trip duplicate", error or "no result")
+        else:
+            text = result_text(result)
+            if "already exists" in text:
+                report.add("PASS", "write round-trip duplicate", "duplicate create rejected with 'already exists'")
+            else:
+                report.add("FAIL", "write round-trip duplicate", f"expected 'already exists', got: {text[:100]!r}")
+
+    if room_id is None:
+        report.add("FAIL", "write round-trip update", "not reached (create gave no room id)")
+    else:
+        result, error = call_tool(
+            client, base, token, session, protocol_version, 112, "update_room", {"room_id": room_id, "capacity": 3}
+        )
+        if result is None:
+            report.add("FAIL", "write round-trip update", error or "no result")
+        else:
+            data = try_json_text(result_text(result))
+            if isinstance(data, dict) and data.get("capacity") == 3:
+                report.add("PASS", "write round-trip update", "capacity now 3")
+            else:
+                report.add(
+                    "FAIL", "write round-trip update", f"expected capacity 3, got: {result_text(result)[:100]!r}"
+                )
+
+    if room_id is None:
+        report.add("FAIL", "write round-trip list", "not reached (create gave no room id)")
+    else:
+        result, error = call_tool(
+            client, base, token, session, protocol_version, 113, "list_rooms", {"block": SCRATCH_BLOCK}
+        )
+        if result is None:
+            report.add("FAIL", "write round-trip list", error or "no result")
+        else:
+            rooms, parse_error = parse_room_list(result_text(result))
+            if rooms is None:
+                report.add("FAIL", "write round-trip list", parse_error)
+            else:
+                found = next((room for room in rooms if str(room.get("number")) == number), None)
+                if found is not None and str(found.get("id")) == room_id:
+                    report.add("PASS", "write round-trip list", f"{SCRATCH_BLOCK} list shows {number} with the same id")
+                else:
+                    report.add("FAIL", "write round-trip list", f"{number} not listed with the created id")
+
+    if room_id is None:
+        report.add("FAIL", "write round-trip delete", "not reached (create gave no room id)")
+    else:
+        result, error = call_tool(
+            client, base, token, session, protocol_version, 114, "delete_room", {"room_id": room_id}
+        )
+        if result is None:
+            report.add("FAIL", "write round-trip delete", error or "no result")
+        else:
+            data = try_json_text(result_text(result))
+            if isinstance(data, dict) and data.get("deleted") is True:
+                cleanup_ids.remove(room_id)
+                report.add("PASS", "write round-trip delete", "deleted true")
+            else:
+                report.add(
+                    "FAIL", "write round-trip delete", f"expected deleted true, got: {result_text(result)[:100]!r}"
+                )
+
+    if room_id is None:
+        report.add("FAIL", "write round-trip absent", "not reached (create gave no room id)")
+    else:
+        result, error = call_tool(
+            client, base, token, session, protocol_version, 115, "list_rooms", {"block": SCRATCH_BLOCK}
+        )
+        if result is None:
+            report.add("FAIL", "write round-trip absent", error or "no result")
+        else:
+            rooms, parse_error = parse_room_list(result_text(result))
+            if rooms is None:
+                report.add("FAIL", "write round-trip absent", parse_error)
+            elif any(str(room.get("number")) == number for room in rooms):
+                report.add("FAIL", "write round-trip absent", f"{number} still listed after delete")
+            else:
+                report.add("PASS", "write round-trip absent", f"{number} gone from the {SCRATCH_BLOCK} list")
+
+
+def check_write_negative_probes(
+    client: Client, base: str, token: str, session: dict, protocol_version: str, report: Report
+) -> None:
+    result, error = call_tool(
+        client,
+        base,
+        token,
+        session,
+        protocol_version,
+        120,
+        "reject_registration",
+        {"student_id": str(uuid.uuid4()), "reason": "   "},
+    )
+    text = result_text(result) if result is not None else ""
+    if result is not None and text.lstrip().startswith("Invalid request:"):
+        report.add(
+            "PASS", "write negative probe reject_registration", "blank reason rejected with 'Invalid request: ...'"
+        )
+    else:
+        report.add(
+            "FAIL", "write negative probe reject_registration", error or f"unexpected result text: {text[:100]!r}"
+        )
+
+    result, error = call_tool(
+        client, base, token, session, protocol_version, 121, "delete_room", {"room_id": str(uuid.uuid4())}
+    )
+    text = result_text(result) if result is not None else ""
+    if result is not None and "Room not found" in text:
+        report.add("PASS", "write negative probe delete_room", "unknown uuid -> 'Room not found'")
+    else:
+        report.add("FAIL", "write negative probe delete_room", error or f"unexpected result text: {text[:100]!r}")
+
+
+def check_write_gate(
+    client: Client,
+    base: str,
+    token: str,
+    session: dict,
+    protocol_version: str,
+    env: dict,
+    report: Report,
+    cleanup_ids: list,
+) -> None:
+    admin, login_error = admin_token(env)
+    if admin is None:
+        report.add("FAIL", "write gate refusal", f"admin login failed: {login_error}")
+        report.add("FAIL", "write gate re-enable", "not reached (admin login failed)")
+        return
+    gate_number = "MCP-" + secrets.token_hex(4)
+    try:
+        data, error = admin_rpc(env, "mcp_set_writes_enabled", {"p_enabled": False}, token=admin)
+        if not isinstance(data, dict) or data.get("writes_enabled") is not False:
+            report.add("FAIL", "write gate refusal", f"could not disable writes: {error or data}")
+        else:
+            result, call_error = call_tool(
+                client,
+                base,
+                token,
+                session,
+                protocol_version,
+                130,
+                "create_room",
+                {"block": SCRATCH_BLOCK, "floor": 9, "number": gate_number, "capacity": 2, "gender": "male"},
+            )
+            text = result_text(result) if result is not None else ""
+            if result is None:
+                report.add("FAIL", "write gate refusal", call_error or "no result")
+            elif text.lstrip().startswith(WRITING_DISABLED_PREFIX):
+                report.add("PASS", "write gate refusal", "create_room refused with the disabled message")
+            else:
+                report.add("FAIL", "write gate refusal", f"expected the disabled message, got: {text[:100]!r}")
+                # Gate broken: the room may have been created - clean it up.
+                data = try_json_text(text)
+                candidate = data.get("id") if isinstance(data, dict) else None
+                if isinstance(candidate, str) and UUID_RE.match(candidate):
+                    cleanup_ids.append(candidate)
+    finally:
+        # Always re-enable, even when a probe above failed.
+        data, error = admin_rpc(env, "mcp_set_writes_enabled", {"p_enabled": True}, token=admin)
+        if not isinstance(data, dict) or data.get("writes_enabled") is not True:
+            report.add("FAIL", "write gate re-enable", f"could not re-enable writes: {error or data}")
+        else:
+            settings, error = admin_rpc(env, "mcp_get_settings", {}, token=admin)
+            if not isinstance(settings, dict) or settings.get("writes_enabled") is not True:
+                report.add("FAIL", "write gate re-enable", f"read-back failed: {error or settings}")
+            else:
+                report.add("PASS", "write gate re-enable", "writes re-enabled and read back true")
+
+
+def check_audit_outcomes(env: dict, report: Report) -> None:
+    admin, login_error = admin_token(env)
+    if admin is None:
+        report.add("FAIL", "audit outcomes", f"admin login failed: {login_error}")
+        return
+    rows, error = admin_rpc(env, "mcp_list_audit", {"p_limit": 20}, token=admin)
+    if not isinstance(rows, list):
+        report.add("FAIL", "audit outcomes", f"mcp_list_audit failed: {error or 'non-array result'}")
+        return
+    rows = [row for row in rows if isinstance(row, dict)]
+    ok_tools = {str(row.get("tool")) for row in rows if row.get("ok") is True}
+    missing = [tool for tool in ROUND_TRIP_TOOLS if tool not in ok_tools]
+    gate_refused = any(
+        row.get("ok") is False and WRITING_DISABLED_PREFIX.rstrip(".") in str(row.get("detail") or "")
+        for row in rows
+    )
+    problems = []
+    if missing:
+        problems.append("no ok:true rows for: " + ", ".join(missing))
+    if not gate_refused:
+        problems.append("no ok:false gate-refusal row")
+    if problems:
+        report.add("FAIL", "audit outcomes", "; ".join(problems))
+        return
+    report.add("PASS", "audit outcomes", f"{len(rows)} rows: round-trip ok:true and the gate refusal ok:false")
+
+
+def run_write_checks(client: Client, base: str, oauth, protocol_hint: str, report: Report) -> None:
+    steps = [
+        "tool annotations",
+        "room ids in list_rooms",
+        "write round-trip create",
+        "write round-trip duplicate",
+        "write round-trip update",
+        "write round-trip list",
+        "write round-trip delete",
+        "write round-trip absent",
+        "write negative probe reject_registration",
+        "write negative probe delete_room",
+        "write gate refusal",
+        "write gate re-enable",
+        "audit outcomes",
+    ]
+    if not oauth or not oauth.get("access_token"):
+        for name in steps:
+            report.add("FAIL", name, "not reached (no access token)")
+        return
+    token = oauth["access_token"]
+
+    session, init_error = do_initialize(client, base, token, protocol_hint)
+    if session is None:
+        for name in steps:
+            report.add("FAIL", name, "not reached (mcp initialize failed)")
+        return
+    protocol_version = session["protocol_version"]
+
+    # Best-effort initialised notification (spec-shaped clients send it).
+    try:
+        mcp_post(
+            client,
+            base,
+            {"jsonrpc": "2.0", "method": "notifications/initialized"},
+            token=token,
+            session_id=session["session_id"],
+            protocol_version=protocol_version,
+        )
+    except Exception:
+        pass
+
+    cleanup_ids: list[str] = []
+    try:
+        tools, tools_error = do_tools_list(client, base, token, session, protocol_version)
+        if tools is None:
+            report.add("FAIL", "tool annotations", f"tools/list failed: {tools_error}")
+        else:
+            check_tool_annotations(tools, report)
+        check_room_ids(client, base, token, session, protocol_version, report)
+        check_write_round_trip(client, base, token, session, protocol_version, report, cleanup_ids)
+        check_write_negative_probes(client, base, token, session, protocol_version, report)
+        env = load_env()
+        check_write_gate(client, base, token, session, protocol_version, env, report, cleanup_ids)
+        check_audit_outcomes(env, report)
+    finally:
+        # Best-effort: delete any scratch room the round-trip could not remove.
+        for offset, room_id in enumerate(cleanup_ids):
+            try:
+                call_tool(
+                    client, base, token, session, protocol_version, 900 + offset, "delete_room", {"room_id": room_id}
+                )
+            except Exception:
+                pass
+
+
+# ---------------------------------------------------------------------------
 # Check 6: rate-limit probe (65 rapid unauthenticated POST /mcp calls)
 # ---------------------------------------------------------------------------
 def check_rate_limit(client: Client, base: str, report: Report) -> None:
@@ -1049,6 +1554,7 @@ def main(argv: list[str]) -> int:
     hint = protocol_version_hint(oauth.get("resource_meta") if oauth else None)
     run_mcp(client, base, oauth, hint, report)
     check_refresh(client, base, oauth, hint, report)
+    run_write_checks(client, base, oauth, hint, report)
     check_rate_limit(client, base, report)
 
     return report.summary()
