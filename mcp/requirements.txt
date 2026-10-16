@@ -1,0 +1,13 @@
+# Residence Tlemcen admin MCP server (read-only).
+# Install:  pip install -r requirements.txt
+#
+# NOTE: this project deliberately stays on the MCP Python SDK 1.x line.
+# The FastMCP server API used here (mcp.server.fastmcp.FastMCP with
+# streamable_http_app()) was renamed to MCPServer in mcp 2.x.
+# See mcp/README.md and https://py.sdk.modelcontextprotocol.io/v2/migration/
+mcp>=1.9,<2
+supabase>=2.32,<3
+python-dotenv>=1.0,<2
+uvicorn>=0.34
+starlette>=0.40
+pytest>=8
