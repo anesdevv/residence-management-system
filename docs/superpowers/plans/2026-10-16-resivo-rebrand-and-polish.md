@@ -170,9 +170,9 @@ Pinned strings:
 
 **Files:** `web/src/pages/dashboard/room-change.astro`
 
-- [ ] **Step 1:** title → `Room Transfer Portal — RÉSIVO`; restyle current-room card + request form (real fields only) + status display; keep the submit flow.
-- [ ] **Step 2:** browser check; no console errors.
-- [ ] **Step 3: Commit** — `feat(web): redesign room change page`
+- [x] **Step 1:** title → `Room Transfer Portal — RÉSIVO`; restyle current-room card + request form (real fields only) + status display; keep the submit flow.
+- [x] **Step 2:** browser check; no console errors.
+- [x] **Step 3: Commit** — `feat(web): redesign room change page`
 
 ### Task 12: Profile redesign
 
