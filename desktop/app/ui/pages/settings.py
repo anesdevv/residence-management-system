@@ -186,6 +186,11 @@ class SettingsPage(QWidget):
         self.content = self._build_content()
         card_layout.addWidget(self.content)
 
+        # About — built outside the developer-mode gate on purpose: the credit is
+        # visible for every role without toggling Developer mode.
+        self.about_widget = self._build_about()
+        card_layout.addWidget(self.about_widget)
+
         layout.addWidget(card)
         layout.addStretch(1)
 
@@ -336,16 +341,17 @@ class SettingsPage(QWidget):
         footer.setStyleSheet(MUTED_QSS)
         outer.addWidget(footer)
 
-        # -----------------------------------------------------------------
-        # About — brand, creator credit, and links
-        # -----------------------------------------------------------------
-        outer.addWidget(self._divider())
+        return content
+
+    def _build_about(self) -> QWidget:
+        """About card — brand, creator credit, and links. Always visible, never role-gated."""
         about = QWidget()
         about.setObjectName("aboutSection")
         about_layout = QVBoxLayout(about)
-        about_layout.setContentsMargins(0, 0, 0, 0)
+        about_layout.setContentsMargins(0, 4, 0, 0)
         about_layout.setSpacing(10)
 
+        about_layout.addWidget(self._divider())
         about_layout.addWidget(self._section_title("About RÉSIVO"))
 
         about_row = QHBoxLayout()
@@ -382,9 +388,7 @@ class SettingsPage(QWidget):
         about_text.addStretch(1)
         about_row.addLayout(about_text, 1)
         about_layout.addLayout(about_row)
-        outer.addWidget(about)
-
-        return content
+        return about
 
     def _divider(self) -> QFrame:
         div = QFrame()
