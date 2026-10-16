@@ -8,6 +8,8 @@ __pycache__/
 .env
 .env.*
 !.env.example
+.dev.vars
+secret*.json
 docs/setup-keys.md
 
 # Node / Astro
@@ -15,6 +17,7 @@ node_modules/
 dist/
 .astro/
 *.log
+.wrangler/
 
 # Supabase local
 supabase/.branches/
