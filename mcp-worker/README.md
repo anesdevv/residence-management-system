@@ -1,7 +1,8 @@
 # Hosted MCP server (Cloudflare Worker)
 
 Always-on, permanent-URL replacement for the local Python MCP server in `mcp/`. It serves
-the same six read-only admin tools, deployed on Cloudflare Workers.
+14 admin tools — the same six read-only tools as the local server plus 8 admin-confirmed
+write tools — deployed on Cloudflare Workers.
 
 - **MCP endpoint:** `https://residence-mcp.anes4tlm.workers.dev/mcp`
 - **Health (public):** `https://residence-mcp.anes4tlm.workers.dev/health` → `{"status":"ok"}`
@@ -14,16 +15,55 @@ the same six read-only admin tools, deployed on Cloudflare Workers.
   shows — pasted once, never again: ChatGPT then holds its own refreshable tokens, so the
   raw shared secret never leaves this machine.
 - **Stateless MCP handler** — `createMcpHandler` (from `agents`) + `McpServer` (from
-  `@modelcontextprotocol/server`) exposing the 6 read-only tools with the same
-  schemas/descriptions as the local server.
+  `@modelcontextprotocol/server`) exposing 14 tools: the 6 read tools with the same
+  schemas/descriptions as the local server, plus 8 admin-confirmed write tools
+  (worker-only; see “Write tools” below).
 - **Supabase REST as admin** — the Worker signs in with `ADMIN_EMAIL`/`ADMIN_PASSWORD`
   using the anon key (RLS stays on) and calls the same `mcp_*` SQL functions as the local
   server. Admin session cached in module scope, renewed early, one retry on auth error.
-- **Audit RPC** — before each tool runs, the Worker awaits `mcp_log_audit` (2 s timeout,
-  all failures swallowed) which writes tool + arguments to `public.mcp_audit_log` — never
-  results, never tokens.
+- **Two-phase audit** — reads open a best-effort attempt row via `mcp_log_audit` (2 s
+  timeout, failures swallowed). Writes require the attempt row (fail closed — no audit
+  row, no write) and fill the outcome afterwards via `mcp_complete_audit` (`ok` + a short
+  detail; failed attempts include the refusal reason). Rows land in `public.mcp_audit_log`
+  with tool + arguments — never results, never tokens.
 - **Rate limit** — 60 requests/min per client IP on `/mcp` (best-effort free-plan
   binding; the limiter is eventually consistent).
+
+## Write tools
+
+The worker also exposes 8 admin write tools. The local Python server does not — it stays
+read-only by design. Every write requires the user's explicit confirmation in ChatGPT
+(the tool descriptions instruct the model to show what will change and ask first).
+
+| Tool | Arguments | Notes |
+|---|---|---|
+| `approve_registration` | `student_id`, `room_id` | Assigns a pending student to a room (gender must match; the room needs a free place). |
+| `reject_registration` | `student_id`, `reason` | **Destructive.** A non-blank reason is required — the student sees it. |
+| `approve_room_change` | `request_id`, `room_id` | Moves the student to the given room. |
+| `reject_room_change` | `request_id`, `reason` | **Destructive.** A non-blank reason is required. |
+| `create_room` | `block`, `floor`, `number`, `capacity`, `gender` | Floor 0–15; capacity 1–8; gender `male`/`female`; block+number must be unique. |
+| `update_room` | `room_id`, `block?`, `floor?`, `number?`, `capacity?`, `gender?` | Omitted fields stay unchanged. |
+| `delete_room` | `room_id` | **Destructive.** Refused while active residents are assigned. |
+| `update_ticket` | `ticket_id`, `status`, `note?` | Status `in_progress` or `resolved`; a non-blank note replaces the ticket's staff note. |
+
+- **Confirmation + annotations.** All 14 tools carry `openWorldHint: true`; the 6 reads
+  carry `readOnlyHint: true`, the 8 writes `readOnlyHint: false`, and exactly the three
+  destructive tools (`reject_registration`, `reject_room_change`, `delete_room`) carry
+  `destructiveHint: true` so clients can warn.
+- **Off-switch (gate).** Every write first reads `mcp_get_settings.writes_enabled` — the
+  desktop app's Settings → “Allow ChatGPT to change data” checkbox (admin-only). While it
+  is off, every write answers with the exact message:
+  `Writing is currently disabled. Turn it on in the desktop app: Settings → Allow ChatGPT to change data.`
+  If the gate cannot be read, the write is refused (fail closed):
+  `Writing could not be verified right now, so nothing was changed. Try again.`
+- **Two-phase audit.** Before executing, the worker must record an attempt row; if that
+  fails, nothing is changed:
+  `Could not record this action in the audit log, so nothing was changed. Try again.`
+  After execution the outcome is filled in (`mcp_complete_audit`: `ok` true/false plus a
+  short detail — failed attempts include the refusal reason).
+- **DB-enforced room rules** (triggers, so they hold for any client): an occupied room
+  cannot be deleted, capacity cannot go below the current occupancy, and a room's gender
+  cannot change while residents are assigned.
 
 ## Commands
 
@@ -88,8 +128,14 @@ never prints it):
 
 It checks: `/health` 200, `/mcp` without auth → 401, the full OAuth dance (discovery →
 client registration → consent page → token exchange with PKCE), `initialize` +
-`tools/list` → exactly 6 tools, all 6 tools called with real data, invalid-arg messages,
-refresh-token grant, and a rate-limit probe (429 or explicit SKIP). Exit code 0 = all
+`tools/list` → exactly 14 tools with the expected annotations, all 6 read tools called
+with real data, invalid-arg messages, a self-cleaning write round-trip (`create_room` →
+duplicate → `update_room` → `list_rooms` → `delete_room` in scratch block `ZZT`), write
+negative probes, the write gate (refused while off, re-enabled and read back), audit
+outcomes (`ok: true` for the round-trip, `ok: false` for the refusal), refresh-token
+grant, and a rate-limit probe (429 or explicit SKIP). Both acceptance runs on the
+write-tools deploy ended with `SUMMARY: 30 passed, 0 failed, 1 skipped` — the single skip
+is the rate-limit probe (the same behavior as the read-only era). Exit code 0 = all
 green. Optional flags: `--token TOKEN` (instead of reading `mcp/.env`) and
 `--timeout SECONDS`.
 

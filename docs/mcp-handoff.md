@@ -1,8 +1,9 @@
 # MCP admin server — session handoff / progress notes
 
 > **Session record.** Originally a temporary note; it became the running record for the admin MCP
-> server (Sessions 1–2: local Python server + migrations; Session 3: hosted Cloudflare Worker).
-> Jump to the newest session section at the bottom for the current state and evidence.
+> server (Sessions 1–2: local Python server + migrations; Session 3: hosted Cloudflare Worker;
+> Session 4: write tools + desktop off-switch). Jump to the newest session section at the bottom
+> for the current state and evidence.
 
 Repo: `C:\Users\Admin\Documents\OpenCode\my school project THE MAIN` (Windows, PowerShell).
 Task: read-only ADMIN MCP server for the "Residence Tlemcen" project (ChatGPT custom MCP server).
@@ -322,4 +323,38 @@ Worker secrets (set via `wrangler secret bulk` from a temp JSON built out of `mc
 1. **Restart the desktop app** to see the new Settings page: `& "desktop\.venv\Scripts\python.exe" "desktop\main.py"`.
 2. **Connect once in ChatGPT** (needs a plan with custom MCP servers — Plus/Pro): chatgpt.com/plugins → `+` → *Add custom MCP server* → paste `https://residence-mcp.anes4tlm.workers.dev/mcp` → the login page opens → paste the token from the Settings page → Allow → *I understand and want to continue* → *Create as a plugin*. After this: **reboots require nothing** (no server, no tunnel).
 3. Optional: audit trail via `mcp_list_audit` RPC or the dashboard; after code changes `npx wrangler deploy` + *Refresh* on the ChatGPT connection.
-```
+
+---
+
+## Session 4 progress log (2026-10-16) — write tools + desktop off-switch ✅ COMPLETE
+
+**Goal:** let the admin manage the residence from ChatGPT — approve/reject registrations and room changes, manage rooms, update maintenance tickets — with explicit ChatGPT-side confirmations, DB-enforced rules, a two-phase audit trail and a desktop kill switch. **Same connector, same URL, no new setup.** This session supersedes "Hard rule 1" for the **hosted worker only**: the local Python server in `mcp/` remains strictly read-only by design, and `web/` was untouched.
+
+### What shipped
+- **8 write tools** on the hosted worker (14 total: the 6 reads + `approve_registration`, `reject_registration`, `approve_room_change`, `reject_room_change`, `create_room`, `update_room`, `delete_room`, `update_ticket`). Every description tells ChatGPT to show the user exactly what will change and get explicit confirmation first; `reject_registration`, `reject_room_change` and `delete_room` carry `destructiveHint: true`.
+- **Server-side gate:** every write reads `mcp_settings.writes_enabled` first; while off it answers with the exact message `Writing is currently disabled. Turn it on in the desktop app: Settings → Allow ChatGPT to change data.` (unreadable gate → fail closed).
+- **Two-phase audit** in `public.mcp_audit_log`: a required attempt row before execution (no audit row, no write), then the outcome after — `ok` + a short detail; failed attempts include the refusal reason.
+- **DB-enforced room rules** (triggers): no deleting an occupied room, capacity never below occupancy, gender locked while occupied.
+- **Desktop off-switch:** Settings → “Allow ChatGPT to change data” (admin-only checkbox, visible without developer mode; toggling it writes `mcp_settings`).
+- **Docs:** worker/local/root READMEs, `docs/manual-test-mcp.md` write checklist, worker package description.
+
+### Migrations (all applied via `npx supabase db push`)
+| Migration | Evidence |
+|---|---|
+| `20261015233000_room_invariants.sql` | Embedded DO-block self-test (occupied-delete, capacity cut and gender flip all blocked; empty room deletes) — passed first attempt; push would have failed loudly otherwise |
+| `20261015233500_mcp_room_ids.sql` | REST probe: every room object in the four read outputs carries a uuid `id` |
+| `20261015234000_mcp_write_functions.sql` | `verify_db_write.py`: `SUMMARY: 13 passed, 0 failed`; anon-grant probe: 0 executable; extra branch checks 13/13 |
+
+### Evidence (all green)
+- Worker: **212/212** vitest tests, `tsc --noEmit` clean, `wrangler deploy --dry-run` OK.
+- Deployed version: **`b2b44936-98f2-4b8a-b25f-54cef48e7809`** (URL unchanged: `https://residence-mcp.anes4tlm.workers.dev`).
+- Production acceptance ×2 (`scripts/verify_remote.py`): **`SUMMARY: 30 passed, 0 failed, 1 skipped`** both runs — 14 tools, annotations, room ids, write round-trip (create → duplicate → update → list → delete), negative probes, gate refusal + re-enable, audit outcomes. The single SKIP is the rate-limit probe (same behavior as the read-only era).
+- Desktop: settings smoke **53 PASS / 0 FAIL** (`RESULT: PASS`); the off-switch toggles read back from the DB and are restored after the run; screenshot `%TEMP%\opencode\shots\settings_writes.png`.
+- Manual: the write checklist in `docs/manual-test-mcp.md` (the ticket update is the only write path the acceptance script does not exercise — do that one by hand).
+
+### What the user must do
+1. **Refresh once in ChatGPT** on the MCP connection → it reloads the tool list to 14 tools; no re-login, no reconnect, nothing to install.
+2. (Optional) flip Settings → “Allow ChatGPT to change data” when you want changes to be possible; leave it off to stay read-only.
+
+### Commit status
+Tasks 1–8 are committed on branch `mcp-write-tools` (`5bdf2e7` … `cc71654`); the Task 9 docs commit carries this record. Nothing has been pushed or merged — the branch is local-only.

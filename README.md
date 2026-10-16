@@ -13,12 +13,14 @@ Websites/clients: `web/` (Astro, students), `desktop/` (PySide6, staff).
 
 ## Ask ChatGPT (MCP)
 Admins can ask ChatGPT about maintenance tickets, room changes, pending approvals,
-students and rooms through a read-only MCP server. The primary path is the **hosted
+students and rooms through an admin MCP server. The primary path is the **hosted
 Cloudflare Worker** at `https://residence-mcp.anes4tlm.workers.dev/mcp` — connect it once
 in ChatGPT (`chatgpt.com/plugins` → “+” → *Add custom MCP server*; requires an
 MCP-capable plan such as Plus/Pro) and it works even when your PC is off. Deploy/ops:
 [`mcp-worker/README.md`](mcp-worker/README.md). The local Python server in `mcp/` is kept
 as a development/testing fallback (MCP Inspector and other bearer-token clients — ChatGPT
 itself requires the hosted server): [`mcp/README.md`](mcp/README.md). The assistant is
-admin-only and read-only — it can look at data, but nothing can be modified.
+admin-only and read-only by default; admin-confirmed changes can be enabled from the
+desktop Settings (“Allow ChatGPT to change data” — every change is confirmed in ChatGPT
+first and logged).
 

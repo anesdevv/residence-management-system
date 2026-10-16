@@ -1,17 +1,19 @@
-# Admin MCP server (read-only)
+# Admin MCP server (local, read-only)
 
 A small [Model Context Protocol](https://modelcontextprotocol.io) server that lets an
 **administrator** ask MCP clients (ChatGPT, the MCP Inspector) about the live residence
 data: maintenance tickets, room change requests, pending registrations/approvals,
 students and rooms.
 
-It is strictly read-only: the six tools can only list and search — no tool can insert,
-update or delete anything.
+This local Python server is strictly read-only: its six tools can only list and search —
+no tool can insert, update or delete anything. (The hosted worker additionally offers
+admin-confirmed write tools; see [`mcp-worker/README.md`](../mcp-worker/README.md).)
 
-Two interchangeable backends serve the same six tools:
+Two backends serve the admin tools:
 
 | | Hosted worker (recommended) | Local Python server |
 |---|---|---|
+| Tools | read + admin-confirmed writes (14 tools) | 6 read-only tools (by design) |
 | Where | Cloudflare Workers — always on, permanent URL | this PC, `http://localhost:8000` |
 | Auth | OAuth 2.1 — sign in once at a browser login page | shared bearer token |
 | ChatGPT | supported | **not supported** — ChatGPT custom MCP servers use OAuth (or no auth); there is no field for a static bearer token |
@@ -64,6 +66,11 @@ custom MCP servers, not a static bearer token.
 | `search_students` | Find a student by name or card ID; also accepts a room label like `B-101` to see who lives there. |
 | `list_rooms` | Rooms with capacity, occupancy and free places; `only_available` finds rooms with space. |
 | `get_summary` | Overview: registrations, tickets, room changes and occupancy, in total and per block. |
+
+These six read-only tools are what the local server exposes. The hosted worker adds 8
+admin-confirmed write tools (approve/reject registrations and room changes, create/edit/
+delete rooms, update a maintenance ticket) — see
+[`mcp-worker/README.md`](../mcp-worker/README.md).
 
 ### Requirements
 
@@ -177,7 +184,8 @@ Example questions (work the same on the hosted server):
 Every question and its results — including personal student data (names, card IDs, dates
 of birth, phones, emails, rooms) — travel through the server you are using to the MCP
 client (ChatGPT/OpenAI, the Inspector, …). The hosted worker additionally runs on
-Cloudflare and logs tool name + arguments (never results) to the Supabase audit table.
+Cloudflare and logs tool name + arguments and, for writes, the outcome (`ok` plus a short
+detail) to the Supabase audit table — never results.
 Keep both servers for admin use only, keep the `MCP_AUTH_TOKEN` secret, and stop the local
 server/tunnel when you are not using it. The hosted path authenticates via OAuth, so
 ChatGPT never sees the raw shared secret.

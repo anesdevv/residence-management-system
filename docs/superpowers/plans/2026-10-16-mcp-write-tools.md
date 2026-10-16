@@ -460,3 +460,5 @@ Message: `feat(desktop): ChatGPT write off-switch in Settings`
 
 `git add mcp-worker/README.md mcp/README.md README.md docs/manual-test-mcp.md docs/mcp-handoff.md mcp-worker/package.json docs/superpowers/plans/2026-10-16-mcp-write-tools.md docs/superpowers/specs/2026-10-15-mcp-write-tools-design.md`
 Message: `docs: MCP write tools (READMEs, manual test checklist, handoff)`
+
+Status: COMPLETED (2026-10-16)
