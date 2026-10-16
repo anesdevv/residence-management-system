@@ -13,8 +13,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createAuditLogger } from "../src/audit";
 import {
+  AUDIT_REQUIRED_MESSAGE,
   SERVER_INSTRUCTIONS,
   SERVER_NAME,
+  WRITING_DISABLED_MESSAGE,
   buildMcpServer,
   registerAdminTools,
   type ToolDeps,
@@ -23,10 +25,17 @@ import {
 type HandlerResult = { content: Array<{ type: string; text: string }> };
 type Handler = (args: Record<string, unknown>) => Promise<HandlerResult>;
 
+interface ToolAnnotations {
+  readOnlyHint?: boolean;
+  destructiveHint?: boolean;
+  openWorldHint?: boolean;
+}
+
 interface Registered {
   name: string;
   description: string;
   inputSchema: unknown;
+  annotations: ToolAnnotations | undefined;
   handler: Handler;
 }
 
@@ -35,13 +44,14 @@ function captureTools(deps: ToolDeps): Registered[] {
   const fake = {
     registerTool(
       name: string,
-      config: { description: string; inputSchema: unknown },
+      config: { description: string; inputSchema: unknown; annotations?: ToolAnnotations },
       handler: Handler,
     ) {
       registered.push({
         name,
         description: config.description,
         inputSchema: config.inputSchema,
+        annotations: config.annotations,
         handler,
       });
       return {};
@@ -53,10 +63,16 @@ function captureTools(deps: ToolDeps): Registered[] {
 
 function makeDeps() {
   const audit = {
-    begin: vi.fn(async (_tool: string, _args: Record<string, unknown>) => 1),
-    complete: vi.fn(async (_id: number | null, _ok: boolean, _detail: string) => {}),
+    begin: vi.fn(
+      async (_tool: string, _args: Record<string, unknown>): Promise<number | null> => 1,
+    ),
+    complete: vi.fn(
+      async (_id: number | null, _ok: boolean, _detail: string): Promise<void> => {},
+    ),
   };
-  const rpc = vi.fn(async (_fn: string, _params?: Record<string, unknown>): Promise<unknown> => []);
+  const rpc = vi.fn(
+    async (_fn: string, _params?: Record<string, unknown>): Promise<unknown> => [],
+  );
   const deps: ToolDeps = { audit, rpc };
   return { deps, audit, rpc };
 }
@@ -79,25 +95,105 @@ const DESCRIPTIONS = {
 
 const TOOL_ORDER = Object.keys(DESCRIPTIONS) as Array<keyof typeof DESCRIPTIONS>;
 
+/** The 8 write tools, in registration order (Global Constraints). */
+const WRITE_TOOL_ORDER = [
+  "approve_registration",
+  "reject_registration",
+  "approve_room_change",
+  "reject_room_change",
+  "create_room",
+  "update_room",
+  "delete_room",
+  "update_ticket",
+] as const;
+
+const ALL_TOOL_ORDER = [...TOOL_ORDER, ...WRITE_TOOL_ORDER];
+
+const CONFIRMATION_SENTENCE =
+  "This changes data: show the user exactly what will change and get their explicit confirmation before calling.";
+
+const UUID_STUDENT = "11111111-1111-4111-8111-111111111111";
+const UUID_ROOM = "22222222-2222-4222-8222-222222222222";
+const UUID_REQUEST = "33333333-3333-4333-8333-333333333333";
+const UUID_TICKET = "44444444-4444-4444-8444-444444444444";
+
 describe("tool registration", () => {
-  it("registers exactly the 6 Python tools, in order, with verbatim descriptions", () => {
+  it("registers exactly the 14 tools, in order, with the 6 Python read descriptions verbatim", () => {
     const { deps } = makeDeps();
     const tools = captureTools(deps);
-    expect(tools.map((tool) => tool.name)).toEqual(TOOL_ORDER);
+    expect(tools.map((tool) => tool.name)).toEqual(ALL_TOOL_ORDER);
+    for (const [name, description] of Object.entries(DESCRIPTIONS)) {
+      expect(tools.find((tool) => tool.name === name)!.description).toBe(description);
+    }
     for (const tool of tools) {
-      expect(tool.description).toBe(DESCRIPTIONS[tool.name as keyof typeof DESCRIPTIONS]);
+      expect(tool.description).toBeTruthy();
       expect(tool.inputSchema).toBeDefined();
     }
   });
 
-  it("uses the server name and instructions from mcp/server.py verbatim", () => {
+  it("tells the model to confirm writes and where each id comes from", () => {
+    const { deps } = makeDeps();
+    const tools = captureTools(deps);
+    const idSources: Record<string, string[]> = {
+      approve_registration: ["list_pending_registrations", "list_rooms"],
+      reject_registration: ["list_pending_registrations"],
+      approve_room_change: ["list_room_change_requests", "list_rooms"],
+      reject_room_change: ["list_room_change_requests"],
+      create_room: [],
+      update_room: ["list_rooms"],
+      delete_room: ["list_rooms"],
+      update_ticket: ["list_maintenance_tickets"],
+    };
+    for (const name of WRITE_TOOL_ORDER) {
+      const description = tools.find((tool) => tool.name === name)!.description;
+      expect(description).toContain(CONFIRMATION_SENTENCE);
+      for (const source of idSources[name]!) {
+        expect(description).toContain(source);
+      }
+    }
+  });
+
+  it("annotates the reads as read-only and the writes as open-world writes", () => {
+    const { deps } = makeDeps();
+    const tools = captureTools(deps);
+    for (const name of TOOL_ORDER) {
+      expect(tools.find((tool) => tool.name === name)!.annotations).toEqual({
+        readOnlyHint: true,
+        openWorldHint: true,
+      });
+    }
+    const expectedWrites: Record<string, ToolAnnotations> = {
+      approve_registration: { readOnlyHint: false, openWorldHint: true },
+      reject_registration: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+      approve_room_change: { readOnlyHint: false, openWorldHint: true },
+      reject_room_change: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+      create_room: { readOnlyHint: false, openWorldHint: true },
+      update_room: { readOnlyHint: false, openWorldHint: true },
+      delete_room: { readOnlyHint: false, openWorldHint: true, destructiveHint: true },
+      update_ticket: { readOnlyHint: false, openWorldHint: true },
+    };
+    for (const name of WRITE_TOOL_ORDER) {
+      expect(tools.find((tool) => tool.name === name)!.annotations).toEqual(expectedWrites[name]);
+    }
+  });
+
+  it("marks exactly reject_registration, reject_room_change and delete_room as destructive", () => {
+    const { deps } = makeDeps();
+    const tools = captureTools(deps);
+    expect(
+      tools.filter((tool) => tool.annotations?.destructiveHint === true).map((tool) => tool.name),
+    ).toEqual(["reject_registration", "reject_room_change", "delete_room"]);
+  });
+
+  it("uses the new 14-tool server instructions (reads stay char-for-char; this text diverges)", () => {
     expect(SERVER_NAME).toBe("Residence Tlemcen Admin");
     expect(SERVER_INSTRUCTIONS).toBe(
-      "Read-only administrator tools for the Residence Tlemcen university " +
-        "residence (maintenance tickets, room change requests, pending " +
-        "registrations, student lookup, rooms and an overall summary). " +
-        "All data comes from the live Supabase project. The tools never " +
-        "modify anything.",
+      "Administrator tools for the Residence Tlemcen university residence. " +
+        "You can read data freely; when the administrator has enabled changes " +
+        "you can also approve or reject registrations and room-change requests, " +
+        "manage rooms, and update maintenance tickets. Before any change, show " +
+        "the user exactly what will change and get their explicit confirmation. " +
+        "All data comes from the live Supabase project; every call is logged.",
     );
   });
 
@@ -316,6 +412,411 @@ describe("get_summary", () => {
     const tool = captureTools(deps).find((t) => t.name === "get_summary")!;
 
     expect((await tool.handler({})).content[0]!.text).toBe("No data returned.");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Write tools: gate → audit attempt → execute → audit outcome
+// ---------------------------------------------------------------------------
+
+interface WriteCase {
+  tool: string;
+  args: Record<string, unknown>;
+  auditArgs: Record<string, unknown>;
+  rpc: string;
+  params: Record<string, unknown>;
+  row: Record<string, unknown>;
+  detail: string;
+  error: { message: string; text: string };
+}
+
+const WRITE_CASES: WriteCase[] = [
+  {
+    tool: "approve_registration",
+    args: { student_id: UUID_STUDENT, room_id: UUID_ROOM },
+    auditArgs: { student_id: UUID_STUDENT, room_id: UUID_ROOM },
+    rpc: "approve_student",
+    params: { p_student: UUID_STUDENT, p_room: UUID_ROOM },
+    row: { id: UUID_STUDENT, card_id: "20260001", status: "active" },
+    detail: "Approved registration for card 20260001.",
+    error: { message: "gender mismatch", text: "That room's gender does not match the student's." },
+  },
+  {
+    tool: "reject_registration",
+    args: { student_id: UUID_STUDENT, reason: "Missing documents" },
+    auditArgs: { student_id: UUID_STUDENT, reason: "Missing documents" },
+    rpc: "reject_student",
+    params: { p_student: UUID_STUDENT, p_reason: "Missing documents" },
+    row: { id: UUID_STUDENT, card_id: "20260001", status: "rejected" },
+    detail: "Rejected registration for card 20260001.",
+    error: {
+      message: "student not found",
+      text: "Student not found (the id may be stale — re-check with list_pending_registrations or search_students).",
+    },
+  },
+  {
+    tool: "approve_room_change",
+    args: { request_id: UUID_REQUEST, room_id: UUID_ROOM },
+    auditArgs: { request_id: UUID_REQUEST, room_id: UUID_ROOM },
+    rpc: "approve_room_change",
+    params: { p_request: UUID_REQUEST, p_room: UUID_ROOM },
+    row: { id: UUID_REQUEST, status: "approved" },
+    detail: `Approved room change request ${UUID_REQUEST}.`,
+    error: {
+      message: "pending request not found",
+      text: "No pending room-change request with that id (it may already be decided — re-check with list_room_change_requests).",
+    },
+  },
+  {
+    tool: "reject_room_change",
+    args: { request_id: UUID_REQUEST, reason: "Room unavailable" },
+    auditArgs: { request_id: UUID_REQUEST, reason: "Room unavailable" },
+    rpc: "reject_room_change",
+    params: { p_request: UUID_REQUEST, p_reason: "Room unavailable" },
+    row: { id: UUID_REQUEST, status: "rejected" },
+    detail: `Rejected room change request ${UUID_REQUEST}.`,
+    error: { message: "reason required", text: "A rejection reason is required." },
+  },
+  {
+    tool: "create_room",
+    args: { block: "ZZT", floor: 9, number: "MCP-1", capacity: 2, gender: "male" },
+    auditArgs: { block: "ZZT", floor: 9, number: "MCP-1", capacity: 2, gender: "male" },
+    rpc: "mcp_create_room",
+    params: { p_block: "ZZT", p_floor: 9, p_number: "MCP-1", p_capacity: 2, p_gender: "male" },
+    row: { id: UUID_ROOM, block: "ZZT", floor: 9, number: "MCP-1", capacity: 2, gender: "male" },
+    detail: "Created room ZZT-MCP-1.",
+    error: { message: "Room ZZT-MCP-1 already exists.", text: "Room ZZT-MCP-1 already exists." },
+  },
+  {
+    tool: "update_room",
+    args: { room_id: UUID_ROOM, capacity: 3 },
+    auditArgs: {
+      room_id: UUID_ROOM,
+      block: null,
+      floor: null,
+      number: null,
+      capacity: 3,
+      gender: null,
+    },
+    rpc: "mcp_update_room",
+    params: {
+      p_room: UUID_ROOM,
+      p_block: null,
+      p_floor: null,
+      p_number: null,
+      p_capacity: 3,
+      p_gender: null,
+    },
+    row: { id: UUID_ROOM, block: "B", floor: 1, number: "101", capacity: 3 },
+    detail: "Updated room B-101.",
+    error: {
+      message: "Cannot set capacity below the 2 active resident(s) already assigned.",
+      text: "Cannot set capacity below the 2 active resident(s) already assigned.",
+    },
+  },
+  {
+    tool: "delete_room",
+    args: { room_id: UUID_ROOM },
+    auditArgs: { room_id: UUID_ROOM },
+    rpc: "mcp_delete_room",
+    params: { p_room: UUID_ROOM },
+    row: { deleted: true, room: { id: UUID_ROOM, block: "B", number: "101" } },
+    detail: "Deleted room B-101.",
+    error: {
+      message: "Cannot delete room B-101: 2 active resident(s) are still assigned.",
+      text: "Cannot delete room B-101: 2 active resident(s) are still assigned.",
+    },
+  },
+  {
+    tool: "update_ticket",
+    args: { ticket_id: UUID_TICKET, status: "resolved", note: "Fixed the tap" },
+    auditArgs: { ticket_id: UUID_TICKET, status: "resolved", note: "Fixed the tap" },
+    rpc: "mcp_update_ticket",
+    params: { p_ticket: UUID_TICKET, p_status: "resolved", p_note: "Fixed the tap" },
+    row: { id: UUID_TICKET, status: "resolved" },
+    detail: `Ticket ${UUID_TICKET} marked resolved.`,
+    error: {
+      message: "ticket not found",
+      text: "Maintenance ticket not found (re-check with list_maintenance_tickets).",
+    },
+  },
+];
+
+describe("write tools", () => {
+  describe.each(WRITE_CASES)("$tool", (testCase) => {
+    it("gates, audits the attempt, executes and completes the outcome on success", async () => {
+      const { deps, audit, rpc } = makeDeps();
+      rpc.mockResolvedValueOnce({ writes_enabled: true }).mockResolvedValueOnce(testCase.row);
+      const tool = captureTools(deps).find((t) => t.name === testCase.tool)!;
+
+      const result = await tool.handler(testCase.args);
+
+      expect(rpc).toHaveBeenNthCalledWith(1, "mcp_get_settings", {});
+      expect(rpc).toHaveBeenNthCalledWith(2, testCase.rpc, testCase.params);
+      // Gate read → audit attempt → write rpc → audit outcome.
+      expect(rpc).toHaveBeenCalledBefore(audit.begin);
+      expect(audit.begin.mock.invocationCallOrder[0]!).toBeLessThan(
+        rpc.mock.invocationCallOrder[1]!,
+      );
+      expect(rpc.mock.invocationCallOrder[1]!).toBeLessThan(
+        audit.complete.mock.invocationCallOrder[0]!,
+      );
+      expect(audit.begin).toHaveBeenCalledExactlyOnceWith(testCase.tool, testCase.auditArgs);
+      expect(audit.complete).toHaveBeenCalledExactlyOnceWith(1, true, testCase.detail);
+      expect(result.content[0]!.type).toBe("text");
+      expect(JSON.parse(result.content[0]!.text)).toEqual(testCase.row);
+    });
+
+    it("refuses with the disabled message without executing when writes are off", async () => {
+      const { deps, audit, rpc } = makeDeps();
+      rpc.mockResolvedValueOnce({ writes_enabled: false });
+      const tool = captureTools(deps).find((t) => t.name === testCase.tool)!;
+
+      const result = await tool.handler(testCase.args);
+
+      expect(result.content[0]!.text).toBe(WRITING_DISABLED_MESSAGE);
+      expect(rpc).toHaveBeenCalledExactlyOnceWith("mcp_get_settings", {});
+      expect(audit.begin).toHaveBeenCalledExactlyOnceWith(testCase.tool, testCase.auditArgs);
+      expect(audit.complete).toHaveBeenCalledExactlyOnceWith(1, false, WRITING_DISABLED_MESSAGE);
+    });
+
+    it("refuses when the writes gate cannot be read (fail closed)", async () => {
+      const { deps, audit, rpc } = makeDeps();
+      rpc.mockRejectedValueOnce(new Error("network down"));
+      const tool = captureTools(deps).find((t) => t.name === testCase.tool)!;
+
+      const result = await tool.handler(testCase.args);
+
+      expect(result.content[0]!.text).toBe(
+        "Writing could not be verified right now, so nothing was changed. Try again.",
+      );
+      expect(rpc).toHaveBeenCalledExactlyOnceWith("mcp_get_settings", {});
+      expect(audit.begin).toHaveBeenCalledExactlyOnceWith(testCase.tool, testCase.auditArgs);
+      expect(audit.complete).toHaveBeenCalledExactlyOnceWith(
+        1,
+        false,
+        "Writing could not be verified right now, so nothing was changed. Try again.",
+      );
+    });
+
+    it("refuses when the audit attempt row cannot be recorded", async () => {
+      const { deps, audit, rpc } = makeDeps();
+      rpc.mockResolvedValueOnce({ writes_enabled: true });
+      audit.begin.mockResolvedValueOnce(null);
+      const tool = captureTools(deps).find((t) => t.name === testCase.tool)!;
+
+      const result = await tool.handler(testCase.args);
+
+      expect(result.content[0]!.text).toBe(AUDIT_REQUIRED_MESSAGE);
+      expect(rpc).toHaveBeenCalledExactlyOnceWith("mcp_get_settings", {});
+      expect(audit.complete).not.toHaveBeenCalled();
+    });
+
+    it("maps rpc failures to friendly text and completes the row with ok=false", async () => {
+      const { deps, audit, rpc } = makeDeps();
+      rpc
+        .mockResolvedValueOnce({ writes_enabled: true })
+        .mockRejectedValueOnce(new Error(testCase.error.message));
+      const tool = captureTools(deps).find((t) => t.name === testCase.tool)!;
+
+      const result = await tool.handler(testCase.args);
+
+      expect(result.content[0]!.text).toBe(testCase.error.text);
+      expect(rpc).toHaveBeenNthCalledWith(2, testCase.rpc, testCase.params);
+      expect(audit.complete).toHaveBeenCalledExactlyOnceWith(1, false, testCase.error.text);
+    });
+  });
+
+  it("treats a missing settings row (null or no key) as enabled", async () => {
+    const { deps, rpc } = makeDeps();
+    const tool = captureTools(deps).find((t) => t.name === "delete_room")!;
+    const row = { deleted: true, room: { block: "B", number: "101" } };
+
+    rpc.mockResolvedValueOnce({ updated_at: null }).mockResolvedValueOnce(row);
+    expect((await tool.handler({ room_id: UUID_ROOM })).content[0]!.text).toContain('"deleted":true');
+
+    rpc.mockResolvedValueOnce(null).mockResolvedValueOnce(row);
+    expect((await tool.handler({ room_id: UUID_ROOM })).content[0]!.text).toContain('"deleted":true');
+  });
+
+  it("normalizes gender and ticket status before calling the rpc", async () => {
+    const { deps, rpc } = makeDeps();
+    const tools = captureTools(deps);
+
+    rpc.mockResolvedValueOnce({ writes_enabled: true }).mockResolvedValueOnce({});
+    await tools.find((t) => t.name === "create_room")!.handler({
+      block: "ZZT",
+      floor: 1,
+      number: "1",
+      capacity: 2,
+      gender: " Female ",
+    });
+    expect(rpc).toHaveBeenNthCalledWith(2, "mcp_create_room", {
+      p_block: "ZZT",
+      p_floor: 1,
+      p_number: "1",
+      p_capacity: 2,
+      p_gender: "female",
+    });
+
+    rpc.mockResolvedValueOnce({ writes_enabled: true }).mockResolvedValueOnce({});
+    await tools.find((t) => t.name === "update_ticket")!.handler({
+      ticket_id: UUID_TICKET,
+      status: " In Progress ",
+    });
+    expect(rpc).toHaveBeenLastCalledWith("mcp_update_ticket", {
+      p_ticket: UUID_TICKET,
+      p_status: "in_progress",
+      p_note: null,
+    });
+  });
+
+  it("truncates long free-text fields in write results", async () => {
+    const { deps, rpc } = makeDeps();
+    rpc
+      .mockResolvedValueOnce({ writes_enabled: true })
+      .mockResolvedValueOnce({
+        id: UUID_TICKET,
+        status: "in_progress",
+        staff_note: "S".repeat(600),
+      });
+    const tool = captureTools(deps).find((t) => t.name === "update_ticket")!;
+
+    const result = await tool.handler({ ticket_id: UUID_TICKET, status: "in_progress" });
+
+    const parsed = JSON.parse(result.content[0]!.text) as { staff_note: string };
+    expect(parsed.staff_note).toBe("S".repeat(497) + "...");
+  });
+
+  it("returns 'No data returned.' when the write rpc returns null", async () => {
+    const { deps, audit, rpc } = makeDeps();
+    rpc.mockResolvedValueOnce({ writes_enabled: true }).mockResolvedValueOnce(null);
+    const tool = captureTools(deps).find((t) => t.name === "delete_room")!;
+
+    const result = await tool.handler({ room_id: UUID_ROOM });
+
+    expect(result.content[0]!.text).toBe("No data returned.");
+    expect(audit.complete).toHaveBeenCalledExactlyOnceWith(1, true, expect.any(String));
+  });
+});
+
+const INVALID_REQUESTS: Array<{ tool: string; args: Record<string, unknown>; text: string }> = [
+  {
+    tool: "reject_registration",
+    args: { student_id: UUID_STUDENT, reason: "   " },
+    text: "Invalid request: a rejection reason is required (so the student knows why).",
+  },
+  {
+    tool: "reject_room_change",
+    args: { request_id: UUID_REQUEST, reason: "" },
+    text: "Invalid request: a rejection reason is required (so the student knows why).",
+  },
+  {
+    tool: "create_room",
+    args: { block: "ZZT", floor: 16, number: "1", capacity: 2, gender: "male" },
+    text: "Invalid request: floor must be between 0 and 15.",
+  },
+  {
+    tool: "create_room",
+    args: { block: "ZZT", floor: -1, number: "1", capacity: 2, gender: "male" },
+    text: "Invalid request: floor must be between 0 and 15.",
+  },
+  {
+    tool: "update_room",
+    args: { room_id: UUID_ROOM, floor: 16 },
+    text: "Invalid request: floor must be between 0 and 15.",
+  },
+  {
+    tool: "create_room",
+    args: { block: "ZZT", floor: 1, number: "1", capacity: 9, gender: "male" },
+    text: "Invalid request: capacity must be between 1 and 8.",
+  },
+  {
+    tool: "create_room",
+    args: { block: "ZZT", floor: 1, number: "1", capacity: 0, gender: "male" },
+    text: "Invalid request: capacity must be between 1 and 8.",
+  },
+  {
+    tool: "update_room",
+    args: { room_id: UUID_ROOM, capacity: 9 },
+    text: "Invalid request: capacity must be between 1 and 8.",
+  },
+  {
+    tool: "create_room",
+    args: { block: "ZZT", floor: 1, number: "1", capacity: 2, gender: "x" },
+    text: "Invalid request: gender must be male or female.",
+  },
+  {
+    tool: "update_room",
+    args: { room_id: UUID_ROOM, gender: "x" },
+    text: "Invalid request: gender must be male or female.",
+  },
+  {
+    tool: "update_ticket",
+    args: { ticket_id: UUID_TICKET, status: "done" },
+    text: "Invalid request: status must be in_progress or resolved.",
+  },
+  {
+    tool: "approve_registration",
+    args: { student_id: "not-a-uuid", room_id: UUID_ROOM },
+    text: "Invalid request: student_id must be a uuid copied from list_pending_registrations.",
+  },
+  {
+    tool: "approve_registration",
+    args: { student_id: UUID_STUDENT, room_id: "not-a-uuid" },
+    text: "Invalid request: room_id must be a uuid copied from list_rooms.",
+  },
+  {
+    tool: "reject_registration",
+    args: { student_id: "123", reason: "Missing documents" },
+    text: "Invalid request: student_id must be a uuid copied from list_pending_registrations.",
+  },
+  {
+    tool: "approve_room_change",
+    args: { request_id: "abc", room_id: UUID_ROOM },
+    text: "Invalid request: request_id must be a uuid copied from list_room_change_requests.",
+  },
+  {
+    tool: "approve_room_change",
+    args: { request_id: UUID_REQUEST, room_id: "abc" },
+    text: "Invalid request: room_id must be a uuid copied from list_rooms.",
+  },
+  {
+    tool: "reject_room_change",
+    args: { request_id: "abc", reason: "Room unavailable" },
+    text: "Invalid request: request_id must be a uuid copied from list_room_change_requests.",
+  },
+  {
+    tool: "update_room",
+    args: { room_id: "abc" },
+    text: "Invalid request: room_id must be a uuid copied from list_rooms.",
+  },
+  {
+    tool: "delete_room",
+    args: { room_id: "abc" },
+    text: "Invalid request: room_id must be a uuid copied from list_rooms.",
+  },
+  {
+    tool: "update_ticket",
+    args: { ticket_id: "abc", status: "resolved" },
+    text: "Invalid request: ticket_id must be a uuid copied from list_maintenance_tickets.",
+  },
+];
+
+describe("write validation", () => {
+  it.each(INVALID_REQUESTS)("$tool rejects invalid args before any rpc", async ({
+    tool: name,
+    args,
+    text,
+  }) => {
+    const { deps, audit, rpc } = makeDeps();
+    const tool = captureTools(deps).find((t) => t.name === name)!;
+
+    const result = await tool.handler(args);
+
+    expect(result.content[0]!.text).toBe(text);
+    expect(rpc).not.toHaveBeenCalled();
+    expect(audit.begin).not.toHaveBeenCalled();
   });
 });
 

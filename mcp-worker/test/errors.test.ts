@@ -66,6 +66,54 @@ describe("friendlyError", () => {
     expect(friendlyError(new Error("admin only: invalid jwt token"))).toBe(PERMISSION_DENIED);
   });
 
+  it("maps the write-domain markers to clean sentences", () => {
+    expect(friendlyError(new Error("reason required"))).toBe("A rejection reason is required.");
+    expect(friendlyError(new Error("gender mismatch"))).toBe(
+      "That room's gender does not match the student's.",
+    );
+    expect(friendlyError(new Error("room full"))).toBe("That room has no free places.");
+    expect(friendlyError(new Error("student not found"))).toBe(
+      "Student not found (the id may be stale — re-check with list_pending_registrations or search_students).",
+    );
+    expect(friendlyError(new Error("room not found"))).toBe(
+      "Room not found (the id may be stale — re-check with list_rooms).",
+    );
+    expect(friendlyError(new Error("pending request not found"))).toBe(
+      "No pending room-change request with that id (it may already be decided — re-check with list_room_change_requests).",
+    );
+    expect(friendlyError(new Error("ticket not found"))).toBe(
+      "Maintenance ticket not found (re-check with list_maintenance_tickets).",
+    );
+  });
+
+  it("passes the room-guard and duplicate messages through as-is", () => {
+    for (const message of [
+      "Cannot delete room B-101: 2 active resident(s) are still assigned.",
+      "Cannot set capacity below the 2 active resident(s) already assigned.",
+      "Cannot change the gender of an occupied room.",
+      "Room ZZT-999 already exists.",
+    ]) {
+      expect(friendlyError(new Error(message))).toBe(message);
+    }
+  });
+
+  it("is case-insensitive for write markers and keeps the read mappings first", () => {
+    expect(friendlyError(new Error("REASON REQUIRED"))).toBe("A rejection reason is required.");
+    expect(friendlyError(new Error("ERROR: GENDER MISMATCH"))).toBe(
+      "That room's gender does not match the student's.",
+    );
+    // Read mappings and auth detection still win when both families match.
+    expect(friendlyError(new Error("admin only: room not found"))).toBe(PERMISSION_DENIED);
+    expect(friendlyError(new Error("invalid status 'x': ticket not found"))).toBe(
+      "Invalid request: invalid status 'x': ticket not found",
+    );
+    expect(friendlyError(new Error("token expired: student not found"))).toBe(AUTH_FAILED);
+    // First write marker wins when a message contains several.
+    expect(friendlyError(new Error("reason required: room not found"))).toBe(
+      "A rejection reason is required.",
+    );
+  });
+
   it("falls back to the generic Supabase error with the original message", () => {
     expect(friendlyError(new Error("connection reset by peer"))).toBe(
       "Error talking to Supabase: connection reset by peer",
