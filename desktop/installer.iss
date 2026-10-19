@@ -1,6 +1,6 @@
-; Script generated for RÉSIVO Desktop Console 1.0.0
+; Script generated for RÉSIVO Desktop Console 0.0.1
 #define MyAppName "RÉSIVO"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "0.0.1"
 #define MyAppPublisher "Direction des Œuvres Universitaires · Cité Universitaire · Tlemcen"
 #define MyAppURL "https://github.com/anesdevv/residence-management-system"
 #define MyAppExeName "RESIVO.exe"
@@ -18,7 +18,7 @@ DefaultDirName={autopf}\RESIVO
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=..\dist\installer
-OutputBaseFilename=RESIVO-Setup-1.0.0
+OutputBaseFilename=RESIVO-Setup-0.0.1
 SetupIconFile=assets\brand\resivo.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
