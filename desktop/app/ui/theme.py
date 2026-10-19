@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import logging
 import re
+import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt
@@ -225,7 +226,23 @@ def _em_to_px(tracking: str, font_px: int) -> float:
 # ---------------------------------------------------------------------------
 # Fonts — bundled static TTFs in desktop/assets/fonts/
 # ---------------------------------------------------------------------------
-_FONTS_DIR = Path(__file__).resolve().parents[2] / "assets" / "fonts"
+def _resolve_fonts_dir() -> Path:
+    candidates = []
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).parent
+        candidates.append(exe_dir / "assets" / "fonts")
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            candidates.append(Path(meipass) / "assets" / "fonts")
+            candidates.append(Path(meipass) / "desktop" / "assets" / "fonts")
+    candidates.append(Path(__file__).resolve().parents[2] / "assets" / "fonts")
+    for c in candidates:
+        if c.is_dir():
+            return c
+    return candidates[-1]
+
+
+_FONTS_DIR = _resolve_fonts_dir()
 _FALLBACK_FAMILIES = ["Segoe UI", "system-ui", "sans-serif"]
 _LOADED_FONT_FILES: set[str] = set()
 _REGISTERED_FAMILIES: list[str] = []

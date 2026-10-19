@@ -56,6 +56,7 @@ under_review, in_progress, info, rejected, error, urgent, not_in_roster, neutral
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 
 from PySide6.QtCore import (
     QEasingCurve,
@@ -140,7 +141,23 @@ _AVATAR_PALETTE = (
     ("status-progress-bg", "status-progress-ink"),
     ("status-danger-bg", "status-danger-ink"),
 )
-_BRAND_DIR = Path(__file__).resolve().parents[2] / "assets" / "brand"
+def _resolve_brand_dir() -> Path:
+    candidates = []
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).parent
+        candidates.append(exe_dir / "assets" / "brand")
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            candidates.append(Path(meipass) / "assets" / "brand")
+            candidates.append(Path(meipass) / "desktop" / "assets" / "brand")
+    candidates.append(Path(__file__).resolve().parents[2] / "assets" / "brand")
+    for c in candidates:
+        if c.is_dir():
+            return c
+    return candidates[-1]
+
+
+_BRAND_DIR = _resolve_brand_dir()
 
 
 def _muted(word: str) -> QLabel:

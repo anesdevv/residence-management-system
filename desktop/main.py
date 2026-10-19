@@ -9,7 +9,23 @@ from PySide6.QtWidgets import QApplication
 from app.ui.login_window import LoginWindow
 from app.ui.theme import load_fonts
 
-_BRAND_ICON = Path(__file__).resolve().parent / "assets" / "brand" / "resivo.ico"
+def _resolve_brand_icon() -> Path:
+    candidates = []
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).parent
+        candidates.append(exe_dir / "assets" / "brand" / "resivo.ico")
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            candidates.append(Path(meipass) / "assets" / "brand" / "resivo.ico")
+            candidates.append(Path(meipass) / "desktop" / "assets" / "brand" / "resivo.ico")
+    candidates.append(Path(__file__).resolve().parent / "assets" / "brand" / "resivo.ico")
+    for c in candidates:
+        if c.is_file():
+            return c
+    return candidates[-1]
+
+
+_BRAND_ICON = _resolve_brand_icon()
 
 
 def main() -> int:
