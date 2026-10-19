@@ -42,6 +42,8 @@ def test_window_minimum_sizes(qapp, monkeypatch):
     lw = LoginWindow()
     assert lw.minimumSize().width() == 380
     assert lw.minimumSize().height() == 480
+    assert lw.email.text() == ""
+    assert lw.password.text() == ""
     lw.close()
     _qapp.processEvents()
 

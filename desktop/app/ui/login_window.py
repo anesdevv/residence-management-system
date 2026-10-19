@@ -1,14 +1,31 @@
+"""RÉSIVO — staff login window (split gradient hero + form; visual layer only).
+
+Behaviour is frozen: the prefilled seeded staff credentials, the ``attempt()``
+flow, ``sign_in`` / ``current_role`` usage, the exact "Access denied" path, the
+window staying open on wrong credentials and the lazy ``MainWindow`` import.
+
+Attributes kept for callers/tests: ``self.email``, ``self.password``,
+``self.button``, ``self.status`` (the error banner's message label), the
+``returnPressed`` connection on the password field and the 380x480 minimum.
+"""
+
+from __future__ import annotations
+
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLineEdit,
-    QPushButton, QLabel, QFrame,
-)
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
+
 from ..client import make_client, sign_in, current_role
-from .icons import get_icon
-from .theme import DESKTOP_STYLESHEET, apply_button_style
+from .components import BrandMark, Button, GradientHero, InlineBanner
+from .theme import C, DESKTOP_STYLESHEET, S, apply_role
+
+# DESIGN.md §7 — hide the hero below this window width (form-only mode).
+_LOGIN_HERO_BREAKPOINT = 760
+_FORM_MAX_WIDTH = 420
+_BRAND_DIR = Path(__file__).resolve().parents[2] / "assets" / "brand"
+_SIGN_IN_TEXT = "Sign in"
 
 
 class LoginWindow(QWidget):
@@ -16,85 +33,139 @@ class LoginWindow(QWidget):
         super().__init__()
         self.setWindowTitle("Staff Login — RÉSIVO")
         self.setMinimumSize(380, 480)
-        self.resize(440, 520)
+        self.resize(940, 580)
         self.setStyleSheet(DESKTOP_STYLESHEET)
         self.client = make_client()
+        icon_path = _BRAND_DIR / "resivo.ico"
+        if icon_path.is_file():
+            self.setWindowIcon(QIcon(str(icon_path)))
 
-        # Main Centered Container Frame
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(32, 32, 32, 32)
-        main_layout.setSpacing(20)
+        root = QHBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+        self.hero = self._build_hero()
+        self.form_host, self.form_column = self._build_form()
+        root.addWidget(self.hero, 1)
+        root.addWidget(self.form_host, 1)
 
-        card = QFrame()
-        card.setObjectName("cardFrame")
-        card_layout = QVBoxLayout(card)
-        card_layout.setSpacing(16)
-        card_layout.setContentsMargins(28, 28, 28, 28)
+        self._apply_responsive_layout()
 
-        # Brand logo & header
-        logo_lbl = QLabel()
-        logo_lbl.setObjectName("brandLogo")
-        logo_pixmap = QPixmap(str(Path(__file__).parent / "assets" / "resivo_logo.png"))
-        logo_lbl.setPixmap(logo_pixmap.scaled(88, 88, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-        logo_lbl.setAlignment(Qt.AlignCenter)
+    # ---------------------------------------------------------------- building
+    def _build_hero(self) -> GradientHero:
+        """Left half: brand-gradient hero with the white logo and value line."""
+        hero = GradientHero()
+        hero.body.setContentsMargins(S("space-12"), S("space-12"), S("space-12"), S("space-8"))
+        hero.body.setSpacing(S("space-4"))
+        hero.body.addStretch(1)
 
-        title_lbl = QLabel("RÉSIVO")
-        title_lbl.setStyleSheet("font-size: 20px; font-weight: 800; color: #f8fafc; letter-spacing: 0.4px; margin-top: 6px;")
-        title_lbl.setAlignment(Qt.AlignCenter)
+        logo = BrandMark(variant="logo", color="white", size=96)
+        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hero.body.addWidget(logo)
 
-        subtitle_lbl = QLabel("Staff & Housing Operations Console")
-        subtitle_lbl.setStyleSheet("font-size: 12px; font-weight: 500; color: #94a3b8; margin-bottom: 8px;")
-        subtitle_lbl.setAlignment(Qt.AlignCenter)
+        headline = QLabel("Staff Console")
+        apply_role(headline, "display")
+        headline.setStyleSheet(f"color: {C('surface')};")
+        headline.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hero.body.addWidget(headline)
 
-        card_layout.addWidget(logo_lbl)
-        card_layout.addWidget(title_lbl)
-        card_layout.addWidget(subtitle_lbl)
+        value_line = QLabel("Applications, rooms and repairs in one live console.")
+        apply_role(value_line, "body")
+        value_line.setStyleSheet(f"color: {C('text-on-dark')};")
+        value_line.setWordWrap(True)
+        value_line.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hero.body.addWidget(value_line)
 
-        # Form Inputs
+        hero.body.addStretch(1)
+
+        caption = QLabel("Direction des Œuvres Universitaires · Cité Universitaire · Tlemcen")
+        apply_role(caption, "small")
+        caption.setStyleSheet(f"color: {C('text-on-dark-muted')};")
+        caption.setWordWrap(True)
+        caption.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hero.body.addWidget(caption)
+        return hero
+
+    def _build_form(self) -> tuple[QWidget, QWidget]:
+        """Right half: clean form on ``surface`` (labels, fields, banner, CTA)."""
+        host = QWidget()
+        host.setProperty("background", "surface")
+        host_layout = QVBoxLayout(host)
+        host_layout.setContentsMargins(S("space-8"), S("space-8"), S("space-8"), S("space-8"))
+        host_layout.setSpacing(0)
+        host_layout.addStretch(1)
+
+        column = QWidget()
+        col = QVBoxLayout(column)
+        col.setContentsMargins(0, 0, 0, 0)
+        col.setSpacing(S("space-3"))
+
+        title = QLabel("RÉSIVO")
+        apply_role(title, "h1")
+        subtitle = QLabel("Staff & Housing Operations Console")
+        apply_role(subtitle, "muted")
+        col.addWidget(title)
+        col.addWidget(subtitle)
+        col.addSpacing(S("space-4"))
+
+        email_label = QLabel("Staff email")
+        apply_role(email_label, "small")
         self.email = QLineEdit()
         self.email.setPlaceholderText("staff@univ-tlemcen.dz")
-        self.email.setText("staff@residence.test")  # seeded staff account
+        self.email.setMinimumHeight(S("size-control"))
+        col.addWidget(email_label)
+        col.addWidget(self.email)
 
+        password_label = QLabel("Password")
+        apply_role(password_label, "small")
         self.password = QLineEdit()
         self.password.setPlaceholderText("••••••••")
-        self.password.setText("Staff1234!")  # seeded password convenience
-        self.password.setEchoMode(QLineEdit.Password)
+        self.password.setEchoMode(QLineEdit.EchoMode.Password)
+        self.password.setMinimumHeight(S("size-control"))
         self.password.returnPressed.connect(self.attempt)
+        col.addWidget(password_label)
+        col.addWidget(self.password)
 
-        form = QFormLayout()
-        form.setSpacing(12)
-        form.addRow("Staff Email:", self.email)
-        form.addRow("Password:", self.password)
-        card_layout.addLayout(form)
+        # Failure banner — hidden until needed; ``self.status`` is its message
+        # label so legacy ``self.status.setText(...)`` code keeps working.
+        self.error_banner = InlineBanner(kind="error", message="")
+        self.error_banner.setVisible(False)
+        self.status = self.error_banner._message
+        col.addWidget(self.error_banner)
 
-        # Status Error Banner
-        self.status = QLabel("")
-        self.status.setWordWrap(True)
-        self.status.setStyleSheet("color: #f87171; font-size: 12px; font-weight: 600; padding: 4px;")
-        card_layout.addWidget(self.status)
-
-        # Login Action Button
-        self.button = QPushButton("Sign In to Console")
-        self.button.setFixedHeight(42)
-        self.button.setIcon(get_icon("staff_accounts", size=16, color="#ffffff"))
-        apply_button_style(self.button, "primary")
+        self.button = Button.primary(_SIGN_IN_TEXT, "log-in")
+        self.button.setMinimumHeight(S("size-control"))
         self.button.clicked.connect(self.attempt)
-        card_layout.addWidget(self.button)
+        col.addWidget(self.button)
 
-        main_layout.addWidget(card)
+        host_layout.addWidget(column, 0, Qt.AlignmentFlag.AlignHCenter)
+        host_layout.addStretch(1)
+        return host, column
 
-        # Security Footer
-        security_lbl = QLabel("Direction des Œuvres Universitaires • Tlemcen")
-        security_lbl.setStyleSheet("color: #64748b; font-size: 11px;")
-        security_lbl.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(security_lbl)
+    # --------------------------------------------------------------- responsive
+    def _apply_responsive_layout(self) -> None:
+        """Hero hidden below 760 px (DESIGN.md §7); form centred, max ~420 px."""
+        hero_visible = self.width() >= _LOGIN_HERO_BREAKPOINT
+        self.hero.setVisible(hero_visible)
+        available = self.width() if not hero_visible else self.width() // 2
+        width = max(280, min(_FORM_MAX_WIDTH, available - 2 * S("space-8")))
+        self.form_column.setFixedWidth(width)
+
+    def resizeEvent(self, event):  # noqa: N802 - Qt API
+        super().resizeEvent(event)
+        if hasattr(self, "hero"):
+            self._apply_responsive_layout()
+
+    # ------------------------------------------------------------------- flow
+    def _show_error(self, message: str) -> None:
+        self.error_banner.set_message(message)
+        self.error_banner.setVisible(True)
 
     def attempt(self):
         email_txt = self.email.text().strip()
         pwd_txt = self.password.text()
 
         if not email_txt or not pwd_txt:
-            self.status.setText("Please enter both email and password.")
+            self._show_error("Please enter both email and password.")
             return
 
         self.button.setText("Signing in...")
@@ -105,13 +176,13 @@ class LoginWindow(QWidget):
             role = current_role(self.client)
             if role not in ("staff", "admin"):
                 self.client.auth.sign_out()
-                self.status.setText("Access denied: Console restricted to staff and administrators.")
-                self.button.setText("Sign In to Console")
+                self._show_error("Access denied: Console restricted to staff and administrators.")
+                self.button.setText(_SIGN_IN_TEXT)
                 self.button.setEnabled(True)
                 return
         except Exception as exc:  # noqa: BLE001
-            self.status.setText(f"Login failed: {exc}")
-            self.button.setText("Sign In to Console")
+            self._show_error(f"Login failed: {exc}")
+            self.button.setText(_SIGN_IN_TEXT)
             self.button.setEnabled(True)
             return
 

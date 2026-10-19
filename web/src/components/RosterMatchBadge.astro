@@ -1,0 +1,26 @@
+---
+/**
+ * RÉSIVO — RosterMatchBadge (docs/DESIGN.md §6).
+ * matched: true  → "Matched"     (ok + user-check)
+ *          false → "Not in roster" (danger + alert-triangle)
+ *          null  → "Not checked" (neutral + info)
+ */
+import StatusPill from './StatusPill.astro';
+
+interface Props {
+  matched: boolean | null;
+  class?: string;
+}
+
+const { matched, class: className = '' } = Astro.props;
+---
+
+{
+  matched === true ? (
+    <StatusPill kind="ok" label="Matched" icon="user-check" class={className} />
+  ) : matched === false ? (
+    <StatusPill kind="danger" label="Not in roster" icon="alert-triangle" class={className} />
+  ) : (
+    <StatusPill kind="neutral" label="Not checked" icon="info" class={className} />
+  )
+}

@@ -11,11 +11,14 @@ def sign_in(client: Client, email: str, password: str):
 
 
 def current_role(client: Client) -> str | None:
-    user = getattr(client.auth.get_user(), "user", None)
-    if not user:
+    try:
+        user = getattr(client.auth.get_user(), "user", None)
+        if not user:
+            return None
+        resp = client.table("profiles").select("role").eq("id", user.id).single().execute()
+        return (resp.data or {}).get("role")
+    except Exception:
         return None
-    resp = client.table("profiles").select("role").eq("id", user.id).single().execute()
-    return (resp.data or {}).get("role")
 
 
 def room_occupancy(client: Client) -> dict[str, int]:

@@ -1,0 +1,64 @@
+---
+/**
+ * RÉSIVO — Card (docs/DESIGN.md §4, §6).
+ * Surface + hairline border + e1, radius 12 (20 for `tone="hero"`).
+ *
+ * Slots: default (body) · footer · actions (right side of the title row).
+ * Usage:
+ *   <Card title="Ticket details" icon="wrench">
+ *     <p>…</p>
+ *     <Fragment slot="actions"><a class="btn btn-sm btn-secondary" href="/x">Open</a></Fragment>
+ *     <Fragment slot="footer"><p class="field-hint">Updated today</p></Fragment>
+ *   </Card>
+ */
+interface Props {
+  title?: string;
+  subtitle?: string;
+  icon?: string;
+  tone?: 'default' | 'flat' | 'hero';
+  /** Element tag to render, e.g. 'article'. Defaults to `section`. */
+  as?: 'section' | 'article' | 'aside' | 'div' | 'li';
+  class?: string;
+}
+
+import Icon from './Icon.astro';
+
+const { title, subtitle, icon, tone = 'default', as: Tag = 'section', class: className = '' } = Astro.props;
+
+const toneClass = tone === 'hero' ? 'card hero-card' : tone === 'flat' ? 'card card-flat' : 'card';
+const hasHeader = Boolean(title || subtitle || icon) || Astro.slots.has('actions');
+const hasFooter = Astro.slots.has('footer');
+---
+
+<Tag class={`${toneClass} ${className}`}>
+  {
+    hasHeader && (
+      <header class="flex items-start justify-between gap-4 border-b border-line px-4 py-3 sm:px-6">
+        <div class="flex min-w-0 items-start gap-3">
+          {icon && (
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input bg-subtle text-teal-600">
+              <Icon name={icon} size={20} />
+            </span>
+          )}
+          <div class="min-w-0">
+            {title && <h2 class="card-title">{title}</h2>}
+            {subtitle && <p class="mt-0.5 text-small font-normal text-muted">{subtitle}</p>}
+          </div>
+        </div>
+        {Astro.slots.has('actions') && <div class="flex shrink-0 flex-wrap items-center gap-2"><slot name="actions" /></div>}
+      </header>
+    )
+  }
+
+  <div class="px-4 py-4 sm:px-6 sm:py-6">
+    <slot />
+  </div>
+
+  {
+    hasFooter && (
+      <footer class="border-t border-line px-4 py-3 sm:px-6">
+        <slot name="footer" />
+      </footer>
+    )
+  }
+</Tag>

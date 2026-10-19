@@ -1,0 +1,756 @@
+---
+/**
+ * RÉSIVO — style guide (dev only).
+ * Served by `astro dev`; a production build answers 404 and nothing links here.
+ * Every token, class and component in one page — the visual contract for
+ * docs/DESIGN.md §2–§6 plus web/src/components/README.md.
+ */
+import '../styles/global.css';
+import Icon from '../components/Icon.astro';
+import BrandMark from '../components/BrandMark.astro';
+import StatusPill from '../components/StatusPill.astro';
+import Card from '../components/Card.astro';
+import StatCard from '../components/StatCard.astro';
+import PageHeader from '../components/PageHeader.astro';
+import SegmentedControl from '../components/SegmentedControl.astro';
+import SearchField from '../components/SearchField.astro';
+import EmptyState from '../components/EmptyState.astro';
+import InlineBanner from '../components/InlineBanner.astro';
+import Avatar from '../components/Avatar.astro';
+import Skeleton from '../components/Skeleton.astro';
+import Toast from '../components/Toast.astro';
+import KeyValue from '../components/KeyValue.astro';
+import Stepper from '../components/Stepper.astro';
+import RosterMatchBadge from '../components/RosterMatchBadge.astro';
+import OccupancyBar from '../components/OccupancyBar.astro';
+import ResidentPass from '../components/ResidentPass.astro';
+
+if (!import.meta.env.DEV) return new Response(null, { status: 404 });
+
+/* --- shared classes -------------------------------------------------------- */
+const section = 'mt-12';
+const heading = 'font-display text-h1 text-ink';
+const lede = 'mt-1 text-small font-normal text-muted';
+const grid = 'mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
+const swatchBox = 'h-12 w-full rounded-input border border-line';
+const mono = 'tnum text-small font-normal text-muted';
+
+/* --- token data ------------------------------------------------------------ */
+const brandSwatches = [
+  { token: 'navy-900', hex: '#0A2342', utility: 'navy-900', use: 'Dark chrome, institutional banner, sidebar base' },
+  { token: 'navy-800', hex: '#0A2F5A', utility: 'navy-800', use: 'Wordmark navy, primary buttons, active nav' },
+  { token: 'navy-700', hex: '#0D436F', utility: 'navy-700', use: 'Primary hover, secondary navy' },
+  { token: 'teal-600', hex: '#0D7180', utility: 'teal-600', use: 'Links, focus ring, active accents (5.7:1 on white)' },
+  { token: 'teal-500', hex: '#109D9A', utility: 'teal-500', use: 'Highlights, charts, occupancy bars' },
+  { token: 'green-500', hex: '#0CA792', utility: 'green-500', use: 'Brand-gradient end, success glow' },
+  { token: 'gold-500', hex: '#E5A853', utility: 'gold-500', use: 'Premium accent only — never text on white' },
+  { token: 'gold-300', hex: '#F1CE92', utility: 'gold-300', use: 'Gold text/icons on navy or the gradient only' },
+];
+
+const neutralSwatches = [
+  { token: 'canvas', hex: '#F5F8FB', utility: 'canvas', use: 'Page background' },
+  { token: 'surface', hex: '#FFFFFF', utility: 'surface', use: 'Cards, inputs, dialogs' },
+  { token: 'surface-subtle', hex: '#EDF2F7', utility: 'subtle', use: 'Table headers, hover rows, disabled fields' },
+  { token: 'border', hex: '#DCE4EE', utility: 'line', use: 'Hairline borders' },
+  { token: 'border-strong', hex: '#C5D0DE', utility: 'line-strong', use: 'Outlined controls, secondary buttons' },
+  { token: 'text-primary', hex: '#0B1B33', utility: 'ink', use: 'Body ink' },
+  { token: 'text-secondary', hex: '#44546A', utility: 'ink-2', use: 'Secondary ink, table values' },
+  { token: 'text-muted', hex: '#5B6B82', utility: 'muted', use: 'Labels, hints, overlines' },
+  { token: 'text-on-dark', hex: '#E6EDF6', utility: 'on-dark', use: 'Text on navy and dark surfaces' },
+  { token: 'text-on-dark-muted', hex: '#9FB3CC', utility: 'on-dark-2', use: 'Secondary text on navy' },
+  { token: 'navy-hover', hex: '#10305A', utility: '—', use: 'Hover on navy surfaces' },
+  { token: 'selection-tint', hex: '#E6F2F4', utility: '—', use: 'Selected table row (with navy-800 ink)' },
+];
+
+const statusSwatches = [
+  { kind: 'ok', label: 'Active · Approved · Resolved · Matched', ink: '#05603A', bg: '#E8F7EF', line: '#A9E2C4' },
+  { kind: 'pending', label: 'Pending', ink: '#8A4B08', bg: '#FFF6E5', line: '#F3D49B' },
+  { kind: 'review', label: 'Under review', ink: '#4338CA', bg: '#EEF0FF', line: '#C7CBFA' },
+  { kind: 'progress', label: 'In progress', ink: '#174EA6', bg: '#EAF1FD', line: '#B9D0F7' },
+  { kind: 'danger', label: 'Rejected · Urgent · Not in roster', ink: '#9B1C1C', bg: '#FDEDED', line: '#F5B9B9' },
+  { kind: 'neutral', label: 'Counts, informational', ink: '#44546A', bg: '#EDF2F7', line: '#DCE4EE' },
+];
+
+const typeScale = [
+  { name: 'display', spec: 'Outfit 700 · 32/40 · -0.02em', class: 'font-display text-display text-ink' },
+  { name: 'h1', spec: 'Outfit 600 · 24/32', class: 'font-display text-h1 text-ink' },
+  { name: 'h2', spec: 'Outfit 600 · 18/26', class: 'font-display text-h2 text-ink' },
+  { name: 'h3', spec: 'Inter 600 · 15/22', class: 'text-h3 text-ink' },
+  { name: 'body', spec: 'Inter 400 · 14/22', class: 'text-body text-ink' },
+  { name: 'small', spec: 'Inter 500 · 12/18', class: 'text-small text-muted' },
+  { name: 'overline', spec: 'Inter 600 · 11/16 · uppercase +0.08em', class: 'overline' },
+];
+
+const sample = 'Cité Universitaire Tlemcen — 0123';
+const legacyKinds = [
+  'active',
+  'approved',
+  'resolved',
+  'matched',
+  'pending',
+  'under_review',
+  'in_progress',
+  'rejected',
+  'urgent',
+  'not_in_roster',
+];
+
+const tableRows = [
+  { id: '20230001', name: 'Yacine Benali', block: 'A', days: 3, status: 'pending', selected: false },
+  { id: '20230042', name: 'Amina Haddad', block: 'B', days: 1, status: 'in_progress', selected: true },
+  { id: '20230117', name: 'Sofiane Kaci', block: 'C', days: 12, status: 'resolved', selected: false },
+  { id: '20230203', name: 'Nour Belkacem', block: 'A', days: 5, status: 'rejected', selected: false },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0A2342" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Style guide — RÉSIVO</title>
+  </head>
+  <body class="bg-canvas text-ink">
+    <main class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
+      <PageHeader
+        title="RÉSIVO style guide"
+        overline="Dev only"
+        subtitle="Tokens, classes and components from docs/DESIGN.md §2–§6. Served by astro dev; production answers 404 and nothing links here."
+      >
+        <Fragment slot="actions">
+          <a class="btn btn-secondary" href="/">
+            <Icon name="arrow-left" size={16} />
+            <span>Back to the portal</span>
+          </a>
+        </Fragment>
+      </PageHeader>
+
+      <!-- ==================================================================
+           Colour tokens
+           ================================================================== -->
+      <section class={section}>
+        <h2 class={heading}>Brand</h2>
+        <p class={lede}>Gradient and gold are accents: hero, resident pass, shell top line, landing CTA.</p>
+        <div class={grid}>
+          {brandSwatches.map((s) => (
+            <div class="card p-3">
+              <div class={swatchBox} style={`background-color: var(--${s.token})`} />
+              <p class="mt-3 text-h3 text-ink">{s.token}</p>
+              <p class={mono}>{s.hex}</p>
+              <p class="mt-1 text-small font-normal text-muted">Utility: {s.utility}</p>
+              <p class="text-small font-normal text-muted">{s.use}</p>
+            </div>
+          ))}
+        </div>
+
+        <div class="mt-4 grid gap-4 sm:grid-cols-2">
+          <div class="card p-3">
+            <div class={swatchBox} style="background-image: var(--grad-brand)" />
+            <p class="mt-3 text-h3 text-ink">grad-brand</p>
+            <p class={mono}>135deg · navy-800 → teal-600 → green-500</p>
+            <p class="text-small font-normal text-muted">
+              Allowed only on: landing/login hero, the resident pass, the 3px shell top line and the landing hero
+              primary CTA. Never on cards, tables or buttons.
+            </p>
+          </div>
+          <div class="rounded-card bg-navy-900 p-4">
+            <p class="overline text-on-dark">Gold on navy — allowed</p>
+            <p class="mt-2 font-display text-h2 text-gold-300">RÉSIVO · gold-300</p>
+            <p class="mt-1 text-small font-normal text-on-dark-2">
+              Gold is never text on white; on navy or the gradient gold-300 carries the premium accent.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class={section}>
+        <h2 class={heading}>Neutrals</h2>
+        <p class={lede}>Cool neutrals tinted toward navy; text tokens hold WCAG AA on canvas and surface.</p>
+        <div class={grid}>
+          {neutralSwatches.map((s) => (
+            <div class="card p-3">
+              <div class={swatchBox} style={`background-color: var(--${s.token})`} />
+              <p class="mt-3 text-h3 text-ink">{s.token}</p>
+              <p class={mono}>{s.hex}</p>
+              <p class="mt-1 text-small font-normal text-muted">Utility: {s.utility}</p>
+              <p class="text-small font-normal text-muted">{s.use}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section class={section}>
+        <h2 class={heading}>Semantic status</h2>
+        <p class={lede}>Always colour + icon + text label — never colour alone.</p>
+        <div class={grid}>
+          {statusSwatches.map((s) => (
+            <div class="card p-3">
+              <div
+                class={`flex h-12 items-center justify-center rounded-input border text-small font-semibold badge-${s.kind}`}
+              >
+                {s.kind}
+              </div>
+              <p class="mt-3 text-h3 text-ink">badge-{s.kind}</p>
+              <p class={mono}>ink {s.ink} · bg {s.bg} · line {s.line}</p>
+              <p class="mt-1 text-small font-normal text-muted">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           Typography, shape, motion
+           ================================================================== -->
+      <section class={section}>
+        <h2 class={heading}>Type scale</h2>
+        <p class={lede}>Outfit for headings, display, KPIs and the resident pass; Inter for body, UI, tables, forms.</p>
+        <div class="card mt-6 divide-y divide-line">
+          {typeScale.map((t) => (
+            <div class="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-baseline sm:gap-6 sm:px-6">
+              <div class="w-40 shrink-0">
+                <p class="text-h3 text-ink">{t.name}</p>
+                <p class="text-small font-normal text-muted">{t.spec}</p>
+              </div>
+              <p class={`min-w-0 break-words ${t.class}`}>{sample}</p>
+            </div>
+          ))}
+        </div>
+        <p class="mt-3 text-small font-normal text-muted">
+          Tabular figures for IDs, room numbers, counts and dates: <span class="tnum">20230001 · A-3-14 · 12 / 20</span>
+        </p>
+      </section>
+
+      <section class={section}>
+        <h2 class={heading}>Shape, elevation, motion</h2>
+        <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="card p-4">
+            <div class="h-16 rounded-input border border-line bg-subtle" />
+            <p class="mt-3 text-h3 text-ink">rounded-input · 8</p>
+            <p class="text-small font-normal text-muted">Inputs, buttons, badges</p>
+          </div>
+          <div class="card p-4">
+            <div class="h-16 rounded-card border border-line bg-subtle" />
+            <p class="mt-3 text-h3 text-ink">rounded-card · 12</p>
+            <p class="text-small font-normal text-muted">Cards, dialogs</p>
+          </div>
+          <div class="card p-4">
+            <div class="h-16 rounded-hero border border-line bg-subtle" />
+            <p class="mt-3 text-h3 text-ink">rounded-hero · 20</p>
+            <p class="text-small font-normal text-muted">Hero containers, resident pass</p>
+          </div>
+          <div class="card p-4">
+            <div class="h-16 rounded-pill border border-line bg-subtle" />
+            <p class="mt-3 text-h3 text-ink">rounded-pill · 9999</p>
+            <p class="text-small font-normal text-muted">Status pills, counters</p>
+          </div>
+        </div>
+
+        <div class="mt-4 grid gap-4 sm:grid-cols-3">
+          <div class="shadow-e1 rounded-card border border-line bg-surface p-4">
+            <p class="text-h3 text-ink">shadow-e1</p>
+            <p class="text-small font-normal text-muted">Cards at rest</p>
+          </div>
+          <div class="shadow-e2 rounded-card border border-line bg-surface p-4">
+            <p class="text-h3 text-ink">shadow-e2</p>
+            <p class="text-small font-normal text-muted">Dialogs, popovers, toasts only</p>
+          </div>
+          <div class="card p-4">
+            <p class="text-h3 text-ink">Motion</p>
+            <p class="text-small font-normal text-muted">
+              150–200ms ease-out for hover, toasts and dialogs. prefers-reduced-motion is honoured globally; never
+              animate table rows during a live-sync redraw.
+            </p>
+            <p class="mt-2 text-small font-normal text-teal-600 transition-colors hover:text-navy-800">
+              Hover me — colour only, no movement
+            </p>
+          </div>
+        </div>
+
+        <div class="card mt-4 flex flex-wrap items-center gap-4 p-4">
+          <p class="text-small font-normal text-muted">
+            Focus is sacred: 2px teal-600 at 2px offset, never removed. Tab through the controls on this page.
+          </p>
+          <button class="btn btn-secondary" type="button">Focus me</button>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           Buttons & form controls
+           ================================================================== -->
+      <section class={section}>
+        <h2 class={heading}>Buttons</h2>
+        <p class={lede}>One primary action per view. Disabled actions always carry an explanatory tooltip.</p>
+        <div class="card mt-6 flex flex-col gap-6 p-4 sm:p-6">
+          <div class="flex flex-wrap items-center gap-3">
+            <button class="btn btn-primary" type="button">
+              <Icon name="check" size={16} />
+              <span>Save changes</span>
+            </button>
+            <button class="btn btn-accent" type="button">Confirm allocation</button>
+            <button class="btn btn-secondary" type="button">Cancel</button>
+            <button class="btn btn-danger" type="button">
+              <Icon name="trash" size={16} />
+              <span>Reject</span>
+            </button>
+            <button class="btn btn-danger-solid" type="button">Delete permanently</button>
+            <button class="btn btn-ghost" type="button">Dismiss</button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <button class="btn btn-primary btn-sm" type="button">Default sm</button>
+            <button class="btn btn-secondary btn-sm" type="button">Secondary sm</button>
+            <a class="btn btn-ghost btn-icon" href="/" aria-label="Open dashboard" title="Open dashboard">
+              <Icon name="dashboard" size={18} />
+            </a>
+            <a class="btn btn-ghost btn-icon btn-sm" href="/" aria-label="Refresh" title="Refresh">
+              <Icon name="refresh" size={16} />
+            </a>
+            <span class="text-small font-normal text-muted">
+              Hover: navy-800 → navy-700 · teal-600 darkens · secondary/subtle. Icon-only controls need a label.
+            </span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 rounded-card bg-subtle p-4">
+            <span title="Pending applications cannot be deleted">
+              <button class="btn btn-danger" type="button" disabled aria-describedby="sg-disabled-1">
+                <Icon name="trash" size={16} />
+                <span>Delete application</span>
+              </button>
+            </span>
+            <span title="This account is your own — sign in as another admin to remove it">
+              <a class="btn btn-secondary" href="/" aria-disabled="true" aria-describedby="sg-disabled-2">
+                <Icon name="trash" size={16} />
+                <span>Delete account</span>
+              </a>
+            </span>
+          </div>
+          <p class="field-hint" id="sg-disabled-1">
+            Disabled pattern: the wrapper carries the tooltip title, the control carries aria-describedby — the reason
+            is always visible in text too.
+          </p>
+          <p class="field-hint" id="sg-disabled-2">
+            Same pattern for links: aria-disabled="true" (the .btn rules style it), plus the explanation.
+          </p>
+
+          <div class="flex flex-wrap items-center gap-3 border-t border-line pt-6">
+            <a class="btn btn-gradient" href="/register">
+              <Icon name="user" size={16} />
+              <span>Register as Resident</span>
+            </a>
+            <span class="text-small font-normal text-muted">btn-gradient — landing hero primary CTA only.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class={section}>
+        <h2 class={heading}>Form controls</h2>
+        <p class={lede}>44px min-height, 1px line, 8px radius, teal 2px focus ring.</p>
+        <div class="card mt-6 grid gap-6 p-4 sm:grid-cols-2 sm:p-6">
+          <div class="flex flex-col gap-2">
+            <label class="label" for="sg-input">Student card ID</label>
+            <input class="input" id="sg-input" value="20230001" />
+            <p class="field-hint">Algerian student card, 8 digits. Tabular figures for IDs.</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="label" for="sg-error">Phone</label>
+            <input class="input" id="sg-error" value="0550" aria-invalid="true" aria-describedby="sg-error-msg" />
+            <p class="field-error" id="sg-error-msg">
+              <Icon name="alert-circle" size={14} />
+              <span>Number is invalid — 10 digits required.</span>
+            </p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="label" for="sg-disabled">Account status</label>
+            <input class="input" id="sg-disabled" value="Active" disabled />
+            <p class="field-hint">Disabled — subtle background, muted text, not focusable.</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="label" for="sg-select">Maintenance category</label>
+            <select class="select" id="sg-select">
+              <option>Plumbing</option>
+              <option>Electrical</option>
+              <option>Furniture</option>
+              <option>Internet</option>
+            </select>
+            <p class="field-hint">Native select keeps the platform picker on mobile.</p>
+          </div>
+          <div class="flex flex-col gap-2 sm:col-span-2">
+            <label class="label" for="sg-textarea">Describe the fault</label>
+            <textarea class="textarea" id="sg-textarea" placeholder="What happened, and when?"></textarea>
+            <p class="field-hint">Min-height 96px, vertical resize only.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           Status, feedback, tables
+           ================================================================== -->
+      <section class={section}>
+        <h2 class={heading}>Status pills</h2>
+        <p class={lede}>Canonical kinds plus the legacy vocabulary the desktop console uses.</p>
+        <div class="card mt-6 flex flex-col gap-4 p-4 sm:p-6">
+          <div class="flex flex-wrap items-center gap-3">
+            <StatusPill kind="ok" />
+            <StatusPill kind="pending" />
+            <StatusPill kind="review" />
+            <StatusPill kind="progress" />
+            <StatusPill kind="danger" />
+            <StatusPill kind="neutral" />
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <StatusPill kind="ok" label="Custom label" icon="key" size="sm" />
+            <span class="text-small font-normal text-muted">size="sm" + custom label/icon, e.g. for dense tables.</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 border-t border-line pt-4">
+            {legacyKinds.map((kind) => <StatusPill kind={kind} />)}
+          </div>
+          <p class="text-small font-normal text-muted">
+            Legacy names map onto the canonical set, so old pages keep working unchanged.
+          </p>
+        </div>
+      </section>
+
+      <section class={section}>
+        <h2 class={heading}>Banners</h2>
+        <p class={lede}>info / success / warning / error — token tints, always with an icon.</p>
+        <div class="mt-6 grid gap-4 lg:grid-cols-2">
+          <InlineBanner kind="info" title="Roster check pending">
+            Housing officers cross-reference your record with the official admission lists.
+          </InlineBanner>
+          <InlineBanner kind="success" title="Room assigned">
+            Your allocation is confirmed — collect your key at the housing bureau.
+          </InlineBanner>
+          <InlineBanner kind="warning" title="One place left">
+            Block B, floor 2 is almost full. Allocations are first come, first served.
+          </InlineBanner>
+          <InlineBanner kind="error" title="Rejection reason required">
+            Enter a non-empty reason before rejecting an application.
+          </InlineBanner>
+          <InlineBanner kind="info">
+            A banner without a title still leads with the icon.
+            <Fragment slot="actions">
+              <a class="btn btn-secondary btn-sm" href="/dashboard">Open dashboard</a>
+            </Fragment>
+          </InlineBanner>
+        </div>
+      </section>
+
+      <section class={section}>
+        <h2 class={heading}>Toasts</h2>
+        <p class={lede}>
+          Auto-dismiss after 4s, fixed bottom-right on desktop / above the mobile tab bar. The samples below are the
+          static renderings (same markup, `.toast` layout only live on a real page).
+        </p>
+        <div class="mt-6 grid gap-4 lg:grid-cols-2">
+          <Toast kind="info" message="Ticket #142 was received and queued for triage." static />
+          <Toast kind="success" message="Room change request approved." static />
+          <Toast kind="warning" message="Your session expires in 5 minutes." static />
+          <Toast kind="error" message="Photo upload failed — try again in a moment." static />
+        </div>
+      </section>
+
+      <section class={section}>
+        <h2 class={heading}>Data table</h2>
+        <p class={lede}>Sticky overline header on subtle, 44px rows, hairline separators, no gridlines, tabular numerics.</p>
+        <div class="table-wrap mt-6">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Card ID</th>
+                <th>Resident</th>
+                <th>Block</th>
+                <th class="num">Days open</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tableRows.map((row) => (
+                <tr aria-selected={row.selected ? 'true' : undefined}>
+                  <td class="tnum">{row.id}</td>
+                  <td>{row.name}</td>
+                  <td>{row.block}</td>
+                  <td class="num tnum">{row.days}</td>
+                  <td><StatusPill kind={row.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-3 text-small font-normal text-muted">
+          Hover a row for the subtle tint; row 2 demonstrates the selection tint with navy ink.
+        </p>
+      </section>
+
+      <!-- ==================================================================
+           Navigation & search
+           ================================================================== -->
+      <section class={section}>
+        <h2 class={heading}>Segmented control & search</h2>
+        <p class={lede}>One active segment; counts render as small tabular chips. Buttons for client state, links for server filters.</p>
+        <div class="card mt-6 flex flex-col gap-6 p-4 sm:p-6">
+          <SegmentedControl
+            ariaLabel="Application status"
+            value="pending"
+            options={[
+              { value: 'pending', label: 'Pending', count: 4 },
+              { value: 'approved', label: 'Approved', count: 12 },
+              { value: 'rejected', label: 'Rejected', count: 2 },
+              { value: 'all', label: 'All', count: 18 },
+            ]}
+          />
+          <SegmentedControl
+            ariaLabel="Application status (links)"
+            value="approved"
+            options={[
+              { value: 'pending', label: 'Pending', count: 4, href: '/styleguide' },
+              { value: 'approved', label: 'Approved', count: 12, href: '/styleguide' },
+              { value: 'all', label: 'All', count: 18, href: '/styleguide' },
+            ]}
+          />
+          <div class="grid gap-4 sm:grid-cols-2">
+            <SearchField id="sg-search-empty" name="q" label="Search tickets" placeholder="Search tickets…" />
+            <SearchField
+              id="sg-search-value"
+              name="q"
+              label="Search residents"
+              value="Benali"
+              action="/styleguide"
+            />
+          </div>
+          <p class="text-small font-normal text-muted">
+            The clear control appears only when the server-rendered value is set; it is a 44px labelled link back to the
+            search target.
+          </p>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           Cards, stats, steppers, meters
+           ================================================================== -->
+      <section class={section}>
+        <h2 class={heading}>Cards & stat cards</h2>
+        <div class={grid}>
+          <StatCard label="Open tickets" value="7" hint="2 in progress today" icon="wrench" accent="teal" />
+          <StatCard label="Occupancy" value="82%" hint="Block A · 41 of 50 places" icon="building" accent="navy" />
+          <StatCard label="Pending transfers" value="3" hint="Awaiting housing officers" icon="arrow-left-right" accent="gold" />
+          <StatCard label="Rejected this month" value="1" hint="Reason recorded on the dossier" icon="x-circle" accent="danger" />
+        </div>
+
+        <div class="mt-4 grid gap-4 lg:grid-cols-2">
+          <Card title="Room change request" subtitle="Submitted 14 Oct 2026" icon="arrow-left-right">
+            <KeyValue
+              columns={2}
+              rows={[
+                { label: 'Current room', value: 'A · 2 · 14', tnum: true },
+                { label: 'Target block', value: 'B', tnum: true },
+              ]}
+            />
+            <Fragment slot="actions">
+              <a class="btn btn-secondary btn-sm" href="/styleguide">Open</a>
+            </Fragment>
+            <Fragment slot="footer">
+              <p class="text-small font-normal text-muted">Reviewer: housing bureau (Bloc A)</p>
+            </Fragment>
+          </Card>
+          <Card tone="flat" title="Flat card" subtitle="No elevation — dense panels, nested content">
+            <p class="text-body text-ink-2">Cards carry a hairline border; shadow-e1 only on the default tone.</p>
+          </Card>
+        </div>
+      </section>
+
+      <section class={section}>
+        <h2 class={heading}>Steppers</h2>
+        <p class={lede}>Maintenance lifecycle: Pending › Under review › In progress › Resolved. Horizontal on desktop, vertical on mobile.</p>
+        <div class="card mt-6 flex flex-col gap-8 p-4 sm:p-6">
+          <Stepper steps={['Pending', 'Under review', 'In progress', 'Resolved']} current={2} />
+          <Stepper steps={['Pending', 'Under review', 'In progress', 'Resolved']} current={4} />
+          <Stepper
+            steps={['Pending', 'Under review', 'In progress', 'Resolved']}
+            current={1}
+            states={['done', 'done', 'current', 'todo']}
+          />
+          <p class="text-small font-normal text-muted">
+            done = ok tokens with a check, current = teal-600 with aria-current="step", todo = line/muted. states lets a
+            page override individual steps.
+          </p>
+        </div>
+      </section>
+
+      <section class={section}>
+        <h2 class={heading}>Occupancy bars</h2>
+        <p class={lede}>teal-500 normally, pending when one place is left, danger + the word "Full" when full.</p>
+        <div class="card mt-6 grid gap-6 p-4 sm:p-6 lg:grid-cols-3">
+          <OccupancyBar label="Block A · floor 2" occupied={8} capacity={20} />
+          <OccupancyBar label="Block B · floor 1" occupied={19} capacity={20} />
+          <OccupancyBar label="Block C · floor 3" occupied={20} capacity={20} />
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           Loading, empty, identity
+           ================================================================== -->
+      <section class={section}>
+        <h2 class={heading}>Skeletons</h2>
+        <p class={lede}>aria-hidden placeholders; mark the loading region with aria-busy on the page side.</p>
+        <div class="mt-6 grid gap-4 lg:grid-cols-3">
+          <div class="card p-4 sm:p-6">
+            <Skeleton variant="line" />
+          </div>
+          <div class="card p-4 sm:p-6">
+            <Skeleton variant="rows" rows={4} />
+          </div>
+          <Skeleton variant="card" rows={3} />
+        </div>
+      </section>
+
+      <section class={section}>
+        <h2 class={heading}>Empty states</h2>
+        <div class="mt-6 grid gap-4 lg:grid-cols-2">
+          <EmptyState
+            icon="file-text"
+            title="No requests submitted yet"
+            message="When you submit maintenance tickets or room change requests, they appear here with live status."
+          >
+            <Fragment slot="actions">
+              <a class="btn btn-primary" href="/dashboard/maintenance">
+                <Icon name="plus" size={16} />
+                <span>Report a fault</span>
+              </a>
+            </Fragment>
+          </EmptyState>
+          <EmptyState
+            icon="search"
+            title="No residents match this search"
+            message="Check the card ID, or clear the filters to see the full list."
+          />
+        </div>
+      </section>
+
+      <section class={section}>
+        <h2 class={heading}>Avatars & roster badges</h2>
+        <p class={lede}>Initials on a deterministic tinted square; the roster badge reads Matched / Not in roster / Not checked.</p>
+        <div class="card mt-6 flex flex-col gap-4 p-4 sm:p-6">
+          <div class="flex flex-wrap items-center gap-4">
+            <span class="flex items-center gap-2">
+              <Avatar name="Yacine Benali" size={32} />
+              <span class="text-small font-normal text-muted">32</span>
+            </span>
+            <span class="flex items-center gap-2">
+              <Avatar name="Amina Haddad" size={40} />
+              <span class="text-small font-normal text-muted">40</span>
+            </span>
+            <span class="flex items-center gap-2">
+              <Avatar name="Sofiane Kaci" size={48} />
+              <span class="text-small font-normal text-muted">48</span>
+            </span>
+            <span class="flex items-center gap-2">
+              <Avatar name="Nour Belkacem" />
+              <span class="text-small font-normal text-muted">default 40 · same name → same tint</span>
+            </span>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 border-t border-line pt-4">
+            <RosterMatchBadge matched={true} />
+            <RosterMatchBadge matched={false} />
+            <RosterMatchBadge matched={null} />
+          </div>
+        </div>
+      </section>
+
+      <section class={section}>
+        <h2 class={heading}>Key-value lists</h2>
+        <p class={lede}>Label overline + value; tabular figures for IDs, room numbers and dates.</p>
+        <div class="mt-6 grid gap-4 lg:grid-cols-2">
+          <Card title="Registration dossier" icon="id-card">
+            <KeyValue
+              rows={[
+                { label: 'Full name', value: 'Yacine Benali' },
+                { label: 'Card ID', value: '20230001', mono: true },
+                { label: 'University', value: 'Abou Bekr Belkaid' },
+                { label: 'Study level', value: 'L2' },
+                { label: 'Wilaya', value: 'Tlemcen' },
+                { label: 'Submitted', value: '14 Oct 2026', tnum: true },
+              ]}
+            />
+          </Card>
+          <Card title="Slot form" subtitle="Your own dt/dd pairs inside a plain div">
+            <KeyValue columns={1}>
+              <div>
+                <dt class="overline">Assigned room</dt>
+                <dd class="mt-0.5 text-body text-ink tnum">Block A · Floor 2 · Room 14</dd>
+              </div>
+              <div>
+                <dt class="overline">Roster match</dt>
+                <dd class="mt-0.5"><RosterMatchBadge matched={true} /></dd>
+              </div>
+            </KeyValue>
+          </Card>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           Resident pass
+           ================================================================== -->
+      <section class={section}>
+        <h2 class={heading}>Resident pass</h2>
+        <p class={lede}>
+          The one place the brand gradient and gold live on the portal. Simulated at 390px viewport width; both blocks
+          use the same card id to prove the QR-style pattern is deterministic.
+        </p>
+        <div class="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div class="w-full" style="max-width: 390px;">
+            <p class="overline mb-2">390px viewport</p>
+            <ResidentPass
+              fullName="Yacine Benali"
+              cardId="20230001"
+              block="A"
+              floor="2"
+              room="14"
+              studyLevel="L2"
+              university="Abou Bekr Belkaid"
+              issuedAt="14 Oct 2026"
+            />
+          </div>
+          <div class="w-full" style="max-width: 390px;">
+            <p class="overline mb-2">Same id, second render — byte-identical SVG</p>
+            <ResidentPass
+              fullName="Yacine Benali"
+              cardId="20230001"
+              block="A"
+              floor="2"
+              room="14"
+              studyLevel="L2"
+              university="Abou Bekr Belkaid"
+              issuedAt="14 Oct 2026"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section class={section}>
+        <h2 class={heading}>Brand assets</h2>
+        <div class="card mt-6 flex flex-wrap items-end gap-6 p-4 sm:p-6">
+          <span class="flex flex-col items-center gap-2">
+            <BrandMark variant="mark" size={48} />
+            <span class="text-small font-normal text-muted">mark · brand</span>
+          </span>
+          <span class="flex flex-col items-center gap-2">
+            <BrandMark variant="logo" size={96} />
+            <span class="text-small font-normal text-muted">logo · brand</span>
+          </span>
+          <span class="flex flex-col items-center gap-2 rounded-card bg-navy-900 p-4">
+            <BrandMark variant="mark" tone="white" size={48} />
+            <span class="text-small font-normal text-on-dark-2">mark · white on navy</span>
+          </span>
+        </div>
+      </section>
+
+      <footer class="mt-12 border-t border-line pt-6 text-small font-normal text-muted">
+        Live dots: <span class="live-dot live-dot--connected"></span> connected ·
+        <span class="live-dot live-dot--reconnecting"></span> reconnecting ·
+        <span class="live-dot live-dot--offline"></span> offline — each always paired with a text label.
+      </footer>
+    </main>
+  </body>
+</html>

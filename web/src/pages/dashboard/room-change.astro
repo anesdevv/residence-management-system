@@ -1,6 +1,10 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Icon from '../../components/Icon.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import StatusPill from '../../components/StatusPill.astro';
+import InlineBanner from '../../components/InlineBanner.astro';
+import EmptyState from '../../components/EmptyState.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
 export const prerender = false;
@@ -22,8 +26,9 @@ const [{ data: student }, { data: requests }] = await Promise.all([
 ]);
 
 const isActive = student?.status === 'active' && !!student?.room_id;
+const hasPendingRequest = (requests ?? []).some((r: any) => r.status === 'pending');
 
-const { data: rooms } = isActive
+const { data: rawRooms } = isActive
   ? await supabase
       .from('rooms')
       .select('id, block, floor, number, capacity, gender')
@@ -32,264 +37,234 @@ const { data: rooms } = isActive
       .order('number')
   : { data: [] };
 
+const rooms = (rawRooms ?? []).filter((r: any) => r.id !== student?.room_id);
+
 const error = Astro.url.searchParams.get('error');
 const created = Astro.url.searchParams.get('created');
 const rawCurrentRoom = student?.rooms;
 const currentRoom = (Array.isArray(rawCurrentRoom) ? rawCurrentRoom[0] : rawCurrentRoom) as { block: string; floor: string | number; number: string } | null | undefined;
+
+const motives = [
+  {
+    title: 'Academic needs',
+    desc: 'Study environment / quiet wing',
+    icon: 'file-text',
+    text: 'Academic Schedule & Study Hours (Requires quieter floor for exam preparation)',
+  },
+  {
+    title: 'Health & accessibility',
+    desc: 'Floor level / physical mobility',
+    icon: 'shield-check',
+    text: 'Medical / Physical Accessibility (Requires lower floor or proximity to entrance)',
+  },
+  {
+    title: 'Roommate & location',
+    desc: 'Study partner proximity',
+    icon: 'arrow-left-right',
+    text: 'Proximity to Department Facilities & Study Partners',
+  },
+];
 ---
 
 <Layout title="Room Transfer Portal — RÉSIVO" activeNav="room-change">
-  <!-- Header -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-line/60 pb-5">
-    <div>
-      <div class="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-ink">
-        <span class="inline-block h-2 w-2 rounded-full bg-amber"></span>
-        <span>Cité Universitaire Tlemcen</span>
-      </div>
-      <h1 class="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-navy">
-        Room Transfer Portal
-      </h1>
-      <p class="mt-1 text-xs sm:text-sm text-muted">
-        Apply for room reassignment or transfer within your designated dormitory block.
-      </p>
-    </div>
-
-    <a
-      href="/dashboard"
-      class="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink bg-surface border border-line px-3.5 py-2 rounded-xl shadow-xs transition self-start sm:self-auto min-h-[40px]"
-    >
-      <Icon name="arrow-left" size={14} />
-      <span>Back to Dashboard</span>
-    </a>
-  </div>
+  <PageHeader
+    title="Room transfer portal"
+    overline="Cité Universitaire Tlemcen"
+    subtitle="Apply for room reassignment or transfer within your designated dormitory block."
+  >
+    <Fragment slot="actions">
+      <a href="/dashboard" class="btn btn-secondary">
+        <Icon name="arrow-left" size={16} />
+        <span>Back to dashboard</span>
+      </a>
+    </Fragment>
+  </PageHeader>
 
   <!-- Feedback Alerts -->
   {created && (
-    <div class="mt-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:p-5 text-emerald-950">
-      <Icon name="check-circle" size={22} class="text-emerald-700 shrink-0 mt-0.5" />
-      <div class="text-xs sm:text-sm">
-        <span class="font-bold">Transfer Request Submitted!</span>
-        <p class="mt-0.5 text-emerald-800 leading-relaxed">
-          Your transfer application has been filed in the administrative docket. Housing officers will review bed availability and update your petition here.
-        </p>
-      </div>
-    </div>
+    <InlineBanner kind="success" title="Transfer request submitted!" class="mb-6">
+      Your transfer application has been filed in the administrative docket. Housing officers will review bed availability and update your petition here.
+    </InlineBanner>
   )}
 
   {error && (
-    <div class="mt-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 sm:p-5 text-red-950">
-      <Icon name="alert-circle" size={22} class="text-red-700 shrink-0 mt-0.5" />
-      <div class="text-xs sm:text-sm">
-        <span class="font-bold">Unable to Process Request</span>
-        <p class="mt-0.5 text-red-800 leading-relaxed">{error}</p>
-      </div>
-    </div>
+    <InlineBanner kind="error" title="Unable to process request" class="mb-6">
+      {error}
+    </InlineBanner>
   )}
 
   <!-- Locked State or Application Form -->
   {!isActive ? (
-    <div class="mt-6 rounded-2xl border border-amber/30 bg-amber/5 p-6 sm:p-8 text-ink shadow-sm">
-      <div class="flex items-start gap-4">
-        <div class="rounded-xl bg-amber/20 p-3 text-amber-ink shrink-0">
-          <Icon name="lock" size={24} />
-        </div>
-        <div>
-          <h2 class="font-display text-base sm:text-lg font-bold text-navy">Room Relocation Portal Locked</h2>
-          <p class="mt-1.5 text-xs sm:text-sm text-muted leading-relaxed max-w-2xl">
-            Your account status is <span class="font-bold uppercase tracking-wider text-amber-ink">{student?.status ?? 'pending'}</span>.
-            Room transfer requests can only be filed by approved residents who currently occupy an allocated dormitory room.
-          </p>
-        </div>
-      </div>
-    </div>
+    <InlineBanner kind="warning" title="Room relocation portal locked" icon="lock" class="mb-8">
+      Your account status is <strong class="uppercase">{student?.status ?? 'pending'}</strong>.
+      Room transfer requests can only be filed by approved residents who currently occupy an allocated dormitory room.
+    </InlineBanner>
   ) : (
-    <div class="mt-6 space-y-6">
+    <div class="flex flex-col gap-6 mb-8">
       <!-- Current Room Info Bar -->
       {currentRoom && (
-        <div class="rounded-2xl border border-line/70 bg-surface p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div class="flex items-center gap-3.5">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-navy text-white shrink-0 shadow-sm">
-              <Icon name="building" size={24} />
+        <section class="card p-4 sm:p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+              <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input bg-subtle text-teal-600">
+                <Icon name="building" size={24} />
+              </span>
+              <div>
+                <span class="overline">Current room assignment</span>
+                <p class="font-display text-h2 text-ink mt-0.5">
+                  Block {currentRoom.block} — Room {currentRoom.number}
+                </p>
+                <p class="text-small font-normal text-muted">
+                  Floor {currentRoom.floor} · Designated for {student?.gender === 'female' ? 'Female' : 'Male'} Residents
+                </p>
+              </div>
             </div>
             <div>
-              <span class="text-[11px] font-bold uppercase tracking-wider text-muted/80 block">Current Room Assignment</span>
-              <p class="font-display text-base sm:text-lg font-bold text-navy mt-0.5">
-                Block {currentRoom.block} — Room {currentRoom.number}
-              </p>
-              <span class="text-xs text-muted">Floor {currentRoom.floor} • Designated for {student?.gender === 'female' ? 'Female' : 'Male'} Residents</span>
+              <StatusPill kind="ok" label="Current occupant" />
             </div>
           </div>
-          <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-full bg-canvas border border-line text-navy self-start sm:self-auto">
-            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-            <span>Current Occupant</span>
-          </span>
-        </div>
+        </section>
       )}
 
-      <!-- Submission Card -->
-      <div class="rounded-2xl border border-line/70 bg-surface p-6 sm:p-8 shadow-sm">
-        <div class="border-b border-line/50 pb-4 mb-6">
-          <h2 class="font-display text-base sm:text-lg font-bold text-navy">File a Relocation Request</h2>
-          <p class="text-xs text-muted mt-0.5">All requests are reviewed based on space availability and administrative eligibility.</p>
-        </div>
+      <!-- Submission Card or Pending Review Notice -->
+      {hasPendingRequest ? (
+        <InlineBanner kind="info" title="Transfer petition under review" icon="clock">
+          You currently have an active room relocation petition undergoing administrative review. Additional transfer requests cannot be submitted until your pending request is reviewed.
+        </InlineBanner>
+      ) : (
+        <section class="card p-4 sm:p-6">
+          <header class="border-b border-line pb-4 mb-6">
+            <h2 class="card-title">File a relocation request</h2>
+            <p class="text-small font-normal text-muted mt-1">All requests are reviewed based on space availability and administrative eligibility.</p>
+          </header>
 
-        <form method="POST" action="/api/room-change" class="space-y-6">
-          <!-- Motive Quick Selector Pills -->
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-navy mb-2">
-              Select Primary Motive
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5" id="motivePills">
-              <button
-                type="button"
-                data-motive="Academic Schedule & Study Hours (Requires quieter floor for exam preparation)"
-                class="motive-pill text-left p-3.5 rounded-xl border border-line/70 bg-canvas/40 hover:bg-canvas text-xs font-medium text-ink transition cursor-pointer"
+          <form method="POST" action="/api/room-change" class="flex flex-col gap-6">
+            <!-- Motive Quick Selector Buttons (Zero emojis, authored icons) -->
+            <div class="flex flex-col gap-2">
+              <span class="label">Select primary motive</span>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="motivePills">
+                {motives.map((m) => (
+                  <button
+                    type="button"
+                    data-motive={m.text}
+                    class="motive-pill text-left p-3.5 rounded-card border border-line bg-subtle hover:bg-canvas transition cursor-pointer flex flex-col gap-1 min-h-[88px]"
+                  >
+                    <div class="flex items-center gap-2">
+                      <Icon name={m.icon} size={16} class="text-teal-600 shrink-0" />
+                      <span class="font-display text-small font-semibold text-ink">{m.title}</span>
+                    </div>
+                    <span class="text-small text-muted">{m.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <!-- Stated Reason Textarea -->
+            <div class="flex flex-col gap-2">
+              <label for="reason" class="label">Detailed justification <span class="text-danger" aria-hidden="true">*</span></label>
+              <textarea
+                name="reason"
+                id="reason"
+                required
+                rows="3"
+                placeholder="Provide a comprehensive explanation for your transfer request (e.g. Preparing Master thesis requiring quiet wing, medical documentation on file, etc.)..."
+                class="input min-h-[96px]"
+              ></textarea>
+            </div>
+
+            <!-- Preferred Room Selector -->
+            <div class="flex flex-col gap-2">
+              <label for="preferred_room_id" class="label">Preferred room (optional)</label>
+              <select
+                name="preferred_room_id"
+                id="preferred_room_id"
+                class="input min-h-[44px]"
               >
-                <span class="font-display font-bold text-navy block mb-0.5">📚 Academic Needs</span>
-                <span class="text-[11px] text-muted">Study environment / exams</span>
-              </button>
-              <button
-                type="button"
-                data-motive="Medical / Physical Accessibility (Requires lower floor or proximity to entrance)"
-                class="motive-pill text-left p-3.5 rounded-xl border border-line/70 bg-canvas/40 hover:bg-canvas text-xs font-medium text-ink transition cursor-pointer"
-              >
-                <span class="font-display font-bold text-navy block mb-0.5">🏥 Health / Accessibility</span>
-                <span class="text-[11px] text-muted">Floor height / mobility</span>
-              </button>
-              <button
-                type="button"
-                data-motive="Proximity to Department Facilities & Study Partners"
-                class="motive-pill text-left p-3.5 rounded-xl border border-line/70 bg-canvas/40 hover:bg-canvas text-xs font-medium text-ink transition cursor-pointer"
-              >
-                <span class="font-display font-bold text-navy block mb-0.5">🔄 Roommate / Location</span>
-                <span class="text-[11px] text-muted">Study group proximity</span>
+                <option value="">No preference (Assign any available room in my block)</option>
+                {(rooms ?? []).map((r) => (
+                  <option value={r.id}>
+                    Block {r.block} — Room {r.number} (Floor {r.floor}, Capacity: {r.capacity} beds)
+                  </option>
+                ))}
+              </select>
+              <p class="field-hint">
+                Only rooms matching your residential block gender ({student?.gender === 'female' ? 'Female' : 'Male'}) are listed.
+              </p>
+            </div>
+
+            <!-- Submit Button -->
+            <div>
+              <button type="submit" class="btn btn-primary min-h-[44px]">
+                <Icon name="check-circle" size={18} />
+                <span>Submit relocation request</span>
               </button>
             </div>
-          </div>
-
-          <!-- Stated Reason Textarea -->
-          <div>
-            <label for="reason" class="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
-              Detailed Justification <span class="text-red-500">*</span>
-            </label>
-            <textarea
-              name="reason"
-              id="reason"
-              required
-              rows="3"
-              placeholder="Provide a comprehensive explanation for your transfer request (e.g. Preparing Master thesis requiring quiet wing, medical documentation on file, etc.)..."
-              class="w-full rounded-xl border border-line bg-canvas/40 p-3.5 text-sm text-ink placeholder:text-muted/60 focus:border-navy focus:bg-surface focus:ring-2 focus:ring-navy/15 focus:outline-none transition min-h-[96px]"
-            ></textarea>
-          </div>
-
-          <!-- Preferred Room Selector -->
-          <div>
-            <label for="preferred_room_id" class="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
-              Preferred Room (Optional)
-            </label>
-            <select
-              name="preferred_room_id"
-              id="preferred_room_id"
-              class="w-full min-h-[44px] rounded-xl border border-line bg-canvas/40 px-3.5 py-2.5 text-sm text-ink focus:border-navy focus:bg-surface focus:ring-2 focus:ring-navy/15 focus:outline-none transition"
-            >
-              <option value="">No preference (Assign any available room in my block)</option>
-              {(rooms ?? []).map((r) => (
-                <option value={r.id}>
-                  Block {r.block} — Room {r.number} (Floor {r.floor}, Capacity: {r.capacity} beds)
-                </option>
-              ))}
-            </select>
-            <span class="mt-1.5 block text-[11px] text-muted">
-              Only rooms matching your residential block gender ({student?.gender === 'female' ? 'Female' : 'Male'}) are listed.
-            </span>
-          </div>
-
-          <!-- Submit Button -->
-          <div class="pt-2">
-            <button
-              type="submit"
-              class="min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-7 py-3 text-sm font-semibold text-white shadow-sm hover:bg-navy-2 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-navy focus:ring-offset-2 transition cursor-pointer"
-            >
-              <Icon name="check-circle" size={18} />
-              <span>Submit Relocation Request</span>
-            </button>
-          </div>
-        </form>
-      </div>
+          </form>
+        </section>
+      )}
     </div>
   )}
 
   <!-- Request History Docket -->
-  <div class="mt-10 sm:mt-12 space-y-4">
-    <div class="flex items-center justify-between">
-      <h2 class="font-display text-lg font-bold text-navy">Your Relocation Requests</h2>
-      <span class="text-xs text-muted">({requests?.length ?? 0} total requests)</span>
+  <div class="flex flex-col gap-4">
+    <div class="flex items-center justify-between border-b border-line pb-4">
+      <h2 class="font-display text-h2 text-ink">Your relocation requests</h2>
+      <p class="text-small text-muted">{requests?.length ?? 0} total request{requests?.length === 1 ? '' : 's'}</p>
     </div>
 
     {(!requests || requests.length === 0) ? (
-      <div class="rounded-2xl border border-dashed border-line bg-surface p-8 sm:p-10 text-center text-muted">
-        <Icon name="swap" size={36} class="mx-auto text-muted/60 mb-2" />
-        <p class="font-display text-sm font-semibold text-navy">No transfer requests submitted</p>
-        <p class="text-xs text-muted mt-1 max-w-sm mx-auto">When you apply for a room change, the status of your petition will appear here.</p>
-      </div>
+      <EmptyState
+        icon="arrow-left-right"
+        title="No transfer requests submitted"
+        message="When you apply for a room change, the status of your petition will appear here."
+      />
     ) : (
-      <div class="space-y-4">
+      <div class="flex flex-col gap-4">
         {requests.map((r) => {
           const pref = Array.isArray(r.rooms) ? r.rooms[0] : r.rooms;
+          const statusKind = r.status === 'approved' ? 'ok' : r.status === 'rejected' ? 'danger' : 'review';
           return (
-            <article class="rounded-2xl border border-line/70 bg-surface p-5 sm:p-6 shadow-sm">
-              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line/50 pb-4">
+            <article class="card p-4 sm:p-6">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line pb-4">
                 <div class="flex items-center gap-3">
-                  <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-navy border border-line/60 shrink-0">
-                    <Icon name="swap" size={20} />
-                  </div>
+                  <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input bg-subtle text-teal-600">
+                    <Icon name="arrow-left-right" size={20} />
+                  </span>
                   <div>
                     <div class="flex items-center gap-2">
-                      <span class="font-display font-bold text-sm sm:text-base text-navy">Room Transfer Petition</span>
-                      <span class="text-xs font-medium text-muted/80">#TR-{r.id.slice(0, 8)}</span>
+                      <h3 class="font-display text-h3 text-ink">Room transfer petition</h3>
+                      <span class="text-small font-normal text-muted tnum">#TR-{r.id.slice(0, 8)}</span>
                     </div>
                     {pref ? (
-                      <span class="text-xs text-blue-700 font-medium block mt-0.5">
-                        Requested Target: Block {pref.block} — Room {pref.number} (Floor {pref.floor})
-                      </span>
+                      <p class="text-small font-medium text-teal-600 mt-0.5">
+                        Requested target: Block {pref.block} — Room {pref.number} (Floor {pref.floor})
+                      </p>
                     ) : (
-                      <span class="text-xs text-muted block mt-0.5">No specific room requested (Open assignment)</span>
+                      <p class="text-small font-normal text-muted mt-0.5">No specific room requested (Open assignment)</p>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  {r.status === 'approved' ? (
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3.5 py-1 text-xs font-semibold text-emerald-800">
-                      <Icon name="check-circle" size={14} class="text-emerald-600" /> Approved
-                    </span>
-                  ) : r.status === 'rejected' ? (
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-3.5 py-1 text-xs font-semibold text-red-800">
-                      <Icon name="x-circle" size={14} class="text-red-600" /> Rejected
-                    </span>
-                  ) : (
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-amber/10 border border-amber/30 px-3.5 py-1 text-xs font-semibold text-amber-ink">
-                      <Icon name="clock" size={14} class="text-amber-ink" /> Under Review
-                    </span>
-                  )}
+                  <StatusPill kind={statusKind} label={r.status === 'approved' ? 'Approved' : r.status === 'rejected' ? 'Rejected' : 'Under review'} />
                 </div>
               </div>
 
               <!-- Stated Reason -->
               <div class="mt-4">
-                <span class="text-[11px] font-bold text-muted uppercase tracking-wider block mb-1">Stated Justification</span>
-                <p class="text-xs sm:text-sm text-ink leading-relaxed">{r.reason}</p>
+                <span class="overline block text-muted mb-1">Stated justification</span>
+                <p class="text-body text-ink leading-relaxed">{r.reason}</p>
               </div>
 
               <!-- Administration Decision Note -->
               {r.decision_note && (
-                <div class="mt-4 rounded-xl border border-line bg-canvas p-3.5 text-xs text-ink">
-                  <span class="font-bold uppercase tracking-wider text-navy block text-[10px] mb-0.5">Housing Administration Decision:</span>
-                  <p class="font-medium leading-relaxed text-muted">{r.decision_note}</p>
+                <div class="mt-4 rounded-card border border-line bg-subtle p-3.5">
+                  <span class="overline block text-muted mb-1">Housing administration decision</span>
+                  <p class="text-small font-normal text-ink leading-relaxed">{r.decision_note}</p>
                 </div>
               )}
 
-              <div class="mt-4 pt-3 border-t border-line/50 text-[11px] text-muted">
+              <div class="mt-4 pt-3 border-t border-line text-small font-normal text-muted">
                 Submitted on {new Date(r.created_at).toLocaleDateString()}
               </div>
             </article>

@@ -1,0 +1,114 @@
+/* =============================================================================
+   RÉSIVO — web design tokens
+   -----------------------------------------------------------------------------
+   The ONE place in web/src that owns colours, fonts, type scale, radii,
+   spacing, elevation, motion and focus values.
+   Mirrors docs/DESIGN.md §2–§4 and desktop/app/ui/theme.py.
+   global.css maps these variables into Tailwind utilities via `@theme inline`
+   so pages never need to touch the raw variables — and never inline a hex.
+   ============================================================================= */
+
+:root {
+  /* ---------------------------------------------------------------------
+     Brand
+     --------------------------------------------------------------------- */
+  --navy-900: #0A2342;        /* sidebar base */
+  --navy-800: #0A2F5A;        /* wordmark navy, primary actions */
+  --navy-700: #0D436F;        /* hover / secondary navy */
+  --teal-600: #0D7180;        /* links, focus, active accents (5.7:1 on white) */
+  --teal-500: #109D9A;        /* highlights, charts, progress */
+  --green-500: #0CA792;       /* gradient end, success glow */
+  --gold-500: #E5A853;        /* premium accent — never text on white */
+  --gold-300: #F1CE92;        /* premium text/icon — navy backgrounds only */
+  --navy-hover: #10305A;      /* dark-surface interaction hover */
+  --selection-tint: #E6F2F4;  /* selected table row (with navy-800 text) */
+
+  /* ---------------------------------------------------------------------
+     Neutrals (cool, tinted toward navy)
+     --------------------------------------------------------------------- */
+  --canvas: #F5F8FB;          /* page background */
+  --surface: #FFFFFF;         /* cards, inputs, dialogs */
+  --surface-subtle: #EDF2F7;  /* table headers, hover rows, disabled fields */
+  --border: #DCE4EE;          /* hairline borders */
+  --border-strong: #C5D0DE;   /* outlined controls, secondary buttons */
+  --text-primary: #0B1B33;
+  --text-secondary: #44546A;
+  --text-muted: #5B6B82;
+  --text-on-dark: #E6EDF6;    /* text on navy surfaces */
+  --text-on-dark-muted: #9FB3CC;
+
+  /* ---------------------------------------------------------------------
+     Status — always colour + icon + text label, never colour alone.
+     --------------------------------------------------------------------- */
+  --status-ok: #05603A;          --status-ok-bg: #E8F7EF;          --status-ok-line: #A9E2C4;
+  --status-pending: #8A4B08;     --status-pending-bg: #FFF6E5;     --status-pending-line: #F3D49B;
+  --status-review: #4338CA;      --status-review-bg: #EEF0FF;      --status-review-line: #C7CBFA;
+  --status-progress: #174EA6;    --status-progress-bg: #EAF1FD;    --status-progress-line: #B9D0F7;
+  --status-danger: #9B1C1C;      --status-danger-bg: #FDEDED;      --status-danger-line: #F5B9B9;
+  --status-neutral: var(--text-secondary);
+  --status-neutral-bg: var(--surface-subtle);
+  --status-neutral-line: var(--border);
+
+  /* ---------------------------------------------------------------------
+     Brand gradient — allowed ONLY on: landing/login hero, resident pass,
+     the 3px strip at the top of a shell, and the landing hero primary CTA.
+     --------------------------------------------------------------------- */
+  --grad-brand: linear-gradient(135deg, var(--navy-800), var(--teal-600), var(--green-500));
+
+  /* ---------------------------------------------------------------------
+     Radii — 8 inputs/buttons/badges · 12 cards/dialogs · 20 hero · pills
+     --------------------------------------------------------------------- */
+  --r-input: 8px;
+  --r-card: 12px;
+  --r-hero: 20px;
+  --r-pill: 9999px;
+
+  /* ---------------------------------------------------------------------
+     Spacing — DESIGN.md scale 4 / 8 / 12 / 16 / 24 / 32 / 48 (seven steps).
+     In Tailwind utilities use 1 · 2 · 3 · 4 · 6 · 8 · 12 for the same values.
+     --------------------------------------------------------------------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* ---------------------------------------------------------------------
+     Typography — Outfit for headings/display/KPIs, Inter for UI/body.
+     --------------------------------------------------------------------- */
+  --font-display: 'Outfit', 'Segoe UI', system-ui, sans-serif;
+  --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  --fs-display: 32px;   --lh-display: 40px;
+  --fs-h1: 24px;        --lh-h1: 32px;
+  --fs-h2: 18px;        --lh-h2: 26px;
+  --fs-h3: 15px;        --lh-h3: 22px;
+  --fs-body: 14px;      --lh-body: 22px;
+  --fs-small: 12px;     --lh-small: 18px;
+  --fs-overline: 11px;  --lh-overline: 16px;
+
+  /* ---------------------------------------------------------------------
+     Elevation — minimal; e2 for dialogs, popovers and toasts only.
+     --------------------------------------------------------------------- */
+  --shadow-e1: 0 1px 2px rgba(10, 35, 66, .06);
+  --shadow-e2: 0 8px 24px -8px rgba(10, 35, 66, .14);
+
+  /* ---------------------------------------------------------------------
+     Motion — 150–200ms ease-out; reduced-motion is honoured in global.css.
+     --------------------------------------------------------------------- */
+  --dur-fast: 150ms;
+  --dur: 200ms;
+  --ease: cubic-bezier(.2, .7, .3, 1);
+
+  /* ---------------------------------------------------------------------
+     Focus — 2px teal ring, 2px offset. Never remove focus indicators.
+     --------------------------------------------------------------------- */
+  --focus-ring: 2px solid var(--teal-600);
+  --focus-offset: 2px;
+}

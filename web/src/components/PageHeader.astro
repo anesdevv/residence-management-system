@@ -1,0 +1,31 @@
+---
+/**
+ * RÉSIVO — PageHeader (docs/DESIGN.md §6).
+ * Title (Outfit 24/32) + optional overline + subtitle, with an actions slot.
+ */
+interface Props {
+  title: string;
+  subtitle?: string;
+  overline?: string;
+  class?: string;
+}
+
+const { title, subtitle, overline, class: className = '' } = Astro.props;
+---
+
+<header
+  class={`mb-6 flex flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-end sm:justify-between ${className}`}
+>
+  <div class="min-w-0">
+    {overline && <p class="overline mb-1">{overline}</p>}
+    <h1 class="font-display text-h1 text-ink">{title}</h1>
+    {subtitle && <p class="mt-1 text-small font-normal text-muted">{subtitle}</p>}
+  </div>
+  {
+    Astro.slots.has('actions') && (
+      <div class="flex shrink-0 flex-wrap items-center gap-2">
+        <slot name="actions" />
+      </div>
+    )
+  }
+</header>

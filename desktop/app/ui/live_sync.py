@@ -59,6 +59,15 @@ class LiveSyncWorker(QThread):
                     )
                     pending_requests = r_resp.data or []
 
+                    # 4. Fetch active residents count for live KPI updates
+                    a_resp = (
+                        self.client.table("students")
+                        .select("id", count="exact")
+                        .eq("status", "active")
+                        .execute()
+                    )
+                    active_count = a_resp.count if a_resp.count is not None else 0
+
                     # Detect new arrivals for live notifications
                     cur_s_ids = {s["id"] for s in pending_students}
                     cur_m_ids = {m["id"] for m in reports}
@@ -77,6 +86,10 @@ class LiveSyncWorker(QThread):
                         for r in reports:
                             if r["id"] in new_reports and r.get("status") == "pending":
                                 st = r.get("students") or {}
+                                if isinstance(st, list) and st:
+                                    st = st[0]
+                                elif not isinstance(st, dict):
+                                    st = {}
                                 name = f"{st.get('first_name','')} {st.get('last_name','')}".strip()
                                 self.alert_event.emit(
                                     f"New maintenance report: {str(r.get('category','')).capitalize()} ({name or 'Student'})"
@@ -87,6 +100,10 @@ class LiveSyncWorker(QThread):
                         for req in pending_requests:
                             if req["id"] in new_reqs:
                                 st = req.get("students") or {}
+                                if isinstance(st, list) and st:
+                                    st = st[0]
+                                elif not isinstance(st, dict):
+                                    st = {}
                                 name = f"{st.get('first_name','')} {st.get('last_name','')}".strip()
                                 self.alert_event.emit(
                                     f"New room-change request from {name or 'Student'}"
@@ -103,6 +120,7 @@ class LiveSyncWorker(QThread):
                         "reports": reports,
                         "open_reports_count": open_reports_count,
                         "pending_requests": pending_requests,
+                        "active_residents_count": active_count,
                         "timestamp": now_str,
                     }
                     self.sync_tick.emit(payload)

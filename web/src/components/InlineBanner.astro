@@ -1,0 +1,44 @@
+---
+/**
+ * RÉSIVO — InlineBanner (docs/DESIGN.md §6).
+ * info / success / warning / error — token-only tints, always with an icon.
+ * Used to explain *why* an action is disabled, and for offline/error notices.
+ */
+import Icon from './Icon.astro';
+
+interface Props {
+  kind?: string; // 'info' | 'success' | 'warning' | 'error'
+  title?: string;
+  icon?: string;
+  class?: string;
+}
+
+const { kind = 'info', title, icon, class: className = '' } = Astro.props;
+
+const KINDS: Record<string, { box: string; icon: string; iconClass: string }> = {
+  info: { box: 'border-line bg-subtle text-ink-2', icon: 'info', iconClass: 'text-teal-600' },
+  success: { box: 'border-ok-line bg-ok-bg text-ok', icon: 'check-circle', iconClass: '' },
+  warning: { box: 'border-pending-line bg-pending-bg text-pending', icon: 'alert-triangle', iconClass: '' },
+  error: { box: 'border-danger-line bg-danger-bg text-danger', icon: 'x-circle', iconClass: '' },
+};
+
+const spec = KINDS[kind] ?? KINDS.info;
+---
+
+<div
+  class={`flex items-start gap-3 rounded-card border p-3 sm:p-4 ${spec.box} ${className}`}
+  role={kind === 'error' ? 'alert' : undefined}
+>
+  <Icon name={icon ?? spec.icon} size={18} class={`mt-0.5 shrink-0 ${spec.iconClass}`} />
+  <div class="flex min-w-0 flex-1 flex-col gap-1">
+    {title && <p class="text-h3">{title}</p>}
+    <div class="text-small font-normal"><slot /></div>
+    {
+      Astro.slots.has('actions') && (
+        <div class="mt-2 flex flex-wrap items-center gap-2">
+          <slot name="actions" />
+        </div>
+      )
+    }
+  </div>
+</div>

@@ -1,5 +1,15 @@
 ---
+/**
+ * RÉSIVO — DashboardShell (docs/DESIGN.md §8).
+ * Desktop: sticky top nav with the brand mark, the four section links
+ * (Dashboard · Maintenance · Room change · Profile) with a teal-600 active
+ * state, the institutional block, the user avatar and sign-out.
+ * Mobile: bottom tab bar with icons + labels, safe-area padding, active = teal-600.
+ * Every target is ≥ 44px on touch; no scripts, no layout shift.
+ */
 import Icon from './Icon.astro';
+import BrandMark from './BrandMark.astro';
+import Avatar from './Avatar.astro';
 
 interface Props {
   title: string;
@@ -8,131 +18,95 @@ interface Props {
 
 const { title, activeNav } = Astro.props;
 const email = Astro.locals.user?.email ?? '';
-const initial = (email.trim().charAt(0) || 'R').toUpperCase();
 
 const navItems = [
   { key: 'dashboard', href: '/dashboard', label: 'Dashboard', short: 'Dashboard', icon: 'dashboard' },
   { key: 'maintenance', href: '/dashboard/maintenance', label: 'Maintenance', short: 'Tickets', icon: 'wrench' },
-  { key: 'room-change', href: '/dashboard/room-change', label: 'Room Change', short: 'Room Swap', icon: 'swap' },
+  { key: 'room-change', href: '/dashboard/room-change', label: 'Room change', short: 'Room swap', icon: 'arrow-left-right' },
   { key: 'profile', href: '/dashboard/profile', label: 'Profile', short: 'Profile', icon: 'user' },
 ] as const;
 ---
 
 <div class="min-h-screen bg-canvas">
-  <!-- Sidebar (desktop) -->
-  <aside class="fixed inset-y-0 left-0 z-50 hidden w-72 flex-col justify-between border-r border-line/70 bg-surface py-6 lg:flex">
-    <div class="flex flex-col gap-8">
-      <a href="/dashboard" class="flex items-center gap-3 px-6" aria-label="RÉSIVO dashboard">
-        <img src="/favicon.svg" alt="" class="h-10 w-10 shrink-0 object-contain" />
-        <span class="flex flex-col">
-          <span class="font-display text-lg font-extrabold leading-tight tracking-tight text-navy">RÉSIVO</span>
-          <span class="text-[11px] font-semibold uppercase tracking-wider text-muted">Student Housing Portal</span>
+  <!-- 3px brand-gradient strip at the shell top edge. -->
+  <div class="gradient-top-line"></div>
+
+  <header class="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-md">
+    <div class="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
+      <a href="/dashboard" class="flex min-w-0 shrink-0 items-center gap-3" aria-label="RÉSIVO dashboard">
+        <BrandMark variant="mark" size={36} />
+        <span class="flex min-w-0 flex-col">
+          <span class="font-display text-h2 text-ink">RÉSIVO</span>
+          <span class="truncate text-small font-normal text-muted">{title}</span>
         </span>
       </a>
 
-      <nav aria-label="Dashboard" class="flex flex-col gap-1 px-4">
-        {navItems.map((item) => (
-          <a
-            href={item.href}
-            aria-current={activeNav === item.key ? 'page' : undefined}
-            class={activeNav === item.key
-              ? 'flex items-center gap-3 rounded-lg bg-navy-2 px-4 py-2.5 text-sm font-semibold text-white shadow-sm'
-              : 'flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-canvas hover:text-ink'}
-          >
-            <Icon name={item.icon} size={19} />
-            <span>{item.label}</span>
-          </a>
-        ))}
+      <nav aria-label="Dashboard" class="ml-auto hidden items-center gap-1 lg:flex">
+        {
+          navItems.map((item) => (
+            <a
+              href={item.href}
+              aria-current={activeNav === item.key ? 'page' : undefined}
+              class={`relative inline-flex min-h-11 items-center gap-2 rounded-input px-3 text-body font-semibold transition-colors ${
+                activeNav === item.key ? 'text-teal-600' : 'text-ink-2 hover:bg-subtle hover:text-ink'
+              }`}
+            >
+              <Icon name={item.icon} size={18} />
+              <span>{item.label}</span>
+              {activeNav === item.key && (
+                <span class="absolute inset-x-2 bottom-0 h-0.5 rounded-pill bg-teal-600" aria-hidden="true" />
+              )}
+            </a>
+          ))
+        }
       </nav>
-    </div>
 
-    <div class="flex flex-col gap-3 px-4">
-      <div class="rounded-lg bg-canvas px-4 py-3">
-        <div class="flex items-center gap-2 text-xs font-semibold text-ink">
-          <Icon name="building" size={14} class="shrink-0 text-amber-ink" />
-          <span>Cité Universitaire Tlemcen</span>
-        </div>
-        <p class="mt-1 text-[11px] leading-relaxed text-muted">
-          Direction des Œuvres Universitaires (DOU)
-        </p>
-      </div>
-      <a
-        href="/logout"
-        class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium text-muted transition-colors hover:bg-amber/10 hover:text-amber-ink"
-      >
-        <Icon name="logout" size={19} />
-        <span>Sign out</span>
-      </a>
-    </div>
-  </aside>
-
-  <!-- Slim top bar -->
-  <header class="fixed inset-x-0 top-0 z-40 h-16 border-b border-line/60 bg-surface/85 backdrop-blur-xl lg:left-72">
-    <!-- Mobile -->
-    <div class="flex h-16 items-center justify-between gap-3 px-4 lg:hidden">
-      <div class="flex min-w-0 items-center gap-3">
-        <img src="/favicon.svg" alt="" class="h-9 w-9 shrink-0 object-contain" />
-        <div class="flex min-w-0 flex-col">
-          <span class="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-ink">RÉSIVO</span>
-          <span class="truncate font-display text-lg font-bold leading-tight tracking-tight text-ink">{title}</span>
-        </div>
-      </div>
-      <a
-        href="/dashboard/profile"
-        aria-label={`Signed in as ${email || 'resident'} — open profile`}
-        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy text-sm font-bold text-white"
-      >
-        {initial}
-      </a>
-    </div>
-
-    <!-- Desktop -->
-    <div class="hidden h-16 items-center justify-between gap-4 px-6 lg:flex lg:px-8">
-      <div class="flex items-center gap-2 rounded-full bg-canvas px-4 py-1.5">
-        <Icon name="building" size={14} class="text-amber-ink" />
-        <span class="text-xs font-medium text-ink">Cité Universitaire Tlemcen</span>
-      </div>
-      <div class="flex items-center gap-3">
-        <div class="flex flex-col items-end">
-          <span class="text-xs font-semibold leading-tight text-ink">Student Resident</span>
-          <span class="max-w-[220px] truncate text-[11px] leading-tight text-muted">{email}</span>
-        </div>
+      <div class="ml-auto flex min-w-0 items-center gap-2 sm:gap-3 lg:ml-3">
+        <span class="hidden flex-col items-end xl:flex">
+          <span class="text-small font-semibold text-ink-2">Cité Universitaire Tlemcen</span>
+          <span class="text-small font-normal text-muted">Direction des Œuvres Universitaires (DOU)</span>
+        </span>
+        <span class="hidden max-w-[12rem] truncate text-small font-normal text-muted 2xl:block">{email}</span>
         <a
           href="/dashboard/profile"
-          aria-label="Open profile"
-          class="flex h-9 w-9 items-center justify-center rounded-full bg-navy text-sm font-bold text-white"
+          class="shrink-0 rounded-input p-0.5"
+          aria-label={`Signed in as ${email || 'resident'} — open profile`}
         >
-          {initial}
+          <Avatar name={email || 'Resident'} size={40} />
+        </a>
+        <a href="/logout" class="btn btn-secondary shrink-0" aria-label="Sign out">
+          <Icon name="log-out" size={16} />
+          <span class="hidden sm:inline">Sign out</span>
         </a>
       </div>
     </div>
   </header>
 
-  <!-- Content slot -->
-  <main class="min-h-screen pb-24 pt-16 lg:pb-0 lg:pl-72">
-    <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+  <main class="pb-24 lg:pb-12">
+    <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:py-8">
       <slot />
     </div>
   </main>
 
-  <!-- Bottom navigation (mobile) -->
   <nav
     aria-label="Dashboard"
-    class="fixed inset-x-0 bottom-0 z-50 border-t border-line/80 bg-surface/90 pb-safe shadow-[0_-2px_12px_rgba(15,33,74,0.06)] backdrop-blur-xl lg:hidden"
+    class="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 pb-safe backdrop-blur-md lg:hidden"
   >
-    <div class="mx-auto grid h-16 max-w-lg grid-cols-4 px-2">
-      {navItems.map((item) => (
-        <a
-          href={item.href}
-          aria-current={activeNav === item.key ? 'page' : undefined}
-          class={activeNav === item.key
-            ? 'flex min-h-[48px] flex-col items-center justify-center gap-1 text-navy'
-            : 'flex min-h-[48px] flex-col items-center justify-center gap-1 text-muted transition-colors hover:text-ink'}
-        >
-          <Icon name={item.icon} size={22} />
-          <span class={`text-[11px] leading-none ${activeNav === item.key ? 'font-semibold' : ''}`}>{item.short}</span>
-        </a>
-      ))}
+    <div class="mx-auto grid h-16 max-w-lg grid-cols-4 px-1">
+      {
+        navItems.map((item) => (
+          <a
+            href={item.href}
+            aria-current={activeNav === item.key ? 'page' : undefined}
+            class={`flex min-h-11 flex-col items-center justify-center gap-1 py-2 text-small transition-colors ${
+              activeNav === item.key ? 'font-semibold text-teal-600' : 'text-muted'
+            }`}
+          >
+            <Icon name={item.icon} size={22} />
+            <span>{item.short}</span>
+          </a>
+        ))
+      }
     </div>
   </nav>
 </div>

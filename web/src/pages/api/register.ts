@@ -26,7 +26,7 @@ export const POST: APIRoute = async (context) => {
   }
 
   const supabase = createSupabaseServerClient(context.request, context.cookies);
-  const { error } = await supabase.auth.signUp({
+  const { data: signUpData, error } = await supabase.auth.signUp({
     email: cardIdToEmail(data.card_id),
     password: data.password,
     options: {
@@ -48,6 +48,11 @@ export const POST: APIRoute = async (context) => {
 
   if (error) {
     return context.redirect(`/register?error=${encodeURIComponent(error.message)}`);
+  }
+  if (signUpData?.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
+    return context.redirect(
+      `/register?error=${encodeURIComponent('An account with this student card ID already exists. Please log in.')}`
+    );
   }
   return context.redirect('/login?registered=1');
 };

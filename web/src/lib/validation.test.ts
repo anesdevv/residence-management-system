@@ -30,6 +30,12 @@ describe('validateRegistration', () => {
   it('rejects an invalid birth date format', () => {
     expect(validateRegistration({ ...base, birth_date: '14/05/2003' })).toContain('Birth date must be YYYY-MM-DD.');
   });
+  it('rejects an impossible calendar birth date', () => {
+    expect(validateRegistration({ ...base, birth_date: '2003-02-31' })).toContain('Birth date is invalid.');
+  });
+  it('rejects a future birth date', () => {
+    expect(validateRegistration({ ...base, birth_date: '2099-01-01' })).toContain('Birth date cannot be in the future.');
+  });
   it('rejects missing first or last name', () => {
     const res = validateRegistration({ ...base, first_name: '', last_name: '   ' });
     expect(res).toContain('First name is required.');

@@ -3,6 +3,10 @@ import type { APIRoute } from 'astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
 export const POST: APIRoute = async (context) => {
+  const user = context.locals.user;
+  if (!user) {
+    return context.redirect('/login');
+  }
   const form = await context.request.formData();
   const phone = String(form.get('phone') ?? '').trim();
   const email = String(form.get('email') ?? '').trim();

@@ -1,290 +1,316 @@
 ---
+/**
+ * RÉSIVO — authored Lucide-style icon set (docs/DESIGN.md §5).
+ * 24px grid · stroke-width 1.75 · round caps/joins · fill="none" · currentColor.
+ * Canonical names + legacy aliases; an unknown name renders `dashboard` and
+ * logs a dev-only warning (the build never fails).
+ */
 interface Props {
   name: string;
-  class?: string;
   size?: number;
+  class?: string;
+  /** When set, the icon renders <title> and role="img" instead of being hidden. */
+  title?: string;
 }
 
-const { name, class: className = '', size = 20 } = Astro.props;
+const { name, size = 20, class: className = '', title } = Astro.props;
+
+const icons: Record<string, string[]> = {
+  'alert-circle': [
+    '<circle cx="12" cy="12" r="9" />',
+    '<path d="M12 8v4" />',
+    '<path d="M12 16h.01" />',
+  ],
+  'alert-triangle': [
+    '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />',
+    '<path d="M12 9v4" />',
+    '<path d="M12 17h.01" />',
+  ],
+  'arrow-left': ['<path d="M19 12H5" />', '<path d="m12 19-7-7 7-7" />'],
+  'arrow-left-right': [
+    '<path d="M8 3 4 7l4 4" />',
+    '<path d="M4 7h16" />',
+    '<path d="m16 21 4-4-4-4" />',
+    '<path d="M20 17H4" />',
+  ],
+  'arrow-right': ['<path d="M5 12h14" />', '<path d="m12 5 7 7-7 7" />'],
+  bed: [
+    '<path d="M2 4v16" />',
+    '<path d="M2 8h18a2 2 0 0 1 2 2v10" />',
+    '<path d="M2 17h20" />',
+    '<path d="M6 8v9" />',
+  ],
+  bell: [
+    '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />',
+    '<path d="M13.73 21a2 2 0 0 1-3.46 0" />',
+  ],
+  building: [
+    '<rect x="4" y="2" width="16" height="20" rx="2" />',
+    '<path d="M9 22v-4h6v4" />',
+    '<path d="M8 6h.01" />',
+    '<path d="M12 6h.01" />',
+    '<path d="M16 6h.01" />',
+    '<path d="M8 10h.01" />',
+    '<path d="M12 10h.01" />',
+    '<path d="M16 10h.01" />',
+    '<path d="M8 14h.01" />',
+    '<path d="M12 14h.01" />',
+    '<path d="M16 14h.01" />',
+  ],
+  calendar: [
+    '<rect x="3" y="4" width="18" height="17" rx="2" />',
+    '<path d="M16 2v4" />',
+    '<path d="M8 2v4" />',
+    '<path d="M3 10h18" />',
+  ],
+  check: ['<path d="m20 6-11 11-5-5" />'],
+  'check-circle': ['<circle cx="12" cy="12" r="9" />', '<path d="m8.5 12.5 2.5 2.5 4.5-5" />'],
+  'chevron-down': ['<path d="m6 9 6 6 6-6" />'],
+  'chevron-left': ['<path d="m15 18-6-6 6-6" />'],
+  'chevron-right': ['<path d="m9 18 6-6-6-6" />'],
+  'chevron-up': ['<path d="m18 15-6-6-6 6" />'],
+  clock: ['<circle cx="12" cy="12" r="9" />', '<path d="M12 7v5l3.5 2" />'],
+  copy: [
+    '<rect x="9" y="9" width="13" height="13" rx="2" />',
+    '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />',
+  ],
+  dashboard: [
+    '<rect x="3" y="3" width="7" height="9" rx="1.5" />',
+    '<rect x="14" y="3" width="7" height="5" rx="1.5" />',
+    '<rect x="14" y="12" width="7" height="9" rx="1.5" />',
+    '<rect x="3" y="16" width="7" height="5" rx="1.5" />',
+  ],
+  door: [
+    '<path d="M4 21h16" />',
+    '<path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />',
+    '<path d="M14 12h.01" />',
+  ],
+  download: [
+    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />',
+    '<path d="m7 10 5 5 5-5" />',
+    '<path d="M12 15V3" />',
+  ],
+  droplet: ['<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />'],
+  edit: [
+    '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />',
+    '<path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />',
+  ],
+  'external-link': [
+    '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />',
+    '<path d="M15 3h6v6" />',
+    '<path d="M10 14 21 3" />',
+  ],
+  eye: [
+    '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />',
+    '<circle cx="12" cy="12" r="3" />',
+  ],
+  'file-spreadsheet': [
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />',
+    '<path d="M14 2v6h6" />',
+    '<path d="M8 13h8" />',
+    '<path d="M8 17h8" />',
+    '<path d="M12 13v4" />',
+  ],
+  'file-text': [
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />',
+    '<path d="M14 2v6h6" />',
+    '<path d="M16 13H8" />',
+    '<path d="M16 17H8" />',
+  ],
+  filter: ['<path d="M22 3H2l8 9.46V19l4 2v-8.54z" />'],
+  hammer: [
+    '<path d="m15 12-8.5 8.5a2.12 2.12 0 1 1-3-3L12 9" />',
+    '<path d="M17.64 15 22 10.64" />',
+    '<path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.25v-.86L16.01 4.6a5.56 5.56 0 0 0-3.94-1.64H9l.92.82A6.18 6.18 0 0 1 12 8.4v1.56l2 2h2.47l2.26 1.91" />',
+  ],
+  home: [
+    '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />',
+    '<path d="M9 22V12h6v10" />',
+  ],
+  'id-card': [
+    '<rect x="2" y="5" width="20" height="14" rx="2" />',
+    '<circle cx="8" cy="11" r="2" />',
+    '<path d="M6 16c.5-1.5 1.2-2 2-2s1.5.5 2 2" />',
+    '<path d="M14 9h5" />',
+    '<path d="M14 13h5" />',
+  ],
+  image: [
+    '<rect x="3" y="3" width="18" height="18" rx="2" />',
+    '<circle cx="9" cy="9" r="2" />',
+    '<path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21" />',
+  ],
+  info: ['<circle cx="12" cy="12" r="9" />', '<path d="M12 16v-4" />', '<path d="M12 8h.01" />'],
+  key: [
+    '<circle cx="7.5" cy="15.5" r="5.5" />',
+    '<path d="m21 2-9.6 9.6" />',
+    '<path d="m15.5 7.5 3 3L22 7l-3-3" />',
+  ],
+  lock: ['<rect x="4" y="10" width="16" height="11" rx="2" />', '<path d="M8 10V7a4 4 0 0 1 8 0v3" />'],
+  'log-in': [
+    '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />',
+    '<path d="m10 17 5-5-5-5" />',
+    '<path d="M15 12H3" />',
+  ],
+  'log-out': [
+    '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />',
+    '<path d="m16 17 5-5-5-5" />',
+    '<path d="M21 12H9" />',
+  ],
+  mail: [
+    '<rect x="2" y="4" width="20" height="16" rx="2" />',
+    '<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />',
+  ],
+  'map-pin': [
+    '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />',
+    '<circle cx="12" cy="10" r="3" />',
+  ],
+  maximize: [
+    '<path d="M8 3H5a2 2 0 0 0-2 2v3" />',
+    '<path d="M21 8V5a2 2 0 0 0-2-2h-3" />',
+    '<path d="M3 16v3a2 2 0 0 0 2 2h3" />',
+    '<path d="M16 21h3a2 2 0 0 0 2-2v-3" />',
+  ],
+  menu: ['<path d="M4 6h16" />', '<path d="M4 12h16" />', '<path d="M4 18h16" />'],
+  moon: ['<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />'],
+  phone: [
+    '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />',
+  ],
+  plus: ['<path d="M12 5v14" />', '<path d="M5 12h14" />'],
+  qr: [
+    '<rect x="3" y="3" width="7" height="7" rx="1" />',
+    '<rect x="14" y="3" width="7" height="7" rx="1" />',
+    '<rect x="3" y="14" width="7" height="7" rx="1" />',
+    '<path d="M14 14h3v3h-3z" />',
+    '<path d="M17 17h4v4" />',
+    '<path d="M21 14h.01" />',
+    '<path d="M14 21h.01" />',
+  ],
+  refresh: [
+    '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />',
+    '<path d="M21 3v5h-5" />',
+    '<path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />',
+    '<path d="M8 16H3v5" />',
+  ],
+  search: ['<circle cx="11" cy="11" r="8" />', '<path d="m21 21-4.35-4.35" />'],
+  settings: [
+    '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />',
+    '<circle cx="12" cy="12" r="3" />',
+  ],
+  shield: ['<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />'],
+  'shield-check': [
+    '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />',
+    '<path d="m9 11.5 2.5 2.5 4.5-5" />',
+  ],
+  spinner: ['<path d="M21 12a9 9 0 1 1-6.22-8.56" />'],
+  sun: [
+    '<circle cx="12" cy="12" r="4" />',
+    '<path d="M12 2v2" />',
+    '<path d="M12 20v2" />',
+    '<path d="m4.93 4.93 1.41 1.41" />',
+    '<path d="m17.66 17.66 1.41 1.41" />',
+    '<path d="M2 12h2" />',
+    '<path d="M20 12h2" />',
+    '<path d="m6.34 17.66-1.41 1.41" />',
+    '<path d="m19.07 4.93-1.41 1.41" />',
+  ],
+  trash: [
+    '<path d="M3 6h18" />',
+    '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />',
+    '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />',
+    '<path d="M10 11v6" />',
+    '<path d="M14 11v6" />',
+  ],
+  upload: [
+    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />',
+    '<path d="m17 8-5-5-5 5" />',
+    '<path d="M12 3v12" />',
+  ],
+  user: [
+    '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />',
+    '<circle cx="12" cy="7" r="4" />',
+  ],
+  'user-check': [
+    '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />',
+    '<circle cx="9" cy="7" r="4" />',
+    '<path d="m16 11 2 2 4-4" />',
+  ],
+  users: [
+    '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />',
+    '<circle cx="9" cy="7" r="4" />',
+    '<path d="M22 21v-2a4 4 0 0 0-3-3.87" />',
+    '<path d="M16 3.13a4 4 0 0 1 0 7.75" />',
+  ],
+  wifi: [
+    '<path d="M5 12.55a11 11 0 0 1 14.08 0" />',
+    '<path d="M1.42 9a16 16 0 0 1 21.16 0" />',
+    '<path d="M8.53 16.11a6 6 0 0 1 6.95 0" />',
+    '<path d="M12 20h.01" />',
+  ],
+  wrench: [
+    '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />',
+  ],
+  x: ['<path d="M18 6 6 18" />', '<path d="m6 6 12 12" />'],
+  'x-circle': [
+    '<circle cx="12" cy="12" r="9" />',
+    '<path d="m15 9-6 6" />',
+    '<path d="m9 9 6 6" />',
+  ],
+  zap: ['<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />'],
+  'zoom-in': [
+    '<circle cx="11" cy="11" r="8" />',
+    '<path d="m21 21-4.35-4.35" />',
+    '<path d="M11 8v6" />',
+    '<path d="M8 11h6" />',
+  ],
+  'zoom-out': [
+    '<circle cx="11" cy="11" r="8" />',
+    '<path d="m21 21-4.35-4.35" />',
+    '<path d="M8 11h6" />',
+  ],
+};
+
+/** Legacy names kept working as aliases (docs/DESIGN.md §5 + current pages). */
+const aliases: Record<string, string> = {
+  swap: 'arrow-left-right',
+  logout: 'log-out',
+  login: 'log-in',
+  crest: 'shield-check',
+  badge: 'id-card',
+  camera: 'image',
+  chevron: 'chevron-right',
+  plumbing: 'droplet',
+  electrical: 'zap',
+  furniture: 'hammer',
+  internet: 'wifi',
+};
+
+const resolved = icons[name] ? name : icons[aliases[name]] ? aliases[name] : null;
+
+if (!resolved && import.meta.env.DEV) {
+  console.warn(
+    `[Icon] Unknown icon "${name}" — rendered "dashboard" instead. ` +
+      `Known names: ${Object.keys(icons).join(', ')}.`
+  );
+}
+
+const glyph = icons[resolved ?? 'dashboard'];
+const hasTitle = typeof title === 'string' && title.trim().length > 0;
 ---
 
-{name === 'crest' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 2L4 6v6c0 5.5 3.8 10 8 11 4.2-1 8-5.5 8-11V6l-8-4z" />
-    <path d="M12 7v8" />
-    <path d="M8 11h8" />
-  </svg>
-)}
-
-{name === 'dashboard' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="3" y="3" width="7" height="9" rx="1.5" />
-    <rect x="14" y="3" width="7" height="5" rx="1.5" />
-    <rect x="14" y="12" width="7" height="9" rx="1.5" />
-    <rect x="3" y="16" width="7" height="5" rx="1.5" />
-  </svg>
-)}
-
-{name === 'wrench' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-  </svg>
-)}
-
-{name === 'bed' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M2 4v16" />
-    <path d="M2 8h18a2 2 0 0 1 2 2v10" />
-    <path d="M2 17h20" />
-    <path d="M6 8v9" />
-  </svg>
-)}
-
-{name === 'door' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M4 21h16" />
-    <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
-    <circle cx="14" cy="12" r="1" fill="currentColor" />
-  </svg>
-)}
-
-{name === 'user' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-    <circle cx="12" cy="7" r="4" />
-  </svg>
-)}
-
-{name === 'lock' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-  </svg>
-)}
-
-{name === 'unlock' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-  </svg>
-)}
-
-{name === 'login' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-    <polyline points="10 17 15 12 10 7" />
-    <line x1="15" y1="12" x2="3" y2="12" />
-  </svg>
-)}
-
-{name === 'logout' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-    <polyline points="16 17 21 12 16 7" />
-    <line x1="21" y1="12" x2="9" y2="12" />
-  </svg>
-)}
-
-{name === 'check-circle' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <polyline points="9 12 12 15 16 10" />
-  </svg>
-)}
-
-{name === 'clock' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <polyline points="12 6 12 12 16 14" />
-  </svg>
-)}
-
-{name === 'alert-triangle' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-    <line x1="12" y1="9" x2="12" y2="13" />
-    <line x1="12" y1="17" x2="12.01" y2="17" />
-  </svg>
-)}
-
-{name === 'alert-circle' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <line x1="12" y1="8" x2="12" y2="12" />
-    <line x1="12" y1="16" x2="12.01" y2="16" />
-  </svg>
-)}
-
-{name === 'x-circle' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <line x1="15" y1="9" x2="9" y2="15" />
-    <line x1="9" y1="9" x2="15" y2="15" />
-  </svg>
-)}
-
-{name === 'building' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
-    <line x1="9" y1="22" x2="9" y2="18" />
-    <line x1="15" y1="22" x2="15" y2="18" />
-    <line x1="8" y1="6" x2="10" y2="6" />
-    <line x1="14" y1="6" x2="16" y2="6" />
-    <line x1="8" y1="10" x2="10" y2="10" />
-    <line x1="14" y1="10" x2="16" y2="10" />
-    <line x1="8" y1="14" x2="10" y2="14" />
-    <line x1="14" y1="14" x2="16" y2="14" />
-  </svg>
-)}
-
-{name === 'phone' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-  </svg>
-)}
-
-{name === 'mail' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-    <polyline points="22,6 12,13 2,6" />
-  </svg>
-)}
-
-{name === 'calendar' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-    <line x1="16" y1="2" x2="16" y2="6" />
-    <line x1="8" y1="2" x2="8" y2="6" />
-    <line x1="3" y1="10" x2="21" y2="10" />
-  </svg>
-)}
-
-{name === 'shield' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-  </svg>
-)}
-
-{name === 'arrow-left' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="19" y1="12" x2="5" y2="12" />
-    <polyline points="12 19 5 12 12 5" />
-  </svg>
-)}
-
-{name === 'arrow-right' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="5" y1="12" x2="19" y2="12" />
-    <polyline points="12 5 19 12 12 19" />
-  </svg>
-)}
-
-{name === 'camera' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-    <circle cx="12" cy="13" r="4" />
-  </svg>
-)}
-
-{name === 'file-text' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <polyline points="14 2 14 8 20 8" />
-    <line x1="16" y1="13" x2="8" y2="13" />
-    <line x1="16" y1="17" x2="8" y2="17" />
-    <polyline points="10 9 9 9 8 9" />
-  </svg>
-)}
-
-{name === 'plumbing' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
-  </svg>
-)}
-
-{name === 'electrical' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-  </svg>
-)}
-
-{name === 'furniture' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3" />
-    <path d="M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v5z" />
-    <path d="M5 18v3" />
-    <path d="M19 18v3" />
-  </svg>
-)}
-
-{name === 'internet' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M5 12.55a11 11 0 0 1 14.08 0" />
-    <path d="M1.42 9a16 16 0 0 1 21.16 0" />
-    <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
-    <line x1="12" y1="20" x2="12.01" y2="20" />
-  </svg>
-)}
-
-{name === 'search' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="11" cy="11" r="8" />
-    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-  </svg>
-)}
-
-{name === 'chevron-right' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="9 18 15 12 9 6" />
-  </svg>
-)}
-
-{name === 'chevron-down' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-)}
-
-{name === 'check' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-)}
-
-{name === 'swap' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M16 3l4 4-4 4" />
-    <path d="M20 7H4" />
-    <path d="M8 21l-4-4 4-4" />
-    <path d="M4 17h16" />
-  </svg>
-)}
-
-{name === 'bell' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-  </svg>
-)}
-
-{name === 'badge' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76z" />
-  </svg>
-)}
-
-{name === 'map-pin' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-    <circle cx="12" cy="10" r="3" />
-  </svg>
-)}
-
-{name === 'info' && (
-  <svg class={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <line x1="12" y1="16" x2="12" y2="12" />
-    <line x1="12" y1="8" x2="12.01" y2="8" />
-  </svg>
-)}
-
+<svg
+  class={className}
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.75"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  role={hasTitle ? 'img' : undefined}
+  aria-hidden={hasTitle ? undefined : 'true'}
+  focusable={hasTitle ? undefined : 'false'}
+>
+  {hasTitle && <title>{title}</title>}
+  <Fragment set:html={glyph.join('')} />
+</svg>

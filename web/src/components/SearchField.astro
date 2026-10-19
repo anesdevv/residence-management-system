@@ -1,0 +1,72 @@
+---
+/**
+ * RÉSIVO — SearchField.
+ * Leading search icon, visually hidden label, `.input` styling (44px), and a
+ * clear control (44px, labelled) whenever the server-rendered value is set.
+ * Give it an `action` and it posts a GET form; otherwise it renders a bare field.
+ *
+ * Usage: <SearchField id="q" name="q" label="Search tickets" value={q} action="/dashboard/maintenance" />
+ */
+import Icon from './Icon.astro';
+
+interface Props {
+  id: string;
+  name?: string;
+  placeholder?: string;
+  value?: string;
+  /** Form GET target — also the clear-link target. */
+  action?: string;
+  /** Visually hidden but present for screen readers. */
+  label: string;
+  class?: string;
+}
+
+const {
+  id,
+  name,
+  placeholder = 'Search…',
+  value = '',
+  action,
+  label,
+  class: className = '',
+} = Astro.props;
+
+const hasValue = value.trim().length > 0;
+const clearHref = action || Astro.url.pathname;
+const Wrapper = action ? 'form' : 'div';
+---
+
+<Wrapper
+  class={`relative block ${className}`}
+  action={action}
+  method={action ? 'get' : undefined}
+  role={action ? 'search' : undefined}
+>
+  <label class="visually-hidden" for={id}>{label}</label>
+  <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted">
+    <Icon name="search" size={18} />
+  </span>
+  <input
+    id={id}
+    name={name}
+    type="text"
+    inputmode="search"
+    enterkeyhint="search"
+    autocomplete="off"
+    class="input pl-10 pr-12"
+    placeholder={placeholder}
+    value={value}
+  />
+  {
+    hasValue && (
+      <a
+        href={clearHref}
+        class="btn btn-ghost btn-icon absolute inset-y-0 right-0 rounded-input"
+        aria-label={`Clear ${label.toLowerCase()}`}
+        title="Clear search"
+      >
+        <Icon name="x" size={16} />
+      </a>
+    )
+  }
+</Wrapper>

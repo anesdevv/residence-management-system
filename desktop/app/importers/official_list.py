@@ -11,11 +11,19 @@ def read_official_file(path: str) -> list[dict]:
             raw_rows = list(csv.DictReader(fh))
     else:
         wb = load_workbook(path, read_only=True, data_only=True)
-        ws = wb.active
-        header = [str(c.value).strip() if c.value is not None else "" for c in next(ws.iter_rows(min_row=1, max_row=1))]
-        raw_rows = []
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            raw_rows.append({header[i]: row[i] for i in range(min(len(header), len(row)))})
+        try:
+            ws = wb.active
+            first_row = next(ws.iter_rows(min_row=1, max_row=1), None) if ws is not None else None
+            if not first_row:
+                header = []
+            else:
+                header = [str(c.value).strip() if c.value is not None else "" for c in first_row]
+            raw_rows = []
+            if header:
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    raw_rows.append({header[i]: row[i] for i in range(min(len(header), len(row)))})
+        finally:
+            wb.close()
 
     cleaned: list[dict] = []
     for raw in raw_rows:
@@ -28,9 +36,26 @@ def read_official_file(path: str) -> list[dict]:
         if isinstance(b, (date, datetime)):
             birth_date = b.strftime("%Y-%m-%d")
         else:
-            birth_date = str(b or "").strip() or None
+            b_str = str(b or "").strip()
+            if b_str:
+                parsed_date = None
+                for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d"):
+                    try:
+                        parsed_date = datetime.strptime(b_str, fmt).strftime("%Y-%m-%d")
+                        break
+                    except ValueError:
+                        pass
+                birth_date = parsed_date if parsed_date else b_str
+            else:
+                birth_date = None
 
-        gender_val = str(r.get("gender") or "").strip().lower() or None
+        gender_raw = str(r.get("gender") or "").strip().lower()
+        if gender_raw in ("m", "homme", "masculin", "male"):
+            gender_val = "male"
+        elif gender_raw in ("f", "femme", "feminin", "féminin", "female"):
+            gender_val = "female"
+        else:
+            gender_val = gender_raw or None
 
         cleaned.append({
             "card_id": card,

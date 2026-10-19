@@ -1,0 +1,36 @@
+---
+/**
+ * RÉSIVO — EmptyState (docs/DESIGN.md §6, §10).
+ * Authored icon + one helpful sentence + optional actions, never a blank area.
+ */
+import Icon from './Icon.astro';
+
+interface Props {
+  icon: string;
+  title: string;
+  message?: string;
+  class?: string;
+}
+
+const { icon, title, message, class: className = '' } = Astro.props;
+---
+
+<div
+  class={`flex flex-col items-center gap-4 rounded-card border border-dashed border-line bg-surface px-6 py-10 text-center ${className}`}
+>
+  <span class="flex h-12 w-12 items-center justify-center rounded-card bg-subtle text-muted">
+    <Icon name={icon} size={24} />
+  </span>
+  <div class="flex flex-col items-center gap-1">
+    <p class="font-display text-h2 text-ink">{title}</p>
+    {message && <p class="measure text-small font-normal text-muted">{message}</p>}
+  </div>
+  {
+    Astro.slots.has('actions') && (
+      <div class="flex flex-wrap items-center justify-center gap-2">
+        <slot name="actions" />
+      </div>
+    )
+  }
+  <slot />
+</div>

@@ -1,0 +1,59 @@
+---
+/**
+ * RÉSIVO — StatusPill (docs/DESIGN.md §2, §6).
+ * Status is ALWAYS colour + icon + text label, never colour alone.
+ *
+ * Canonical kinds: ok · pending · review · progress · danger · neutral.
+ * Legacy kinds keep working and map onto the canonical set:
+ *   active · approved · resolved · matched  → ok
+ *   under_review                            → review
+ *   in_progress                             → progress
+ *   rejected · urgent · not_in_roster       → danger
+ *
+ * Usage: <StatusPill kind="ok" />  or  <StatusPill kind="pending" label="Awaiting review" />
+ */
+import Icon from './Icon.astro';
+
+interface Props {
+  kind: string;
+  /** Overrides the default sentence-case label for the kind. */
+  label?: string;
+  /** Overrides the default icon (see docs/DESIGN.md §5 for the name list). */
+  icon?: string;
+  size?: 'sm' | 'md';
+  class?: string;
+}
+
+const { kind, label, icon, size = 'md', class: className = '' } = Astro.props;
+
+const KINDS: Record<string, { base: string; label: string; icon: string }> = {
+  ok: { base: 'ok', label: 'Approved', icon: 'check-circle' },
+  pending: { base: 'pending', label: 'Pending', icon: 'clock' },
+  review: { base: 'review', label: 'Under review', icon: 'eye' },
+  progress: { base: 'progress', label: 'In progress', icon: 'hammer' },
+  danger: { base: 'danger', label: 'Rejected', icon: 'x-circle' },
+  neutral: { base: 'neutral', label: 'Unknown', icon: 'info' },
+
+  /* Legacy kinds — same vocabulary the desktop console and old pages use. */
+  active: { base: 'ok', label: 'Active', icon: 'check-circle' },
+  approved: { base: 'ok', label: 'Approved', icon: 'check-circle' },
+  resolved: { base: 'ok', label: 'Resolved', icon: 'check-circle' },
+  matched: { base: 'ok', label: 'Matched', icon: 'user-check' },
+  under_review: { base: 'review', label: 'Under review', icon: 'eye' },
+  in_progress: { base: 'progress', label: 'In progress', icon: 'hammer' },
+  rejected: { base: 'danger', label: 'Rejected', icon: 'x-circle' },
+  urgent: { base: 'danger', label: 'Urgent', icon: 'alert-triangle' },
+  not_in_roster: { base: 'danger', label: 'Not in roster', icon: 'alert-triangle' },
+};
+
+const spec = KINDS[kind] ?? KINDS.neutral;
+const text = label ?? spec.label;
+const glyph = icon ?? spec.icon;
+const sizeClass = size === 'sm' ? 'px-2 py-0.5' : '';
+const glyphSize = size === 'sm' ? 12 : 13;
+---
+
+<span class={`badge badge-${spec.base} ${sizeClass} ${className}`}>
+  <Icon name={glyph} size={glyphSize} />
+  <span>{text}</span>
+</span>

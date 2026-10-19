@@ -1,23 +1,244 @@
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap, QColor
+"""RÉSIVO — Facility maintenance & repairs (visual layer only, docs/DESIGN.md §6–§7).
+
+Master-detail page: a ``PageHeader``, the four lifecycle stages as a
+``SegmentedControl`` (Pending › Under review › In progress › Resolved) with live
+counts, a ``SearchField``, the maintenance ``QTableWidget`` on the left and the
+360/520 ``DetailPanel`` inspector on the right — stage ``Stepper``, category +
+status header, resident identity, key facts, the fault-photo card with its
+hover zoom cue, the staff-note block, the guarded status actions, the flat
+delete row and the plain-text record block.
+
+The data layer is frozen: ``reload()`` keeps its ``maintenance_reports`` select
+(``*, students(first_name, last_name, card_id)``), ``apply_live_data`` keeps the
+``(id, status)`` diff plus the selection restore by id, ``set_status`` keeps the
+``QInputDialog`` note flow and the ``maintenance_reports`` update, ``on_delete``
+keeps the delete + reload, ``official_lookup`` stays behind the double-click
+``StudentInfoCardDialog`` path, and the signed-URL + ``PhotoFetchWorker`` photo
+flow keeps its ``_photo_req_id`` stale-response guard.
+
+Widget contracts kept for the tests
+-----------------------------------
+``rows`` / ``table`` / ``selected()`` / ``show_detail()`` /
+``on_photo_clicked()`` / ``on_row_double_clicked()`` / ``set_status()`` /
+``set_filter()`` / ``apply_filter()`` / ``apply_live_data(reports)`` /
+``reload()`` / ``closeEvent()`` / ``_cleanup_thumb_worker()`` / ``delete_btn``
+are unchanged; ``photo_label`` is a ``QLabel`` whose ``text()`` is exactly
+``No photo attached by resident`` for a ticket without a photo;
+``_current_pixmap`` / ``_current_photo_url`` / ``_photo_fetch_failed`` keep
+their meaning; ``PhotoViewerDialog`` and ``QMessageBox`` stay module-level so
+the tests can patch them; ``detail_text`` is a direct child of the 360/520
+``DetailPanel`` frame.
+"""
+
+from __future__ import annotations
+
+from PySide6.QtCore import QEvent, QSize, Qt
+from PySide6.QtGui import QBrush, QColor, QPixmap
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
-    QPushButton, QLabel, QTextEdit, QInputDialog, QMessageBox, QFrame,
-    QSplitter, QLineEdit,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QInputDialog,
+    QLabel,
+    QMessageBox,
+    QPlainTextEdit,
+    QScrollArea,
+    QSplitter,
+    QStackedWidget,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
+
 from ...client import official_lookup
+from .. import theme
+from ..components import (
+    Avatar,
+    Button,
+    ConfirmDialog,
+    DetailPanel,
+    EmptyState,
+    IconButton,
+    InlineBanner,
+    KeyValueList,
+    PageHeader,
+    SearchField,
+    SegmentedControl,
+    Skeleton,
+    StatusPill,
+    Stepper,
+    configure_table,
+)
 from ..icons import get_icon, get_pixmap
-from ..theme import apply_button_style
 from ..infocard import StudentInfoCardDialog
-from ..photo_viewer import ClickablePhotoLabel, PhotoViewerDialog, PhotoFetchWorker
+from ..photo_viewer import ClickablePhotoLabel, PhotoFetchWorker, PhotoViewerDialog
+from ..theme import C, S
+
+# Lifecycle stages (UI): the segmented filter and the inspector Stepper share
+# this order. "Under review" is a UI-only stage — no ``maintenance_reports``
+# row carries it yet, so its count is always 0 and the empty state explains it.
+_STAGES = [
+    ("pending", "Pending"),
+    ("under_review", "Under review"),
+    ("in_progress", "In progress"),
+    ("resolved", "Resolved"),
+]
+_STAGE_LABELS = [label for _key, label in _STAGES]
+
+# Table language: overline headers are uppercased by configure_table().
+_COLUMNS = ["Category", "Resident", "Status", "Reported"]
+
+# report status -> (StatusPill kind, status word)
+_STATUS_KINDS = {
+    "pending": ("pending", "Pending"),
+    "under_review": ("review", "Under review"),
+    "in_progress": ("progress", "In progress"),
+    "resolved": ("ok", "Resolved"),
+}
+_DEFAULT_STATUS = ("pending", "Pending")
+
+# maintenance_category -> icon name (table cell and inspector header)
+_CATEGORY_ICONS = {
+    "plumbing": "droplet",
+    "electrical": "zap",
+    "furniture": "hammer",
+    "internet": "wifi",
+    "other": "wrench",
+}
+_CATEGORY_FALLBACK = "wrench"
+
+# The exact string asserted by the no-photo contract test.
+_NO_PHOTO_TEXT = "No photo attached by resident"
+
+
+def _normalise_student(row: dict) -> dict:
+    """``students`` embed of a report row as a plain dict (list/dict/None safe)."""
+    st = row.get("students") or {}
+    if isinstance(st, list) and st:
+        st = st[0]
+    elif not isinstance(st, dict):
+        st = {}
+    return st
+
+
+def _status_meta(raw_status) -> tuple[str, str]:
+    """``(StatusPill kind, status word)`` for any report status value."""
+    return _STATUS_KINDS.get(str(raw_status), _DEFAULT_STATUS)
+
+
+def _category_icon(category) -> str:
+    """Icon name for a maintenance category (unknown categories -> wrench)."""
+    return _CATEGORY_ICONS.get(str(category or "").lower(), _CATEGORY_FALLBACK)
+
+
+def _fmt_date(value) -> str:
+    """Date-only value (raw data, never invented)."""
+    text = str(value or "").strip()
+    return text[:10] if text else "—"
+
+
+def _fmt_stamp(value) -> str:
+    """Readable timestamp for the record block (raw value, never invented)."""
+    text = str(value or "").strip()
+    if not text:
+        return "—"
+    return text.replace("T", " ").replace("Z", "").strip()
+
+
+def _room_text(row: dict, student: dict) -> str:
+    """Best-effort room label from whatever room data the payload carries."""
+    room = row.get("rooms") or row.get("room")
+    if room is None and isinstance(student, dict):
+        room = student.get("rooms") or student.get("room")
+    if isinstance(room, list) and room:
+        room = room[0]
+    if isinstance(room, dict) and (room.get("number") or room.get("block")):
+        floor = room.get("floor")
+        floor_text = f" (Floor {floor})" if floor is not None and str(floor) != "" else ""
+        return f"Block {room.get('block', '—')} — Room {room.get('number', '—')}{floor_text}"
+    room_id = row.get("room_id") or (student.get("room_id") if isinstance(student, dict) else None)
+    return str(room_id)[:8] if room_id else "—"
+
+
+def _stage_index(status) -> int:
+    """Stepper index for a report status (unknown -> Pending)."""
+    for index, (key, _label) in enumerate(_STAGES):
+        if key == str(status):
+            return index
+    return 0
+
+
+def _cell_widget(widget: QWidget) -> QWidget:
+    """Wrap a widget for a table cell so clicks still select the row.
+
+    ``WA_TransparentForMouseEvents`` also disables delivery for the wrapper's
+    children, so a pill never swallows the row selection. The wrapper keeps no
+    margins of its own: the stylesheet's item padding already insets it.
+    """
+    holder = QWidget()
+    holder.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+    row = QHBoxLayout(holder)
+    row.setContentsMargins(0, 0, 0, 0)
+    row.setSpacing(0)
+    row.addWidget(widget, 0, Qt.AlignmentFlag.AlignVCenter)
+    row.addStretch(1)
+    return holder
+
+
+def _pill_item(text: str, holder: QWidget) -> QTableWidgetItem:
+    """Cell item behind a pill widget (readable text, painted transparently)."""
+    item = QTableWidgetItem(text)
+    item.setForeground(QBrush(QColor(0, 0, 0, 0)))
+    hint = holder.sizeHint()
+    item.setSizeHint(QSize(hint.width() + 2 * S("space-3"), hint.height()))
+    return item
+
+
+def _fit_columns(table: QTableWidget, modes: list) -> QHeaderView:
+    """Apply per-column resize modes (last section keeps its own mode)."""
+    header = table.horizontalHeader()
+    header.setStretchLastSection(False)
+    for column, mode in enumerate(modes):
+        header.setSectionResizeMode(column, mode)
+    return header
+
+
+class _QuotedBlock(QFrame):
+    """Tinted block: overline + quoted body (fault description, staff note)."""
+
+    def __init__(self, overline_text: str, parent=None):
+        super().__init__(parent)
+        self.setObjectName("quotedBlock")
+        column = QVBoxLayout(self)
+        column.setContentsMargins(S("space-3"), S("space-3"), S("space-3"), S("space-3"))
+        column.setSpacing(S("space-1"))
+        self.overline = QLabel(str(overline_text).upper())
+        theme.apply_role(self.overline, "overline")
+        self.overline.setWordWrap(True)
+        self.body = QLabel("")
+        theme.apply_role(self.body, "body")
+        self.body.setWordWrap(True)
+        column.addWidget(self.overline)
+        column.addWidget(self.body)
+        self.setStyleSheet(
+            f"QFrame#quotedBlock {{ background-color: {C('surface-subtle')};"
+            f" border: 1px solid {C('border')}; border-radius: {C('radius-input')}; }}"
+        )
+
+    def set_text(self, text: str) -> None:
+        """Set the quoted body text."""
+        self.body.setText(str(text))
 
 
 class MaintenancePage(QWidget):
+    """Facility maintenance & repairs: stage filters, tickets table, inspector."""
+
     def __init__(self, client):
         super().__init__()
         self.client = client
         self.rows: list[dict] = []
-        self.filter_mode = "all"
+        self.filter_mode = "pending"
         self._thumb_worker: PhotoFetchWorker | None = None
         self._photo_req_id: int = 0
         self._current_photo_url: str | None = None
@@ -26,176 +247,303 @@ class MaintenancePage(QWidget):
         self._photo_loading: bool = False
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(14)
+        layout.setContentsMargins(S("space-8"), S("space-8"), S("space-8"), S("space-8"))
+        layout.setSpacing(S("space-6"))
 
-        # Header Bar
-        header_row = QHBoxLayout()
-        header_vbox = QVBoxLayout()
-        title_lbl = QLabel("Facility Maintenance & Repairs")
-        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc;")
-        sub_lbl = QLabel("Triage plumbing, electrical, furniture, and heating repair tickets filed by residents.")
-        sub_lbl.setStyleSheet("font-size: 12px; color: #94a3b8;")
-        header_vbox.addWidget(title_lbl)
-        header_vbox.addWidget(sub_lbl)
-        header_row.addLayout(header_vbox)
-        header_row.addStretch(1)
-
-        self.refresh_btn = QPushButton("Refresh")
-        self.refresh_btn.setIcon(get_icon("refresh", size=14, color="#cbd5e1"))
-        apply_button_style(self.refresh_btn, "secondary")
+        self.header = PageHeader(
+            "Facility maintenance & repairs",
+            "Triage resident repair tickets filed from every residential block.",
+        )
+        self.refresh_btn = IconButton("refresh", "Reload the maintenance queue")
         self.refresh_btn.clicked.connect(self.reload)
-        header_row.addWidget(self.refresh_btn)
-        layout.addLayout(header_row)
+        self.header.actions.addWidget(self.refresh_btn)
+        layout.addWidget(self.header)
 
-        # Filter & Search Row
+        # ------------------------------------------------------------ toolbar
         toolbar = QHBoxLayout()
-        toolbar.setSpacing(8)
+        toolbar.setSpacing(S("space-3"))
 
-        self.btn_all = QPushButton("All Tickets")
-        self.btn_pending = QPushButton("Pending Triage")
-        self.btn_in_progress = QPushButton("In Progress")
-        self.btn_resolved = QPushButton("Resolved")
+        self.segments = SegmentedControl(_STAGES)
+        self.btn_pending = self.segments.buttons["pending"]
+        self.btn_under_review = self.segments.buttons["under_review"]
+        self.btn_in_progress = self.segments.buttons["in_progress"]
+        self.btn_resolved = self.segments.buttons["resolved"]
+        self.segments.changed.connect(self.set_filter)
+        toolbar.addWidget(self.segments)
 
-        for b in (self.btn_all, self.btn_pending, self.btn_in_progress, self.btn_resolved):
-            b.setCheckable(True)
-            apply_button_style(b, "filter")
-            toolbar.addWidget(b)
-
-        self.btn_all.setChecked(True)
-        self.btn_all.clicked.connect(lambda: self.set_filter("all"))
-        self.btn_pending.clicked.connect(lambda: self.set_filter("pending"))
-        self.btn_in_progress.clicked.connect(lambda: self.set_filter("in_progress"))
-        self.btn_resolved.clicked.connect(lambda: self.set_filter("resolved"))
-
-        toolbar.addSpacing(12)
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search tickets by description, student, or category...")
-        self.search_input.textChanged.connect(self.apply_filter)
-        toolbar.addWidget(self.search_input, 1)
-
+        self.search = SearchField("Search by description, resident or category…")
+        self.search.changed.connect(self.apply_filter)
+        # Legacy alias: the search box used to be a bare QLineEdit.
+        self.search_input = self.search.edit
+        toolbar.addWidget(self.search, 1)
         layout.addLayout(toolbar)
 
-        # Splitter Layout (Left: Table, Right: Inspector)
-        splitter = QSplitter(Qt.Horizontal)
+        self.error_banner = InlineBanner(
+            "error",
+            title="Maintenance queue could not be loaded",
+            message="The table is showing the last data received. Use Refresh to try again.",
+        )
+        self.error_banner.setVisible(False)
+        layout.addWidget(self.error_banner)
+
+        # ---------------------------------------------------- master-detail
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter.setChildrenCollapsible(False)
 
         table_card = QFrame()
         table_card.setObjectName("cardFrame")
-        tc_layout = QVBoxLayout(table_card)
-        tc_layout.setContentsMargins(0, 0, 0, 0)
+        table_card.setMinimumWidth(420)
+        card_layout = QVBoxLayout(table_card)
+        card_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(["Category", "Resident", "Status", "Reported"])
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setSelectionMode(QTableWidget.SingleSelection)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.stack = QStackedWidget()
+        self.table = QTableWidget(0, len(_COLUMNS))
+        configure_table(self.table, _COLUMNS)
+        _fit_columns(
+            self.table,
+            [
+                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.Stretch,
+                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.ResizeToContents,
+            ],
+        )
         self.table.itemSelectionChanged.connect(self.show_detail)
         self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
-        self.table.horizontalHeader().setStretchLastSection(True)
-        tc_layout.addWidget(self.table)
-        splitter.addWidget(table_card)
+        self.stack.addWidget(self.table)
 
-        # Inspector Card
-        detail_card = QFrame()
-        detail_card.setObjectName("cardFrame")
-        detail_card.setMinimumWidth(360)
-        detail_card.setMaximumWidth(520)
-        dc_layout = QVBoxLayout(detail_card)
-        dc_layout.setSpacing(12)
-        dc_layout.setContentsMargins(16, 16, 16, 16)
+        self.empty_state = EmptyState(
+            "wrench",
+            "No tickets in this view",
+            "Switch the stage filter, adjust the search, or refresh.",
+        )
+        self.stack.addWidget(self.empty_state)
+        card_layout.addWidget(self.stack)
+        self.splitter.addWidget(table_card)
 
-        detail_title = QLabel("Ticket Inspector")
-        detail_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #f8fafc;")
-        dc_layout.addWidget(detail_title)
+        # ------------------------------------------------------ inspector
+        self.panel = DetailPanel(360, 520, title="Ticket inspector")
+        self.empty_panel = EmptyState(
+            "wrench",
+            "No ticket selected",
+            "Select a ticket to inspect the fault, the resident and the repair stage.",
+        )
+        self.panel.add_widget(self.empty_panel)
 
-        self.detail_text = QTextEdit()
-        self.detail_text.setReadOnly(True)
-        self.detail_text.setFixedHeight(140)
-        self.detail_text.setPlaceholderText("Select a ticket from the table...")
-        dc_layout.addWidget(self.detail_text)
+        self.inspector_scroll = QScrollArea()
+        self.inspector_scroll.setWidgetResizable(True)
+        self.inspector_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        inspector_body = QWidget()
+        inspector = QVBoxLayout(inspector_body)
+        inspector.setContentsMargins(0, 0, 0, 0)
+        inspector.setSpacing(S("space-3"))
 
-        # Photo Inspector
-        self.photo_label = ClickablePhotoLabel("No fault photo attached")
+        self.stepper = Stepper(_STAGE_LABELS)
+        inspector.addWidget(self.stepper)
+
+        # Category + status header.
+        self.category_row = QWidget()
+        category_layout = QHBoxLayout(self.category_row)
+        category_layout.setContentsMargins(0, 0, 0, 0)
+        category_layout.setSpacing(S("space-3"))
+        self.category_icon = QLabel()
+        self.category_icon.setFixedSize(S("size-control"), S("size-control"))
+        self.category_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.category_icon.setStyleSheet(
+            f"background-color: {C('selection-tint')}; border-radius: {C('radius-input')};"
+        )
+        self.category_label = QLabel("—")
+        theme.apply_role(self.category_label, "h3")
+        self.status_pill = StatusPill("pending", "Pending")
+        category_layout.addWidget(self.category_icon, 0)
+        category_layout.addWidget(self.category_label, 1)
+        category_layout.addWidget(self.status_pill, 0, Qt.AlignmentFlag.AlignVCenter)
+        inspector.addWidget(self.category_row)
+
+        # Resident identity.
+        self.identity = QWidget()
+        identity = QHBoxLayout(self.identity)
+        identity.setContentsMargins(0, 0, 0, 0)
+        identity.setSpacing(S("space-3"))
+        self.avatar = Avatar("?", size=S("space-12"))
+        identity.addWidget(self.avatar, 0, Qt.AlignmentFlag.AlignTop)
+        identity_column = QVBoxLayout()
+        identity_column.setSpacing(2)
+        self.name_label = QLabel("—")
+        theme.apply_role(self.name_label, "h3")
+        self.name_label.setWordWrap(True)
+        self.card_label = QLabel("—")
+        theme.apply_role(self.card_label, "small")
+        theme.enable_tabular(self.card_label)
+        self.card_label.setWordWrap(True)
+        identity_column.addWidget(self.name_label)
+        identity_column.addWidget(self.card_label)
+        identity.addLayout(identity_column, 1)
+        inspector.addWidget(self.identity)
+
+        # Key facts.
+        self.facts = KeyValueList()
+        inspector.addWidget(self.facts)
+
+        # ------------------------------------------------------ photo card
+        self.photo_section = QWidget()
+        photo_layout = QVBoxLayout(self.photo_section)
+        photo_layout.setContentsMargins(0, 0, 0, 0)
+        photo_layout.setSpacing(S("space-2"))
+        photo_overline = QLabel("FAULT PHOTO")
+        theme.apply_role(photo_overline, "overline")
+        photo_layout.addWidget(photo_overline)
+
+        self.photo_label = ClickablePhotoLabel("No ticket selected")
         self.photo_label.setObjectName("maintenancePhotoLabel")
-        self.photo_label.setAlignment(Qt.AlignCenter)
-        self.photo_label.setStyleSheet("""
-            QLabel#maintenancePhotoLabel {
-                background-color: #0b0d14;
-                border: 1px dashed #22293b;
-                border-radius: 8px;
-                color: #64748b;
-                font-size: 12px;
-            }
-            QLabel#maintenancePhotoLabel:hover {
-                border-color: #38bdf8;
-            }
-        """)
-        self.photo_label.setFixedHeight(180)
+        self.photo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.photo_label.setWordWrap(True)
+        self.photo_label.setFixedHeight(S("space-12") * 3)
+        self.photo_label.setStyleSheet(
+            f"QLabel#maintenancePhotoLabel {{ background-color: {C('surface-subtle')};"
+            f" border: 1px dashed {C('border-strong')}; border-radius: {C('radius-input')};"
+            f" color: {C('text-muted')}; font-size: {C('fs-small')}; }}"
+            f"QLabel#maintenancePhotoLabel:hover {{ border-color: {C('teal-600')}; }}"
+        )
         self.photo_label.clicked.connect(self.on_photo_clicked)
-        dc_layout.addWidget(self.photo_label)
+        self.photo_label.installEventFilter(self)
 
-        # Status Update Actions
-        actions_box = QVBoxLayout()
-        actions_box.setSpacing(8)
+        # Hover zoom cue (overlay inside the thumbnail; clicks fall through).
+        self.zoom_cue = QWidget(self.photo_label)
+        self.zoom_cue.setObjectName("zoomCue")
+        self.zoom_cue.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.zoom_cue.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.zoom_cue.setStyleSheet(
+            f"QWidget#zoomCue {{ background-color: {C('surface')};"
+            f" border: 1px solid {C('border')}; border-radius: {C('radius-input')}; }}"
+            f"QWidget#zoomCue QLabel {{ background: transparent; border: none; }}"
+        )
+        cue_row = QHBoxLayout(self.zoom_cue)
+        cue_row.setContentsMargins(S("space-2"), S("space-1"), S("space-2"), S("space-1"))
+        cue_row.setSpacing(S("space-1"))
+        cue_icon = QLabel()
+        cue_icon.setPixmap(get_pixmap("zoom-in", 14, C("navy-800")))
+        cue_text = QLabel("Open full view")
+        theme.apply_role(cue_text, "small")
+        cue_row.addWidget(cue_icon, 0)
+        cue_row.addWidget(cue_text, 0)
+        cue_holder = QVBoxLayout(self.photo_label)
+        cue_holder.setContentsMargins(S("space-2"), S("space-2"), S("space-2"), S("space-2"))
+        cue_holder.addWidget(self.zoom_cue, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
+        cue_holder.addStretch(1)
+        self.zoom_cue.setVisible(False)
 
-        self.in_progress_btn = QPushButton("Mark In Progress (Technician Dispatched)")
-        self.in_progress_btn.setFixedHeight(40)
-        self.in_progress_btn.setIcon(get_icon("maintenance", size=16, color="#ffffff"))
-        apply_button_style(self.in_progress_btn, "in_progress")
+        photo_layout.addWidget(self.photo_label)
+        self.photo_skeleton = Skeleton(2)
+        self.photo_skeleton.setVisible(False)
+        photo_layout.addWidget(self.photo_skeleton)
+        inspector.addWidget(self.photo_section)
+
+        # Staff / dispatch note (read-only display; set_status records it).
+        self.note_block = _QuotedBlock("Staff / dispatch note")
+        inspector.addWidget(self.note_block)
+
+        # ------------------------------------------------------- actions
+        self.actions_row = QWidget()
+        actions = QVBoxLayout(self.actions_row)
+        actions.setContentsMargins(0, 0, 0, 0)
+        actions.setSpacing(S("space-2"))
+        self.in_progress_btn = Button("Mark in progress", "secondary", icon="wrench")
         self.in_progress_btn.clicked.connect(lambda: self.set_status("in_progress"))
-
-        self.resolved_btn = QPushButton("Mark Resolved & Close Ticket")
-        self.resolved_btn.setFixedHeight(40)
-        self.resolved_btn.setIcon(get_icon("check", size=16, color="#ffffff"))
-        apply_button_style(self.resolved_btn, "success")
+        self.resolved_btn = Button.accent("Mark resolved", icon="check")
         self.resolved_btn.clicked.connect(lambda: self.set_status("resolved"))
-
-        self.delete_btn = QPushButton("Delete Maintenance Ticket")
-        self.delete_btn.setFixedHeight(40)
-        self.delete_btn.setIcon(get_icon("trash", size=16, color="#ffffff"))
-        apply_button_style(self.delete_btn, "danger")
+        actions.addWidget(self.in_progress_btn)
+        actions.addWidget(self.resolved_btn)
+        self.delete_btn = Button("Delete ticket", "ghost", icon="trash")
+        self._style_flat_danger(self.delete_btn)
         self.delete_btn.clicked.connect(self.on_delete)
-        self.delete_btn.setEnabled(False)
+        actions.addWidget(self.delete_btn)
+        inspector.addWidget(self.actions_row)
 
-        actions_box.addWidget(self.in_progress_btn)
-        actions_box.addWidget(self.resolved_btn)
-        actions_box.addWidget(self.delete_btn)
-        dc_layout.addLayout(actions_box)
+        inspector.addStretch(1)
+        self.inspector_scroll.setWidget(inspector_body)
+        self.panel.body.addWidget(self.inspector_scroll, 1)
 
-        splitter.addWidget(detail_card)
-        splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 2)
-        layout.addWidget(splitter, 1)
+        self.detail_text = QPlainTextEdit()
+        self.detail_text.setReadOnly(True)
+        self.detail_text.setMinimumHeight(S("space-12"))
+        self.detail_text.setMaximumHeight(S("space-12") * 2 + S("space-6"))
+        self.detail_text.setPlaceholderText("Select a ticket from the table to inspect the full record…")
+        theme.enable_tabular(self.detail_text)
+        self.panel.body.addWidget(self.detail_text, 0)
 
+        # Widgets revealed only while a ticket is selected.
+        self._selection_widgets = [self.inspector_scroll, self.detail_text]
+
+        self.splitter.addWidget(self.panel)
+        self.splitter.setStretchFactor(0, 3)
+        self.splitter.setStretchFactor(1, 2)
+        layout.addWidget(self.splitter, 1)
+
+        self._clear_selection_state()
         self.reload()
 
+    # --------------------------------------------------------------- styling
+    @staticmethod
+    def _style_flat_danger(button: Button) -> None:
+        """Flat danger variant for destructive actions (tokens only)."""
+        button.setProperty("variant", "ghost")
+        button.setStyleSheet(
+            f"QPushButton {{ background-color: transparent; color: {C('status-danger-ink')};"
+            f" border: 1px solid transparent; border-radius: {C('radius-input')};"
+            f" padding: 8px 12px; font-size: {C('fs-body')}; font-weight: {C('fw-semibold')}; }}"
+            f"QPushButton:hover {{ background-color: {C('status-danger-bg')};"
+            f" border-color: {C('status-danger-border')}; }}"
+            f"QPushButton:pressed {{ background-color: {C('status-danger-bg')}; }}"
+            f"QPushButton:focus {{ border: 2px solid {C('status-danger-ink')}; padding: 7px 11px; }}"
+            f"QPushButton:disabled {{ background-color: {C('surface-subtle')}; color: {C('text-muted')};"
+            f" border: 1px solid {C('border')}; padding: 8px 12px; }}"
+        )
+
+    # ----------------------------------------------------------------- views
     def set_filter(self, mode: str):
+        """Switch the stage filter (legacy ``"all"`` still shows every ticket)."""
         self.filter_mode = mode
-        self.btn_all.setChecked(mode == "all")
-        self.btn_pending.setChecked(mode == "pending")
-        self.btn_in_progress.setChecked(mode == "in_progress")
-        self.btn_resolved.setChecked(mode == "resolved")
+        self.segments.set_current(mode)
         self.apply_filter()
 
     def apply_filter(self):
-        needle = self.search_input.text().lower().strip()
+        needle = self.search.text().lower().strip()
         for r in range(self.table.rowCount()):
             row_data = self.rows[r] if r < len(self.rows) else {}
-            st = row_data.get("students") or {}
+            st = _normalise_student(row_data)
             status = row_data.get("status", "")
             cat = str(row_data.get("category", "")).lower()
             desc = str(row_data.get("description", "")).lower()
-            name = f"{st.get('first_name','')} {st.get('last_name','')}".lower()
+            name = f"{st.get('first_name', '')} {st.get('last_name', '')}".lower()
 
-            status_matches = (
-                self.filter_mode == "all"
-                or (self.filter_mode == "pending" and status == "pending")
-                or (self.filter_mode == "in_progress" and status == "in_progress")
-                or (self.filter_mode == "resolved" and status == "resolved")
-            )
+            status_matches = self.filter_mode == "all" or status == self.filter_mode
             text_matches = needle in f"{cat} {desc} {name}"
             self.table.setRowHidden(r, not (status_matches and text_matches))
+        self._update_view_state()
 
+    def _update_view_state(self):
+        """Table/empty-state swap + segment counts (never rebuilds the table)."""
+        visible = sum(1 for r in range(self.table.rowCount()) if not self.table.isRowHidden(r))
+        self.stack.setCurrentIndex(0 if visible else 1)
+        self._update_segment_counts()
+
+    def _update_segment_counts(self):
+        counts = {key: 0 for key, _label in _STAGES}
+        for r in self.rows:
+            status = str(r.get("status", ""))
+            if status in counts:
+                counts[status] += 1
+        for key, value in counts.items():
+            self.segments.set_count(key, value)
+
+    def _show_selection(self, has_selection: bool) -> None:
+        """Toggle between the EmptyState and the selected-ticket widgets."""
+        self.empty_panel.setVisible(not has_selection)
+        for widget in self._selection_widgets:
+            widget.setVisible(has_selection)
+
+    # -------------------------------------------------------- live sync data
     def apply_live_data(self, rows: list[dict]):
         old_keys = [(r.get("id"), r.get("status")) for r in self.rows]
         new_keys = [(r.get("id"), r.get("status")) for r in rows]
@@ -210,68 +558,69 @@ class MaintenancePage(QWidget):
         for i, r in enumerate(self.rows):
             if r.get("id") == selected_id:
                 restore_row = i
-            st = r.get("students") or {}
+            st = _normalise_student(r)
             status = r.get("status", "pending")
-            status_text = "Pending" if status == "pending" else "In Progress" if status == "in_progress" else "Resolved"
+            status_kind, status_text = _status_meta(status)
+            category = str(r.get("category") or "other")
 
-            cat_item = QTableWidgetItem(str(r.get("category", "")).capitalize())
-            cat_item.setIcon(get_icon("maintenance", size=14, color="#2563eb"))
-            student_item = QTableWidgetItem(f"{st.get('first_name', '')} {st.get('last_name', '')}")
-            status_item = QTableWidgetItem(status_text)
-            date_item = QTableWidgetItem(str(r.get("created_at", ""))[:10])
-
-            if status == "resolved":
-                status_item.setForeground(QColor("#34d399"))
-            elif status == "in_progress":
-                status_item.setForeground(QColor("#38bdf8"))
-            else:
-                status_item.setForeground(QColor("#fbbf24"))
+            cat_item = QTableWidgetItem(category.capitalize())
+            cat_item.setIcon(get_icon(_category_icon(category), 14, C("text-secondary")))
+            student_item = QTableWidgetItem(f"{st.get('first_name', '')} {st.get('last_name', '')}".strip())
+            status_holder = _cell_widget(StatusPill(status_kind, status_text))
+            status_item = _pill_item(status_text, status_holder)
+            date_item = QTableWidgetItem(_fmt_date(r.get("created_at")))
 
             self.table.setItem(i, 0, cat_item)
             self.table.setItem(i, 1, student_item)
             self.table.setItem(i, 2, status_item)
             self.table.setItem(i, 3, date_item)
+            self.table.setCellWidget(i, 2, status_holder)
 
         if restore_row >= 0:
             self.table.selectRow(restore_row)
         else:
-            self._cleanup_thumb_worker()
-            self._current_pixmap = None
-            self._current_photo_url = None
-            self._photo_fetch_failed = False
-            self._photo_loading = False
-            self.detail_text.clear()
-            self.photo_label.clear()
-            self.photo_label.setText("No fault photo attached")
-            self.photo_label.setCursor(Qt.ArrowCursor)
-            self.photo_label.setToolTip("")
-            self.delete_btn.setEnabled(False)
+            self._clear_selection_state()
 
         self.apply_filter()
 
-    def _cleanup_thumb_worker(self):
-        if self._thumb_worker is not None:
-            try:
-                self._thumb_worker.loaded.disconnect()
-                self._thumb_worker.failed.disconnect()
-            except RuntimeError:
-                pass
-            self._thumb_worker.stop()
-            self._thumb_worker = None
+    def _clear_selection_state(self):
+        """No selected ticket: clear the inspector, the photo and the actions."""
+        self._cleanup_thumb_worker()
+        self._current_pixmap = None
+        self._current_photo_url = None
+        self._photo_fetch_failed = False
+        self._photo_loading = False
+        self.photo_skeleton.setVisible(False)
+        self.zoom_cue.setVisible(False)
+        self.detail_text.clear()
+        self.photo_label.clear()
+        self.photo_label.setText("No ticket selected")
+        self.photo_label.setCursor(Qt.CursorShape.ArrowCursor)
+        self.photo_label.setToolTip("")
+        self.delete_btn.setEnabled(False)
+        self.delete_btn.setToolTip("Select a ticket to delete it.")
+        self.in_progress_btn.setEnabled(False)
+        self.in_progress_btn.setToolTip("Select a ticket to dispatch a technician.")
+        self.resolved_btn.setEnabled(False)
+        self.resolved_btn.setToolTip("Select a ticket to close it as resolved.")
+        self._show_selection(False)
 
     def reload(self):
         try:
             resp = self.client.table("maintenance_reports") \
                 .select("*, students(first_name, last_name, card_id)") \
                 .order("created_at", desc=True).execute()
+            self.error_banner.setVisible(False)
             self.apply_live_data(resp.data or [])
         except Exception:
-            pass
+            self.error_banner.setVisible(True)
 
     def selected(self) -> dict | None:
         r = self.table.currentRow()
         return self.rows[r] if 0 <= r < len(self.rows) else None
 
+
+    # -------------------------------------------------------------- inspector
     def show_detail(self):
         self._cleanup_thumb_worker()
         self._photo_req_id += 1
@@ -280,39 +629,93 @@ class MaintenancePage(QWidget):
         self._current_photo_url = None
         self._photo_fetch_failed = False
         self._photo_loading = False
+        self.photo_skeleton.setVisible(False)
+        self.zoom_cue.setVisible(False)
 
         r = self.selected()
         if not r:
-            self.detail_text.clear()
-            self.photo_label.clear()
-            self.photo_label.setText("No fault photo attached")
-            self.photo_label.setCursor(Qt.ArrowCursor)
-            self.photo_label.setToolTip("")
-            self.delete_btn.setEnabled(False)
+            self._clear_selection_state()
             return
 
+        status = str(r.get("status", "pending"))
+        status_kind, status_text = _status_meta(status)
+        stage = _stage_index(status)
+        category = str(r.get("category") or "other")
+        st = _normalise_student(r)
+        name = f"{st.get('first_name', '')} {st.get('last_name', '')}".strip() or "Unnamed resident"
+
+        # Lifecycle stepper: the current stage is marked, earlier stages done.
+        self.stepper.set_current(stage)
+        self.stepper.set_states([index < stage for index in range(len(_STAGES))])
+
+        # Category + status header.
+        self.category_icon.setPixmap(get_pixmap(_category_icon(category), S("size-icon"), C("navy-800")))
+        self.category_label.setText(category.capitalize())
+        self.status_pill.set_kind(status_kind, status_text)
+
+        # Resident identity.
+        self.avatar.set_name(name)
+        self.name_label.setText(name)
+        self.card_label.setText(f"Card ID {st.get('card_id') or '—'}")
+
+        # Key facts (raw data only).
+        self.facts.set_rows([
+            ("Room", _room_text(r, st)),
+            ("Submitted", _fmt_date(r.get("created_at"))),
+            ("Resolved", _fmt_date(r.get("updated_at")) if status == "resolved" else "—"),
+        ])
+
+        # Status actions: disabled with the reason in the tooltip.
+        if status == "resolved":
+            self.in_progress_btn.setEnabled(False)
+            self.in_progress_btn.setToolTip("This ticket is already resolved.")
+            self.resolved_btn.setEnabled(False)
+            self.resolved_btn.setToolTip("This ticket is already resolved.")
+        elif status == "in_progress":
+            self.in_progress_btn.setEnabled(False)
+            self.in_progress_btn.setToolTip("A technician is already dispatched for this ticket.")
+            self.resolved_btn.setEnabled(True)
+            self.resolved_btn.setToolTip("")
+        else:
+            self.in_progress_btn.setEnabled(True)
+            self.in_progress_btn.setToolTip("")
+            self.resolved_btn.setEnabled(True)
+            self.resolved_btn.setToolTip("")
+
         self.delete_btn.setEnabled(True)
-        st = r.get("students") or {}
-        staff_note = r.get("staff_note") or "No technician notes recorded."
+        self.delete_btn.setToolTip("")
+
+        # Staff / dispatch note.
+        note = str(r.get("staff_note") or "").strip()
+        self.note_block.set_text(f"“{note}”" if note else "No technician notes recorded yet.")
+
+        # Plain-text record block (the desk reference for inquiries).
         self.detail_text.setPlainText(
-            f"CATEGORY: {r.get('category', '').upper()}\n"
-            f"Resident: {st.get('first_name', '')} {st.get('last_name', '')} (Card ID: {st.get('card_id', '—')})\n"
-            f"Status: {r.get('status', '').upper()}\n\n"
-            f"DESCRIPTION:\n{r.get('description', '')}\n\n"
-            f"STAFF / DISPATCH NOTE:\n{staff_note}"
+            f"CATEGORY: {category.upper()}\n"
+            f"Resident: {name} (Card ID: {st.get('card_id', '—')})\n"
+            f"Status: {status_text.upper()}\n"
+            f"Submitted: {_fmt_stamp(r.get('created_at'))}\n"
+            f"Last update: {_fmt_stamp(r.get('updated_at'))}\n"
+            f"\n"
+            f"DESCRIPTION:\n{r.get('description', '')}\n"
+            f"\n"
+            f"STAFF / DISPATCH NOTE:\n{r.get('staff_note') or 'No technician notes recorded.'}"
         )
 
+        self._show_selection(True)
+
+        # Fault photo (signed URL + background fetch, stale responses dropped).
         self.photo_label.clear()
+        self.photo_label.setCursor(Qt.CursorShape.PointingHandCursor)
         if not r.get("photo_path"):
-            self.photo_label.setText("No photo attached by resident")
-            self.photo_label.setCursor(Qt.PointingHandCursor)
+            self.photo_label.setText(_NO_PHOTO_TEXT)
             self.photo_label.setToolTip("Click to view fault details")
             return
 
-        self.photo_label.setText("Loading photo...")
-        self.photo_label.setCursor(Qt.PointingHandCursor)
+        self.photo_label.setText("Loading photo…")
         self.photo_label.setToolTip("Loading photo preview…")
         self._photo_loading = True
+        self.photo_skeleton.setVisible(True)
 
         url = None
         try:
@@ -323,6 +726,7 @@ class MaintenancePage(QWidget):
 
         if not url:
             self._photo_loading = False
+            self.photo_skeleton.setVisible(False)
             self._photo_fetch_failed = True
             self.photo_label.setText("Photo unavailable")
             self.photo_label.setToolTip("Failed to retrieve signed URL")
@@ -334,13 +738,18 @@ class MaintenancePage(QWidget):
             if self._photo_req_id != req:
                 return
             self._photo_loading = False
+            self.photo_skeleton.setVisible(False)
             pix = QPixmap()
             if pix.loadFromData(data) and not pix.isNull() and pix.width() > 0 and pix.height() > 0:
                 self._current_pixmap = pix
                 self._current_photo_url = img_url
-                scaled = pix.scaled(380, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                scaled = pix.scaled(
+                    S("space-12") * 8, S("space-12") * 3,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
                 self.photo_label.setPixmap(scaled)
-                self.photo_label.setCursor(Qt.PointingHandCursor)
+                self.photo_label.setCursor(Qt.CursorShape.PointingHandCursor)
                 self.photo_label.setToolTip("Click to open full-size photo viewer")
             else:
                 self._photo_fetch_failed = True
@@ -350,6 +759,7 @@ class MaintenancePage(QWidget):
             if self._photo_req_id != req:
                 return
             self._photo_loading = False
+            self.photo_skeleton.setVisible(False)
             self._photo_fetch_failed = True
             self.photo_label.setText("Failed to load photo")
 
@@ -359,6 +769,15 @@ class MaintenancePage(QWidget):
         worker.loaded.connect(on_loaded)
         worker.failed.connect(on_failed)
         worker.start()
+
+    def eventFilter(self, obj, event):  # noqa: N802 - Qt API
+        """Hover zoom cue over the thumbnail (only while a photo is loaded)."""
+        if obj is self.photo_label:
+            if event.type() == QEvent.Type.Enter:
+                self.zoom_cue.setVisible(self._current_pixmap is not None)
+            elif event.type() == QEvent.Type.Leave:
+                self.zoom_cue.setVisible(False)
+        return super().eventFilter(obj, event)
 
     def on_photo_clicked(self):
         r = self.selected()
@@ -391,17 +810,27 @@ class MaintenancePage(QWidget):
         finally:
             dlg.deleteLater()
 
-    def closeEvent(self, event):
+    def closeEvent(self, event):  # noqa: N802 - Qt API
         worker = self._thumb_worker
         self._cleanup_thumb_worker()
         if worker is not None and worker.isRunning():
             worker.wait(2000)
         super().closeEvent(event)
 
+    def _cleanup_thumb_worker(self):
+        if self._thumb_worker is not None:
+            try:
+                self._thumb_worker.loaded.disconnect()
+                self._thumb_worker.failed.disconnect()
+            except RuntimeError:
+                pass
+            self._thumb_worker.stop()
+            self._thumb_worker = None
+
     def on_row_double_clicked(self, row: int, col: int):
         r = self.selected()
         if r and r.get("students"):
-            st = dict(r.get("students"))
+            st = dict(_normalise_student(r))
             roster_map = {}
             try:
                 roster_map = official_lookup(self.client)
@@ -411,6 +840,7 @@ class MaintenancePage(QWidget):
             dlg = StudentInfoCardDialog(self, st, roster_match)
             dlg.exec()
 
+    # ------------------------------------------------------------- decisions
     def set_status(self, status: str):
         r = self.selected()
         if not r:
@@ -456,14 +886,17 @@ class MaintenancePage(QWidget):
             return
 
         ticket_id = str(t.get("id", ""))[:8]
-        ans = QMessageBox.question(
+        category = str(t.get("category") or "—").capitalize()
+        status_text = _status_meta(t.get("status", "pending"))[1]
+        confirmed = ConfirmDialog.ask(
             self,
-            "Confirm Deletion",
-            f"Are you sure you want to permanently delete maintenance ticket #{ticket_id}?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            "Delete maintenance ticket",
+            f"Permanently delete maintenance ticket #{ticket_id}?\n\n"
+            f"Category: {category}\nStatus: {status_text}\n"
+            "This removes the resident report and its fault photo.",
+            confirm_text="Delete ticket",
         )
-        if ans != QMessageBox.Yes:
+        if not confirmed:
             return
 
         try:
@@ -472,4 +905,5 @@ class MaintenancePage(QWidget):
             self.reload()
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, "Error", f"Failed to delete ticket: {exc}")
+
 

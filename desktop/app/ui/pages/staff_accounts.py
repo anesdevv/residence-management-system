@@ -1,120 +1,193 @@
+"""RÉSIVO — Staff accounts (visual layer only, docs/DESIGN.md §6–§7).
+
+Split view: the staff DataTable on the left (same table language as every other
+page, an ``EmptyState`` when there is no data and a ``Skeleton`` while
+``reload()`` is in flight) and the create form card on the right. That form card
+is the ``QFrame`` clamped to 340/460 px that the layout tests walk up to from
+``self.full_name``. Self-deletion protection keeps its exact tooltips and adds
+an info ``InlineBanner`` while the signed-in admin's own row is selected.
+
+The data layer is frozen: ``reload()`` keeps the ``admin-users`` /
+``list_staff`` function invocation and its response parsing, ``on_delete()``
+keeps the ``delete_staff`` invocation + ``delete_staff`` RPC fallback (with the
+self-account guard), and ``on_create()`` keeps the ``create_staff`` invocation
+and its required-field validation.
+"""
+
+from __future__ import annotations
+
 import json
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLineEdit,
-    QPushButton, QLabel, QTableWidget, QTableWidgetItem, QMessageBox,
-    QFrame, QSplitter,
+    QApplication,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLineEdit,
+    QMessageBox,
+    QSplitter,
+    QStackedWidget,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
-from ..icons import get_icon, get_pixmap
-from ..theme import apply_button_style
+
+from ..components import (
+    Button,
+    Card,
+    EmptyState,
+    IconButton,
+    InlineBanner,
+    PageHeader,
+    Skeleton,
+    configure_table,
+)
+from ..icons import get_icon
+from ..theme import C, S
+
+# Table language: overline headers are uppercased by ``configure_table``.
+_COLUMNS = ["Staff Member", "Position / Role", "System Account ID"]
+
+
+def _fit_columns(table: QTableWidget, modes: list) -> QHeaderView:
+    """Apply per-column resize modes (no column keeps a hard-coded width)."""
+    header = table.horizontalHeader()
+    header.setStretchLastSection(False)
+    for column, mode in enumerate(modes):
+        header.setSectionResizeMode(column, mode)
+    return header
 
 
 class StaffAccountsPage(QWidget):
+    """Staff table + provisioning form (admin only)."""
+
     def __init__(self, client):
         super().__init__()
         self.client = client
         self.rows: list[dict] = []
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(14)
+        layout.setContentsMargins(S("space-8"), S("space-8"), S("space-8"), S("space-8"))
+        layout.setSpacing(S("space-6"))
 
-        # Header Row
-        header_row = QHBoxLayout()
-        header_vbox = QVBoxLayout()
-        title_lbl = QLabel("Staff & Administrative Access")
-        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc;")
-        sub_lbl = QLabel("Manage department officer credentials, assigned positions, and console privileges.")
-        sub_lbl.setStyleSheet("font-size: 12px; color: #94a3b8;")
-        header_vbox.addWidget(title_lbl)
-        header_vbox.addWidget(sub_lbl)
-        header_row.addLayout(header_vbox)
-        header_row.addStretch(1)
+        self.header = PageHeader(
+            "Staff & administrative access",
+            "Manage department officer credentials, assigned positions, and console privileges.",
+        )
+        self.refresh_btn = IconButton("refresh", "Reload the staff list")
+        self.refresh_btn.clicked.connect(self.reload)
+        self.header.actions.addWidget(self.refresh_btn)
+        layout.addWidget(self.header)
 
-        refresh_btn = QPushButton("Refresh")
-        refresh_btn.setIcon(get_icon("refresh", size=14, color="#cbd5e1"))
-        apply_button_style(refresh_btn, "secondary")
-        refresh_btn.clicked.connect(self.reload)
-        header_row.addWidget(refresh_btn)
-        layout.addLayout(header_row)
+        self.error_banner = InlineBanner(
+            "error",
+            title="Staff accounts could not be loaded",
+            message="Use Refresh to try again.",
+        )
+        self.error_banner.setVisible(False)
+        layout.addWidget(self.error_banner)
 
-        # Splitter Layout (Left: Staff Table, Right: Provision Form Card)
-        splitter = QSplitter(Qt.Horizontal)
+        # Splitter layout: staff table on the left, provisioning card right.
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setChildrenCollapsible(False)
 
         table_card = QFrame()
         table_card.setObjectName("cardFrame")
+        table_card.setMinimumWidth(420)
         tc_layout = QVBoxLayout(table_card)
         tc_layout.setContentsMargins(0, 0, 0, 0)
-        tc_layout.setSpacing(10)
+        tc_layout.setSpacing(0)
 
-        self.table = QTableWidget(0, 3)
-        self.table.setHorizontalHeaderLabels(["Staff Member", "Position / Role", "System Account ID"])
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setSelectionMode(QTableWidget.SingleSelection)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.horizontalHeader().setStretchLastSection(True)
+        self.stack = QStackedWidget()
+        self.table = QTableWidget(0, len(_COLUMNS))
+        configure_table(self.table, _COLUMNS)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideMiddle)
+        _fit_columns(
+            self.table,
+            [
+                QHeaderView.ResizeMode.Stretch,
+                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.Stretch,
+            ],
+        )
         self.table.itemSelectionChanged.connect(self.on_selection_changed)
-        tc_layout.addWidget(self.table)
+        self.stack.addWidget(self.table)
 
-        # Bottom action row for table
+        self.empty_state = EmptyState(
+            "shield-check",
+            "No staff accounts",
+            "Provision the first officer with the form on the right.",
+        )
+        self.stack.addWidget(self.empty_state)
+
+        self.skeleton = Skeleton(rows=5)
+        self.stack.addWidget(self.skeleton)
+
+        tc_layout.addWidget(self.stack)
+
+        # Self-deletion protection is explained while it applies.
+        self.self_delete_banner = InlineBanner(
+            "info",
+            title="Self-deletion protection",
+            message="You cannot delete the staff account you are signed in with — "
+            "ask another administrator to revoke it if needed.",
+        )
+        self.self_delete_banner.setVisible(False)
+        tc_layout.addWidget(self.self_delete_banner)
+
         btn_row = QHBoxLayout()
-        btn_row.setContentsMargins(12, 0, 12, 12)
+        btn_row.setContentsMargins(S("space-3"), 0, S("space-3"), S("space-3"))
         btn_row.addStretch(1)
-        self.delete_btn = QPushButton("Delete Selected Staff Account")
-        self.delete_btn.setFixedHeight(36)
-        self.delete_btn.setIcon(get_icon("trash", size=14, color="#ffffff"))
-        apply_button_style(self.delete_btn, "danger")
+
+        self.delete_btn = Button.danger("Delete selected staff account", icon="trash")
+        self.delete_btn.setFixedHeight(S("size-control"))
         self.delete_btn.setEnabled(False)
+        self.delete_btn.setToolTip("")
         self.delete_btn.clicked.connect(self.on_delete)
         btn_row.addWidget(self.delete_btn)
         tc_layout.addLayout(btn_row)
 
         splitter.addWidget(table_card)
 
-        # Creation Form Card
-        form_card = QFrame()
-        form_card.setObjectName("cardFrame")
+        # Creation form card — the 340/460 QFrame the layout tests assert.
+        form_card = Card(
+            "Provision staff account",
+            "Create a console login for a new officer.",
+            icon="shield-check",
+        )
         form_card.setMinimumWidth(340)
         form_card.setMaximumWidth(460)
-        fc_layout = QVBoxLayout(form_card)
-        fc_layout.setSpacing(14)
-        fc_layout.setContentsMargins(16, 16, 16, 16)
-
-        form_title = QLabel("Provision Staff Account")
-        form_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #f8fafc;")
-        fc_layout.addWidget(form_title)
 
         form = QFormLayout()
-        form.setSpacing(10)
+        form.setSpacing(S("space-3"))
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         self.full_name = QLineEdit()
         self.full_name.setPlaceholderText("e.g. Fatima Zohra")
 
         self.position = QLineEdit()
-        self.position.setPlaceholderText("e.g. Housing Officer, Reception...")
+        self.position.setPlaceholderText("e.g. Housing Officer, Reception…")
 
         self.email = QLineEdit()
         self.email.setPlaceholderText("officer@univ-tlemcen.dz")
 
         self.password = QLineEdit()
         self.password.setPlaceholderText("••••••••")
-        self.password.setEchoMode(QLineEdit.Password)
+        self.password.setEchoMode(QLineEdit.EchoMode.Password)
 
         form.addRow("Full Name:", self.full_name)
         form.addRow("Position:", self.position)
         form.addRow("Email:", self.email)
         form.addRow("Password:", self.password)
+        form_card.add_layout(form)
 
-        fc_layout.addLayout(form)
+        self.create_btn = Button.primary("Create staff account", icon="plus")
+        self.create_btn.clicked.connect(self.on_create)
+        form_card.add_widget(self.create_btn)
 
-        create_btn = QPushButton("Create Staff Account")
-        create_btn.setFixedHeight(40)
-        create_btn.setIcon(get_icon("plus", size=14, color="#ffffff"))
-        apply_button_style(create_btn, "primary")
-        create_btn.clicked.connect(self.on_create)
-        fc_layout.addWidget(create_btn)
-
-        fc_layout.addStretch(1)
         splitter.addWidget(form_card)
 
         splitter.setStretchFactor(0, 3)
@@ -123,6 +196,7 @@ class StaffAccountsPage(QWidget):
 
         self.reload()
 
+    # ------------------------------------------------------------- selection
     def selected(self) -> dict | None:
         r = self.table.currentRow()
         return self.rows[r] if 0 <= r < len(self.rows) else None
@@ -132,6 +206,7 @@ class StaffAccountsPage(QWidget):
         if not staff:
             self.delete_btn.setEnabled(False)
             self.delete_btn.setToolTip("")
+            self.self_delete_banner.setVisible(False)
             return
 
         current_uid = None
@@ -142,12 +217,17 @@ class StaffAccountsPage(QWidget):
         if staff.get("id") == current_uid:
             self.delete_btn.setEnabled(False)
             self.delete_btn.setToolTip("You cannot delete your own staff account.")
+            self.self_delete_banner.setVisible(True)
         else:
             self.delete_btn.setEnabled(True)
             self.delete_btn.setToolTip("")
+            self.self_delete_banner.setVisible(False)
 
+    # ------------------------------------------------------------------ data
     def reload(self):
+        self._set_loading(True)
         rows = []
+        error_text = None
         try:
             resp = self.client.functions.invoke(
                 "admin-users",
@@ -168,7 +248,8 @@ class StaffAccountsPage(QWidget):
                 rows = [r for r in resp if isinstance(r, dict)]
             elif isinstance(resp, dict):
                 if "error" in resp:
-                    QMessageBox.warning(self, "Error", str(resp["error"]))
+                    error_text = str(resp["error"])
+                    QMessageBox.warning(self, "Error", error_text)
                 elif isinstance(resp.get("data"), list):
                     rows = [r for r in resp["data"] if isinstance(r, dict)]
             elif hasattr(resp, "data"):
@@ -176,28 +257,52 @@ class StaffAccountsPage(QWidget):
                 if isinstance(data, list):
                     rows = [r for r in data if isinstance(r, dict)]
         except Exception as exc:  # noqa: BLE001
-            QMessageBox.warning(self, "Error", str(exc))
+            error_text = str(exc)
+            QMessageBox.warning(self, "Error", error_text)
+
+        if error_text is not None:
+            self.error_banner.set_message(f"Staff accounts could not be loaded ({error_text}). Use Refresh to try again.")
+            self.error_banner.setVisible(True)
+        else:
+            self.error_banner.setVisible(False)
 
         self.rows = rows
         self.table.setRowCount(len(self.rows))
         for i, r in enumerate(self.rows):
             name_item = QTableWidgetItem(str(r.get("full_name", "")))
-            name_item.setIcon(get_icon("staff_accounts", size=14, color="#818cf8"))
+            name_item.setIcon(get_icon("staff_accounts", 14, C("teal-600")))
             self.table.setItem(i, 0, name_item)
             self.table.setItem(i, 1, QTableWidgetItem(str(r.get("position") or "Officer")))
             self.table.setItem(i, 2, QTableWidgetItem(str(r.get("id", ""))))
 
         self.on_selection_changed()
+        self._set_loading(False)
 
+    def _set_loading(self, loading: bool) -> None:
+        """Swap the table for the Skeleton while ``reload()`` is in flight."""
+        if loading:
+            self.stack.setCurrentWidget(self.skeleton)
+            self.skeleton.raise_()
+            app = QApplication.instance()
+            if app is not None and self.isVisible():
+                # Let the placeholder paint before the (blocking) call runs.
+                app.processEvents()
+        else:
+            self.stack.setCurrentWidget(self.table if self.rows else self.empty_state)
+
+    # ---------------------------------------------------------------- actions
     def on_delete(self):
         staff = self.selected()
         if not staff:
             return
 
         current_uid = None
-        user_resp = getattr(self.client.auth, "get_user", lambda: None)()
-        if user_resp and hasattr(user_resp, "user") and user_resp.user:
-            current_uid = user_resp.user.id
+        try:
+            user_resp = getattr(self.client.auth, "get_user", lambda: None)()
+            if user_resp and hasattr(user_resp, "user") and user_resp.user:
+                current_uid = user_resp.user.id
+        except Exception:
+            current_uid = None
 
         if staff.get("id") == current_uid:
             QMessageBox.warning(self, "Cannot Delete", "You cannot delete your own staff account.")

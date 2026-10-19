@@ -1,14 +1,37 @@
+"""RÉSIVO — Settings (visual layer only, docs/DESIGN.md §6–§7).
+
+Cards, section overlines, token-built checkbox styling, a ``StatusPill`` health
+badge, a monospace token box and flat command boxes. Everything behavioural is
+unchanged: ``McpHealthWorker`` (class name, ``start()`` / ``stop()``, the local
+health URL, the 5 s interval and its up/down transition signalling), the writes
+off-switch RPCs (``mcp_get_settings`` / ``mcp_set_writes_enabled``) with their
+fail-safe revert, the admin-only role gating, and the MCP token read / reveal /
+copy flow.
+"""
+
+from __future__ import annotations
+
 import urllib.request
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
-from PySide6.QtGui import QGuiApplication, QPixmap
+from PySide6.QtGui import QFontDatabase, QGuiApplication, QPixmap
 from PySide6.QtWidgets import (
-    QCheckBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton,
-    QScrollArea, QVBoxLayout, QWidget,
+    QCheckBox,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
+
 from ...client import current_role
-from ..theme import apply_button_style, get_badge_qss
+from .. import theme
+from ..components import Button, Card, InlineBanner, PageHeader, StatusPill
+from ..theme import C, S
 
 
 MCP_HEALTH_URL = "http://127.0.0.1:8000/health"
@@ -16,43 +39,78 @@ MCP_HEALTH_TIMEOUT_S = 2.0
 MCP_HEALTH_INTERVAL_MS = 5000
 MCP_HOSTED_URL = "https://resivo-mcp.anes4tlm.workers.dev/mcp"
 
-MUTED_QSS = "font-size: 11px; color: #64748b;"
-STEP_TITLE_QSS = "font-size: 13px; font-weight: 600; color: #e2e8f0;"
-STEP_TEXT_QSS = "font-size: 12px; color: #cbd5e1;"
-STEP_NUMBER_QSS = "font-size: 12px; font-weight: 700; color: #64748b;"
-SECTION_TITLE_QSS = "font-size: 13px; font-weight: 800; color: #e2e8f0; letter-spacing: 0.3px;"
-MONO_QSS = "font-family: Consolas, monospace; font-size: 12px; color: #e2e8f0; background: transparent; border: none;"
-TOKEN_QSS = "font-family: Consolas, monospace; font-size: 12px; color: #cbd5e1;"
+_WRITES_NOTE = (
+    "ChatGPT asks you to confirm every change first. "
+    "Turn this off to make ChatGPT read-only again."
+)
 
-CHECKBOX_QSS = """
-QCheckBox {
-    color: #e2e8f0;
-    font-size: 13px;
-    font-weight: 600;
-    spacing: 8px;
-}
-QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
-    border: 1px solid #1f2638;
-    border-radius: 4px;
-    background-color: #090b10;
-}
-QCheckBox::indicator:hover {
-    border-color: #3e4c6c;
-}
-QCheckBox::indicator:checked {
-    background-color: #4f46e5;
-    border-color: #6366f1;
-}
-QCheckBox:disabled {
-    color: #475569;
-}
-QCheckBox::indicator:disabled {
-    background-color: #10131d;
-    border-color: #1c2233;
-}
-"""
+
+def _mono_family() -> str:
+    """System fixed-width family (empty before a QGuiApplication exists)."""
+    if QGuiApplication.instance() is None:
+        return ""
+    return QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont).family()
+
+
+def _mono_qss() -> str:
+    """Monospace command text, built from tokens only."""
+    family = _mono_family()
+    parts = [f'font-family: "{family}";'] if family else []
+    parts.append(f"font-size: {C('fs-small')};")
+    parts.append(f"color: {C('text-primary')};")
+    parts.append("background: transparent; border: none;")
+    return " ".join(parts)
+
+
+def _token_qss() -> str:
+    """Monospace token box (flat card look), built from tokens only."""
+    family = _mono_family()
+    parts = [f'font-family: "{family}";'] if family else []
+    parts.append(f"font-size: {C('fs-small')};")
+    parts.append(f"color: {C('text-primary')};")
+    parts.append(f"background-color: {C('surface-subtle')};")
+    parts.append(f"border: 1px solid {C('border')};")
+    parts.append(f"border-radius: {C('radius-input')};")
+    parts.append(f"padding: {C('pill-pad-y')} {C('pill-pad-x')};")
+    return " ".join(parts)
+
+
+def _hint_qss() -> str:
+    """Muted hint line (tokens only)."""
+    return f"color: {C('text-secondary')}; font-size: {C('fs-small')};"
+
+
+def _flat_box_qss(object_name: str) -> str:
+    """Flat command box: subtle surface, hairline border, card radius."""
+    return (
+        f"QFrame#{object_name} {{ background-color: {C('surface-subtle')};"
+        f" border: 1px solid {C('border')}; border-radius: {C('radius-input')}; }}"
+    )
+
+
+def _checkbox_qss() -> str:
+    """Token-only checkbox styling (the page also reads well outside the shell)."""
+    size = S("size-icon")
+    return (
+        f"QCheckBox {{ color: {C('text-primary')}; font-size: {C('fs-body')};"
+        f" font-weight: {C('fw-medium')}; spacing: {C('space-2')}; }}"
+        f"QCheckBox::indicator {{ width: {size}px; height: {size}px;"
+        f" border: 1px solid {C('border-strong')}; border-radius: {C('radius-input')};"
+        f" background-color: {C('surface')}; }}"
+        f"QCheckBox::indicator:hover {{ border-color: {C('teal-600')}; }}"
+        f"QCheckBox::indicator:checked {{ background-color: {C('teal-600')};"
+        f" border-color: {C('teal-600')}; }}"
+        f"QCheckBox:disabled {{ color: {C('text-muted')}; }}"
+        f"QCheckBox::indicator:disabled {{ background-color: {C('surface-subtle')};"
+        f" border-color: {C('border')}; }}"
+    )
+
+
+def _apply_small(label: QLabel, word_wrap: bool = True) -> QLabel:
+    """Hint typography (role ``small``) with optional wrapping."""
+    theme.apply_role(label, "small")
+    label.setWordWrap(word_wrap)
+    return label
 
 
 def build_mcp_url(raw: str) -> str:
@@ -138,85 +196,71 @@ class SettingsPage(QWidget):
         self.scroll_area = QScrollArea()
         self.scroll_area.setObjectName("settingsScrollArea")
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setFrameShape(QFrame.NoFrame)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setStyleSheet("""
-            QScrollArea#settingsScrollArea {
-                background-color: transparent;
-                border: none;
-            }
-            QScrollArea#settingsScrollArea > QWidget > QWidget {
-                background-color: transparent;
-            }
-        """)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         scroll_content = QWidget()
         scroll_content.setObjectName("settingsScrollContent")
         layout = QVBoxLayout(scroll_content)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(14)
+        layout.setContentsMargins(S("space-8"), S("space-8"), S("space-8"), S("space-8"))
+        layout.setSpacing(S("space-6"))
 
-        # Header Row
-        header_vbox = QVBoxLayout()
-        header_vbox.setSpacing(2)
-        title_lbl = QLabel("Settings")
-        title_lbl.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc;")
-        sub_lbl = QLabel("Console preferences and administrative integrations.")
-        sub_lbl.setStyleSheet("font-size: 12px; color: #94a3b8;")
-        header_vbox.addWidget(title_lbl)
-        header_vbox.addWidget(sub_lbl)
-        layout.addLayout(header_vbox)
+        self.header = PageHeader(
+            "Settings",
+            "Console preferences and administrative integrations.",
+        )
+        layout.addWidget(self.header)
 
-        # Advanced Settings (Developer Mode) Card
-        card = QFrame()
-        card.setObjectName("cardFrame")
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(20, 20, 20, 20)
-        card_layout.setSpacing(12)
-
-        section_lbl = QLabel("ADVANCED SETTINGS (DEVELOPER MODE)")
-        section_lbl.setStyleSheet("color: #64748b; font-size: 11px; font-weight: 800; letter-spacing: 0.6px;")
-        card_layout.addWidget(section_lbl)
+        # Advanced settings (developer mode) card
+        self.dev_card = Card(
+            "Advanced settings",
+            "Developer mode and the ChatGPT connection",
+            icon="settings",
+        )
 
         self.dev_checkbox = QCheckBox("Developer mode")
-        self.dev_checkbox.setStyleSheet(CHECKBOX_QSS)
+        self.dev_checkbox.setStyleSheet(_checkbox_qss())
+        self.dev_checkbox.setToolTip("Show the ChatGPT connection steps for this session")
         self.dev_checkbox.toggled.connect(self._on_dev_mode_toggled)
-        card_layout.addWidget(self.dev_checkbox)
+        self.dev_card.add_widget(self.dev_checkbox)
 
         self.staff_note = QLabel("Developer mode is available to administrators only.")
-        self.staff_note.setWordWrap(True)
-        self.staff_note.setStyleSheet(MUTED_QSS)
-        card_layout.addWidget(self.staff_note)
+        _apply_small(self.staff_note)
+        self.dev_card.add_widget(self.staff_note)
 
         self.enable_note = QLabel("Enable developer mode to view the ChatGPT connection steps.")
-        self.enable_note.setWordWrap(True)
-        self.enable_note.setStyleSheet(MUTED_QSS)
-        card_layout.addWidget(self.enable_note)
+        _apply_small(self.enable_note)
+        self.dev_card.add_widget(self.enable_note)
 
         # ChatGPT write off-switch — admin only, outside the developer-mode gate
         self.writes_checkbox = QCheckBox("Allow ChatGPT to change data")
-        self.writes_checkbox.setStyleSheet(CHECKBOX_QSS)
+        self.writes_checkbox.setStyleSheet(_checkbox_qss())
+        self.writes_checkbox.setToolTip("Allow the ChatGPT connection to change data after your confirmation")
         self.writes_checkbox.toggled.connect(self._on_writes_toggled)
-        card_layout.addWidget(self.writes_checkbox)
+        self.dev_card.add_widget(self.writes_checkbox)
 
-        self.writes_note = QLabel(
-            "ChatGPT asks you to confirm every change first. "
-            "Turn this off to make ChatGPT read-only again."
+        self.writes_note = QLabel(_WRITES_NOTE)
+        _apply_small(self.writes_note)
+        self.dev_card.add_widget(self.writes_note)
+
+        self.writes_banner = InlineBanner(
+            "error",
+            title="Setting could not be loaded",
+            message="",
         )
-        self.writes_note.setWordWrap(True)
-        self.writes_note.setStyleSheet(MUTED_QSS)
-        card_layout.addWidget(self.writes_note)
+        self.writes_banner.setVisible(False)
+        self.dev_card.add_widget(self.writes_banner)
 
         self.content = self._build_content()
-        card_layout.addWidget(self.content)
+        self.dev_card.add_widget(self.content)
+
+        layout.addWidget(self.dev_card)
 
         # About — built outside the developer-mode gate on purpose: the credit is
         # visible for every role without toggling Developer mode.
         self.about_widget = self._build_about()
-        card_layout.addWidget(self.about_widget)
-
-        layout.addWidget(card)
+        layout.addWidget(self.about_widget)
         layout.addStretch(1)
 
         self.scroll_area.setWidget(scroll_content)
@@ -227,6 +271,7 @@ class SettingsPage(QWidget):
             self.staff_note.setVisible(False)
         else:
             self.dev_checkbox.setEnabled(False)
+            self.dev_checkbox.setToolTip("Developer mode is available to administrators only.")
             self.enable_note.setVisible(False)
         self.writes_checkbox.setVisible(self.role == "admin")
         self.writes_note.setVisible(self.role == "admin")
@@ -247,8 +292,8 @@ class SettingsPage(QWidget):
     def _build_content(self) -> QWidget:
         content = QWidget()
         outer = QVBoxLayout(content)
-        outer.setContentsMargins(0, 4, 0, 0)
-        outer.setSpacing(14)
+        outer.setContentsMargins(0, S("space-1"), 0, 0)
+        outer.setSpacing(S("space-4"))
 
         # -----------------------------------------------------------------
         # Hosted server (primary path) — Cloudflare Worker, always on
@@ -256,7 +301,7 @@ class SettingsPage(QWidget):
         hosted = QWidget()
         hoc = QVBoxLayout(hosted)
         hoc.setContentsMargins(0, 0, 0, 0)
-        hoc.setSpacing(10)
+        hoc.setSpacing(S("space-2"))
 
         hoc.addWidget(self._section_title("Hosted server (always on, recommended)"))
         hoc.addWidget(self._hint(
@@ -289,7 +334,7 @@ class SettingsPage(QWidget):
         local = QWidget()
         loc = QVBoxLayout(local)
         loc.setContentsMargins(0, 0, 0, 0)
-        loc.setSpacing(10)
+        loc.setSpacing(S("space-2"))
 
         loc.addWidget(self._section_title("Run it locally (developer/testing only)"))
         loc.addWidget(self._hint(
@@ -299,17 +344,16 @@ class SettingsPage(QWidget):
 
         # MCP server status row
         status_row = QHBoxLayout()
-        status_row.setSpacing(8)
+        status_row.setSpacing(S("space-2"))
         status_lbl = QLabel("MCP server")
-        status_lbl.setStyleSheet("font-size: 12px; font-weight: 600; color: #cbd5e1;")
+        theme.apply_role(status_lbl, "h3")
         status_row.addWidget(status_lbl)
 
-        self.health_badge = QLabel("Checking…")
-        self.health_badge.setStyleSheet(get_badge_qss("neutral"))
+        self.health_badge = StatusPill("neutral", "Checking…")
+        self.health_badge.setToolTip("Health of the local MCP server on port 8000")
         status_row.addWidget(self.health_badge)
 
-        port_lbl = QLabel("port 8000")
-        port_lbl.setStyleSheet(MUTED_QSS)
+        port_lbl = _apply_small(QLabel("port 8000"), word_wrap=False)
         status_row.addWidget(port_lbl)
         status_row.addStretch(1)
         loc.addLayout(status_row)
@@ -320,7 +364,7 @@ class SettingsPage(QWidget):
         step1 = QWidget()
         s1 = QVBoxLayout(step1)
         s1.setContentsMargins(0, 0, 0, 0)
-        s1.setSpacing(8)
+        s1.setSpacing(S("space-2"))
         s1.addWidget(self._step_title("Step 1 · Start the MCP server"))
         repo_root = Path(__file__).resolve().parents[4]
         s1.addWidget(self._command_box(f'cd "{repo_root}"; & "mcp\\.venv\\Scripts\\python.exe" "mcp\\server.py"'))
@@ -331,15 +375,15 @@ class SettingsPage(QWidget):
         step2 = QWidget()
         s2 = QVBoxLayout(step2)
         s2.setContentsMargins(0, 0, 0, 0)
-        s2.setSpacing(8)
+        s2.setSpacing(S("space-2"))
         s2.addWidget(self._step_title("Step 2 · Expose it with a tunnel (optional)"))
         s2.addWidget(self._command_box("wrangler tunnel quick-start http://localhost:8000"))
         hint2 = self._hint(
             'A public https://… URL is printed in that terminal — leave it open while testing. Alternatives: '
-            '<span style="font-family: Consolas, monospace;">cloudflared tunnel --url http://localhost:8000</span> or '
-            '<span style="font-family: Consolas, monospace;">ngrok http 8000</span>.'
+            '<span style="font-family: %s;">cloudflared tunnel --url http://localhost:8000</span> or '
+            '<span style="font-family: %s;">ngrok http 8000</span>.' % (_mono_family() or "monospace", _mono_family() or "monospace")
         )
-        hint2.setTextFormat(Qt.RichText)
+        hint2.setTextFormat(Qt.TextFormat.RichText)
         s2.addWidget(hint2)
         s2.addLayout(self._composer_row())
         loc.addWidget(step2)
@@ -348,7 +392,7 @@ class SettingsPage(QWidget):
         step3 = QWidget()
         s3 = QVBoxLayout(step3)
         s3.setContentsMargins(0, 0, 0, 0)
-        s3.setSpacing(8)
+        s3.setSpacing(S("space-2"))
         s3.addWidget(self._step_title("Step 3 · Connect with the MCP Inspector"))
         s3.addWidget(self._command_box("npx @modelcontextprotocol/inspector"))
         s3.addWidget(self._hint(
@@ -365,51 +409,54 @@ class SettingsPage(QWidget):
             "you to confirm every change first, and every action is logged. Full guides: "
             "mcp-worker/README.md (hosted) and mcp/README.md (local)."
         )
-        footer.setWordWrap(True)
-        footer.setStyleSheet(MUTED_QSS)
+        _apply_small(footer)
         outer.addWidget(footer)
 
         return content
 
     def _build_about(self) -> QWidget:
         """About card — brand, creator credit, and links. Always visible, never role-gated."""
-        about = QWidget()
+        about = Card("About RÉSIVO", "Project credit and contact links", icon="info")
         about.setObjectName("aboutSection")
-        about_layout = QVBoxLayout(about)
-        about_layout.setContentsMargins(0, 4, 0, 0)
-        about_layout.setSpacing(10)
-
-        about_layout.addWidget(self._divider())
-        about_layout.addWidget(self._section_title("About RÉSIVO"))
+        about_layout = about.body
 
         about_row = QHBoxLayout()
-        about_row.setSpacing(16)
+        about_row.setSpacing(S("space-4"))
 
         about_logo = QLabel()
         about_logo.setObjectName("aboutLogo")
-        about_logo_px = QPixmap(str(Path(__file__).parent.parent / "assets" / "resivo_logo.png"))
-        about_logo.setPixmap(about_logo_px.scaled(96, 96, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-        about_logo.setAlignment(Qt.AlignTop)
+        logo_path = Path(__file__).resolve().parents[3] / "assets" / "brand" / "resivo_logo.png"
+        if not logo_path.is_file():
+            logo_path = Path(__file__).parent.parent / "assets" / "resivo_logo.png"
+        about_logo_px = QPixmap(str(logo_path))
+        about_logo.setPixmap(about_logo_px.scaled(
+            S("space-12") * 2, S("space-12") * 2,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        ))
+        about_logo.setAlignment(Qt.AlignmentFlag.AlignTop)
         about_row.addWidget(about_logo)
 
         about_text = QVBoxLayout()
-        about_text.setSpacing(6)
-        about_text.addWidget(self._step_title("Created by SEBAI ANES"))
+        about_text.setSpacing(S("space-1"))
+        created = QLabel("Created by SEBAI ANES")
+        theme.apply_role(created, "h3")
+        about_text.addWidget(created)
 
         # External links open in the OS browser/mail client (QLabel delegates to QDesktopServices.openUrl)
         github_lbl = QLabel(
-            '<a href="https://github.com/anesdevv" style="color: #818cf8;">GitHub: github.com/anesdevv</a>'
+            f'<a href="https://github.com/anesdevv" style="color: {C("teal-600")};">GitHub: github.com/anesdevv</a>'
         )
         github_lbl.setObjectName("aboutGithubLink")
-        github_lbl.setTextFormat(Qt.RichText)
+        github_lbl.setTextFormat(Qt.TextFormat.RichText)
         github_lbl.setOpenExternalLinks(True)
         about_text.addWidget(github_lbl)
 
         email_lbl = QLabel(
-            '<a href="mailto:anes4tlm@gmail.com" style="color: #818cf8;">Email: anes4tlm@gmail.com</a>'
+            f'<a href="mailto:anes4tlm@gmail.com" style="color: {C("teal-600")};">Email: anes4tlm@gmail.com</a>'
         )
         email_lbl.setObjectName("aboutEmailLink")
-        email_lbl.setTextFormat(Qt.RichText)
+        email_lbl.setTextFormat(Qt.TextFormat.RichText)
         email_lbl.setOpenExternalLinks(True)
         about_text.addWidget(email_lbl)
 
@@ -421,74 +468,70 @@ class SettingsPage(QWidget):
     def _divider(self) -> QFrame:
         div = QFrame()
         div.setFixedHeight(1)
-        div.setStyleSheet("background-color: #1c2234; border: none;")
+        div.setProperty("role", "separator")
+        div.setStyleSheet(f"background-color: {C('border')}; border: none;")
         return div
 
     def _section_title(self, text: str) -> QLabel:
-        lbl = QLabel(text)
-        lbl.setStyleSheet(SECTION_TITLE_QSS)
+        """Uppercase section overline (DESIGN.md §3)."""
+        lbl = QLabel(str(text).upper())
+        theme.apply_role(lbl, "overline")
         return lbl
 
     def _step_title(self, text: str) -> QLabel:
         lbl = QLabel(text)
-        lbl.setStyleSheet(STEP_TITLE_QSS)
+        theme.apply_role(lbl, "h3")
         return lbl
 
     def _hint(self, text: str) -> QLabel:
         lbl = QLabel(text)
-        lbl.setWordWrap(True)
-        lbl.setStyleSheet(MUTED_QSS)
+        _apply_small(lbl)
         return lbl
 
     def _command_box(self, command: str) -> QFrame:
         box = QFrame()
         box.setObjectName("commandBox")
-        box.setStyleSheet("""
-            QFrame#commandBox {
-                background-color: #0b0d14;
-                border: 1px solid #1c2234;
-                border-radius: 8px;
-                padding: 8px;
-            }
-        """)
+        box.setStyleSheet(_flat_box_qss("commandBox"))
         row = QHBoxLayout(box)
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(8)
+        row.setContentsMargins(S("space-3"), S("space-3"), S("space-3"), S("space-3"))
+        row.setSpacing(S("space-2"))
 
         cmd_lbl = QLabel(command)
-        cmd_lbl.setStyleSheet(MONO_QSS)
+        cmd_lbl.setStyleSheet(_mono_qss())
         cmd_lbl.setWordWrap(True)
-        cmd_lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        cmd_lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         row.addWidget(cmd_lbl, 1)
-        row.addWidget(self._copy_button(lambda: command))
+        row.addWidget(self._copy_button(lambda: command), 0, Qt.AlignmentFlag.AlignTop)
         return box
 
     def _numbered_line(self, number: str, text: str) -> QHBoxLayout:
         row = QHBoxLayout()
-        row.setSpacing(6)
+        row.setSpacing(S("space-2"))
         num_lbl = QLabel(number)
-        num_lbl.setStyleSheet(STEP_NUMBER_QSS)
-        num_lbl.setFixedWidth(16)
-        num_lbl.setAlignment(Qt.AlignTop)
+        theme.apply_role(num_lbl, "small")
+        num_lbl.setStyleSheet(f"color: {C('text-muted')};")
+        num_lbl.setFixedWidth(S("space-4"))
+        num_lbl.setAlignment(Qt.AlignmentFlag.AlignTop)
         row.addWidget(num_lbl)
         text_lbl = QLabel(text)
-        text_lbl.setStyleSheet(STEP_TEXT_QSS)
-        text_lbl.setWordWrap(True)
+        _apply_small(text_lbl)
         row.addWidget(text_lbl, 1)
         return row
 
     def _composer_row(self) -> QHBoxLayout:
         row = QHBoxLayout()
-        row.setContentsMargins(22, 0, 0, 0)
-        row.setSpacing(8)
+        row.setContentsMargins(S("space-4"), 0, 0, 0)
+        row.setSpacing(S("space-2"))
 
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("https://xxxx.trycloudflare.com")
+        self.url_input.setToolTip("Paste the public tunnel URL printed by wrangler / cloudflared / ngrok")
         self.url_input.textChanged.connect(self._on_url_input_changed)
         row.addWidget(self.url_input, 1)
 
         self.url_output = QLineEdit()
         self.url_output.setReadOnly(True)
+        self.url_output.setToolTip("Normalized MCP server URL to paste into ChatGPT")
         row.addWidget(self.url_output, 1)
 
         row.addWidget(self._copy_button(lambda: self.url_output.text()))
@@ -496,11 +539,12 @@ class SettingsPage(QWidget):
 
     def _static_url_row(self, url: str) -> QHBoxLayout:
         row = QHBoxLayout()
-        row.setContentsMargins(22, 0, 0, 0)
-        row.setSpacing(8)
+        row.setContentsMargins(S("space-4"), 0, 0, 0)
+        row.setSpacing(S("space-2"))
 
         url_label = QLineEdit(url)
         url_label.setReadOnly(True)
+        url_label.setToolTip("Hosted MCP server URL (already ends in /mcp)")
         row.addWidget(url_label, 1)
 
         row.addWidget(self._copy_button(lambda: url))
@@ -508,21 +552,21 @@ class SettingsPage(QWidget):
 
     def _token_row(self) -> QHBoxLayout:
         row = QHBoxLayout()
-        row.setContentsMargins(22, 0, 0, 0)
-        row.setSpacing(8)
+        row.setContentsMargins(S("space-4"), 0, 0, 0)
+        row.setSpacing(S("space-2"))
 
         self.token_label = QLabel("")
-        self.token_label.setStyleSheet(TOKEN_QSS)
-        self.token_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.token_label.setStyleSheet(_token_qss())
+        self.token_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         row.addWidget(self.token_label, 1)
 
-        self.reveal_btn = QPushButton("Reveal")
-        apply_button_style(self.reveal_btn, "secondary")
+        self.reveal_btn = Button.secondary("Reveal")
+        self.reveal_btn.setToolTip("Show or hide the MCP bearer token")
         self.reveal_btn.clicked.connect(self._on_reveal_clicked)
         row.addWidget(self.reveal_btn)
 
-        self.token_copy_btn = QPushButton("Copy")
-        apply_button_style(self.token_copy_btn, "secondary")
+        self.token_copy_btn = Button.secondary("Copy")
+        self.token_copy_btn.setToolTip("Copy the MCP bearer token to the clipboard")
         self.token_copy_btn.clicked.connect(self._on_copy_token)
         row.addWidget(self.token_copy_btn)
         return row
@@ -553,11 +597,14 @@ class SettingsPage(QWidget):
             ok = False
             writes_enabled = False
             self.writes_note.setText("Could not load this setting — check the connection.")
-        else:
-            self.writes_note.setText(
-                "ChatGPT asks you to confirm every change first. "
-                "Turn this off to make ChatGPT read-only again."
+            self.writes_banner.set_message(
+                "The ChatGPT writes switch stays disabled until this setting can be read again. "
+                "Check the connection, then reopen Settings to retry."
             )
+            self.writes_banner.setVisible(True)
+        else:
+            self.writes_note.setText(_WRITES_NOTE)
+            self.writes_banner.setVisible(False)
         self._writes_loading = True
         try:
             self.writes_checkbox.blockSignals(True)
@@ -566,6 +613,10 @@ class SettingsPage(QWidget):
             self.writes_checkbox.blockSignals(False)
             self._writes_loading = False
         self.writes_checkbox.setEnabled(ok)
+        self.writes_checkbox.setToolTip(
+            "Disabled until the setting can be loaded" if not ok else
+            "Allow the ChatGPT connection to change data after your confirmation"
+        )
 
     def _on_writes_toggled(self, checked: bool):
         if self._writes_loading or self.role != "admin":
@@ -577,7 +628,11 @@ class SettingsPage(QWidget):
             self.writes_checkbox.blockSignals(True)
             self.writes_checkbox.setChecked(not checked)
             self.writes_checkbox.blockSignals(False)
+            self.writes_banner.set_message(f"The switch was reverted: {exc}")
+            self.writes_banner.setVisible(True)
             QMessageBox.warning(self, "Settings", f"Could not save the setting: {exc}")
+        else:
+            self.writes_banner.setVisible(False)
 
     def _on_dev_mode_toggled(self, checked: bool):
         if self.role != "admin":
@@ -587,11 +642,9 @@ class SettingsPage(QWidget):
 
     def _on_health_changed(self, up: bool):
         if up:
-            self.health_badge.setText("Running")
-            self.health_badge.setStyleSheet(get_badge_qss("success"))
+            self.health_badge.set_kind("ok", "Running")
         else:
-            self.health_badge.setText("Offline")
-            self.health_badge.setStyleSheet(get_badge_qss("danger"))
+            self.health_badge.set_kind("danger", "Offline")
 
     def _on_url_input_changed(self, text: str):
         self.url_output.setText(build_mcp_url(text))
@@ -614,10 +667,10 @@ class SettingsPage(QWidget):
         self.reveal_btn.setVisible(has_token)
         self.token_copy_btn.setVisible(has_token)
         if not has_token:
-            self.token_label.setStyleSheet(MUTED_QSS)
+            self.token_label.setStyleSheet(_hint_qss())
             self.token_label.setText("Token not found — check mcp/.env.")
             return
-        self.token_label.setStyleSheet(TOKEN_QSS)
+        self.token_label.setStyleSheet(_token_qss())
         self._update_token_display()
 
     def _update_token_display(self):
@@ -628,20 +681,21 @@ class SettingsPage(QWidget):
             self.token_label.setText("•" * 12 + self._token[-4:])
             self.reveal_btn.setText("Reveal")
 
-    def _copy_button(self, text_getter) -> QPushButton:
-        btn = QPushButton("Copy")
-        apply_button_style(btn, "secondary")
+    def _copy_button(self, text_getter):
+        """Small secondary Copy button bound to a text getter."""
+        btn = Button("Copy", "secondary", size="sm")
+        btn.setToolTip("Copy to the clipboard")
         btn.clicked.connect(lambda: self._copy_to_clipboard(btn, text_getter()))
         return btn
 
-    def _copy_to_clipboard(self, btn: QPushButton, text: str):
+    def _copy_to_clipboard(self, btn, text: str):
         if not text:
             return
         QGuiApplication.clipboard().setText(text)
-        btn.setText("Copied ✓")
+        btn.setText("Copied")
         QTimer.singleShot(1500, lambda: self._restore_button_text(btn, "Copy"))
 
-    def _restore_button_text(self, btn: QPushButton, text: str):
+    def _restore_button_text(self, btn, text: str):
         try:
             btn.setText(text)
         except RuntimeError:

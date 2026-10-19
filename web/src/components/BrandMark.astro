@@ -1,0 +1,39 @@
+---
+/**
+ * RÉSIVO — brand mark / stacked logo (docs/DESIGN.md §1, §6).
+ * Serves the pre-generated assets from /public/brand with intrinsic
+ * width/height attributes so there is no layout shift. Colours:
+ * `tone="brand"` on light surfaces, `tone="white"` on navy or the brand gradient.
+ */
+interface Props {
+  variant?: 'mark' | 'logo';
+  tone?: 'brand' | 'white';
+  /** Rendered height in px; width follows the intrinsic aspect ratio. */
+  size?: number;
+  class?: string;
+  /** Defaults to '' (decorative, as in a header next to the wordmark). */
+  alt?: string;
+}
+
+const { variant = 'mark', tone = 'brand', size, class: className = '', alt = '' } = Astro.props;
+
+const INTRINSIC = {
+  mark: { w: 645, h: 599 },
+  logo: { w: 1029, h: 892 },
+} as const;
+
+const { w, h } = INTRINSIC[variant];
+const height = size ?? (variant === 'mark' ? 40 : 96);
+const width = Math.round((w / h) * height);
+const src = `/brand/resivo_${variant}${tone === 'white' ? '_white' : ''}.png`;
+---
+
+<img
+  src={src}
+  width={width}
+  height={height}
+  alt={alt}
+  class={className}
+  loading="eager"
+  decoding="async"
+/>

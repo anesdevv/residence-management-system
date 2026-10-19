@@ -1,0 +1,46 @@
+---
+/**
+ * RÉSIVO — Avatar.
+ * Initials on a tinted square; the tint is picked deterministically from a
+ * fixed small palette of token colours, so the same name always looks the same.
+ * Decorative by design (`aria-hidden`) — the surrounding markup owns the name.
+ */
+interface Props {
+  name: string;
+  size?: 32 | 40 | 48;
+  class?: string;
+}
+
+const { name, size = 40, class: className = '' } = Astro.props;
+
+const TINTS = [
+  'bg-teal-600/10 text-teal-600',
+  'bg-navy-800/10 text-navy-800',
+  'bg-ok-bg text-ok',
+  'bg-review-bg text-review',
+  'bg-progress-bg text-progress',
+  'bg-pending-bg text-pending',
+];
+
+let hash = 0;
+for (let i = 0; i < name.length; i += 1) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+const tint = TINTS[hash % TINTS.length];
+
+const parts = name.trim().split(/\s+/).filter(Boolean);
+const initials =
+  parts.length > 1
+    ? `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`
+    : (parts[0] ?? 'R').slice(0, 2);
+const text = initials.toUpperCase();
+
+const SIZES: Record<number, { box: string; text: string }> = {
+  32: { box: 'h-8 w-8', text: 'text-small' },
+  40: { box: 'h-10 w-10', text: 'text-body' },
+  48: { box: 'h-12 w-12', text: 'text-h3' },
+};
+const spec = SIZES[size] ?? SIZES[40];
+---
+
+<span
+  class={`inline-flex shrink-0 select-none items-center justify-center rounded-input font-semibold ${spec.box} ${spec.text} ${tint} ${className}`}
+  aria-hidden="true">{text}</span>

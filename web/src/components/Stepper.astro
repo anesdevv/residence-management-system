@@ -1,0 +1,67 @@
+---
+/**
+ * RÉSIVO — Stepper (docs/DESIGN.md §6).
+ * Horizontal on desktop, vertical on mobile. Numbered dots + connectors:
+ * done = ok tokens, current = teal-600, todo = line/muted.
+ * `aria-current="step"` marks the current one.
+ *
+ * The maintenance lifecycle is: Pending › Under review › In progress › Resolved
+ *   <Stepper steps={['Pending', 'Under review', 'In progress', 'Resolved']} current={2} />
+ */
+import Icon from './Icon.astro';
+
+type StepState = 'done' | 'current' | 'todo';
+
+interface Props {
+  steps: string[];
+  current: number;
+  /** Optional per-step override; defaults to done/current/todo around `current`. */
+  states?: StepState[];
+  class?: string;
+}
+
+const { steps, current, states, class: className = '' } = Astro.props;
+
+const items = steps.map((label, index) => {
+  const explicit = states?.[index];
+  const state: StepState = explicit ?? (index < current ? 'done' : index === current ? 'current' : 'todo');
+  return { label, state, isLast: index === steps.length - 1 };
+});
+
+const DOT: Record<StepState, string> = {
+  done: 'border-ok-line bg-ok-bg text-ok',
+  current: 'border-teal-600 bg-teal-600 text-surface',
+  todo: 'border-line bg-subtle text-muted',
+};
+
+const LABEL: Record<StepState, string> = {
+  done: 'text-ink-2',
+  current: 'font-semibold text-ink',
+  todo: 'text-muted',
+};
+---
+
+<ol class={`flex flex-col sm:flex-row sm:items-start ${className}`}>
+  {
+    items.map((step, index) => (
+      <li
+        class="flex flex-1 items-stretch gap-3 pb-6 last:pb-0 sm:flex-col sm:gap-2 sm:pb-0"
+        aria-current={step.state === 'current' ? 'step' : undefined}
+      >
+        <div class="flex shrink-0 flex-col items-center self-stretch sm:w-full sm:flex-row">
+          <span
+            class={`flex h-6 w-6 shrink-0 items-center justify-center rounded-pill border text-small font-semibold tnum ${DOT[step.state]}`}
+          >
+            {step.state === 'done' ? <Icon name="check" size={13} /> : index + 1}
+          </span>
+          {!step.isLast && (
+            <span
+              class={`mt-1 w-px flex-1 rounded-pill sm:mt-0 sm:ml-2 sm:h-px sm:w-full ${step.state === 'done' ? 'bg-ok-line' : 'bg-line'}`}
+            />
+          )}
+        </div>
+        <span class={`text-small ${LABEL[step.state]}`}>{step.label}</span>
+      </li>
+    ))
+  }
+</ol>

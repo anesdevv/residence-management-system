@@ -1,0 +1,46 @@
+---
+/**
+ * RÉSIVO — Toast (docs/DESIGN.md §6).
+ * Server-renderable: `[data-toast]` is picked up by the tiny script at the end
+ * of Layout.astro, which wires the dismiss button and removes the element
+ * after 4s. The `.toast` class keeps it `position: fixed` bottom-right on
+ * desktop / above the mobile tab bar, so it never shifts the layout.
+ *
+ * `static` renders the same card inline (used by the style guide only).
+ */
+import Icon from './Icon.astro';
+
+interface Props {
+  kind?: string; // 'info' | 'success' | 'warning' | 'error'
+  message: string;
+  icon?: string;
+  static?: boolean;
+  class?: string;
+}
+
+const { kind = 'info', message, icon, static: isStatic = false, class: className = '' } = Astro.props;
+
+const KINDS: Record<string, { icon: string; iconClass: string }> = {
+  info: { icon: 'info', iconClass: 'text-teal-600' },
+  success: { icon: 'check-circle', iconClass: 'text-ok' },
+  warning: { icon: 'alert-triangle', iconClass: 'text-pending' },
+  error: { icon: 'x-circle', iconClass: 'text-danger' },
+};
+
+const spec = KINDS[kind] ?? KINDS.info;
+const box = isStatic ? `card flex items-start gap-3 p-3 sm:p-4 shadow-e2 ${className}` : `toast ${className}`;
+---
+
+<div class={box} data-toast={isStatic ? undefined : ''} role="status">
+  <Icon name={icon ?? spec.icon} size={18} class={`mt-0.5 shrink-0 ${spec.iconClass}`} />
+  <p class="min-w-0 flex-1 text-body text-ink">{message}</p>
+  <button
+    type="button"
+    class="btn btn-ghost btn-icon shrink-0"
+    aria-label="Dismiss notification"
+    title="Dismiss"
+    data-toast-dismiss
+  >
+    <Icon name="x" size={16} />
+  </button>
+</div>

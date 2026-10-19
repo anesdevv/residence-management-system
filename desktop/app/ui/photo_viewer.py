@@ -1,11 +1,32 @@
+"""RÉSIVO — maintenance photo viewer dialog and async fetch worker (visual only).
+
+docs/DESIGN.md §4/§6: ``PhotoViewerDialog`` is a modal **navy-900 scrim** at
+~92 % opacity over a transparent stage that centres the photo, with a floating
+light toolbar (fit · zoom out · percentage · zoom in · close) built from
+token-styled ``IconButton``s/``Button`` whose tooltips name the keyboard
+shortcut (``F`` fit, ``+``/``−`` zoom, ``Esc`` close, arrow keys pan when
+zoomed) and an ``e2`` drop shadow.
+
+Behaviour is frozen
+-------------------
+``ClickablePhotoLabel`` still emits ``clicked`` on a left press only.
+``PhotoFetchWorker(url, parent=None)`` still downloads one URL on a background
+thread with a 15 s timeout and the ``loaded`` / ``failed`` / ``stop()`` /
+``_stopped`` surface. The dialog keeps ``full_pixmap``, ``image_url``,
+``scale_factor``, ``is_fit_mode``, ``worker``, ``MIN_SCALE`` (0.25),
+``MAX_SCALE`` (4.0), ``ZOOM_STEP``, ``zoom_in`` / ``zoom_out`` /
+``set_fit_mode`` / ``set_scale`` / ``_apply_fit`` / ``_render_pixmap`` /
+``resizeEvent`` / ``_on_full_loaded`` / ``_on_full_failed`` /
+``_cleanup_worker`` / ``closeEvent`` / ``reject`` / ``accept``, the checkable
+``btn_fit``, the ``zoom_label`` contract (``Fit`` in fit mode, ``25 %`` /
+``400 %`` exactly at the limits) and the ``status_label`` size line
+(``200 × 150``).
 """
-RÉSIVO — Maintenance Photo Viewer Dialog & Async Fetch Worker
-High-contrast obsidian dialog with pan/zoom controls (fit / − / +, 25%–400%)
-and async background loading to keep the UI thread fully responsive.
-"""
+
 from __future__ import annotations
 
 import urllib.request
+
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
@@ -13,36 +34,37 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
 try:
-    from .icons import get_icon, get_pixmap
-    from .theme import apply_button_style
-except (ImportError, ValueError):
-    try:
-        from ..icons import get_icon, get_pixmap
-        from ..theme import apply_button_style
-    except (ImportError, ValueError):
-        from desktop.app.ui.icons import get_icon, get_pixmap
-        from desktop.app.ui.theme import apply_button_style
+    from . import theme
+    from .components import Button, IconButton
+    from .icons import get_pixmap
+    from .theme import C, S, apply_elevation, qcolor
+except (ImportError, ValueError):  # pragma: no cover - direct module execution
+    from desktop.app.ui import theme
+    from desktop.app.ui.components import Button, IconButton
+    from desktop.app.ui.icons import get_pixmap
+    from desktop.app.ui.theme import C, S, apply_elevation, qcolor
 
 
 class ClickablePhotoLabel(QLabel):
     """QLabel that emits a clicked signal on left mouse button press."""
+
     clicked = Signal()
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit()
         super().mousePressEvent(event)
 
 
 class PhotoFetchWorker(QThread):
     """Fetches image bytes in a background thread to prevent UI freezing."""
+
     loaded = Signal(bytes)
     failed = Signal(str)
 
@@ -76,66 +98,52 @@ class PhotoFetchWorker(QThread):
                 self.failed.emit(str(exc))
 
 
-PHOTO_VIEWER_QSS = """
-QDialog#photoViewerDialog {
-    background-color: #0a0c13;
-    color: #f8fafc;
-}
+# Alpha of the modal scrim over the console behind the viewer (navy-900 ~92 %).
+_SCRIM_ALPHA = 235
 
-QFrame#viewerCard {
-    background-color: #10131d;
-    border: 1px solid #1c2234;
-    border-radius: 12px;
-}
 
-QScrollArea#scrollArea {
-    background-color: #07090e;
-    border: 1px solid #1a2030;
-    border-radius: 8px;
-}
+def _rgba(token: str, alpha: int) -> str:
+    """``rgba(r, g, b, a)`` string for a colour token at a 0–255 alpha."""
+    color = qcolor(token)
+    return f"rgba({color.red()}, {color.green()}, {color.blue()}, {alpha})"
 
-QLabel {
-    background: transparent;
-    border: none;
-    color: #f8fafc;
-}
 
-QScrollBar:vertical {
-    border: none;
-    background: #090a0f;
-    width: 8px;
-    margin: 0px;
-}
-QScrollBar::handle:vertical {
-    background: #252c40;
-    min-height: 24px;
-    border-radius: 4px;
-}
-QScrollBar::handle:vertical:hover {
-    background: #3b4666;
-}
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-    height: 0px;
-}
+def _viewer_qss() -> str:
+    """Viewer QSS — every value interpolated from theme tokens (no raw hex)."""
+    return f"""
+QDialog#photoViewerDialog {{
+    background-color: {_rgba("navy-900", _SCRIM_ALPHA)};
+}}
+QFrame#viewerToolbar {{
+    background-color: {C("surface")};
+    border: 1px solid {C("border")};
+    border-radius: {C("radius-card")};
+}}
+QLabel#viewerTitle {{ color: {C("text-on-dark")}; }}
+QLabel#viewerStatus {{ color: {C("text-on-dark-muted")}; }}
+QLabel#imageLabel {{ color: {C("text-on-dark-muted")}; }}
+QLabel#zoomLabel {{
+    color: {C("text-primary")};
+    font-size: {C("fs-small")};
+    font-weight: {C("fw-semibold")};
+}}
+QLabel#panHint {{ color: {C("text-muted")}; font-size: {C("fs-small")}; }}
+QScrollBar:vertical, QScrollBar:horizontal {{ background: transparent; }}
+QScrollBar::handle:vertical {{
+    background-color: {_rgba("text-on-dark", 90)};
+    border-radius: {C("radius-bar")};
+    min-height: {S("space-6")}px;
+}}
+QScrollBar::handle:horizontal {{
+    background-color: {_rgba("text-on-dark", 90)};
+    border-radius: {C("radius-bar")};
+    min-width: {S("space-6")}px;
+}}
+""".strip()
 
-QScrollBar:horizontal {
-    border: none;
-    background: #090a0f;
-    height: 8px;
-    margin: 0px;
-}
-QScrollBar::handle:horizontal {
-    background: #252c40;
-    min-width: 24px;
-    border-radius: 4px;
-}
-QScrollBar::handle:horizontal:hover {
-    background: #3b4666;
-}
-QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
-    width: 0px;
-}
-"""
+
+# Kept public: the dialog style sheet was a module-level constant before.
+PHOTO_VIEWER_QSS = _viewer_qss()
 
 
 class PhotoViewerDialog(QDialog):
@@ -144,6 +152,8 @@ class PhotoViewerDialog(QDialog):
     MIN_SCALE = 0.25
     MAX_SCALE = 4.0
     ZOOM_STEP = 0.25
+    # Arrow-key pan step (tokens only).
+    PAN_STEP = S("space-8")
 
     def __init__(
         self,
@@ -153,9 +163,11 @@ class PhotoViewerDialog(QDialog):
     ):
         super().__init__(parent)
         self.setObjectName("photoViewerDialog")
-        self.setWindowTitle("Maintenance Fault Photo — RÉSIVO")
+        self.setWindowTitle("Maintenance fault photo — RÉSIVO")
         self.setMinimumSize(640, 480)
         self.resize(880, 640)
+        # Translucent top level so the 92 % navy scrim really dims the console.
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setStyleSheet(PHOTO_VIEWER_QSS)
 
         self.full_pixmap: QPixmap | None = initial_pixmap
@@ -164,109 +176,102 @@ class PhotoViewerDialog(QDialog):
         self.is_fit_mode: bool = True
         self.worker: PhotoFetchWorker | None = None
 
-        # Outer Layout
         root_layout = QVBoxLayout(self)
-        root_layout.setContentsMargins(16, 16, 16, 16)
-        root_layout.setSpacing(12)
+        root_layout.setContentsMargins(S("space-4"), S("space-4"), S("space-4"), S("space-4"))
+        root_layout.setSpacing(S("space-3"))
 
-        # Card Container
-        card = QFrame()
-        card.setObjectName("viewerCard")
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(16, 16, 16, 16)
-        card_layout.setSpacing(12)
-
-        # Top Bar: Title & Controls
-        top_bar = QHBoxLayout()
-        top_bar.setSpacing(12)
-
+        # ------------------------------------------------------------- header
+        header = QHBoxLayout()
+        header.setSpacing(S("space-2"))
         title_icon = QLabel()
-        title_icon.setPixmap(get_pixmap("maintenance", size=18, color="#38bdf8"))
-        top_bar.addWidget(title_icon)
+        title_icon.setPixmap(get_pixmap("image", S("size-icon"), C("text-on-dark")))
+        header.addWidget(title_icon, 0, Qt.AlignmentFlag.AlignTop)
 
-        title_vbox = QVBoxLayout()
-        title_vbox.setSpacing(2)
-        title_lbl = QLabel("Ticket Fault Evidence")
-        title_lbl.setStyleSheet("font-size: 15px; font-weight: 800; color: #f8fafc;")
+        title_column = QVBoxLayout()
+        title_column.setSpacing(2)
+        title_lbl = QLabel("Ticket fault evidence")
+        theme.apply_role(title_lbl, "h3")
+        title_lbl.setObjectName("viewerTitle")
         self.status_label = QLabel("Loading photo…")
-        self.status_label.setObjectName("statusLabel")
-        self.status_label.setStyleSheet("font-size: 11px; color: #64748b;")
-        title_vbox.addWidget(title_lbl)
-        title_vbox.addWidget(self.status_label)
-        top_bar.addLayout(title_vbox)
+        self.status_label.setObjectName("viewerStatus")
+        theme.apply_role(self.status_label, "small")
+        theme.enable_tabular(self.status_label)
+        title_column.addWidget(title_lbl)
+        title_column.addWidget(self.status_label)
+        header.addLayout(title_column, 1)
+        root_layout.addLayout(header)
 
-        top_bar.addStretch(1)
-
-        # Zoom Controls
-        zoom_bar = QHBoxLayout()
-        zoom_bar.setSpacing(6)
-
-        self.btn_fit = QPushButton("Fit")
-        self.btn_fit.setObjectName("zoomFitBtn")
-        self.btn_fit.setCheckable(True)
-        self.btn_fit.setChecked(True)
-        apply_button_style(self.btn_fit, "secondary")
-        self.btn_fit.clicked.connect(self.set_fit_mode)
-        zoom_bar.addWidget(self.btn_fit)
-
-        self.btn_zoom_out = QPushButton("−")
-        self.btn_zoom_out.setObjectName("zoomOutBtn")
-        self.btn_zoom_out.setToolTip("Zoom Out (min 25%)")
-        self.btn_zoom_out.setFixedWidth(36)
-        apply_button_style(self.btn_zoom_out, "secondary")
-        self.btn_zoom_out.clicked.connect(self.zoom_out)
-        zoom_bar.addWidget(self.btn_zoom_out)
-
-        self.zoom_label = QLabel("Fit (100%)")
-        self.zoom_label.setObjectName("zoomLabel")
-        self.zoom_label.setAlignment(Qt.AlignCenter)
-        self.zoom_label.setStyleSheet("color: #cbd5e1; font-size: 12px; font-weight: 700; min-width: 75px;")
-        zoom_bar.addWidget(self.zoom_label)
-
-        self.btn_zoom_in = QPushButton("+")
-        self.btn_zoom_in.setObjectName("zoomInBtn")
-        self.btn_zoom_in.setToolTip("Zoom In (max 400%)")
-        self.btn_zoom_in.setFixedWidth(36)
-        apply_button_style(self.btn_zoom_in, "secondary")
-        self.btn_zoom_in.clicked.connect(self.zoom_in)
-        zoom_bar.addWidget(self.btn_zoom_in)
-
-        zoom_bar.addSpacing(10)
-
-        self.btn_close = QPushButton("Close")
-        self.btn_close.setObjectName("closeBtn")
-        apply_button_style(self.btn_close, "secondary")
-        self.btn_close.clicked.connect(self.accept)
-        zoom_bar.addWidget(self.btn_close)
-
-        top_bar.addLayout(zoom_bar)
-        card_layout.addLayout(top_bar)
-
-        # Scroll Area for Image View
+        # ------------------------------------------------- transparent stage
         self.scroll_area = QScrollArea()
-        self.scroll_area.setObjectName("scrollArea")
-        self.scroll_area.setAlignment(Qt.AlignCenter)
+        self.scroll_area.setObjectName("photoStage")
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.scroll_area.setWidgetResizable(False)
 
-        # Container inside ScrollArea
         self.image_container = QWidget()
+        self.image_container.setObjectName("imageContainer")
         self.image_container.setStyleSheet("background: transparent;")
         container_layout = QVBoxLayout(self.image_container)
         container_layout.setContentsMargins(0, 0, 0, 0)
-        container_layout.setAlignment(Qt.AlignCenter)
+        container_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.image_label = QLabel()
         self.image_label.setObjectName("imageLabel")
-        self.image_label.setAlignment(Qt.AlignCenter)
+        self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_label.setStyleSheet("background: transparent;")
         container_layout.addWidget(self.image_label)
 
         self.scroll_area.setWidget(self.image_container)
-        card_layout.addWidget(self.scroll_area, 1)
+        root_layout.addWidget(self.scroll_area, 1)
 
-        root_layout.addWidget(card)
+        # ------------------------------------------------- floating toolbar
+        toolbar_row = QHBoxLayout()
+        toolbar_row.addStretch(1)
+        toolbar = QFrame()
+        toolbar.setObjectName("viewerToolbar")
+        apply_elevation(toolbar, 2)
+        tools = QHBoxLayout(toolbar)
+        tools.setContentsMargins(S("space-3"), S("space-2"), S("space-3"), S("space-2"))
+        tools.setSpacing(S("space-2"))
 
-        # Initial Render
+        self.btn_fit = Button("Fit", "filter", icon="maximize", size="sm")
+        self.btn_fit.setCheckable(True)
+        self.btn_fit.setChecked(True)
+        self.btn_fit.setToolTip("Fit to window (F)")
+        self.btn_fit.clicked.connect(self.set_fit_mode)
+        tools.addWidget(self.btn_fit)
+
+        self.btn_zoom_out = IconButton("zoom-out", "Zoom out (−)")
+        self.btn_zoom_out.clicked.connect(self.zoom_out)
+        tools.addWidget(self.btn_zoom_out)
+
+        self.zoom_label = QLabel("—")
+        self.zoom_label.setObjectName("zoomLabel")
+        self.zoom_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.zoom_label.setMinimumWidth(S("space-8") * 2)
+        self.zoom_label.setToolTip("Current zoom level — the arrow keys pan the photo when it is zoomed in")
+        theme.enable_tabular(self.zoom_label)
+        tools.addWidget(self.zoom_label)
+
+        self.btn_zoom_in = IconButton("zoom-in", "Zoom in (+)")
+        self.btn_zoom_in.clicked.connect(self.zoom_in)
+        tools.addWidget(self.btn_zoom_in)
+
+        pan_hint = QLabel("Arrow keys pan")
+        pan_hint.setObjectName("panHint")
+        theme.apply_role(pan_hint, "small")
+        pan_hint.setToolTip("Use the arrow keys to pan the photo when it is zoomed in")
+        tools.addWidget(pan_hint)
+
+        self.btn_close = IconButton("x", "Close (Esc)")
+        self.btn_close.clicked.connect(self.accept)
+        tools.addWidget(self.btn_close)
+
+        toolbar_row.addWidget(toolbar, 0)
+        toolbar_row.addStretch(1)
+        root_layout.addLayout(toolbar_row)
+
+        # --------------------------------------------------- initial render
         if self.full_pixmap and not self.full_pixmap.isNull():
             self.status_label.setText(f"{self.full_pixmap.width()} × {self.full_pixmap.height()} px (preview)")
             self._apply_fit()
@@ -283,6 +288,7 @@ class PhotoViewerDialog(QDialog):
             self.worker.failed.connect(self._on_full_failed)
             self.worker.start()
 
+    # ---------------------------------------------------------------- zoom
     def set_fit_mode(self):
         self.is_fit_mode = True
         self.btn_fit.setChecked(True)
@@ -322,7 +328,7 @@ class PhotoViewerDialog(QDialog):
         self._render_pixmap()
 
         pct = int(round(self.scale_factor * 100))
-        self.zoom_label.setText(f"Fit ({pct}%)")
+        self.zoom_label.setText(f"Fit · {pct}%")
 
     def _render_pixmap(self):
         if not self.full_pixmap or self.full_pixmap.isNull():
@@ -334,17 +340,50 @@ class PhotoViewerDialog(QDialog):
         target_h = max(1, int(round(self.full_pixmap.height() * self.scale_factor)))
 
         scaled = self.full_pixmap.scaled(
-            target_w, target_h, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            target_w, target_h, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
         )
         self.image_label.setPixmap(scaled)
         self.image_label.resize(scaled.size())
         self.image_container.resize(scaled.size())
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event):  # noqa: N802 - Qt API
         super().resizeEvent(event)
         if self.is_fit_mode:
             self._apply_fit()
 
+    # ------------------------------------------------------------ keyboard
+    def keyPressEvent(self, event):  # noqa: N802 - Qt API
+        """``F`` fit, ``+``/``−`` zoom, arrow keys pan; ``Esc`` keeps rejecting."""
+        key = event.key()
+        if key == Qt.Key.Key_F:
+            self.set_fit_mode()
+        elif key in (Qt.Key.Key_Plus, Qt.Key.Key_Equal):
+            self.zoom_in()
+        elif key in (Qt.Key.Key_Minus, Qt.Key.Key_Underscore):
+            self.zoom_out()
+        elif key in (Qt.Key.Key_Left, Qt.Key.Key_Right, Qt.Key.Key_Up, Qt.Key.Key_Down) and self._pan(key):
+            pass
+        else:
+            super().keyPressEvent(event)
+            return
+        event.accept()
+
+    def _pan(self, key) -> bool:
+        """Scroll by ``PAN_STEP`` when the zoomed photo overflows its viewport."""
+        horizontal = self.scroll_area.horizontalScrollBar()
+        vertical = self.scroll_area.verticalScrollBar()
+        step = self.PAN_STEP
+        if key in (Qt.Key.Key_Left, Qt.Key.Key_Right):
+            if horizontal.maximum() <= 0:
+                return False
+            horizontal.setValue(horizontal.value() + (-step if key == Qt.Key.Key_Left else step))
+            return True
+        if vertical.maximum() <= 0:
+            return False
+        vertical.setValue(vertical.value() + (-step if key == Qt.Key.Key_Up else step))
+        return True
+
+    # --------------------------------------------------------- async fetch
     def _on_full_loaded(self, data: bytes):
         pix = QPixmap()
         if pix.loadFromData(data) and not pix.isNull():
@@ -376,7 +415,7 @@ class PhotoViewerDialog(QDialog):
             self.worker.stop()
             self.worker = None
 
-    def closeEvent(self, event):
+    def closeEvent(self, event):  # noqa: N802 - Qt API
         self._cleanup_worker()
         super().closeEvent(event)
 

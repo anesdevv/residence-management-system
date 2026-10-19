@@ -214,21 +214,37 @@ The repository includes pre-built student rosters formatted for the **Official L
 
 ---
 
+---
+
+## 🎨 Design System & Visual Redesign
+
+The RÉSIVO platform features an institutional, high-trust design system documented in detail in [`docs/DESIGN.md`](docs/DESIGN.md).
+
+- **Brand Foundations**: Strict logo geometry, brand gradient (`navy-800` → `teal-600` → `green-500`) reserved exclusively for hero surfaces and resident pass.
+- **Color Palette & Semantic Tokens**: WCAG AA-compliant tokens across desktop (`desktop/app/ui/theme.py`) and web (`web/src/styles/tokens.css`).
+- **Zero-Emoji Policy**: Pure authored Lucide-style SVG icons (`Icon.astro` and `icons.py`).
+- **Typography**: Local self-hosted OFL fonts (**Outfit** for headings and digital pass, **Inter** with tabular numerics `tnum` for data tables and IDs).
+- **Universal Component Language**: Identical component contracts on desktop and web (`StatusPill`, `Stepper`, `Card`, `PageHeader`, `InlineBanner`, `EmptyState`, `KeyValue`).
+- **Visual Evidence**: Offscreen grab screenshots preserved in [`docs/screenshots/desktop/`](docs/screenshots/desktop/) and [`docs/screenshots/web/`](docs/screenshots/web/).
+
+---
+
 ## 🧪 Automated Testing & Verification
 
 The codebase includes automated test suites across both desktop and web clients:
 
 ### Desktop Test Suite (PySide6 / Pytest)
 ```bash
-# Run all 19 desktop unit and integration tests
-desktop\.venv\Scripts\pytest.exe desktop\tests -v
+# Run all 23 desktop unit and integration tests (in offscreen mode)
+$env:QT_QPA_PLATFORM="offscreen"; desktop\.venv\Scripts\pytest.exe desktop\tests -v
 ```
-**Test Coverage Includes:**
+**Test Coverage Includes (23 passed):**
 - `test_deletion_and_filters.py`: Status filtering, mandatory rejection reasons, live sync filter preservation, deletion restrictions, self-deletion defense.
-- `test_flexible_window.py`: Minimum window size enforcement, stretch behavior, responsive geometry.
+- `test_flexible_window.py`: Minimum window size enforcement, splitter min/max widths, responsive geometry.
 - `test_photo_viewer.py`: Async photo loading worker, zoom scaling, dialog termination.
 - `test_sign_out.py`: Background worker shutdown, session invalidation, window transitions.
 - `test_importer.py`: Official roster CSV/Excel parsing and validation.
+- `test_client.py`: Client connection and authentication tests.
 
 ### Web Test Suite (Vitest)
 ```bash

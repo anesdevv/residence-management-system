@@ -1,6 +1,11 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Icon from '../../components/Icon.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import StatusPill from '../../components/StatusPill.astro';
+import KeyValue from '../../components/KeyValue.astro';
+import InlineBanner from '../../components/InlineBanner.astro';
+import BrandMark from '../../components/BrandMark.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
 export const prerender = false;
@@ -16,197 +21,149 @@ const { data: s } = await supabase
 
 const error = Astro.url.searchParams.get('error');
 const updated = Astro.url.searchParams.get('updated');
+
+const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'danger' : 'pending';
 ---
 
 <Layout title="Resident Profile — RÉSIVO" activeNav="profile">
-  <!-- Header -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-line/60 pb-5">
-    <div>
-      <div class="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-ink">
-        <span class="inline-block h-2 w-2 rounded-full bg-amber"></span>
-        <span>Cité Universitaire Tlemcen</span>
-      </div>
-      <h1 class="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-navy">
-        Resident Profile &amp; Credentials
-      </h1>
-      <p class="mt-1 text-xs sm:text-sm text-muted">
-        Review your official academic enrollment details and keep your contact info up to date.
-      </p>
-    </div>
-
-    <a
-      href="/dashboard"
-      class="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink bg-surface border border-line px-3.5 py-2 rounded-xl shadow-xs transition self-start sm:self-auto min-h-[40px]"
-    >
-      <Icon name="arrow-left" size={14} />
-      <span>Back to Dashboard</span>
-    </a>
-  </div>
+  <PageHeader
+    title="Resident profile & credentials"
+    overline="Cité Universitaire Tlemcen"
+    subtitle="Review your official academic enrollment details and keep your contact info up to date."
+  >
+    <Fragment slot="actions">
+      <a href="/dashboard" class="btn btn-secondary">
+        <Icon name="arrow-left" size={16} />
+        <span>Back to dashboard</span>
+      </a>
+    </Fragment>
+  </PageHeader>
 
   <!-- Feedback Alerts -->
   {updated && (
-    <div class="mt-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:p-5 text-emerald-950">
-      <Icon name="check-circle" size={22} class="text-emerald-700 shrink-0 mt-0.5" />
-      <div class="text-xs sm:text-sm">
-        <span class="font-bold">Contact Details Updated!</span>
-        <p class="mt-0.5 text-emerald-800 leading-relaxed">
-          Your mobile phone number and email address have been saved successfully to the residence registry.
-        </p>
-      </div>
-    </div>
+    <InlineBanner kind="success" title="Contact details updated!" class="mb-6">
+      Your mobile phone number and email address have been saved successfully to the residence registry.
+    </InlineBanner>
   )}
 
   {error && (
-    <div class="mt-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 sm:p-5 text-red-950">
-      <Icon name="alert-circle" size={22} class="text-red-700 shrink-0 mt-0.5" />
-      <div class="text-xs sm:text-sm">
-        <span class="font-bold">Update Failed</span>
-        <p class="mt-0.5 text-red-800 leading-relaxed">{error}</p>
-      </div>
-    </div>
+    <InlineBanner kind="error" title="Update failed" class="mb-6">
+      {error}
+    </InlineBanner>
   )}
 
-  <div class="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-    <!-- Official Academic Resident ID Card (Left / Top) -->
-    <div class="lg:col-span-7 space-y-6">
-      <div class="rounded-2xl border border-line/70 bg-surface p-6 sm:p-8 shadow-sm">
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start mb-8">
+    <!-- Official Academic Resident File (Left / Top) -->
+    <div class="flex flex-col gap-6 lg:col-span-7">
+      <section class="card p-4 sm:p-6">
         <!-- Card Top Bar -->
-        <div class="flex items-start justify-between border-b border-line/50 pb-5 mb-6">
+        <div class="flex items-start justify-between border-b border-line pb-4 mb-6">
           <div class="flex items-center gap-3.5">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-navy text-white shadow-xs">
-              <Icon name="crest" size={24} />
-            </div>
+            <BrandMark variant="mark" size={40} />
             <div>
-              <h2 class="font-display text-base sm:text-lg font-bold text-navy">Academic Resident Pass</h2>
-              <span class="text-xs text-muted font-medium">Direction des Œuvres Universitaires • Cité Universitaire Tlemcen</span>
+              <h2 class="card-title">Academic resident file</h2>
+              <p class="text-small font-normal text-muted">Direction des Œuvres Universitaires · DOU Tlemcen</p>
             </div>
           </div>
 
-          <span class="rounded-full bg-canvas border border-line/70 px-3.5 py-1 text-xs font-semibold text-navy uppercase tracking-wider">
-            {s?.status ?? 'Pending'}
-          </span>
+          <StatusPill kind={statusKind} />
         </div>
 
         <!-- Student Data Grid -->
-        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-sm">
-          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60">
-            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">Student Card ID</dt>
-            <dd class="mt-1 font-display font-bold text-navy text-base tnum">{s?.card_id}</dd>
-          </div>
+        <KeyValue
+          columns={2}
+          rows={[
+            { label: 'Student card ID', value: s?.card_id || '—', tnum: true, mono: true },
+            { label: 'Full name', value: `${s?.first_name || ''} ${s?.last_name || ''}`.trim() || '—' },
+            { label: 'Date of birth', value: s?.birth_date || '—', tnum: true },
+            { label: 'Gender', value: s?.gender === 'female' ? 'Female' : 'Male' },
+            { label: 'Wilaya of origin', value: s?.wilaya || '—' },
+            { label: 'Study level', value: s?.study_level || '—' },
+            { label: 'University', value: s?.university || '—' },
+            { label: 'Faculty', value: s?.faculty || '—' },
+          ]}
+        />
+      </section>
 
-          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60">
-            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">Full Name</dt>
-            <dd class="mt-1 font-display font-bold text-navy text-base">{s?.first_name} {s?.last_name}</dd>
-          </div>
-
-          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60 sm:col-span-2">
-            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">University</dt>
-            <dd class="mt-1 font-semibold text-ink">{s?.university}</dd>
-          </div>
-
-          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60">
-            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">Faculty / Department</dt>
-            <dd class="mt-1 font-semibold text-ink">{s?.faculty}</dd>
-          </div>
-
-          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60">
-            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">Study Level</dt>
-            <dd class="mt-1 font-semibold text-ink">{s?.study_level}</dd>
-          </div>
-
-          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60">
-            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">Gender</dt>
-            <dd class="mt-1 font-semibold text-ink capitalize">{s?.gender}</dd>
-          </div>
-
-          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60">
-            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">Date of Birth</dt>
-            <dd class="mt-1 font-semibold text-ink tnum">{s?.birth_date}</dd>
-          </div>
-
-          <div class="rounded-xl bg-canvas/60 p-3.5 border border-line/60 sm:col-span-2">
-            <dt class="text-[11px] font-bold text-muted uppercase tracking-wider">Wilaya of Origin</dt>
-            <dd class="mt-1 font-semibold text-ink">{s?.wilaya}</dd>
-          </div>
-        </dl>
-
-        <div class="mt-6 pt-4 border-t border-line/50 flex items-start gap-2.5 text-xs text-muted">
-          <Icon name="shield" size={16} class="text-amber-ink shrink-0 mt-0.5" />
-          <p class="leading-relaxed">
-            Academic credentials are tied to the official university matriculation register. To request modifications, present supporting documents at the campus housing registry.
-          </p>
-        </div>
-      </div>
+      <!-- Institutional Notice -->
+      <InlineBanner kind="info" title="Academic record changes" icon="info">
+        Matriculation number, faculty, birth date, and civil records are synchronized with university admission registers. To request formal corrections, present your official student card at the housing administration bureau.
+      </InlineBanner>
     </div>
 
-    <!-- Editable Contact Form & Bureau Info (Right / Bottom) -->
-    <div class="lg:col-span-5 space-y-6">
-      <div class="rounded-2xl border border-line/70 bg-surface p-6 sm:p-7 shadow-sm">
-        <div class="border-b border-line/50 pb-4 mb-5">
-          <h2 class="font-display text-base font-bold text-navy">Contact Information</h2>
-          <p class="text-xs text-muted mt-0.5">Used for urgent SMS notifications and maintenance updates.</p>
-        </div>
+    <!-- Contact Info Form (Right / Bottom) -->
+    <div class="flex flex-col gap-6 lg:col-span-5">
+      <section class="card p-4 sm:p-6">
+        <header class="border-b border-line pb-4 mb-6">
+          <div class="flex items-center gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input bg-subtle text-teal-600">
+              <Icon name="mail" size={20} />
+            </span>
+            <div>
+              <h2 class="card-title">Contact coordinates</h2>
+              <p class="text-small font-normal text-muted mt-0.5">Editable residence communication channels</p>
+            </div>
+          </div>
+        </header>
 
-        <form method="POST" action="/api/profile" class="space-y-4">
-          <div>
-            <label for="phone" class="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
-              Mobile Phone <span class="text-red-500" aria-hidden="true">*</span>
+        <form method="POST" action="/api/profile" class="flex flex-col gap-4">
+          <div class="flex flex-col gap-2">
+            <label class="label" for="phone">
+              Mobile phone number <span class="text-danger" aria-hidden="true">*</span>
             </label>
             <input
+              class="input tnum"
               type="tel"
               name="phone"
               id="phone"
               required
+              autocomplete="tel"
               value={s?.phone ?? ''}
-              placeholder="05 / 06 / 07..."
-              class="w-full min-h-[44px] rounded-xl border border-line bg-canvas/40 px-3.5 py-2.5 text-sm text-ink placeholder:text-muted/60 focus:border-navy focus:bg-surface focus:ring-2 focus:ring-navy/15 focus:outline-none transition tnum"
+              placeholder="e.g. 0555123456"
             />
+            <p class="field-hint">Used for urgent facility and security notices.</p>
           </div>
 
-          <div>
-            <label for="email" class="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
-              Email Address
+          <div class="flex flex-col gap-2">
+            <label class="label" for="email">
+              Contact email address <span class="text-danger" aria-hidden="true">*</span>
             </label>
             <input
+              class="input"
               type="email"
               name="email"
               id="email"
+              required
+              autocomplete="email"
               value={s?.email ?? ''}
-              placeholder="student@univ-tlemcen.dz"
-              class="w-full min-h-[44px] rounded-xl border border-line bg-canvas/40 px-3.5 py-2.5 text-sm text-ink placeholder:text-muted/60 focus:border-navy focus:bg-surface focus:ring-2 focus:ring-navy/15 focus:outline-none transition"
+              placeholder="e.g. resident@univ-tlemcen.dz"
             />
+            <p class="field-hint">Housing allocations and maintenance triage updates will be delivered here.</p>
           </div>
 
           <div class="pt-2">
-            <button
-              type="submit"
-              class="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-navy-2 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-navy focus:ring-offset-2 transition cursor-pointer"
-            >
-              <Icon name="check-circle" size={16} />
-              <span>Save Contact Updates</span>
+            <button class="btn btn-primary w-full min-h-[44px]" type="submit">
+              <Icon name="check-circle" size={18} />
+              <span>Update contact details</span>
             </button>
           </div>
         </form>
-      </div>
+      </section>
 
-      <!-- Campus Bureau Info Card -->
-      <div class="rounded-2xl border border-line/70 bg-surface p-6 shadow-sm space-y-3">
-        <h3 class="font-display text-xs font-bold uppercase tracking-wider text-navy">Housing Administration Bureau</h3>
-        <ul class="space-y-2.5 text-xs text-muted">
-          <li class="flex items-center gap-2.5">
-            <Icon name="building" size={15} class="text-amber-ink shrink-0" />
-            <span>Administration Bloc A, Ground Floor Desk</span>
-          </li>
-          <li class="flex items-center gap-2.5">
-            <Icon name="clock" size={15} class="text-amber-ink shrink-0" />
-            <span>In-person hours: Sun–Thu 08:30–16:30</span>
-          </li>
-          <li class="flex items-center gap-2.5">
-            <Icon name="phone" size={15} class="text-amber-ink shrink-0" />
-            <span>Direct Desk: +213 (0) 43 21 00 00</span>
-          </li>
-        </ul>
-      </div>
+      <!-- Account Security Card -->
+      <section class="card p-4 sm:p-6">
+        <div class="flex items-start gap-3">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input bg-subtle text-teal-600">
+            <Icon name="lock" size={20} />
+          </span>
+          <div class="flex flex-col gap-1">
+            <h2 class="card-title">Account security</h2>
+            <p class="text-small font-normal text-muted">
+              Your account is authenticated via your matriculation card ID. If you suspect unauthorized access, contact the Cité Universitaire IT desk immediately.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </Layout>

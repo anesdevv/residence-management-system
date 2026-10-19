@@ -7,6 +7,8 @@ from desktop.app.ui.pages.pending import PendingPage
 from desktop.app.ui.pages.room_changes import RoomChangesPage
 from desktop.app.ui.pages.maintenance import MaintenancePage
 from desktop.app.ui.pages.staff_accounts import StaffAccountsPage
+from desktop.app.ui.pages.rooms import RoomsPage
+from desktop.app.ui.components import RoomOccupancyBar
 
 
 @pytest.fixture(scope="session")
@@ -280,4 +282,31 @@ def test_live_sync_preserves_pending_page_filters(qapp):
     page.btn_pending.click()
     assert page.filter_mode == "pending"
     assert page.table.rowCount() == 2
+
+
+def test_rooms_occupancy_column_no_duplicate_text(qapp):
+    mock_client = MagicMock()
+    rooms_data = [
+        {"id": "r1", "block": "A", "floor": 0, "number": "02", "capacity": 3, "gender": "male"},
+        {"id": "r2", "block": "A", "floor": 1, "number": "101", "capacity": 2, "gender": "male"},
+    ]
+    mock_client.table.return_value.select.return_value.order.return_value.order.return_value.execute.return_value.data = rooms_data
+
+    with patch("desktop.app.ui.pages.rooms.room_occupancy", return_value={"r1": 1, "r2": 2}):
+        page = RoomsPage(mock_client)
+
+    assert page.table.rowCount() == 2
+    # Crucial UI fix verification:
+    # Column 5 (Occupied) QTableWidgetItem must have empty display text so Qt's default
+    # delegate does NOT draw an overlapping duplicate number behind the RoomOccupancyBar widget.
+    for row, expected_text in enumerate(["1 / 3", "2 / 2"]):
+        item = page.table.item(row, 5)
+        assert item is not None
+        assert item.text() == "", f"Row {row} item text must be empty to avoid double-painting, got {item.text()!r}"
+
+        holder = page.table.cellWidget(row, 5)
+        assert holder is not None
+        bar = holder.findChild(RoomOccupancyBar)
+        assert bar is not None
+        assert bar._value.text() == expected_text
 

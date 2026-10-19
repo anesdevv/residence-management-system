@@ -1,6 +1,12 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Icon from '../../components/Icon.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import StatusPill from '../../components/StatusPill.astro';
+import Stepper from '../../components/Stepper.astro';
+import InlineBanner from '../../components/InlineBanner.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import StatCard from '../../components/StatCard.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
 export const prerender = false;
@@ -38,132 +44,85 @@ const error = Astro.url.searchParams.get('error');
 const created = Astro.url.searchParams.get('created');
 
 const categories = [
-  { id: 'plumbing', label: 'Plumbing', icon: 'plumbing', desc: 'Leaks, faucets, drainage, pipes' },
-  { id: 'electrical', label: 'Electrical', icon: 'electrical', desc: 'Lighting, power outlets, switches' },
-  { id: 'furniture', label: 'Furniture', icon: 'furniture', desc: 'Beds, desks, doors, locks, closets' },
-  { id: 'internet', label: 'Campus Wi-Fi', icon: 'internet', desc: 'Connectivity & ethernet jacks' },
+  { id: 'plumbing', label: 'Plumbing', icon: 'droplet', desc: 'Leaks, faucets, drainage, pipes' },
+  { id: 'electrical', label: 'Electrical', icon: 'zap', desc: 'Lighting, power outlets, switches' },
+  { id: 'furniture', label: 'Furniture', icon: 'hammer', desc: 'Beds, desks, doors, locks, closets' },
+  { id: 'internet', label: 'Campus Wi-Fi', icon: 'wifi', desc: 'Connectivity & ethernet jacks' },
   { id: 'other', label: 'General / Heating', icon: 'wrench', desc: 'Radiators, windows, structural' },
 ];
+
+const STAGES = ['Submitted', 'Triaged', 'In progress', 'Resolved'];
+const getStageIndex = (status: string) => {
+  if (status === 'resolved') return 3;
+  if (status === 'in_progress') return 2;
+  return 0; // pending / submitted
+};
 ---
 
-<Layout title="Maintenance Requests — RÉSIVO" activeNav="maintenance">
-  <!-- Header -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-line/60 pb-5">
-    <div>
-      <div class="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-ink">
-        <span class="inline-block h-2 w-2 rounded-full bg-amber"></span>
-        <span>Cité Universitaire Tlemcen</span>
-      </div>
-      <h1 class="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-navy">
-        Facility Maintenance
-      </h1>
-      <p class="mt-1 text-xs sm:text-sm text-muted">
-        Submit fault tickets for your assigned room and monitor technician triage in real time.
-      </p>
-    </div>
-
-    <a
-      href="/dashboard"
-      class="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink bg-surface border border-line px-3.5 py-2 rounded-xl shadow-xs transition self-start sm:self-auto min-h-[40px]"
-    >
-      <Icon name="arrow-left" size={14} />
-      <span>Back to Dashboard</span>
-    </a>
-  </div>
+<Layout title="Facility Maintenance — RÉSIVO" activeNav="maintenance">
+  <PageHeader
+    title="Facility maintenance"
+    overline="Cité Universitaire Tlemcen"
+    subtitle="Submit fault tickets for your assigned room and monitor technician triage in real time."
+  >
+    <Fragment slot="actions">
+      <a href="/dashboard" class="btn btn-secondary">
+        <Icon name="arrow-left" size={16} />
+        <span>Back to dashboard</span>
+      </a>
+    </Fragment>
+  </PageHeader>
 
   <!-- Emergency Assistance Banner -->
-  <div class="mt-5 rounded-2xl border border-amber/30 bg-amber/10 p-4 sm:p-5 flex items-start sm:items-center justify-between gap-3 text-ink">
-    <div class="flex items-start gap-3">
-      <div class="rounded-xl bg-amber/20 p-2 text-amber-ink shrink-0 mt-0.5 sm:mt-0">
-        <Icon name="alert-triangle" size={18} />
-      </div>
-      <div>
-        <span class="block text-xs sm:text-sm font-bold text-navy">Urgent Hazard or Major Water Leak?</span>
-        <span class="block text-xs text-muted mt-0.5">Contact campus security desk immediately for on-duty technician emergency response.</span>
-      </div>
+  <InlineBanner kind="warning" title="Urgent hazard or major water leak?" icon="alert-triangle" class="mb-6">
+    Contact the campus security desk immediately for on-duty technician emergency response.
+    <div slot="actions">
+      <a href="tel:+21343210000" class="btn btn-sm btn-secondary">
+        <Icon name="phone" size={14} />
+        <span>24/7 Hotline</span>
+      </a>
     </div>
-    <a
-      href="tel:+21343210000"
-      class="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-amber-ink bg-surface border border-amber/40 hover:bg-amber/15 px-3 py-1.5 rounded-lg whitespace-nowrap transition shadow-xs"
-    >
-      <Icon name="phone" size={14} />
-      <span>24/7 Hotline</span>
-    </a>
-  </div>
+  </InlineBanner>
 
-  <!-- Status / Metric Strip -->
-  <div class="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-    <div class="rounded-xl border border-line/70 bg-surface p-3.5 shadow-xs">
-      <span class="text-[11px] font-bold uppercase tracking-wider text-muted/70 block">Total Tickets</span>
-      <span class="font-display text-xl sm:text-2xl font-extrabold text-navy mt-1 block tnum">{totalCount}</span>
-    </div>
-    <div class="rounded-xl border border-line/70 bg-surface p-3.5 shadow-xs">
-      <span class="text-[11px] font-bold uppercase tracking-wider text-amber-ink block">Pending Triage</span>
-      <span class="font-display text-xl sm:text-2xl font-extrabold text-amber-ink mt-1 block tnum">{pendingCount}</span>
-    </div>
-    <div class="rounded-xl border border-line/70 bg-surface p-3.5 shadow-xs">
-      <span class="text-[11px] font-bold uppercase tracking-wider text-blue-700 block">In Progress</span>
-      <span class="font-display text-xl sm:text-2xl font-extrabold text-blue-700 mt-1 block tnum">{inProgressCount}</span>
-    </div>
-    <div class="rounded-xl border border-line/70 bg-surface p-3.5 shadow-xs">
-      <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-700 block">Resolved</span>
-      <span class="font-display text-xl sm:text-2xl font-extrabold text-emerald-700 mt-1 block tnum">{resolvedCount}</span>
-    </div>
+  <!-- Metric Strip -->
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-6">
+    <StatCard label="Total tickets" value={totalCount} icon="wrench" accent="navy" />
+    <StatCard label="Pending triage" value={pendingCount} icon="clock" accent="gold" />
+    <StatCard label="In progress" value={inProgressCount} icon="hammer" accent="teal" />
+    <StatCard label="Resolved" value={resolvedCount} icon="check-circle" accent="teal" />
   </div>
 
   <!-- Feedback Alerts -->
   {created && (
-    <div class="mt-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:p-5 text-emerald-950">
-      <Icon name="check-circle" size={22} class="text-emerald-700 shrink-0 mt-0.5" />
-      <div class="text-xs sm:text-sm">
-        <span class="font-bold">Maintenance Ticket Dispatched!</span>
-        <p class="mt-0.5 text-emerald-800 leading-relaxed">
-          Your report has been queued for housing facility technicians. You can follow progress in your ticket history below.
-        </p>
-      </div>
-    </div>
+    <InlineBanner kind="success" title="Maintenance ticket dispatched!" class="mb-6">
+      Your report has been queued for housing facility technicians. You can follow progress in your ticket history below.
+    </InlineBanner>
   )}
 
   {error && (
-    <div class="mt-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 sm:p-5 text-red-950">
-      <Icon name="alert-circle" size={22} class="text-red-700 shrink-0 mt-0.5" />
-      <div class="text-xs sm:text-sm">
-        <span class="font-bold">Unable to Submit Report</span>
-        <p class="mt-0.5 text-red-800 leading-relaxed">{error}</p>
-      </div>
-    </div>
+    <InlineBanner kind="error" title="Unable to submit report" class="mb-6">
+      {error}
+    </InlineBanner>
   )}
 
   <!-- Locked State or Submission Form -->
   {!isActive ? (
-    <div class="mt-6 rounded-2xl border border-amber/30 bg-amber/5 p-6 sm:p-8 text-ink shadow-sm">
-      <div class="flex items-start gap-4">
-        <div class="rounded-xl bg-amber/20 p-3 text-amber-ink shrink-0">
-          <Icon name="lock" size={24} />
-        </div>
-        <div>
-          <h2 class="font-display text-base sm:text-lg font-bold text-navy">Maintenance Reporting Locked</h2>
-          <p class="mt-1.5 text-xs sm:text-sm text-muted leading-relaxed max-w-2xl">
-            Your account status is <span class="font-bold uppercase tracking-wider text-amber-ink">{student?.status ?? 'pending'}</span>.
-            Maintenance requests are strictly tied to an officially assigned dormitory room. Once your housing registration is verified and approved, you will be able to file repair tickets here.
-          </p>
-        </div>
-      </div>
-    </div>
+    <InlineBanner kind="warning" title="Maintenance reporting locked" icon="lock" class="mb-8">
+      Your account status is <strong class="uppercase">{student?.status ?? 'pending'}</strong>.
+      Maintenance requests are strictly tied to an officially assigned dormitory room. Once your housing registration is verified and approved, you will be able to file repair tickets here.
+    </InlineBanner>
   ) : (
-    <div class="mt-6 rounded-2xl border border-line/70 bg-surface p-6 sm:p-8 shadow-sm">
-      <div class="border-b border-line/50 pb-4 mb-6">
-        <h2 class="font-display text-base sm:text-lg font-bold text-navy">Submit a New Maintenance Ticket</h2>
-        <p class="text-xs text-muted mt-0.5">Select the affected category and provide specific details for rapid dispatch.</p>
-      </div>
+    <section class="card p-4 sm:p-6 mb-8">
+      <header class="border-b border-line pb-4 mb-6">
+        <h2 class="card-title">Submit a new maintenance ticket</h2>
+        <p class="text-small font-normal text-muted mt-1">Select the affected category and provide specific details for rapid dispatch.</p>
+      </header>
 
-      <form method="POST" action="/api/maintenance" enctype="multipart/form-data" class="space-y-6">
+      <form method="POST" action="/api/maintenance" enctype="multipart/form-data" class="flex flex-col gap-6">
         <!-- Category Radio Picker -->
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-navy mb-2.5">
-            Fault Category <span class="text-red-500">*</span>
-          </label>
-          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <fieldset class="flex flex-col gap-2 border-0 p-0 m-0">
+          <legend class="label">Fault category <span class="text-danger" aria-hidden="true">*</span></legend>
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {categories.map((c, i) => (
               <label class="cursor-pointer">
                 <input
@@ -174,21 +133,19 @@ const categories = [
                   checked={i === 0}
                   class="peer sr-only"
                 />
-                <div class="flex flex-col items-center justify-center p-3.5 text-center rounded-xl border border-line/70 bg-canvas/40 hover:bg-canvas peer-checked:border-navy peer-checked:bg-navy/5 peer-checked:text-navy transition h-full min-h-[90px]">
-                  <Icon name={c.icon} size={22} class="text-muted peer-checked:text-navy" />
-                  <span class="mt-2 text-xs font-semibold">{c.label}</span>
-                  <span class="mt-0.5 text-[10px] text-muted leading-tight hidden sm:block">{c.desc}</span>
+                <div class="flex flex-col items-center justify-center p-3.5 text-center rounded-card border border-line bg-subtle hover:bg-canvas peer-checked:border-teal-600 peer-checked:bg-teal-600/5 peer-checked:text-teal-600 transition min-h-[96px]">
+                  <Icon name={c.icon} size={22} class="text-muted peer-checked:text-teal-600" />
+                  <span class="mt-2 text-small font-semibold text-ink">{c.label}</span>
+                  <span class="mt-0.5 text-small text-muted hidden sm:block">{c.desc}</span>
                 </div>
               </label>
             ))}
           </div>
-        </div>
+        </fieldset>
 
         <!-- Description -->
-        <div>
-          <label for="description" class="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
-            Detailed Issue Description <span class="text-red-500">*</span>
-          </label>
+        <div class="flex flex-col gap-2">
+          <label for="description" class="label">Detailed issue description <span class="text-danger" aria-hidden="true">*</span></label>
           <textarea
             name="description"
             id="description"
@@ -196,76 +153,79 @@ const categories = [
             minlength="5"
             rows="3"
             placeholder="Explain the problem clearly (e.g. Bathroom sink faucet leaking steadily, desk drawer handle loose, radiator valve stuck closed)..."
-            class="w-full rounded-xl border border-line bg-canvas/40 p-3.5 text-sm text-ink placeholder:text-muted/60 focus:border-navy focus:bg-surface focus:ring-2 focus:ring-navy/15 focus:outline-none transition min-h-[96px]"
+            class="input min-h-[96px]"
           ></textarea>
         </div>
 
-        <!-- Photo Upload Box -->
-        <div>
-          <label for="photo" class="block text-xs font-bold uppercase tracking-wider text-navy mb-1.5">
-            Attach Fault Photo (Recommended)
-          </label>
-          <div class="flex items-center gap-3">
+        <!-- Photo Upload Box with Preview -->
+        <div class="flex flex-col gap-2">
+          <label for="photo" class="label">Attach fault photo (optional)</label>
+          <div class="rounded-card border border-dashed border-line bg-subtle p-4 sm:p-5 flex flex-col items-center justify-center gap-2">
+            <Icon name="image" size={24} class="text-muted" />
             <input
               type="file"
               name="photo"
               id="photo"
               accept="image/*"
-              class="block w-full text-xs text-muted file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-navy file:text-white hover:file:bg-navy-2 cursor-pointer min-h-[44px]"
+              class="block w-full text-small text-muted file:mr-4 file:py-2 file:px-4 file:rounded-input file:border-0 file:text-small file:font-semibold file:bg-navy-800 file:text-surface hover:file:bg-navy-700 cursor-pointer min-h-[44px]"
             />
+            <p class="field-hint text-center">Clear photos help technicians bring the correct tools and replacement parts. PNG or JPEG up to 4MB.</p>
+            <div id="photoPreview" class="hidden mt-2">
+              <img id="previewImg" src="" alt="Photo preview" class="max-h-48 rounded-card border border-line object-cover" />
+            </div>
           </div>
-          <span class="mt-1.5 block text-[11px] text-muted">Clear photos help technicians bring the correct tools and replacement parts. PNG or JPEG up to 10MB.</span>
         </div>
 
         <!-- Submit Button -->
-        <div class="pt-2">
-          <button
-            type="submit"
-            class="min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-7 py-3 text-sm font-semibold text-white shadow-sm hover:bg-navy-2 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-navy focus:ring-offset-2 transition cursor-pointer"
-          >
+        <div>
+          <button type="submit" class="btn btn-primary min-h-[44px]">
             <Icon name="check-circle" size={18} />
-            <span>Submit Maintenance Ticket</span>
+            <span>Submit maintenance ticket</span>
           </button>
         </div>
       </form>
-    </div>
+    </section>
   )}
 
   <!-- History Section with Filter Controls -->
-  <div class="mt-10 sm:mt-12 space-y-4">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+  <div class="flex flex-col gap-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line pb-4">
       <div>
-        <h2 class="font-display text-lg font-bold text-navy">Work Orders &amp; History</h2>
-        <span class="text-xs text-muted">({totalCount} tickets filed)</span>
+        <h2 class="font-display text-h2 text-ink">Work orders &amp; history</h2>
+        <p class="text-small text-muted mt-0.5">{totalCount} ticket{totalCount === 1 ? '' : 's'} filed</p>
       </div>
 
       <!-- Filter Chips -->
-      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0" id="filterChips">
+      <div class="flex items-center gap-1.5 overflow-x-auto" id="filterChips" role="group" aria-label="Filter tickets by status">
         <button
           type="button"
           data-filter="all"
-          class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-semibold bg-navy text-white transition cursor-pointer min-h-[32px] shadow-xs"
+          aria-pressed="true"
+          class="filter-chip btn btn-sm btn-primary min-h-[40px]"
         >
           All ({totalCount})
         </button>
         <button
           type="button"
           data-filter="pending"
-          class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-canvas border border-line text-muted hover:text-ink transition cursor-pointer min-h-[32px]"
+          aria-pressed="false"
+          class="filter-chip btn btn-sm btn-secondary min-h-[40px]"
         >
           Pending ({pendingCount})
         </button>
         <button
           type="button"
           data-filter="in_progress"
-          class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-canvas border border-line text-muted hover:text-ink transition cursor-pointer min-h-[32px]"
+          aria-pressed="false"
+          class="filter-chip btn btn-sm btn-secondary min-h-[40px]"
         >
-          In Progress ({inProgressCount})
+          In progress ({inProgressCount})
         </button>
         <button
           type="button"
           data-filter="resolved"
-          class="filter-chip px-3.5 py-1.5 rounded-full text-xs font-medium bg-canvas border border-line text-muted hover:text-ink transition cursor-pointer min-h-[32px]"
+          aria-pressed="false"
+          class="filter-chip btn btn-sm btn-secondary min-h-[40px]"
         >
           Resolved ({resolvedCount})
         </button>
@@ -273,107 +233,103 @@ const categories = [
     </div>
 
     {withUrls.length === 0 ? (
-      <div class="rounded-2xl border border-dashed border-line bg-surface p-8 sm:p-10 text-center text-muted">
-        <Icon name="wrench" size={36} class="mx-auto text-muted/60 mb-2" />
-        <p class="font-display text-sm font-semibold text-navy">No maintenance reports filed</p>
-        <p class="text-xs text-muted mt-1 max-w-sm mx-auto">When you report faults in your dormitory quarters, tickets and progress will be tracked here.</p>
-      </div>
+      <EmptyState
+        icon="wrench"
+        title="No maintenance reports filed"
+        message="When you report faults in your dormitory quarters, tickets and progress will be tracked here."
+      />
     ) : (
-      <div class="space-y-4" id="ticketList">
-        {withUrls.map((r) => (
-          <article
-            class="ticket-card rounded-2xl border border-line/70 bg-surface p-5 sm:p-6 shadow-sm"
-            data-status={r.status}
-          >
-            <!-- Card Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line/50 pb-4">
-              <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-canvas text-navy border border-line/60 shrink-0">
-                  <Icon name={r.category === 'plumbing' ? 'plumbing' : r.category === 'electrical' ? 'electrical' : r.category === 'furniture' ? 'furniture' : r.category === 'internet' ? 'internet' : 'wrench'} size={20} />
-                </div>
-                <div>
-                  <div class="flex items-center gap-2">
-                    <span class="font-display font-bold text-sm sm:text-base text-navy capitalize">{r.category}</span>
-                    <span class="text-xs font-medium text-muted/80">#MN-{r.id.slice(0, 8)}</span>
+      <div class="flex flex-col gap-4" id="ticketList">
+        {withUrls.map((r) => {
+          const catSpec = categories.find(c => c.id === r.category) ?? { label: r.category, icon: 'wrench' };
+          const stageIdx = getStageIndex(r.status);
+          const statusKind = r.status === 'resolved' ? 'ok' : r.status === 'in_progress' ? 'progress' : 'pending';
+          return (
+            <article class="ticket-card card p-4 sm:p-6" data-status={r.status}>
+              <!-- Card Header -->
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line pb-4">
+                <div class="flex items-center gap-3">
+                  <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input bg-subtle text-teal-600">
+                    <Icon name={catSpec.icon} size={20} />
+                  </span>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-display text-h3 text-ink">{catSpec.label}</h3>
+                      <span class="text-small font-normal text-muted tnum">#MN-{r.id.slice(0, 8)}</span>
+                    </div>
+                    <p class="text-small font-normal text-muted mt-0.5">
+                      Submitted {new Date(r.created_at).toLocaleDateString()} at {new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
                   </div>
-                  <span class="text-[11px] text-muted block mt-0.5">
-                    Submitted {new Date(r.created_at).toLocaleDateString()} at {new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+                </div>
+
+                <div>
+                  <StatusPill kind={statusKind} />
                 </div>
               </div>
 
-              <div>
-                {r.status === 'resolved' ? (
-                  <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3.5 py-1 text-xs font-semibold text-emerald-800">
-                    <Icon name="check-circle" size={14} class="text-emerald-600" /> Resolved
-                  </span>
-                ) : r.status === 'in_progress' ? (
-                  <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3.5 py-1 text-xs font-semibold text-blue-800">
-                    <Icon name="clock" size={14} class="text-blue-600" /> In Progress
-                  </span>
-                ) : (
-                  <span class="inline-flex items-center gap-1.5 rounded-full bg-amber/10 border border-amber/30 px-3.5 py-1 text-xs font-semibold text-amber-ink">
-                    <Icon name="clock" size={14} class="text-amber-ink" /> Pending Triage
-                  </span>
-                )}
+              <!-- 4-Step Stepper -->
+              <div class="mt-4 pt-2">
+                <Stepper steps={STAGES} current={stageIdx} />
               </div>
-            </div>
 
-            <!-- 4-Step Progress Tracker -->
-            <div class="mt-4 pt-1">
-              <div class="grid grid-cols-4 gap-2 text-center text-[11px]">
-                <div class="flex flex-col items-center">
-                  <div class="h-2 w-full rounded-full bg-navy mb-1.5"></div>
-                  <span class="font-semibold text-navy">Submitted</span>
-                </div>
-                <div class="flex flex-col items-center">
-                  <div class={`h-2 w-full rounded-full mb-1.5 ${r.status !== 'pending' ? 'bg-navy' : 'bg-line/60'}`}></div>
-                  <span class={`font-semibold ${r.status !== 'pending' ? 'text-navy' : 'text-muted'}`}>Triaged</span>
-                </div>
-                <div class="flex flex-col items-center">
-                  <div class={`h-2 w-full rounded-full mb-1.5 ${r.status === 'in_progress' || r.status === 'resolved' ? 'bg-navy' : 'bg-line/60'}`}></div>
-                  <span class={`font-semibold ${r.status === 'in_progress' || r.status === 'resolved' ? 'text-navy' : 'text-muted'}`}>Dispatched</span>
-                </div>
-                <div class="flex flex-col items-center">
-                  <div class={`h-2 w-full rounded-full mb-1.5 ${r.status === 'resolved' ? 'bg-emerald-500' : 'bg-line/60'}`}></div>
-                  <span class={`font-semibold ${r.status === 'resolved' ? 'text-emerald-700' : 'text-muted'}`}>Resolved</span>
-                </div>
-              </div>
-            </div>
+              <!-- Description Body -->
+              <p class="mt-4 text-body text-ink leading-relaxed">{r.description}</p>
 
-            <!-- Description Body -->
-            <p class="mt-4 text-xs sm:text-sm text-ink leading-relaxed">{r.description}</p>
+              <!-- Staff / Technician Feedback Note -->
+              {r.staff_note && (
+                <div class="mt-4 rounded-card border border-line bg-subtle p-3.5">
+                  <span class="overline block text-muted mb-1">Technician / Housing Note</span>
+                  <p class="text-small font-normal text-ink leading-relaxed">{r.staff_note}</p>
+                </div>
+              )}
 
-            <!-- Staff / Technician Feedback Note -->
-            {r.staff_note && (
-              <div class="mt-4 rounded-xl border border-line bg-canvas p-3.5 text-xs text-ink">
-                <span class="font-bold uppercase tracking-wider text-navy block text-[10px] mb-0.5">Technician / Housing Note:</span>
-                <p class="font-medium leading-relaxed text-muted">{r.staff_note}</p>
-              </div>
-            )}
-
-            <!-- Attached Inspection Photo -->
-            {r.url && (
-              <div class="mt-4 pt-3 border-t border-line/50">
-                <span class="text-[11px] font-bold text-muted uppercase tracking-wider block mb-2">Attached Fault Inspection Photo</span>
-                <a href={r.url} target="_blank" rel="noopener noreferrer" class="inline-block group">
-                  <img
-                    src={r.url}
-                    alt="Fault inspection documentation"
-                    class="h-32 sm:h-40 w-auto max-w-sm object-cover rounded-xl border border-line shadow-xs group-hover:opacity-95 transition"
-                    loading="lazy"
-                  />
-                </a>
-              </div>
-            )}
-          </article>
-        ))}
+              <!-- Attached Inspection Photo -->
+              {r.url && (
+                <div class="mt-4 pt-3 border-t border-line">
+                  <span class="overline block text-muted mb-2">Attached Fault Inspection Photo</span>
+                  <a href={r.url} target="_blank" rel="noopener noreferrer" class="inline-block group">
+                    <img
+                      src={r.url}
+                      alt="Fault inspection documentation"
+                      width="384"
+                      height="160"
+                      class="h-32 sm:h-40 w-auto max-w-sm aspect-[16/10] rounded-card border border-line object-cover group-hover:opacity-90 transition"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </a>
+                </div>
+              )}
+            </article>
+          );
+        })}
       </div>
     )}
   </div>
 
-  <!-- Client-side Interactive Filter Script -->
+  <!-- Interactive Scripts -->
   <script>
+    const fileInput = document.getElementById('photo') as HTMLInputElement | null;
+    const previewDiv = document.getElementById('photoPreview');
+    const previewImg = document.getElementById('previewImg') as HTMLImageElement | null;
+
+    if (fileInput && previewDiv && previewImg) {
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files?.[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            previewImg.src = e.target?.result as string;
+            previewDiv.classList.remove('hidden');
+          };
+          reader.readAsDataURL(file);
+        } else {
+          previewDiv.classList.add('hidden');
+        }
+      });
+    }
+
     const filterContainer = document.getElementById('filterChips');
     const ticketCards = document.querySelectorAll('.ticket-card');
 
@@ -383,11 +339,11 @@ const categories = [
         chip.addEventListener('click', () => {
           const filter = chip.getAttribute('data-filter');
           chips.forEach((c) => {
-            c.classList.remove('bg-navy', 'text-white', 'border-transparent');
-            c.classList.add('bg-canvas', 'border', 'border-line', 'text-muted');
+            c.classList.remove('btn-primary');
+            c.classList.add('btn-secondary');
           });
-          chip.classList.add('bg-navy', 'text-white', 'border-transparent');
-          chip.classList.remove('bg-canvas', 'border', 'border-line', 'text-muted');
+          chip.classList.add('btn-primary');
+          chip.classList.remove('btn-secondary');
 
           ticketCards.forEach((card) => {
             const status = card.getAttribute('data-status');

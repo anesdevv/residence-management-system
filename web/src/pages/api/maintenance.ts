@@ -3,9 +3,14 @@ import type { APIRoute } from 'astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
 const CATEGORIES = ['plumbing', 'electrical', 'furniture', 'internet', 'other'];
+const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB
 
 export const POST: APIRoute = async (context) => {
-  const user = context.locals.user!;
+  const user = context.locals.user;
+  if (!user) {
+    return context.redirect('/login');
+  }
   const form = await context.request.formData();
   const category = String(form.get('category') ?? '');
   const description = String(form.get('description') ?? '').trim();
@@ -33,8 +38,19 @@ export const POST: APIRoute = async (context) => {
 
   let photo_path: string | null = null;
 
-
   if (photo instanceof File && photo.size > 0) {
+    if (photo.size > MAX_PHOTO_BYTES) {
+      return context.redirect(
+        `/dashboard/maintenance?error=${encodeURIComponent('Photo exceeds 4MB size limit.')}`,
+      );
+    }
+    if (!ALLOWED_PHOTO_TYPES.includes(photo.type)) {
+      return context.redirect(
+        `/dashboard/maintenance?error=${encodeURIComponent(
+          'Invalid photo type. Only JPEG, PNG, WebP, and GIF images are allowed.',
+        )}`,
+      );
+    }
     const ext = photo.name.split('.').pop()?.toLowerCase() || 'jpg';
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
     const { error: upErr } = await supabase.storage

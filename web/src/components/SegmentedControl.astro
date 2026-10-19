@@ -1,0 +1,69 @@
+---
+/**
+ * RÉSIVO — SegmentedControl (docs/DESIGN.md §6).
+ * Renders `.seg` / `.seg-item`. Options with an `href` become links
+ * (`aria-current="page"` when active), the rest are buttons (`aria-pressed`),
+ * so keyboard operation comes for free. Counts render as small `.tnum` chips.
+ *
+ * Usage:
+ *   <SegmentedControl
+ *     value={filter}
+ *     ariaLabel="Application status filter"
+ *     options={[
+ *       { value: 'pending', label: 'Pending', count: 4, href: '/dashboard?filter=pending' },
+ *     ]}
+ *   />
+ */
+interface Option {
+  value: string;
+  label: string;
+  count?: number;
+  href?: string;
+}
+
+interface Props {
+  options: Option[];
+  value: string;
+  /** Adds a hidden input so the active value is submitted with a surrounding form. */
+  name?: string;
+  ariaLabel?: string;
+  class?: string;
+}
+
+const { options, value, name, ariaLabel, class: className = '' } = Astro.props;
+
+/** The authored `.seg-item[aria-pressed="true"]` look, for the <a> variant. */
+const ACTIVE_LINK = 'border-line bg-surface text-navy-800 shadow-e1';
+const chip = (active: boolean) =>
+  active
+    ? 'bg-teal-600/10 text-teal-600'
+    : 'bg-subtle text-ink-2';
+---
+
+<div class={`seg ${className}`} role="group" aria-label={ariaLabel}>
+  {name && <input type="hidden" name={name} value={value} />}
+  {
+    options.map((option) => {
+      const active = option.value === value;
+      return option.href ? (
+        <a
+          class={`seg-item ${active ? ACTIVE_LINK : ''}`}
+          href={option.href}
+          aria-current={active ? 'page' : undefined}
+        >
+          <span>{option.label}</span>
+          {typeof option.count === 'number' && (
+            <span class={`tnum rounded-pill px-2 py-0.5 text-small ${chip(active)}`}>{option.count}</span>
+          )}
+        </a>
+      ) : (
+        <button type="button" class="seg-item" aria-pressed={active}>
+          <span>{option.label}</span>
+          {typeof option.count === 'number' && (
+            <span class={`tnum rounded-pill px-2 py-0.5 text-small ${chip(active)}`}>{option.count}</span>
+          )}
+        </button>
+      );
+    })
+  }
+</div>

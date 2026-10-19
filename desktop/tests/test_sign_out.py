@@ -102,3 +102,58 @@ def test_sign_out_flow(qapp, monkeypatch):
     mock_client.auth.sign_out.assert_called_once()
     assert len(opened_windows) == 1
     assert not mw.isVisible()
+
+
+def test_minimize_menu_toggle(qapp, monkeypatch):
+    monkeypatch.setattr("desktop.app.ui.main_window.current_role", lambda c: "admin")
+    monkeypatch.setattr("desktop.app.ui.main_window.LiveSyncWorker.start", lambda self: None)
+    monkeypatch.setattr("desktop.app.ui.pages.settings.McpHealthWorker.start", lambda self: None)
+    for p in [
+        "OverviewPage", "PendingPage", "ResidentsPage", "RoomsPage",
+        "MaintenancePage", "RoomChangesPage", "OfficialListPage",
+        "StaffAccountsPage", "SettingsPage",
+    ]:
+        monkeypatch.setattr(f"desktop.app.ui.main_window.{p}", lambda client: QWidget())
+
+    mw = MainWindow(MagicMock())
+    mw.show()
+    _qapp.processEvents()
+
+    sign_out_btn = mw.findChild(QPushButton, "signOutButton")
+    toggle_btn = mw.findChild(QPushButton, "toggleMenuButton")
+
+    assert sign_out_btn is not None
+    assert toggle_btn is not None
+    assert toggle_btn.text() == "Minimize menu"
+
+    # Verify toggle button is positioned directly below sign out
+    footer_layout = mw.sidebar_footer_layout
+    sign_out_idx = footer_layout.indexOf(sign_out_btn)
+    toggle_idx = footer_layout.indexOf(toggle_btn)
+    assert toggle_idx == sign_out_idx + 1
+
+    # Initial expanded state
+    assert mw._sidebar_minimized is False
+    assert mw.sidebar_widget.width() == 248
+    assert sign_out_btn.text() == "Sign out"
+
+    # Click to minimize
+    toggle_btn.click()
+    _qapp.processEvents()
+    assert mw._sidebar_minimized is True
+    assert mw.sidebar_widget.width() == 72
+    assert toggle_btn.text() == ""
+    assert toggle_btn.toolTip() == "Expand menu"
+    assert sign_out_btn.text() == ""
+    assert sign_out_btn.toolTip() == "Sign out"
+
+    # Click to expand again
+    toggle_btn.click()
+    _qapp.processEvents()
+    assert mw._sidebar_minimized is False
+    assert mw.sidebar_widget.width() == 248
+    assert toggle_btn.text() == "Minimize menu"
+    assert sign_out_btn.text() == "Sign out"
+
+    mw.close()
+    _qapp.processEvents()

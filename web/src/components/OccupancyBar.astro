@@ -1,0 +1,55 @@
+---
+/**
+ * RÉSIVO — OccupancyBar (docs/DESIGN.md §6).
+ * Capacity meter: teal-500 by default, pending tokens when one place is left,
+ * danger + the word "Full" when the room is full. Exposes `role="progressbar"`
+ * with aria-valuenow/min/max so it reads as a meter.
+ */
+import Icon from './Icon.astro';
+
+interface Props {
+  occupied: number;
+  capacity: number;
+  label?: string;
+  showCount?: boolean;
+  class?: string;
+}
+
+const { occupied, capacity, label, showCount = true, class: className = '' } = Astro.props;
+
+const safeCapacity = Math.max(capacity, 0);
+const safeOccupied = Math.min(Math.max(occupied, 0), safeCapacity);
+const percent = safeCapacity > 0 ? Math.round((safeOccupied / safeCapacity) * 100) : 0;
+const placesLeft = safeCapacity - safeOccupied;
+const isFull = safeCapacity > 0 && placesLeft === 0;
+const isTight = !isFull && safeCapacity > 0 && placesLeft === 1;
+
+const fillClass = isFull ? 'bg-danger' : isTight ? 'bg-pending' : 'bg-teal-500';
+const ariaLabel = label ?? `Room occupancy: ${safeOccupied} of ${safeCapacity} places taken`;
+---
+
+<div class={`flex flex-col gap-1.5 ${className}`}>
+  <div class="flex items-center justify-between gap-3">
+    {label && <span class="text-small text-ink-2">{label}</span>}
+    {showCount && <span class="tnum text-small text-muted">{safeOccupied} / {safeCapacity}</span>}
+  </div>
+  <div
+    class="h-2 w-full overflow-hidden rounded-pill bg-subtle"
+    role="progressbar"
+    aria-label={ariaLabel}
+    aria-valuenow={safeOccupied}
+    aria-valuemin={0}
+    aria-valuemax={safeCapacity}
+    aria-valuetext={`${safeOccupied} of ${safeCapacity} places taken`}
+  >
+    <div class={`h-full rounded-pill ${fillClass}`} style={{ width: `${percent}%` }}></div>
+  </div>
+  {
+    isFull && (
+      <span class="inline-flex items-center gap-1.5 text-small font-semibold text-danger">
+        <Icon name="alert-triangle" size={13} />
+        <span>Full</span>
+      </span>
+    )
+  }
+</div>
