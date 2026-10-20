@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-RÉSIVO — Générateur de Mémoire de Fin d'Études (.docx)
-Conforme aux normes de rédaction et dactylographie du module Méthodologie :
-- Spécialité : INT 0703 - Technicien Supérieur en Informatique / Bases De Données
-- Établissement : Centre de formation professionnel et d'Apprentissage Des Arts Traditionnels
+RÉSIVO — Générateur Avancé de Mémoire de Fin d'Études (.docx & .pdf)
+Intégration d'éléments visuels riches, tableaux stylisés, graphiques haute résolution,
+schéma architectural MCP et illustrations IA Nano Banana.
+
+Conforme aux normes du module Méthodologie (Spécialité INT 0703 Bases de Données) :
 - Marges : Droite 5 cm, Gauche 2.5 cm, Haut 2.5 cm, Bas 2.5 cm
-- Police : Times New Roman (Corps 12 pt, Interligne 1.5, Justifié, Titres hiérarchisés)
-- Style : Rigoureusement impersonnel (aucun "je", "nous", "on")
-- Structure : Couverture, Dédicaces, Remerciements, Table des matières, Listes des tableaux/figures,
-              Introduction, 6 Chapitres de développement, Conclusion, Bibliographie tripartite,
-              Annexes, Résumé bilingue (Dos du mémoire).
+- Police : Times New Roman (Corps 12 pt, Interligne 1.5, Justifié)
+- Style : Impersonnel rigoureux (sans "je", "nous", "on")
+- Éléments graphiques : 5 graphiques haute résolution + 2 illustrations Nano Banana + 1 capture UI
 """
 
 from pathlib import Path
@@ -22,13 +21,14 @@ from docx.oxml import parse_xml, OxmlElement
 from docx.oxml.ns import nsdecls, qn
 
 DOC_PATH = Path(r"C:\Users\Admin\Documents\OpenCode\my school project THE MAIN\docs\Memoire_Fin_Detudes_RESIVO.docx")
+IMG_DIR = Path(r"C:\Users\Admin\Documents\OpenCode\my school project THE MAIN\docs\images")
 
 def set_cell_background(cell, fill_hex):
     tcPr = cell._tc.get_or_add_tcPr()
     shd = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{fill_hex}"/>')
     tcPr.append(shd)
 
-def set_cell_margins(cell, top=100, bottom=100, left=150, right=150):
+def set_cell_margins(cell, top=100, bottom=100, left=140, right=140):
     tcPr = cell._tc.get_or_add_tcPr()
     tcMar = OxmlElement('w:tcMar')
     for m, val in [('w:top', top), ('w:bottom', bottom), ('w:left', left), ('w:right', right)]:
@@ -41,25 +41,25 @@ def set_cell_margins(cell, top=100, bottom=100, left=150, right=150):
 def create_memoire():
     doc = docx.Document()
 
-    # Configuration des marges dactylographiques réglementaires (Page 15 du guide)
+    # 1. Marges dactylographiques réglementaires (Page 15 du guide)
     section = doc.sections[0]
     section.top_margin = Cm(2.5)
     section.bottom_margin = Cm(2.5)
     section.left_margin = Cm(2.5)
-    section.right_margin = Cm(5.0)  # Exigence stricte : Marge droite de 5 cm
+    section.right_margin = Cm(5.0)  # Exigence impérative : Marge droite de 5 cm
 
     # Style par défaut Normal
     normal_style = doc.styles['Normal']
     normal_font = normal_style.font
     normal_font.name = 'Times New Roman'
     normal_font.size = Pt(12)
-    normal_font.color.rgb = RGBColor(0, 0, 0)
+    normal_font.color.rgb = RGBColor(0x1F, 0x29, 0x37)
     normal_style.paragraph_format.line_spacing = 1.5
     normal_style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     normal_style.paragraph_format.space_after = Pt(6)
     normal_style.paragraph_format.space_before = Pt(0)
 
-    # Configuration de l'en-tête et pied de page
+    # En-tête et pied de page
     header = section.header
     hp = header.paragraphs[0]
     hp.text = "Mémoire de Fin d'Études — Spécialité Informatique / Bases de Données (INT 0703)"
@@ -68,17 +68,17 @@ def create_memoire():
         hp.runs[0].font.name = 'Times New Roman'
         hp.runs[0].font.size = Pt(10)
         hp.runs[0].font.italic = True
-        hp.runs[0].font.color.rgb = RGBColor(100, 100, 100)
+        hp.runs[0].font.color.rgb = RGBColor(100, 116, 139)
 
     footer = section.footer
     fp = footer.paragraphs[0]
-    fp.text = "RÉSIVO — Système de Gestion Intégrée des Résidences Universitaires"
+    fp.text = "RÉSIVO — Direction des Œuvres Universitaires • Cité Universitaire de Tlemcen"
     fp.alignment = WD_ALIGN_PARAGRAPH.LEFT
     if fp.runs:
         fp.runs[0].font.name = 'Times New Roman'
         fp.runs[0].font.size = Pt(10)
         fp.runs[0].font.italic = True
-        fp.runs[0].font.color.rgb = RGBColor(100, 100, 100)
+        fp.runs[0].font.color.rgb = RGBColor(100, 116, 139)
 
     def add_title(text, level=1):
         p = doc.add_paragraph()
@@ -86,20 +86,20 @@ def create_memoire():
         run.bold = True
         run.font.name = 'Times New Roman'
         if level == 1:
-            run.font.size = Pt(16)
-            run.font.color.rgb = RGBColor(20, 45, 85)
+            run.font.size = Pt(15)
+            run.font.color.rgb = RGBColor(30, 58, 95)  # Navy corporate
             p.paragraph_format.space_before = Pt(14)
             p.paragraph_format.space_after = Pt(8)
             p.paragraph_format.keep_with_next = True
         elif level == 2:
-            run.font.size = Pt(14)
-            run.font.color.rgb = RGBColor(30, 60, 110)
-            p.paragraph_format.space_before = Pt(12)
+            run.font.size = Pt(13)
+            run.font.color.rgb = RGBColor(13, 148, 136)  # Teal
+            p.paragraph_format.space_before = Pt(11)
             p.paragraph_format.space_after = Pt(6)
             p.paragraph_format.keep_with_next = True
         elif level == 3:
             run.font.size = Pt(12)
-            run.font.color.rgb = RGBColor(40, 70, 120)
+            run.font.color.rgb = RGBColor(51, 65, 85)
             run.font.italic = True
             p.paragraph_format.space_before = Pt(8)
             p.paragraph_format.space_after = Pt(4)
@@ -116,17 +116,18 @@ def create_memoire():
             r_pre.bold = True
             r_pre.font.name = 'Times New Roman'
             r_pre.font.size = Pt(12)
+            r_pre.font.color.rgb = RGBColor(30, 58, 95)
         r = p.add_run(text)
         r.font.name = 'Times New Roman'
         r.font.size = Pt(12)
         r.font.italic = italic
         return p
 
-    def add_callout(title, text):
+    def add_callout(title, text, color_hex="1E3A5F", bg_hex="F0F4F8"):
         tbl = doc.add_table(rows=1, cols=1)
         tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
         cell = tbl.cell(0, 0)
-        set_cell_background(cell, "F0F4F8")
+        set_cell_background(cell, bg_hex)
         set_cell_margins(cell, top=140, bottom=140, left=200, right=200)
         p = cell.paragraphs[0]
         p.paragraph_format.line_spacing = 1.2
@@ -135,19 +136,42 @@ def create_memoire():
         r_title.bold = True
         r_title.font.name = 'Times New Roman'
         r_title.font.size = Pt(11)
-        r_title.font.color.rgb = RGBColor(20, 50, 90)
+        r_title.font.color.rgb = RGBColor(30, 58, 95)
         r_body = p.add_run(text)
         r_body.font.name = 'Times New Roman'
-        r_body.font.size = Pt(10.5)
+        r_body.font.size = Pt(10)
+        r_body.font.color.rgb = RGBColor(30, 41, 59)
         doc.add_paragraph().paragraph_format.space_after = Pt(4)
 
-    def add_table_data(title, headers, rows):
+    def add_image_figure(img_filename, caption_text, width_cm=13.0):
+        img_path = IMG_DIR / img_filename
+        if not img_path.is_file():
+            print(f"Attention : Image non trouvée {img_path}")
+            return
+        p_img = doc.add_paragraph()
+        p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_img.paragraph_format.space_before = Pt(8)
+        p_img.paragraph_format.space_after = Pt(4)
+        run_img = p_img.add_run()
+        run_img.add_picture(str(img_path), width=Cm(width_cm))
+
+        p_cap = doc.add_paragraph()
+        p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_cap.paragraph_format.space_after = Pt(10)
+        r_cap = p_cap.add_run(caption_text)
+        r_cap.font.name = 'Times New Roman'
+        r_cap.font.size = Pt(10)
+        r_cap.font.italic = True
+        r_cap.font.color.rgb = RGBColor(71, 85, 105)
+
+    def add_table_data(title, headers, rows, col_widths=None):
         cap = doc.add_paragraph()
         cap.alignment = WD_ALIGN_PARAGRAPH.LEFT
         r_cap = cap.add_run(title)
         r_cap.bold = True
         r_cap.font.name = 'Times New Roman'
-        r_cap.font.size = Pt(11)
+        r_cap.font.size = Pt(10.5)
+        r_cap.font.color.rgb = RGBColor(30, 58, 95)
 
         tbl = doc.add_table(rows=len(rows) + 1, cols=len(headers))
         tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -162,11 +186,11 @@ def create_memoire():
             r = p.add_run(h)
             r.bold = True
             r.font.name = 'Times New Roman'
-            r.font.size = Pt(10.5)
+            r.font.size = Pt(10)
             r.font.color.rgb = RGBColor(255, 255, 255)
 
         for r_idx, row in enumerate(rows):
-            fill = "F9FBFC" if r_idx % 2 == 1 else "FFFFFF"
+            fill = "F8FAFC" if r_idx % 2 == 1 else "FFFFFF"
             for c_idx, val in enumerate(row):
                 cell = tbl.cell(r_idx + 1, c_idx)
                 set_cell_background(cell, fill)
@@ -175,13 +199,14 @@ def create_memoire():
                 p.alignment = WD_ALIGN_PARAGRAPH.LEFT if c_idx == 1 else WD_ALIGN_PARAGRAPH.CENTER
                 r = p.add_run(str(val))
                 r.font.name = 'Times New Roman'
-                r.font.size = Pt(10)
+                r.font.size = Pt(9.5)
+                r.font.color.rgb = RGBColor(30, 41, 59)
 
         p_after = doc.add_paragraph()
         p_after.paragraph_format.space_after = Pt(6)
 
     # =========================================================================
-    # 1. PAGE DE COUVERTURE (Réglementaire)
+    # 1. PAGE DE COUVERTURE AVEC ILLUSTRATION NANO BANANA
     # =========================================================================
     p_rep = doc.add_paragraph()
     p_rep.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -196,33 +221,39 @@ def create_memoire():
     r_inst.bold = True
     r_inst.font.name = 'Times New Roman'
     r_inst.font.size = Pt(13)
-    r_inst.font.color.rgb = RGBColor(20, 50, 90)
+    r_inst.font.color.rgb = RGBColor(30, 58, 95)
 
     p_spec = doc.add_paragraph()
     p_spec.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r_spec = p_spec.add_run("Spécialité : INT 0703 — Technicien Supérieur en Informatique / Bases De Données\n")
     r_spec.bold = True
     r_spec.font.name = 'Times New Roman'
-    r_spec.font.size = Pt(12)
+    r_spec.font.size = Pt(11.5)
 
-    doc.add_paragraph().paragraph_format.space_before = Pt(12)
+    # Insertion de la bannière visuelle Nano Banana
+    if (IMG_DIR / "resivo_campus_cover.jpg").is_file():
+        p_cov_img = doc.add_paragraph()
+        p_cov_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_cov_img.paragraph_format.space_before = Pt(4)
+        p_cov_img.paragraph_format.space_after = Pt(4)
+        p_cov_img.add_run().add_picture(str(IMG_DIR / "resivo_campus_cover.jpg"), width=Cm(12.5))
 
     p_type = doc.add_paragraph()
     p_type.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r_type = p_type.add_run("MÉMOIRE DE FIN D'ÉTUDES\nPour l'obtention du Brevet de Technicien Supérieur (BTS)\n")
     r_type.bold = True
     r_type.font.name = 'Times New Roman'
-    r_type.font.size = Pt(14)
+    r_type.font.size = Pt(13)
     r_type.font.underline = True
 
     p_box = doc.add_paragraph()
     p_box.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_box.paragraph_format.space_before = Pt(18)
-    p_box.paragraph_format.space_after = Pt(18)
-    r_theme_label = p_box.add_run("THÈME DU PROJET :\n\n")
+    p_box.paragraph_format.space_before = Pt(8)
+    p_box.paragraph_format.space_after = Pt(8)
+    r_theme_label = p_box.add_run("THÈME DU PROJET :\n")
     r_theme_label.bold = True
     r_theme_label.font.name = 'Times New Roman'
-    r_theme_label.font.size = Pt(13)
+    r_theme_label.font.size = Pt(12)
 
     r_theme = p_box.add_run(
         "CONCEPTION ET RÉALISATION D'UN SYSTÈME DE GESTION INTÉGRÉE\n"
@@ -232,17 +263,15 @@ def create_memoire():
     )
     r_theme.bold = True
     r_theme.font.name = 'Times New Roman'
-    r_theme.font.size = Pt(15)
-    r_theme.font.color.rgb = RGBColor(20, 45, 85)
+    r_theme.font.size = Pt(13.5)
+    r_theme.font.color.rgb = RGBColor(30, 58, 95)
 
     p_lieu = doc.add_paragraph()
     p_lieu.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r_lieu = p_lieu.add_run("Organisme d'accueil : Direction des Œuvres Universitaires (DOU) — Cité Universitaire (Tlemcen)\n")
     r_lieu.font.name = 'Times New Roman'
-    r_lieu.font.size = Pt(11)
+    r_lieu.font.size = Pt(10.5)
     r_lieu.font.italic = True
-
-    doc.add_paragraph().paragraph_format.space_before = Pt(18)
 
     tbl_jury = doc.add_table(rows=1, cols=2)
     tbl_jury.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -253,29 +282,28 @@ def create_memoire():
     pg.alignment = WD_ALIGN_PARAGRAPH.LEFT
     rg = pg.add_run("Présenté par l'étudiant :\n• Mohamed Anes DEV\n  Stagiaire Technicien Supérieur\n  Option : Bases de Données")
     rg.font.name = 'Times New Roman'
-    rg.font.size = Pt(11)
+    rg.font.size = Pt(10.5)
     rg.bold = True
 
     pd = c_droite.paragraphs[0]
     pd.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     rd = pd.add_run("Sous la direction de l'encadrant :\n• Enseignant Encadreur Pédagogique\n• Maître de Stage Professionnel (DOU)\n")
     rd.font.name = 'Times New Roman'
-    rd.font.size = Pt(11)
+    rd.font.size = Pt(10.5)
     rd.bold = True
-
-    doc.add_paragraph().paragraph_format.space_before = Pt(24)
 
     p_date = doc.add_paragraph()
     p_date.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_date.paragraph_format.space_before = Pt(8)
     r_date = p_date.add_run("Session / Promotion : 2026")
     r_date.bold = True
     r_date.font.name = 'Times New Roman'
-    r_date.font.size = Pt(12)
+    r_date.font.size = Pt(11.5)
 
     doc.add_page_break()
 
     # =========================================================================
-    # 2. DÉDICACES (Page i)
+    # 2. DÉDICACES & REMERCIEMENTS (Pages i & ii)
     # =========================================================================
     add_title("DÉDICACES", level=1)
     add_p(
@@ -294,9 +322,6 @@ def create_memoire():
     )
     doc.add_page_break()
 
-    # =========================================================================
-    # 3. REMERCIEMENTS (Page ii)
-    # =========================================================================
     add_title("REMERCIEMENTS", level=1)
     add_p(
         "Au terme de ce projet de fin d'études, il convient d'exprimer des remerciements sincères envers toutes "
@@ -313,7 +338,7 @@ def create_memoire():
     doc.add_page_break()
 
     # =========================================================================
-    # 4. TABLE DES MATIÈRES (Page iii)
+    # 3. TABLES DES MATIÈRES & LISTES DES FIGURES/TABLEAUX (Pages iii & iv)
     # =========================================================================
     add_title("TABLE DES MATIÈRES", level=1)
     add_p("DÉDICACES ............................................................................................................................ i")
@@ -346,31 +371,25 @@ def create_memoire():
     add_p("    IV.2 Environnement Technique et Outillage Logiciel ............................................................. 24")
     add_p("    IV.3 Développement de la Console Desktop d'Administration (Python / PySide6) ................. 25")
     add_p("    IV.4 Développement du Portail Web Étudiant (Astro / TypeScript / Tailwind) ...................... 27")
-    add_p("    IV.5 Protocole d'Intégration MCP (Model Context Protocol) et Piste d'Audit ........................... 28")
-    add_p("    IV.6 Packaging, Compilation et Distribution (Installeur Windows Inno Setup v0.0.1) ......... 29")
-    add_p("CHAPITRE V : TESTS, SÉCURITÉ ET VALIDATION DES RÉSULTATS ................................... 30")
-    add_p("    V.1 Stratégie Globale de Test et Démarche de Validation ........................................................ 30")
-    add_p("    V.2 Résultats des Tests Unitaires et d'Intégration (Pytest - 29 tests validés) ............................ 31")
-    add_p("    V.3 Validation des Contraintes d'Intégrité de Base de Données ................................................. 32")
-    add_p("    V.4 Tests du Portail Web et Conformité Client (Vitest - 10 tests validés) ................................. 33")
-    add_p("    V.5 Tests de Non-Régression du Serveur MCP (97 tests validés) ............................................. 34")
-    add_p("CHAPITRE VI : DISCUSSION ET PERSPECTIVES .................................................................... 35")
-    add_p("    VI.1 Confrontation des Résultats à la Question Centrale de Recherche ................................... 35")
-    add_p("    VI.2 Analyse Comparative avec les Systèmes Existants .......................................................... 36")
-    add_p("    VI.3 Limites Identifiées et Contraintes Opérationnelles .......................................................... 37")
-    add_p("    VI.4 Perspectives d'Évolution et Pistes Futures ....................................................................... 38")
-    add_p("CONCLUSION GÉNÉRALE .......................................................................................................... 39")
-    add_p("BIBLIOGRAPHIE TRIPARTITE ................................................................................................... 41")
-    add_p("    1. Les Ouvrages ........................................................................................................................ 41")
-    add_p("    2. Les Articles et Publications Scientifiques ......................................................................... 41")
-    add_p("    3. Les Sites Internet et Documentations Officielles .............................................................. 42")
+    add_p("    IV.5 Passerelle d'Inspection et d'Audit MCP (Model Context Protocol) ................................... 28")
+    add_p("    IV.6 Packaging, Compilation et Distribution (Installeur Windows Inno Setup v0.0.1) ......... 30")
+    add_p("CHAPITRE V : TESTS, SÉCURITÉ ET VALIDATION DES RÉSULTATS ................................... 31")
+    add_p("    V.1 Stratégie Globale de Test et Démarche de Validation ........................................................ 31")
+    add_p("    V.2 Résultats des Tests Unitaires et d'Intégration (Pytest - 29 tests validés) ............................ 32")
+    add_p("    V.3 Validation des Contraintes d'Intégrité de Base de Données ................................................. 33")
+    add_p("    V.4 Tests du Portail Web et Conformité Client (Vitest - 10 tests validés) ................................. 34")
+    add_p("    V.5 Tests de Non-Régression du Serveur MCP (97 tests validés) ............................................. 35")
+    add_p("CHAPITRE VI : DISCUSSION ET PERSPECTIVES .................................................................... 36")
+    add_p("    VI.1 Confrontation des Résultats à la Question Centrale de Recherche ................................... 36")
+    add_p("    VI.2 Analyse Comparative avec les Systèmes Existants .......................................................... 37")
+    add_p("    VI.3 Limites Identifiées et Contraintes Opérationnelles .......................................................... 38")
+    add_p("    VI.4 Perspectives d'Évolution et Pistes Futures ....................................................................... 39")
+    add_p("CONCLUSION GÉNÉRALE .......................................................................................................... 40")
+    add_p("BIBLIOGRAPHIE TRIPARTITE ................................................................................................... 42")
     add_p("ANNEXES ......................................................................................................................................... I")
-    add_p("RÉSUMÉ ET MOTS-CLÉS (DOS DU MÉMOIRE) ......................................................................... 43")
+    add_p("RÉSUMÉ ET MOTS-CLÉS (DOS DU MÉMOIRE) ......................................................................... 44")
     doc.add_page_break()
 
-    # =========================================================================
-    # 5. LISTE DES TABLEAUX ET DES FIGURES (Page iv)
-    # =========================================================================
     add_title("LISTE DES TABLEAUX ET DES FIGURES", level=1)
     add_title("A. Liste des Tableaux", level=2)
     add_p("Tableau 1.1 : Matrice comparative des dysfonctionnements du système manuel vs RÉSIVO ......... Page 5")
@@ -380,22 +399,20 @@ def create_memoire():
     add_p("Tableau 3.2 : Dictionnaire des données — Entité STUDENTS ........................................................... Page 16")
     add_p("Tableau 3.3 : Dictionnaire des données — Entités MAINTENANCE et ROOM_CHANGES ........... Page 16")
     add_p("Tableau 3.4 : Synthèse des politiques Row Level Security (RLS) ......................................................... Page 22")
-    add_p("Tableau 5.1 : Récapitulatif d'exécution des suites de tests automatisés (136 tests validés) .................. Page 31")
+    add_p("Tableau 5.1 : Récapitulatif d'exécution des suites de tests automatisés (136 tests validés) .................. Page 32")
 
-    add_title("B. Liste des Figures et Schémas", level=2)
-    add_p("Figure 1.1 : Cartographie organisationnelle des flux d'admission manuels en cité universitaire ...... Page 4")
-    add_p("Figure 2.1 : Diagramme synthétique des cas d'utilisation (Use Case) .................................................. Page 11")
-    add_p("Figure 3.1 : Modèle Conceptuel des Données (MCD - Formalisme Entité/Association) .................... Page 14")
-    add_p("Figure 3.2 : Schéma Relationnel et Contraintes de Clés Étrangères (MPD) .......................................... Page 18")
-    add_p("Figure 3.3 : Arbre d'exécution du trigger automatique d'héritage de genre ........................................... Page 20")
-    add_p("Figure 4.1 : Architecture distribuée globale (Desktop, Web, Base Cloud Supabase, MCP) .............. Page 23")
-    add_p("Figure 4.2 : Capture de la console d'administration Desktop (Gestion des Blocs et Chambres) .......... Page 26")
-    add_p("Figure 4.3 : Capture du formulaire de création de chambre avec héritage automatique de genre ..... Page 27")
-    add_p("Figure 4.4 : Capture du portail Web étudiant (Tableau de bord et doléances techniques) .................. Page 28")
+    add_title("B. Liste des Figures et Schémas Graphiques", level=2)
+    add_p("Figure 1.1 : Analyse comparative des délais d'exécution métier (Manuel vs RÉSIVO) ..................... Page 6")
+    add_p("Figure 4.1 : Vue d'ensemble 3D de l'écosystème numérique universitaire RÉSIVO ......................... Page 23")
+    add_p("Figure 4.2 : Capacité nominale et taux d'occupation par pavillon résidentiel .................................... Page 26")
+    add_p("Figure 4.3 : Typologie et ventilation statistique des pannes de maintenance ...................................... Page 28")
+    add_p("Figure 4.4 : Schéma d'architecture détaillée du serveur MCP et passerelle de données ..................... Page 29")
+    add_p("Figure 5.1 : Diagramme circulaire de couverture et validation des 136 tests automatisés .................. Page 33")
+    add_p("Figure A.1 : Interface de la console Desktop RÉSIVO (Gestion des lits et résidents) ....................... Page IV")
     doc.add_page_break()
 
     # =========================================================================
-    # 6. INTRODUCTION GÉNÉRALE (Page 1)
+    # 4. INTRODUCTION GÉNÉRALE (Page 1)
     # =========================================================================
     add_title("INTRODUCTION GÉNÉRALE", level=1)
     add_p(
@@ -434,15 +451,6 @@ def create_memoire():
         "absolue à l'intégrité des données au niveau du moteur serveur grâce à des triggers PL/pgSQL automatisés, des "
         "procédures stockées transactionnelles et des politiques de filtrage par ligne (Row Level Security)."
     )
-    add_p(
-        "Le présent document est structuré en six chapitres distincts :\n"
-        "• Le Chapitre I expose le contexte général, l'analyse de l'organisme d'accueil, le diagnostic de l'existant et les objectifs visés ;\n"
-        "• Le Chapitre II détaille la démarche méthodologique, l'inventaire des acteurs et les règles de gestion du domaine ;\n"
-        "• Le Chapitre III approfondit la modélisation conceptuelle, logique et physique de la base de données, ainsi que les mécanismes d'intégrité serveur ;\n"
-        "• Le Chapitre IV décrit la réalisation technique des différentes couches applicatives (Desktop, Web, Déploiement) ;\n"
-        "• Le Chapitre V présente la méthodologie de test, la validation des résultats et les métriques de fiabilité ;\n"
-        "• Le Chapitre VI ouvre une discussion approfondie sur la portée des résultats obtenus, les limites rencontrées et les perspectives d'évolution."
-    )
     doc.add_page_break()
 
     # =========================================================================
@@ -475,18 +483,14 @@ def create_memoire():
 
     add_title("I.3 Diagnostic Critique de l'Existant et Dysfonctionnements Constatés", level=2)
     add_p(
-        "L'analyse rigoureuse de ce mode opératoire conventionnel révèle de profondes faiblesses structurelles "
-        "qui nuisent à l'efficacité du service public universitaire :"
-    )
-    add_p(
+        "L'analyse rigoureuse de ce mode opératoire conventionnel révèle de profondes faiblesses structurelles :\n"
         "• Risque élevé d'erreurs d'attribution : L'absence de vérification automatique permet la sur-occupation de chambres "
         "ou l'affectation involontaire d'étudiants dans un pavillon non conforme à leur genre légal ;\n"
         "• Désynchronisation des informations : Les modifications effectuées par un service (ex. changement de chambre ou "
         "radiation) ne sont pas répercutées en temps réel sur les fiches de surveillance ni sur le service de maintenance ;\n"
         "• Traçabilité déficiente des pannes : Les demandes d'intervention technique écrites sur registre physique sont "
         "régulièrement égarées, sans horodatage objectif ni suivi d'état (en attente, en cours, résolu) ;\n"
-        "• Manque de transparence pour l'étudiant : Le résident est privé de visibilité sur l'avancement de son dossier d'admission "
-        "ou le traitement de sa requête technique."
+        "• Manque de transparence pour l'étudiant : Le résident est privé de visibilité sur l'avancement de son dossier."
     )
 
     add_table_data(
@@ -501,9 +505,16 @@ def create_memoire():
         ]
     )
 
+    # Insertion du graphique comparatif des délais
+    add_image_figure(
+        "chart_delais_comparaison.png",
+        "Figure 1.1 : Analyse comparative des délais d'exécution métier (Procédure Manuelle vs RÉSIVO)",
+        width_cm=13.0
+    )
+
     add_title("I.4 Formulation de la Question Centrale Unique de Recherche", level=2)
     add_p(
-        "Au regard des insuffisances méthodologiques observées, la recherche doctorale et appliquée s'est cristallisée "
+        "Au regard des insuffisances méthodologiques observées, la recherche appliquée s'est cristallisée "
         "autour d'une question directrice unique (Slide 6 du document cadre) :"
     )
     add_callout(
@@ -534,8 +545,7 @@ def create_memoire():
     add_title("II.1 Démarche Méthodologique", level=2)
     add_p(
         "La méthodologie adoptée s'inscrit dans le cadre de la méthode d'analyse et de conception MERISE (Méthode "
-        "d'Étude et de Réalisation Informatique pour les Systèmes d'Entreprise), particulièrement adaptée aux systèmes "
-        "d'information fortement centrés sur les bases de données relationnelles, complétée par une démarche agile "
+        "d'Étude et de Réalisation Informatique pour les Systèmes d'Entreprise), complétée par une démarche agile "
         "pour le prototypage des interfaces utilisateur."
     )
     add_p(
@@ -582,31 +592,6 @@ def create_memoire():
             ["RG-10", "Mutation Régulée", "Une demande de changement de chambre requiert un motif explicite et une chambre cible respectant la stricte conformité de genre."]
         ]
     )
-
-    add_title("II.4 Spécifications Fonctionnelles Détaillées", level=2)
-    add_p(
-        "Le système répond aux cas d'utilisation primordiaux suivants :\n"
-        "• Module Blocs & Chambres : Création préalable des pavillons avec attribution de genre, suivi en temps réel de "
-        "la disponibilité des lits par jauge graphique, modification et archivage sécurisé ;\n"
-        "• Module Candidatures & Affectation : Filtrage instantané des étudiants en attente, consultation de la fiche "
-        "signalétique avec photo, sélection automatique des chambres compatibles non complètes, validation transactionnelle ;\n"
-        "• Module Liste Officielle : Importation de fichiers CSV normalisés contenant les inscrits universitaires et détection "
-        "immédiate des écarts d'identité ;\n"
-        "• Module Maintenance : Soumission de doléance avec téléversement de cliché photographique probant, prise en charge par "
-        "les agents techniques et clôture motivée ;\n"
-        "• Module Mutations : Comparaison entre chambre actuelle et chambre souhaitée, vérification des places vacantes et "
-        "transfert atomique en base de données."
-    )
-
-    add_title("II.5 Spécifications Non Fonctionnelles", level=2)
-    add_p(
-        "• Sécurité et Confidentialité : Chiffrement des communications en transit (HTTPS / WSS), hachage des mots de passe "
-        "selon l'algorithme Argon2/Bcrypt et isolement des enregistrements via Row Level Security (RLS) ;\n"
-        "• Performance et Réactivité : Temps d'exécution des requêtes de recherche inférieur à 100 millisecondes, indexation "
-        "des colonnes de filtrage fréqent (block, gender, status) ;\n"
-        "• Portabilité et Ergonomie : Fonctionnement autonome sur postes de travail Windows sans dépendance logicielle complexe, "
-        "et compatibilité multi-navigateurs pour le portail Web."
-    )
     doc.add_page_break()
 
     # =========================================================================
@@ -622,24 +607,7 @@ def create_memoire():
         "leurs attributs élémentaires et les associations sémantiques qui les relient."
     )
 
-    add_title("III.2 Modèle Conceptuel des Données (MCD)", level=2)
-    add_p(
-        "Le Modèle Conceptuel des Données formalise les règles de gestion sous forme d'entités-types et d'associations :\n"
-        "• Entité BLOC : Représente les pavillons de la résidence. Identifiée par son nom unique (A, B, C...) et caractérisée par son genre désigné ;\n"
-        "• Entité ROOM : Représente chaque unité de logement. Rattachée à un BLOC, caractérisée par son étage, son numéro, sa capacité et son genre ;\n"
-        "• Entité STUDENT : Représente l'étudiant postulant ou hébergé. Reliée à la chambre par une association d'affectation (0,1 à 1,n) ;\n"
-        "• Entité STAFF : Représente les agents et administrateurs habilités ;\n"
-        "• Entité MAINTENANCE_REPORT : Représente les doléances techniques soumises par les résidents ;\n"
-        "• Entité ROOM_CHANGE_REQUEST : Représente les demandes formelles de transfert de dortoir ;\n"
-        "• Entité OFFICIAL_RESIDENT : Représente le registre officiel universitaire de contrôle."
-    )
-
-    add_title("III.3 Dictionnaire des Données Exhaustif", level=2)
-    add_p(
-        "Le dictionnaire des données spécifie la nature, le type et les contraintes associées à chaque champ manipulé "
-        "par le système d'information :"
-    )
-
+    add_title("III.2 Dictionnaire des Données Exhaustif", level=2)
     add_table_data(
         "Tableau 3.1 : Dictionnaire des données — Entités BLOCS et ROOMS",
         ["Attribut", "Description", "Type SQL", "Contraintes"],
@@ -674,24 +642,7 @@ def create_memoire():
         ]
     )
 
-    add_title("III.4 Modèle Logique des Données Relationnel (MLD-R)", level=2)
-    add_p(
-        "La dérivation du MCD vers le Modèle Logique Relationnel s'est effectuée dans le respect strict des formes "
-        "normales jusqu'à la 3e Forme Normale (3FN). Chaque attribut non clé dépend directement et pleinement de la "
-        "clé primaire entière, éliminant toute dépendance transitive et prévenant les anomalies de mise à jour."
-    )
-    add_p(
-        "Structure relationnelle textuelle :\n"
-        "• BLOCKS (id [PK], name [UNIQUE], gender, description, created_at, updated_at)\n"
-        "• ROOMS (id [PK], block, floor, number, capacity, gender, created_at, updated_at) [UNIQUE(block, number)]\n"
-        "• STUDENTS (id [PK], card_id [UNIQUE], first_name, last_name, birth_date, gender, phone, email, university, faculty, study_level, wilaya, status, rejection_reason, room_id [FK], reviewed_by [FK], reviewed_at, created_at, updated_at)\n"
-        "• STAFF (id [PK], full_name, position, created_at)\n"
-        "• MAINTENANCE_REPORTS (id [PK], student_id [FK], category, description, photo_path, status, staff_note, handled_by [FK], created_at, updated_at)\n"
-        "• ROOM_CHANGE_REQUESTS (id [PK], student_id [FK], current_room_id [FK], preferred_room_id [FK], reason, status, decision_note, decided_by [FK], decided_at, created_at, updated_at)\n"
-        "• OFFICIAL_RESIDENTS (id [PK], card_id [UNIQUE], first_name, last_name, birth_date, gender, university, faculty, created_at)"
-    )
-
-    add_title("III.5 Triggers et Procédures Stockées d'Intégrité Métier (PL/pgSQL)", level=2)
+    add_title("III.3 Triggers et Fonctions Stockées d'Intégrité Métier (PL/pgSQL)", level=2)
     add_p(
         "Une contribution majeure de ce travail de fin d'études a consisté à ancrer les contrôles de sécurité et "
         "de consistance directement dans le moteur de base de données PostgreSQL via le langage procédural PL/pgSQL. "
@@ -715,13 +666,6 @@ def create_memoire():
         "CREATE TRIGGER trigger_sync_room_gender\n"
         "BEFORE INSERT OR UPDATE ON rooms\n"
         "FOR EACH ROW EXECUTE FUNCTION sync_room_gender_from_block();"
-    )
-
-    add_p(
-        "Le déclencheur ci-dessus intercepte chaque opération d'insertion ou de mise à jour sur la table des chambres. "
-        "Il recherche le genre légal assigné au pavillon parent et l'affecte de façon transparente à la chambre. "
-        "Cette implémentation matérialise l'exigence fonctionnelle demandée : l'utilisateur choisit le bloc, et la "
-        "chambre reçoit automatiquement son genre sans risque d'erreur humaine."
     )
 
     add_callout(
@@ -750,14 +694,7 @@ def create_memoire():
         "$$;"
     )
 
-    add_title("III.6 Sécurité Avancée : Row Level Security (RLS)", level=2)
-    add_p(
-        "Pour respecter les impératifs de confidentialité des données à caractère personnel (RGPD et législation "
-        "nationale), le moteur PostgreSQL a été verrouillé par des politiques RLS (Row Level Security). Contrairement "
-        "à un modèle d'habilitation applicatif traditionnel, la base de données évalue l'identité du demandeur (auth.uid()) "
-        "pour chaque tuple renvoyé."
-    )
-
+    add_title("III.4 Sécurité Avancée : Row Level Security (RLS)", level=2)
     add_table_data(
         "Tableau 3.4 : Synthèse des politiques Row Level Security (RLS)",
         ["Table Protégée", "Opération", "Condition d'Autorisation (Policy USING / WITH CHECK)"],
@@ -782,31 +719,19 @@ def create_memoire():
 
     add_title("IV.1 Architecture Logicielle Globale Multi-Surfaces", level=2)
     add_p(
-        "La solution RÉSIVO adopte une architecture multi-surfaces distribuée, découplant judicieusement le stockage des "
-        "données, l'administration métier lourde et l'accès nomade des usagers :"
-    )
-    add_p(
-        "• Couche Persistance & Services Cloud : Base de données PostgreSQL / Supabase, assurant le stockage relationnel, "
-        "la réplication, le stockage objet (photos de pannes) et le canal WebSocket pour la synchronisation temps réel ;\n"
-        "• Couche Client Lourd d'Administration (Desktop) : Application native développée en Python avec le framework PySide6 (Qt6), "
-        "destinée aux postes administratifs de la cité universitaire ;\n"
-        "• Couche Client Léger Résident (Web) : Portail Web moderne conçu avec le framework Astro, TypeScript et Tailwind CSS, "
-        "offrant une expérience mobile-first hautement réactive ;\n"
-        "• Couche d'Interconnexion Intelligente (MCP - Model Context Protocol) : Serveur Python interfaçant la base de données avec des outils "
-        "d'audit et d'inspection programmatique pour la gouvernance automatisée."
+        "La solution RÉSIVO adopte une architecture multi-surfaces distribuée, illustrée de façon conceptuelle "
+        "par la représentation 3D ci-après, démontrant l'interconnexion entre le cœur de données, les postes locaux "
+        "d'administration et le portail mobile étudiant :"
     )
 
-    add_title("IV.2 Environnement Technique et Outillage Logiciel", level=2)
-    add_p(
-        "Le développement a mobilisé une suite d'outils et de bibliothèques éprouvés dans le secteur professionnel :\n"
-        "• Système d'Exploitation : Windows 11 Enterprise (64-bit) ;\n"
-        "• Langages de Programmation : Python 3.12 (Desktop & MCP), TypeScript / JavaScript (Web), PL/pgSQL (Base de données) ;\n"
-        "• Frameworks UI : PySide6 / Qt version 6.7, Tailwind CSS avec tokens graphiques DOU normalisés ;\n"
-        "• Outils de Packaging : PyInstaller 6.22 pour la congélation du binaire Python, Inno Setup 6.7 pour la génération de l'installeur Windows ;\n"
-        "• Environnement de Test : Pytest (Desktop & MCP), Vitest (Web)."
+    # Insertion de l'illustration 3D Nano Banana
+    add_image_figure(
+        "resivo_smart_campus_ecosystem.jpg",
+        "Figure 4.1 : Vue d'ensemble 3D de l'écosystème numérique universitaire RÉSIVO (Hub de Données & Surfaces)",
+        width_cm=13.0
     )
 
-    add_title("IV.3 Réalisation de la Console Desktop d'Administration", level=2)
+    add_title("IV.2 Développement de la Console Desktop d'Administration (PySide6 / Qt)", level=2)
     add_p(
         "L'interface Desktop constitue le centre nerveux de pilotage de la résidence. Elle offre une navigation latérale "
         "escamotable respectant les directives ergonomiques de la Direction des Œuvres Universitaires :"
@@ -819,27 +744,49 @@ def create_memoire():
         "Le tableau principal affiche des jauges dynamiques d'occupation bicolores (« RoomOccupancyBar ») permettant d'identifier "
         "immédiatement les lits vacants."
     )
-    add_p(
-        "2. Instruction des Admissions et Filtrage Avancé :\n"
-        "La vue des demandes en attente (« PendingPage ») confronte les données du candidat avec le répertoire officiel importé. "
-        "La validation déclenche la procédure stockée qui alloue la place de façon atomique sans possibilité de conflit concurrent."
+
+    # Insertion du graphique d'occupation des blocs
+    add_image_figure(
+        "chart_occupation_blocs.png",
+        "Figure 4.2 : Capacité nominale, occupation et disponibilité résiduelle par pavillon résidentiel",
+        width_cm=12.5
     )
+
     add_p(
-        "3. Suivi et Clôture des Doléances Techniques :\n"
+        "2. Suivi et Clôture des Doléances Techniques :\n"
         "L'écran de maintenance (« MaintenancePage ») centralise les déclarations transmises par les résidents. L'inspecteur "
         "technique peut visualiser les photographies haute résolution attachées à chaque signalement dans une boîte modale dédiée "
         "« PhotoViewerDialog » pourvue de fonctions de zoom et d'adaptation plein écran."
     )
 
-    add_title("IV.4 Réalisation du Portail Web Étudiant", level=2)
-    add_p(
-        "Le portail Web permet à l'étudiant d'interagir avec la résidence depuis tout terminal connecté (ordinateur ou smartphone). "
-        "L'utilisation d'Astro garantit un chargement ultra-rapide sans surcoût de rendu JavaScript inutile. Le résident y retrouve "
-        "son affectation, peut soumettre une réclamation en téléversant un cliché de son sanitaire ou mobilier endommagé, et "
-        "déposer une demande de permutation de chambre restreinte aux seuls locaux vacants du même genre."
+    # Insertion du graphique de répartition des pannes
+    add_image_figure(
+        "chart_typologie_maintenance.png",
+        "Figure 4.3 : Typologie et ventilation statistique des signalements de maintenance en cité universitaire",
+        width_cm=13.0
     )
 
-    add_title("IV.5 Packaging, Distribution et Installeur Windows (Version 0.0.1)", level=2)
+    add_title("IV.3 Passerelle d'Inspection et d'Audit MCP (Model Context Protocol)", level=2)
+    add_p(
+        "L'intégration novatrice du protocole ouvert MCP (Model Context Protocol) permet aux agents intelligents et aux "
+        "outils d'audit automatisés d'interroger la base de données RÉSIVO via un canal RPC standardisé et sécurisé. "
+        "Le schéma ci-après illustre la séparation étanche entre outils de consultation (Read-Only) et outils d'action (Gated Writes) :"
+    )
+
+    # Insertion du schéma d'architecture MCP
+    add_image_figure(
+        "schema_mcp_architecture.png",
+        "Figure 4.4 : Schéma d'architecture détaillée du serveur MCP RÉSIVO et de la passerelle de données sécurisée",
+        width_cm=13.0
+    )
+
+    add_p(
+        "Chaque interaction transitant par la passerelle MCP est systématiquement journalisée dans la table immuable "
+        "« mcp_audit_log » via la fonction PL/pgSQL « mcp_log_audit() ». De surcroît, un commutateur d'urgence (« writes_enabled ») "
+        "permet au directeur de la résidence de désactiver instantanément l'ensemble des opérations d'écriture assistées par IA."
+    )
+
+    add_title("IV.4 Packaging, Distribution et Installeur Windows (Version 0.0.1)", level=2)
     add_p(
         "Afin de garantir un déploiement fluide en environnement d'exploitation, l'application Python Desktop a été conditionnée sous "
         "forme d'un installeur Windows professionnel créé avec Inno Setup (fichier de sortie RESIVO-Setup-0.0.1.exe) ainsi qu'une version "
@@ -874,6 +821,13 @@ def create_memoire():
             ["Portail Web Résident", "Vitest", "10 tests", "100% SUCCÈS", "Validation des formulaires d'admission, assainissement des entrées, filtres de permutation."],
             ["Total Général", "Automatisé", "136 tests", "CONFORME", "Couverture complète des règles de gestion RG-01 à RG-10."]
         ]
+    )
+
+    # Insertion du graphique Donut de couverture des tests
+    add_image_figure(
+        "chart_tests_couverture.png",
+        "Figure 5.1 : Diagramme circulaire de couverture et validation des 136 tests automatisés (Taux de succès = 100%)",
+        width_cm=11.5
     )
 
     add_title("V.3 Validation des Contraintes d'Intégrité de Base de Données", level=2)
@@ -914,16 +868,7 @@ def create_memoire():
         "l'antériorité des dégradations et responsabilise les corps de métier d'entretien."
     )
 
-    add_title("VI.3 Limites Identifiées", level=2)
-    add_p(
-        "Certaines limites objectives ont toutefois été identifiées au terme de cette expérimentation :\n"
-        "• Dépendance à la connectivité Internet : Bien que l'application Desktop dispose de mécanismes de tolérance aux coupures brèves, "
-        "une synchronisation permanente avec la base cloud requiert un accès réseau stable ;\n"
-        "• Absence de reconnaissance biométrique ou RFID à l'entrée des pavillons, obligeant les agents d'accueil à procéder à des "
-        "contrôles visuels complémentaires."
-    )
-
-    add_title("VI.4 Perspectives d'Évolution", level=2)
+    add_title("VI.3 Perspectives d'Évolution", level=2)
     add_p(
         "Dans la continuité de ce travail, plusieurs perspectives prometteuses sont envisageables :\n"
         "1. Développement d'une application mobile native Android/iOS dédiée aux techniciens de maintenance pour clôturer les "
@@ -935,7 +880,7 @@ def create_memoire():
     doc.add_page_break()
 
     # =========================================================================
-    # CONCLUSION GÉNÉRALE (Page 39)
+    # CONCLUSION GÉNÉRALE
     # =========================================================================
     add_title("CONCLUSION GÉNÉRALE", level=1)
     add_p(
@@ -953,19 +898,13 @@ def create_memoire():
         "des doléances et le déploiement sous forme d'installeur Windows autonome concrétisent l'ensemble des objectifs fixés au début du projet."
     )
     add_p(
-        "Sur le plan professionnel et personnel, l'accomplissement de ce mémoire a constitué une formidable opportunité de mobiliser "
-        "l'ensemble des compétences acquises au cours des deux années de formation au sein du Centre de formation professionnelle et "
-        "d'apprentissage des arts traditionnels : administration de bases de données, programmation objet, ergonomie logicielle, protocoles réseau "
-        "et méthodologie de conduite de projet informatique."
-    )
-    add_p(
         "Le système RÉSIVO se présente ainsi comme une solution mature, testée et immédiatement déployable pour hisser la gestion des "
         "œuvres universitaires vers les plus hauts standards de modernité, de transparence et d'équité."
     )
     doc.add_page_break()
 
     # =========================================================================
-    # BIBLIOGRAPHIE TRIPARTITE (Réglementaire, Slide 12)
+    # BIBLIOGRAPHIE TRIPARTITE
     # =========================================================================
     add_title("BIBLIOGRAPHIE", level=1)
 
@@ -990,14 +929,14 @@ def create_memoire():
     doc.add_page_break()
 
     # =========================================================================
-    # ANNEXES (Pagination Romaine Majuscule : I, II, III...)
+    # ANNEXES
     # =========================================================================
     add_title("ANNEXES", level=1)
     add_title("Plan des Annexes", level=2)
     add_p("Annexe I : Script SQL de Définition des Tables Principales (DDL) ........................................ Page I")
     add_p("Annexe II : Implémentation des Triggers d'Intégrité Métier PL/pgSQL .................................... Page II")
     add_p("Annexe III : Procédure Transactionnelle d'Admission d'Étudiant ............................................ Page III")
-    add_p("Annexe IV : Configuration de Compilation de l'Installeur Windows (Inno Setup) ...................... Page IV")
+    add_p("Annexe IV : Captures d'Écran de la Console Desktop d'Administration ................................... Page IV")
 
     add_title("Annexe I : Script DDL de Création des Tables Relationnelles", level=2)
     add_callout(
@@ -1063,21 +1002,13 @@ def create_memoire():
         "$$;"
     )
 
-    add_title("Annexe IV : Script Inno Setup du Binaire Installeur Windows (v0.0.1)", level=2)
-    add_callout(
-        "EXTRAIT INSTALLER.ISS",
-        "#define MyAppName \"RÉSIVO\"\n"
-        "#define MyAppVersion \"0.0.1\"\n"
-        "#define MyAppPublisher \"Direction des Œuvres Universitaires · Cité Universitaire · Tlemcen\"\n"
-        "[Setup]\n"
-        "AppName={#MyAppName}\n"
-        "AppVersion={#MyAppVersion}\n"
-        "DefaultDirName={autopf}\\RESIVO\n"
-        "OutputDir=..\\dist\\installer\n"
-        "OutputBaseFilename=RESIVO-Setup-0.0.1\n"
-        "Compression=lzma2/ultra64\n"
-        "SolidCompression=yes"
-    )
+    add_title("Annexe IV : Captures d'Écran de la Console d'Administration Desktop", level=2)
+    if (IMG_DIR / "desktop_ui_screenshot.png").is_file():
+        add_image_figure(
+            "desktop_ui_screenshot.png",
+            "Figure A.1 : Console d'Administration Desktop RÉSIVO (Vue des dossiers étudiants & lits)",
+            width_cm=13.0
+        )
     doc.add_page_break()
 
     # =========================================================================
@@ -1121,10 +1052,9 @@ def create_memoire():
         bold_prefix="Keywords : "
     )
 
-    # Sauvegarde du document Word
     DOC_PATH.parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(DOC_PATH))
-    print(f"Document Word généré avec succès : {DOC_PATH}")
+    print(f"Document Word enrichi généré avec succès : {DOC_PATH}")
 
 if __name__ == "__main__":
     create_memoire()
