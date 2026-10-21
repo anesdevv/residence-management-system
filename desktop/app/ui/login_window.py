@@ -1,8 +1,12 @@
 """RÉSIVO — staff login window (split gradient hero + form; visual layer only).
 
-Behaviour is frozen: the prefilled seeded staff credentials, the ``attempt()``
-flow, ``sign_in`` / ``current_role`` usage, the exact "Access denied" path, the
-window staying open on wrong credentials and the lazy ``MainWindow`` import.
+Behaviour: the seeded credentials, the ``attempt()`` flow, ``sign_in`` /
+``resolve_role`` usage, the exact "Access denied" path, the window staying open
+on wrong credentials and the lazy ``MainWindow`` import.
+
+A role lookup that fails is *not* treated as a denied account: the window stays
+open, explains that the role could not be verified, and the main button becomes
+"Retry role check".  Only authentication failures show a login error.
 
 Attributes kept for callers/tests: ``self.email``, ``self.password``,
 ``self.button``, ``self.status`` (the error banner's message label), the
@@ -11,14 +15,24 @@ Attributes kept for callers/tests: ``self.email``, ``self.password``,
 
 from __future__ import annotations
 
+import hashlib
+import logging
 from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
 
-from ..client import make_client, sign_in, current_role
+from ..client import (
+    RoleLookupError,
+    forget_role,
+    make_client,
+    remember_role,
+    resolve_role,
+    sign_in,
+)
 from .components import BrandMark, Button, GradientHero, InlineBanner
+from .tasks import human_error
 from .theme import C, DESKTOP_STYLESHEET, S, apply_role
 
 # DESIGN.md §7 — hide the hero below this window width (form-only mode).
@@ -26,6 +40,19 @@ _LOGIN_HERO_BREAKPOINT = 760
 _FORM_MAX_WIDTH = 420
 _BRAND_DIR = Path(__file__).resolve().parents[2] / "assets" / "brand"
 _SIGN_IN_TEXT = "Sign in"
+_ROLE_ERROR_TEXT = "Could not verify your role. Check your connection or configuration."
+
+_log = logging.getLogger("resivo.ui.login")
+
+
+def _credential_key(email: str, password: str) -> tuple[str, str]:
+    """Comparison key for the fields used by the last sign-in.
+
+    Only the password digest is retained, never a second plaintext copy.
+    """
+    return email.strip().lower(), hashlib.sha256(
+        password.encode("utf-8")
+    ).hexdigest()
 
 
 class LoginWindow(QWidget):
@@ -36,6 +63,10 @@ class LoginWindow(QWidget):
         self.resize(940, 580)
         self.setStyleSheet(DESKTOP_STYLESHEET)
         self.client = make_client()
+        self._role_retry_pending = False
+        # (email, password digest) for the signed-in session, so an edited
+        # credential is treated as a fresh sign-in, not another role retry.
+        self._pending_credentials: tuple[str, str] | None = None
         icon_path = _BRAND_DIR / "resivo.ico"
         if icon_path.is_file():
             self.setWindowIcon(QIcon(str(icon_path)))
@@ -137,6 +168,14 @@ class LoginWindow(QWidget):
         self.button.clicked.connect(self.attempt)
         col.addWidget(self.button)
 
+        # Only offered when the role check failed (the session exists but its
+        # role could not be verified): sign out and enter another account.
+        self.switch_account_btn = Button.secondary("Use another account")
+        self.switch_account_btn.setObjectName("switchAccountButton")
+        self.switch_account_btn.setVisible(False)
+        self.switch_account_btn.clicked.connect(self.switch_account)
+        col.addWidget(self.switch_account_btn)
+
         host_layout.addWidget(column, 0, Qt.AlignmentFlag.AlignHCenter)
         host_layout.addStretch(1)
         return host, column
@@ -160,33 +199,132 @@ class LoginWindow(QWidget):
         self.error_banner.set_message(message)
         self.error_banner.setVisible(True)
 
+    def show_error(self, message: str) -> None:
+        """Display a caller-supplied, already-human-readable failure."""
+        self._show_error(message)
+
     def attempt(self):
         email_txt = self.email.text().strip()
         pwd_txt = self.password.text()
+        credentials = _credential_key(email_txt, pwd_txt)
+
+        if self._role_retry_pending:
+            if credentials == self._pending_credentials:
+                self._verify_role()
+                return
+            # The credentials were edited after the role check failed: this is
+            # a new sign-in for another account, not a retry of the old session.
+            self._leave_failed_session()
+            self.error_banner.setVisible(False)
 
         if not email_txt or not pwd_txt:
             self._show_error("Please enter both email and password.")
             return
 
+        self.switch_account_btn.setVisible(False)
         self.button.setText("Signing in...")
         self.button.setEnabled(False)
 
         try:
             sign_in(self.client, email_txt, pwd_txt)
-            role = current_role(self.client)
-            if role not in ("staff", "admin"):
-                self.client.auth.sign_out()
-                self._show_error("Access denied: Console restricted to staff and administrators.")
-                self.button.setText(_SIGN_IN_TEXT)
-                self.button.setEnabled(True)
-                return
-        except Exception as exc:  # noqa: BLE001
-            self._show_error(f"Login failed: {exc}")
+        except Exception as exc:  # noqa: BLE001 - authentication failure only
+            # Never show a traceback: one concise line for the banner.
+            self._show_error(f"Login failed: {human_error(exc)}")
             self.button.setText(_SIGN_IN_TEXT)
             self.button.setEnabled(True)
             return
 
+        self._pending_credentials = credentials
+        self._role_retry_pending = False
+        self._verify_role()
+
+    def _leave_failed_session(self):
+        """Drop the unverified session before signing in with new credentials."""
+        forget_role(self.client)
+        try:
+            self.client.auth.sign_out()
+        except Exception as exc:  # noqa: BLE001 - cleanup only, sign-in follows
+            _log.warning(
+                "Sign-out before re-authentication failed: %s", human_error(exc)
+            )
+        self._role_retry_pending = False
+        self._pending_credentials = None
+        self.switch_account_btn.setVisible(False)
+
+    def switch_account(self):
+        """Sign out the unverified session and return to the credential form."""
+        forget_role(self.client)
+        try:
+            self.client.auth.sign_out()
+        except Exception as exc:  # noqa: BLE001 - reported, form stays usable
+            _log.warning("Sign-out for account switch failed: %s", human_error(exc))
+            self._show_error(
+                "Could not sign out of the current session. "
+                f"Check your connection and try again: {human_error(exc)}"
+            )
+            return
+
+        self._role_retry_pending = False
+        self._pending_credentials = None
+        self.password.clear()
+        self.error_banner.setVisible(False)
+        self.button.setText(_SIGN_IN_TEXT)
+        self.button.setEnabled(True)
+        self.switch_account_btn.setVisible(False)
+        self.email.setFocus()
+        self.email.selectAll()
+
+    def _verify_role(self):
+        """Resolve/cache the role, then open the console for staff and admins."""
+        self.button.setText("Checking role...")
+        self.button.setEnabled(False)
+
+        try:
+            resolved = resolve_role(self.client)
+        except RoleLookupError as exc:
+            _log.warning("Role verification failed after sign-in: %s", exc)
+            self._show_role_error()
+            return
+        except Exception as exc:  # noqa: BLE001 - any lookup problem is retryable
+            _log.warning("Role verification failed after sign-in: %s", human_error(exc))
+            self._show_role_error()
+            return
+
+        role = str(resolved).strip().lower() if resolved is not None else ""
+        if role not in ("staff", "admin"):
+            self._role_retry_pending = False
+            self._pending_credentials = None
+            self.switch_account_btn.setVisible(False)
+            try:
+                forget_role(self.client)
+            except Exception:
+                pass
+            try:
+                self.client.auth.sign_out()
+            except Exception:
+                pass
+            self._show_error("Access denied: Console restricted to staff and administrators.")
+            self.button.setText(_SIGN_IN_TEXT)
+            self.button.setEnabled(True)
+            return
+
+        remember_role(self.client, role)
+        self._role_retry_pending = False
+        self._pending_credentials = None
+        self.switch_account_btn.setVisible(False)
         from .main_window import MainWindow
-        self.window = MainWindow(self.client)
+
+        self.window = MainWindow(self.client, role=role)
         self.window.show()
         self.close()
+
+    def _show_role_error(self):
+        # Keep the window open and let the same button retry the check.  The
+        # session is deliberately not signed out: this is a transient failure,
+        # not an access-denied decision.  "Use another account" remains
+        # available for an operator who signed in with the wrong address.
+        self._role_retry_pending = True
+        self._show_error(_ROLE_ERROR_TEXT)
+        self.button.setText("Retry role check")
+        self.button.setEnabled(True)
+        self.switch_account_btn.setVisible(True)

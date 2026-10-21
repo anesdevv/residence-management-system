@@ -14,6 +14,10 @@ role check, the file dialog, ``read_official_file(path)`` and the
 ``import_official_residents`` upsert payload (``{"p_rows": rows}``), and
 ``on_row_double_clicked`` keeps calling
 ``StudentInfoCardDialog(self, st_data, r)``.
+
+After the constructor's first paint every roster read, file parse and import
+RPC runs on the shared :class:`TaskRunner`; the file dialog stays on the GUI
+thread.
 """
 
 from __future__ import annotations
@@ -22,7 +26,6 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QApplication,
     QFileDialog,
     QFrame,
     QHBoxLayout,
@@ -51,12 +54,27 @@ from ..components import (
 )
 from ..icons import get_icon, get_pixmap
 from ..infocard import StudentInfoCardDialog
+from ..tasks import TaskRunner, human_error
 from ..theme import C, S
 
 # Table language: overline headers are uppercased by ``configure_table``.
 _COLUMNS = ["Card ID", "First Name", "Last Name", "Birth Date", "Gender", "University", "Faculty"]
 # File types the import path accepts (button dialog and drag & drop alike).
 _IMPORT_SUFFIXES = (".csv", ".xlsx", ".xls")
+
+_IMPORT_TEXT = "Import list"
+_WORKING_TEXT = "Working..."
+_RELOAD_KEY = "official-reload"
+_IMPORT_KEY = "official-import"
+_ADMIN_ONLY_TOOLTIP = "Administrator privileges required to import roster."
+
+
+def _normalize_role(role) -> str | None:
+    """Case/whitespace-insensitive role value (``" Admin "`` -> ``"admin"``)."""
+    if role is None:
+        return None
+    normalized = str(role).strip().lower()
+    return normalized or None
 
 
 def _fit_columns(table: QTableWidget, modes: list) -> QHeaderView:
@@ -155,6 +173,14 @@ class OfficialListPage(QWidget):
         self.client = client
         self.rows: list[dict] = []
 
+        # Background I/O: the constructor keeps one synchronous first load;
+        # every later refresh, file parse and import RPC runs on the pool.
+        self.tasks = TaskRunner(self)
+        self._initializing = True
+        self._reload_busy = False
+        self._import_busy = False
+        self._reload_pending = False
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(S("space-8"), S("space-8"), S("space-8"), S("space-8"))
         layout.setSpacing(S("space-6"))
@@ -168,7 +194,7 @@ class OfficialListPage(QWidget):
         layout.addWidget(self.header)
 
         from ...client import current_role
-        self.role = current_role(client)
+        self.role = _normalize_role(current_role(client))
 
         # ------------------------------------------------- import drop zone
         self.drop_zone = _RosterDropZone(self.on_import)
@@ -190,9 +216,7 @@ class OfficialListPage(QWidget):
         drop_body.addWidget(drop_hint)
 
         self.import_btn = Button.primary("Import list", icon="upload")
-        if self.role != "admin":
-            self.import_btn.setEnabled(False)
-            self.import_btn.setToolTip("Administrator privileges required to import roster.")
+        self._apply_import_gate()
         self.import_btn.clicked.connect(lambda _checked=False: self.on_import())
         drop_body.addWidget(self.import_btn, 0, Qt.AlignmentFlag.AlignHCenter)
         drop_body.addStretch(1)
@@ -279,26 +303,102 @@ class OfficialListPage(QWidget):
         layout.addWidget(tip)
 
         self.reload()
+        self._initializing = False
+
+    # --------------------------------------------------------------- role
+    def set_role(self, role) -> None:
+        """Apply a late-verified role without rebuilding the page.
+
+        MainWindow calls this after its background retry succeeds; the page
+        only flips the import gate, while ``on_import()`` keeps its own check.
+        """
+        self.role = _normalize_role(role)
+        self._apply_import_gate()
+
+    def _apply_import_gate(self) -> None:
+        """Import is admin-only and stays disabled while an import is running."""
+        can_import = self.role == "admin" and not self._import_busy
+        self.import_btn.setEnabled(can_import)
+        self.import_btn.setToolTip("" if can_import else _ADMIN_ONLY_TOOLTIP)
 
     # --------------------------------------------------------------- data
     def reload(self):
+        """Load the roster; the constructor keeps its synchronous first paint."""
+        if self._initializing:
+            self._load_sync()
+            return
+        self._reload_async()
+
+    def _load_sync(self) -> None:
+        """Initial load only (keeps the constructor contract synchronous)."""
         self._set_loading(True)
         try:
-            resp = self.client.table("official_residents").select("*").order("card_id").execute()
-            data = getattr(resp, "data", None)
-            self.rows = [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
-        except Exception as exc:  # noqa: BLE001
-            self.error_banner.set_message(
-                f"The official roster could not be loaded ({exc}). "
-                "Check the connection, then use Refresh to try again."
-            )
-            self.error_banner.setVisible(True)
-            self._set_loading(False)
+            rows = self._fetch_roster()
+        except Exception as exc:  # noqa: BLE001 - reported inline
+            self._on_reload_failed(human_error(exc))
+        else:
+            self._on_reload_success(rows)
+
+    def _reload_async(self) -> None:
+        if self._reload_busy:
+            self._reload_pending = True
             return
+        self._reload_busy = True
+        self.refresh_btn.setEnabled(False)
+        self._set_loading(True)
+        started = self.tasks.run(
+            _RELOAD_KEY,
+            self._fetch_roster,
+            on_success=self._on_reload_success,
+            on_failed=self._on_reload_failed,
+            on_finished=self._on_reload_finished,
+        )
+        if not started:
+            self._reload_busy = False
+            self.refresh_btn.setEnabled(True)
+            self._set_loading(False)
+
+    def _fetch_roster(self) -> list[dict]:
+        """Network read of the official roster (never call from the GUI thread)."""
+        resp = self.client.table("official_residents").select("*").order("card_id").execute()
+        data = getattr(resp, "data", None)
+        return [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
+
+    def _on_reload_success(self, rows) -> None:
         self.error_banner.setVisible(False)
+        self._apply_rows(rows)
+        self._set_loading(False)
+
+    def _on_reload_failed(self, message: str) -> None:
+        self.error_banner.set_message(
+            f"The official roster could not be loaded ({message}). "
+            "Check the connection, then use Refresh to try again."
+        )
+        self.error_banner.setVisible(True)
+        self._set_loading(False)
+
+    def _on_reload_finished(self) -> None:
+        self._reload_busy = False
+        self.refresh_btn.setEnabled(not self._import_busy)
+        if self._reload_pending:
+            self._reload_pending = False
+            self.reload()
+
+    def _apply_rows(self, rows) -> None:
+        """Render rows on the GUI thread, preserving search and card selection."""
+        selected = self.rows[self.table.currentRow()] if 0 <= self.table.currentRow() < len(self.rows) else None
+        selected_card = selected.get("card_id") if selected else None
+        self.rows = [row for row in (rows or []) if isinstance(row, dict)]
         self.count_badge.setText(f"{len(self.rows)} Verified Records")
         self._render_rows()
-        self._set_loading(False)
+        if selected_card is not None:
+            for index, row in enumerate(self.rows):
+                if row.get("card_id") == selected_card:
+                    self.table.selectRow(index)
+                    break
+            else:
+                self.table.clearSelection()
+                self.table.setCurrentCell(-1, -1)
 
     def _render_rows(self):
         self.table.setRowCount(len(self.rows))
@@ -327,14 +427,10 @@ class OfficialListPage(QWidget):
 
     # ------------------------------------------------------------ rendering
     def _set_loading(self, loading: bool) -> None:
-        """Swap the preview table for the Skeleton while ``reload()`` runs."""
+        """Swap the preview table for the Skeleton while a load is in flight."""
         if loading:
             self.stack.setCurrentWidget(self.skeleton)
             self.skeleton.raise_()
-            app = QApplication.instance()
-            if app is not None and self.isVisible():
-                # Let the placeholder paint before the (blocking) query runs.
-                app.processEvents()
         else:
             self._update_empty_state()
 
@@ -380,26 +476,83 @@ class OfficialListPage(QWidget):
         """Import a roster file — the one path used by the button and by drops.
 
         ``path`` is ``None`` for the button (a file dialog opens); drag & drop
-        passes the dropped file path. The admin check, ``read_official_file``
-        and the ``import_official_residents`` upsert payload are unchanged.
+        passes the dropped file path. Role validation and the file dialog stay
+        on the GUI thread; the file parse and the import RPC run on the pool.
         """
-        from ...client import current_role
-        if current_role(self.client) != "admin":
+        if self._import_busy or self.tasks.is_busy(_IMPORT_KEY):
+            return
+        if self.role != "admin":
             QMessageBox.warning(self, "Permission Denied", "Importing the official residents list requires administrator privileges.")
             return
         if path is None:
             path, _ = QFileDialog.getOpenFileName(self, "Open Official Roster File", "", "Spreadsheets (*.xlsx *.csv)")
         if not path:
             return
-        rows: list[dict] = []
+
+        self._begin_import()
+        started = self.tasks.run(
+            _IMPORT_KEY,
+            lambda: self._import_file(path),
+            on_success=self._on_import_complete,
+            on_failed=self._on_import_failed,
+            on_finished=self._on_import_finished,
+        )
+        if not started:
+            self._on_import_finished()
+
+    def _begin_import(self) -> None:
+        self._import_busy = True
+        self.import_btn.setText(_WORKING_TEXT)
+        self.import_btn.setEnabled(False)
+        self.refresh_btn.setEnabled(False)
+        self.drop_zone.setAcceptDrops(False)
+
+    def _on_import_finished(self) -> None:
+        self._import_busy = False
+        self.import_btn.setText(_IMPORT_TEXT)
+        self._apply_import_gate()
+        self.refresh_btn.setEnabled(not self._reload_busy)
+        self.drop_zone.setAcceptDrops(True)
+
+    def _import_file(self, path: str) -> dict:
+        """Parse the spreadsheet and run the import RPC (worker thread)."""
         try:
             rows = read_official_file(path)
+        except Exception as exc:  # noqa: BLE001 - reported in the result banner
+            return {"ok": False, "path": path, "rows": 0, "error": human_error(exc)}
+        try:
             resp = self.client.rpc("import_official_residents", {"p_rows": rows}).execute()
-        except Exception as exc:  # noqa: BLE001
-            self._show_import_result(False, imported=0, skipped=len(rows), errors=1, detail=str(exc))
+        except Exception as exc:  # noqa: BLE001 - reported in the result banner
+            return {"ok": False, "path": path, "rows": len(rows), "error": human_error(exc)}
+        return {
+            "ok": True,
+            "path": path,
+            "rows": len(rows),
+            "reported": getattr(resp, "data", None),
+        }
+
+    def _on_import_complete(self, result: dict) -> None:
+        if not result.get("ok"):
+            self._show_import_result(
+                False,
+                imported=0,
+                skipped=int(result.get("rows") or 0),
+                errors=1,
+                detail=str(result.get("error") or "Import failed"),
+            )
             return
-        reported = getattr(resp, "data", None)
-        imported = reported if isinstance(reported, int) and not isinstance(reported, bool) else len(rows)
-        skipped = max(0, len(rows) - imported)
-        self._show_import_result(True, imported=imported, skipped=skipped, errors=0, detail=Path(path).name)
+        rows_count = int(result.get("rows") or 0)
+        reported = result.get("reported")
+        imported = reported if isinstance(reported, int) and not isinstance(reported, bool) else rows_count
+        skipped = max(0, rows_count - imported)
+        self._show_import_result(
+            True,
+            imported=imported,
+            skipped=skipped,
+            errors=0,
+            detail=Path(result.get("path") or "").name,
+        )
         self.reload()
+
+    def _on_import_failed(self, message: str) -> None:
+        self._show_import_result(False, imported=0, skipped=0, errors=1, detail=message)

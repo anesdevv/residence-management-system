@@ -5,13 +5,19 @@ live counts, a ``SearchField``, the applications ``QTableWidget`` on the left an
 a ``DetailPanel`` inspector on the right (identity, roster badge, submitted data,
 decisions, the rejection / desk-inquiry record block and the plain-text notes).
 
-The data layer is frozen: the four views keep their exact semantics
-(pending = ``pending``, approved = ``active``, rejected = ``rejected``,
+The data layer keeps its view semantics: the four views keep their exact
+meanings (pending = ``pending``, approved = ``active``, rejected = ``rejected``,
 all = everything), ``reload()`` keeps its query chain, ``on_approve`` keeps the
 gender-filtered ``rooms`` query + ``room_occupancy`` + ``approve_student`` RPC,
 ``on_reject`` keeps ``reject_student`` and its reason validation, ``on_delete``
-keeps ``delete_student`` / the table fallback, and ``official_lookup`` stays the
-module-level patch point (``desktop.app.ui.pages.pending.official_lookup``).
+uses ``delete_student`` (the authenticated RPC, never a raw table delete), and
+``official_lookup`` stays the module-level patch point
+(``desktop.app.ui.pages.pending.official_lookup``).
+
+Network work does not run on the GUI thread: every refresh/decision handler
+starts a ``TaskRunner`` job and applies its snapshot in the queued success
+callback.  The constructor performs one blocking first load so the initial paint
+is populated; all later ``reload()`` calls are asynchronous.
 
 Widget contracts kept for the tests
 -----------------------------------
@@ -56,6 +62,7 @@ from PySide6.QtWidgets import (
 
 from ...client import official_lookup, room_occupancy
 from .. import theme
+from ..tasks import TaskRunner, human_error
 from ..components import (
     Avatar,
     Button,
@@ -102,6 +109,40 @@ _REJECTION_OVERLINE = "REJECTION REASON (Desk Inquiry Reference)"
 def _status_meta(raw_status: str) -> tuple[str, str]:
     """``(status kind, status word)`` for any student status value."""
     return _STATUS_KINDS.get(raw_status, _DEFAULT_STATUS)
+
+
+def _rpc_row(response) -> dict:
+    """The single student row returned by an approve/reject RPC.
+
+    PostgREST may hand the composite row back as a dict or a one-element list;
+    any other shape is a broken response, not something to paper over.
+    """
+    data = getattr(response, "data", None)
+    if isinstance(data, list):
+        data = data[0] if data else None
+    if not isinstance(data, dict):
+        raise RuntimeError("The server did not return the updated student record.")
+    return dict(data)
+
+
+def _guard_decision_regression(row: dict, previous: dict | None) -> dict:
+    """Never let a stale ``pending`` row overwrite a local decision.
+
+    LiveSync can deliver a tick that was read before the approve/reject RPC
+    committed.  The RPC result is authoritative, so a pending copy for a student
+    this session already decided keeps the local status and decision fields.
+    """
+    if not previous:
+        return row
+    old_status = str(previous.get("status") or "")
+    new_status = str(row.get("status") or "pending")
+    if old_status in ("active", "rejected") and new_status == "pending":
+        row = dict(row)
+        for field in ("status", "rejection_reason", "room_id", "reviewed_by",
+                      "reviewed_at", "updated_at"):
+            if field in previous:
+                row[field] = previous[field]
+    return row
 
 
 def _fmt_stamp(value) -> str:
@@ -305,6 +346,16 @@ class PendingPage(QWidget):
         # Differential-redraw index: student id -> field signature of the
         # pending slice currently held in ``all_rows``.
         self._pending_index: dict[str, str] = {}
+        # Rows deleted in this session.  A stale snapshot or live tick must not
+        # resurrect them (the delete RPC is authoritative).
+        self._deleted_ids: set[str] = set()
+        # Background I/O for every refresh / decision action.  The constructor
+        # still loads synchronously once so the first paint has data; all later
+        # entry points (Refresh, approve, reject, delete) use this runner.
+        self._initializing = True
+        self._working = False
+        self._approve_student: dict | None = None
+        self.tasks = TaskRunner(self)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(S("space-8"), S("space-8"), S("space-8"), S("space-8"))
@@ -345,6 +396,17 @@ class PendingPage(QWidget):
         )
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
+
+        # Busy state for in-flight background work and the result of the last
+        # decision action.  Both stay inline so a slow network never blocks the
+        # window with a modal dialog or a traceback.
+        self.busy_banner = InlineBanner("info", title="Working…", message="")
+        self.busy_banner.setVisible(False)
+        layout.addWidget(self.busy_banner)
+
+        self.action_banner = InlineBanner("info", title="", message="")
+        self.action_banner.setVisible(False)
+        layout.addWidget(self.action_banner)
 
         # ---------------------------------------------------- master-detail
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -502,6 +564,7 @@ class PendingPage(QWidget):
 
         self._show_selection(False)
         self.reload()
+        self._initializing = False
 
     # --------------------------------------------------------------- styling
     @staticmethod
@@ -564,14 +627,36 @@ class PendingPage(QWidget):
         values) with the pending slice already held; when nothing changed the
         page does not repaint at all, and when only the pending slice changed the
         approved / rejected views keep their table, selection and scroll state.
+        A stale pending tick never re-adds a row deleted here, duplicates an id,
+        or rolls back a decision already recorded by this session.
         """
-        incoming = [dict(row) for row in (pending_students or [])]
+        current_by_id = {
+            str(row.get("id")): row for row in getattr(self, "all_rows", [])
+        }
+        incoming: list[dict] = []
+        seen: set[str] = set()
+        for raw in pending_students or []:
+            row = dict(raw)
+            student_id = str(row.get("id"))
+            if student_id in self._deleted_ids or student_id in seen:
+                continue
+            row = _guard_decision_regression(row, current_by_id.get(student_id))
+            # A guarded row is no longer part of the pending slice; the local
+            # approved/rejected copy stays in ``all_rows`` below.
+            if str(row.get("status") or "pending") != "pending":
+                continue
+            seen.add(student_id)
+            incoming.append(row)
+
         incoming_index = self._index(incoming)
         if incoming_index == self._pending_index:
             return
 
         self._pending_index = incoming_index
-        self.all_rows = incoming + [r for r in getattr(self, "all_rows", []) if r.get("status") != "pending"]
+        self.all_rows = incoming + [
+            r for r in getattr(self, "all_rows", [])
+            if r.get("status") != "pending" and str(r.get("id")) not in seen
+        ]
 
         if self.filter_mode in ("pending", "all"):
             # The visible slice is the one that changed: repaint it (the search
@@ -586,8 +671,9 @@ class PendingPage(QWidget):
     def _render_table(self, rows: list[dict]):
         selected_id = self.selected().get("id") if self.selected() else None
         self.rows = rows
-        if not hasattr(self, "official") or not self.official:
-            self.official = official_lookup(self.client)
+        # ``official`` is filled by the background snapshot loader.  Painting
+        # never performs its own roster query: filters and post-action redraws
+        # must stay on the GUI thread without network I/O.
 
         self.table.setRowCount(len(self.rows))
         restore_row = -1
@@ -622,6 +708,11 @@ class PendingPage(QWidget):
         if restore_row >= 0:
             self.table.selectRow(restore_row)
         else:
+            # The selected student vanished from the refreshed/filtered view:
+            # clear both the selection and the current index so no stale row is
+            # inspected by accident.
+            self.table.clearSelection()
+            self.table.setCurrentCell(-1, -1)
             self.show_detail()
         self._update_view_state()
 
@@ -644,18 +735,299 @@ class PendingPage(QWidget):
         for key, value in counts.items():
             self.segments.set_count(key, value)
 
-    def reload(self):
+    # ------------------------------------------------------- background data
+    def _fetch_snapshot(self):
+        """Network-only snapshot (students + official roster), for a worker."""
+        resp = self.client.table("students").select("*").order("created_at", desc=True).execute()
+        return list(resp.data or []), official_lookup(self.client)
+
+    def _apply_snapshot(self, snapshot):
+        """Apply a fetched snapshot on the GUI thread, preserving view state.
+
+        Rows deleted in this session stay deleted, and a stale read that still
+        reports ``pending`` cannot roll back a decision recorded locally.
+        """
+        rows, official = snapshot
+        current_by_id = {
+            str(row.get("id")): row for row in getattr(self, "all_rows", [])
+        }
+        merged: list[dict] = []
+        seen: set[str] = set()
+        for raw in rows or []:
+            row = dict(raw)
+            student_id = str(row.get("id"))
+            if student_id in self._deleted_ids or student_id in seen:
+                continue
+            seen.add(student_id)
+            merged.append(_guard_decision_regression(row, current_by_id.get(student_id)))
+        self.official = official or {}
+        self.all_rows = merged
+        self._pending_index = self._index(
+            [r for r in self.all_rows if r.get("status") == "pending"]
+        )
+        self.error_banner.setVisible(False)
+        self.apply_filter()
+
+    def _merge_decision_row(self, decision_row: dict):
+        """Overlay the authoritative RPC row on the locally held snapshot."""
+        target = str(decision_row.get("id"))
+        merged: list[dict] = []
+        found = False
+        for raw in getattr(self, "all_rows", []):
+            row = dict(raw)
+            if str(row.get("id")) == target:
+                row.update(decision_row)
+                found = True
+            merged.append(row)
+        if not found:
+            merged.insert(0, dict(decision_row))
+        self.all_rows = merged
+        self._pending_index = self._index(
+            [r for r in merged if r.get("status") == "pending"]
+        )
+        self.apply_filter()
+
+    def _reload_blocking(self):
+        """Initial load only: the constructor keeps its synchronous first data."""
         try:
-            resp = self.client.table("students").select("*").order("created_at", desc=True).execute()
-            self.official = official_lookup(self.client)
-            self.all_rows = resp.data or []
-            self._pending_index = self._index(
-                [r for r in self.all_rows if r.get("status") == "pending"]
-            )
-            self.error_banner.setVisible(False)
-            self.apply_filter()
+            self._apply_snapshot(self._fetch_snapshot())
         except Exception:
             self.error_banner.setVisible(True)
+
+    def reload(self):
+        """Reload the applications queue.
+
+        The constructor takes the blocking path so the first paint is populated;
+        every later call (Refresh button, live code, tests) runs the network work
+        on the thread pool and applies the snapshot on the GUI thread.
+        """
+        if self._initializing:
+            self._reload_blocking()
+        else:
+            self._reload_async()
+
+    def _reload_async(self):
+        if self._working:
+            return
+        self._begin_working("Refreshing applications…")
+        started = self.tasks.run(
+            "reload",
+            self._fetch_snapshot,
+            on_success=self._on_reload_success,
+            on_failed=self._on_reload_failed,
+            on_finished=self._end_working,
+        )
+        if not started:
+            self._end_working()
+
+    def _on_reload_success(self, snapshot):
+        self._apply_snapshot(snapshot)
+
+    def _on_reload_failed(self, message: str):
+        self.error_banner.set_title("Applications could not be refreshed")
+        self.error_banner.set_message(
+            f"{message} The queue is showing the last data received."
+        )
+        self.error_banner.setVisible(True)
+
+    # ---------------------------------------------------------- busy state
+    def _begin_working(self, message: str):
+        """Disable every action control and show the inline Working… banner."""
+        self._working = True
+        self.busy_banner.set_kind("info")
+        self.busy_banner.set_title("Working…")
+        self.busy_banner.set_message(message)
+        self.busy_banner.setVisible(True)
+        self.action_banner.setVisible(False)
+        self._set_action_controls_enabled(False)
+
+    def _end_working(self):
+        """Restore the status-driven action guards after success or failure."""
+        if not self._working:
+            return
+        self._working = False
+        self.busy_banner.setVisible(False)
+        self._set_action_controls_enabled(True)
+
+    def _set_action_controls_enabled(self, enabled: bool):
+        if enabled:
+            self.refresh_btn.setEnabled(True)
+            # show_detail reapplies the status rules (pending cannot be deleted,
+            # approved cannot be approved again, no selection disables all).
+            self.show_detail()
+        else:
+            self.approve_btn.setEnabled(False)
+            self.reject_btn.setEnabled(False)
+            self.delete_btn.setEnabled(False)
+            self.refresh_btn.setEnabled(False)
+
+    def _show_action_success(self, message: str):
+        self.action_banner.set_kind("success")
+        self.action_banner.set_title("Done")
+        self.action_banner.set_message(message)
+        self.action_banner.setVisible(True)
+
+    def _show_action_warning(self, message: str):
+        self.action_banner.set_kind("warning")
+        self.action_banner.set_title("Saved — refresh needed")
+        self.action_banner.set_message(message)
+        self.action_banner.setVisible(True)
+
+    def _on_action_failed(self, message: str):
+        self.action_banner.set_kind("error")
+        self.action_banner.set_title("Action failed")
+        self.action_banner.set_message(f"The request could not be completed: {message}")
+        self.action_banner.setVisible(True)
+        self._end_working()
+
+    # ------------------------------------------------------- worker payloads
+    def _load_rooms(self, gender):
+        """Gender-filtered rooms + occupancy (network-only, worker thread)."""
+        rooms = self.client.table("rooms").select(
+            "id, block, number, floor, capacity, gender"
+        ).eq("gender", gender).order("block").order("number").execute().data or []
+        return list(rooms), room_occupancy(self.client)
+
+    def _fetch_after_decision(self):
+        """Best-effort follow-up snapshot for a committed decision.
+
+        The decision RPC has already succeeded, so a read failure is reported
+        alongside the returned row instead of making the whole action look
+        failed (which would also throw the authoritative RPC row away).
+        """
+        try:
+            return self._fetch_snapshot(), None
+        except Exception as exc:  # noqa: BLE001 - the decision is already saved
+            return None, human_error(exc)
+
+    def _approve_rpc(self, student_id, room_id):
+        """Run the approval RPC; return its row plus the follow-up snapshot."""
+        response = self.client.rpc(
+            "approve_student", {"p_student": student_id, "p_room": room_id}
+        ).execute()
+        decision_row = _rpc_row(response)
+        snapshot, refresh_error = self._fetch_after_decision()
+        return decision_row, snapshot, refresh_error
+
+    def _reject_rpc(self, student_id, reason):
+        """Run the rejection RPC; return its row plus the follow-up snapshot."""
+        response = self.client.rpc(
+            "reject_student", {"p_student": student_id, "p_reason": reason}
+        ).execute()
+        decision_row = _rpc_row(response)
+        snapshot, refresh_error = self._fetch_after_decision()
+        return decision_row, snapshot, refresh_error
+
+    def _delete_rpc(self, student_id):
+        """Delete through the authenticated RPC; never fall back to the table.
+
+        ``delete_student`` enforces staff authorisation, the pending-application
+        guard and the staff/profile/auth cleanup.  A raw table delete would
+        bypass those rules and silently report success when nothing matched.
+        """
+        self.client.rpc("delete_student", {"p_student": student_id}).execute()
+        return student_id
+
+    @staticmethod
+    def _student_name(student: dict) -> str:
+        return f"{student.get('first_name', '')} {student.get('last_name', '')}".strip()
+
+    # ------------------------------------------------------ action handlers
+    def _on_approve_rooms_loaded(self, result):
+        student = self._approve_student
+        if student is None:
+            self._end_working()
+            return
+        rooms, occ = result
+        if not rooms:
+            QMessageBox.warning(
+                self,
+                "No rooms",
+                f"No rooms configured for {student.get('gender') or 'this'} residential blocks.",
+            )
+            self._end_working()
+            return
+
+        dlg = RoomAllocationDialog(self, student, rooms, occ)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            self._end_working()
+            return
+        room = dlg.selected_room()
+        room_id = dlg.selected_room_id()
+        if not room_id or room is None:
+            self._end_working()
+            return
+
+        # Same guard the old "[LOCKED]" option carried: a full room is refused.
+        occupied = int(occ.get(room_id, 0) or 0)
+        if occupied >= int(room.get("capacity") or 0):
+            QMessageBox.warning(
+                self,
+                "Room Full",
+                "This room is at maximum bed capacity. Please select an available room.",
+            )
+            self._end_working()
+            return
+
+        self._begin_working("Approving application…")
+        student_id = student["id"]
+        started = self.tasks.run(
+            "approve",
+            lambda: self._approve_rpc(student_id, room_id),
+            on_success=lambda snapshot: self._on_approve_success(snapshot, student),
+            on_failed=self._on_action_failed,
+            on_finished=self._end_working,
+        )
+        if not started:
+            self._end_working()
+
+    def _apply_decision_result(self, result, student, message: str):
+        """Apply the RPC row even when the follow-up snapshot failed."""
+        decision_row, snapshot, refresh_error = result
+        if snapshot is not None:
+            self._apply_snapshot(snapshot)
+        # The RPC row is authoritative: merge it after the snapshot so even a
+        # stale follow-up read cannot leave the row pending or omit it.
+        self._merge_decision_row(decision_row)
+        if refresh_error:
+            self._show_action_warning(
+                f"{message} The queue could not be refreshed ({refresh_error}). "
+                "The decision is saved; use Refresh to reload the full list."
+            )
+            return
+        self._show_action_success(message)
+
+    def _on_approve_success(self, result, student):
+        name = self._student_name(student) or "The student"
+        self._apply_decision_result(
+            result,
+            student,
+            f"Student {name} has been approved and allocated to the room.",
+        )
+
+    def _on_decision_success(self, result, student):
+        name = self._student_name(student) or "The applicant"
+        self._apply_decision_result(
+            result,
+            student,
+            f"Official decision for {name} has been recorded.",
+        )
+
+    def _on_delete_success(self, student_id, student):
+        deleted_id = str(student_id)
+        # Tombstone first: an in-flight snapshot or live tick may still carry
+        # the row, and it must not resurrect after this successful delete.
+        self._deleted_ids.add(deleted_id)
+        self.all_rows = [
+            row for row in getattr(self, "all_rows", [])
+            if str(row.get("id")) != deleted_id
+        ]
+        self._pending_index = self._index(
+            [r for r in self.all_rows if r.get("status") == "pending"]
+        )
+        self.apply_filter()
+        name = self._student_name(student) or "The resident"
+        self._show_action_success(f"Resident record {name} deleted successfully.")
 
     def selected(self) -> dict | None:
         r = self.table.currentRow()
@@ -733,6 +1105,12 @@ class PendingPage(QWidget):
 
         self._render_record_block(status, status_kind, status_text, s)
         self.detail_text.setPlainText(self._detail_notes(status, status_text, s, official_row))
+        if self._working:
+            # A live-sync tick or a selection change during an action must not
+            # re-enable the controls behind the Working… state.
+            self.approve_btn.setEnabled(False)
+            self.reject_btn.setEnabled(False)
+            self.delete_btn.setEnabled(False)
         self._show_selection(True)
 
     def _render_record_block(self, status: str, status_kind: str, status_text: str, student: dict):
@@ -819,49 +1197,36 @@ class PendingPage(QWidget):
             dlg.exec()
 
     def on_approve(self):
+        if self._working:
+            return
         s = self.selected()
         if not s:
             QMessageBox.information(self, "Select applicant", "Please select a student applicant from the table first.")
             return
 
-        try:
-            rooms = self.client.table("rooms").select("id, block, number, floor, capacity, gender") \
-                .eq("gender", s["gender"]).order("block").order("number").execute().data or []
-            occ = room_occupancy(self.client)
-        except Exception as exc:
-            QMessageBox.critical(self, "Network Error", f"Failed to fetch room vacancy data: {exc}")
-            return
+        # Room list + occupancy are optional data: fetch them on the worker,
+        # then open the unchanged allocation dialog on the GUI thread.
+        self._approve_student = dict(s)
+        student = self._approve_student
+        self._begin_working("Loading available rooms…")
+        started = self.tasks.run(
+            "approve-rooms",
+            lambda: self._load_rooms(student.get("gender")),
+            on_success=self._on_approve_rooms_loaded,
+            on_failed=self._on_action_failed,
+            on_finished=self._finish_approve_rooms_stage,
+        )
+        if not started:
+            self._end_working()
 
-        if not rooms:
-            QMessageBox.warning(self, "No rooms", f"No rooms configured for {s['gender']} residential blocks.")
-            return
-
-        dlg = RoomAllocationDialog(self, s, rooms, occ)
-        if dlg.exec() != QDialog.DialogCode.Accepted:
-            return
-        room = dlg.selected_room()
-        room_id = dlg.selected_room_id()
-        if not room_id or room is None:
-            return
-
-        # Same guard the old "[LOCKED]" option carried: a full room is refused.
-        occupied = int(occ.get(room_id, 0) or 0)
-        if occupied >= int(room.get("capacity") or 0):
-            QMessageBox.warning(self, "Room Full", "This room is at maximum bed capacity. Please select an available room.")
-            return
-
-        try:
-            self.client.rpc("approve_student", {"p_student": s["id"], "p_room": room_id}).execute()
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Approval Error", str(exc))
-            return
-        QMessageBox.information(self, "Approved & Housed", f"Student {s['first_name']} {s['last_name']} has been approved and allocated to the room.")
-        try:
-            self.reload()
-        except Exception:
-            pass
+    def _finish_approve_rooms_stage(self):
+        """Restore controls only if the approval RPC stage did not start."""
+        if not self.tasks.is_busy("approve"):
+            self._end_working()
 
     def on_reject(self):
+        if self._working:
+            return
         s = self.selected()
         if not s:
             QMessageBox.information(self, "Select applicant", "Please select a student applicant from the table first.")
@@ -882,22 +1247,23 @@ class PendingPage(QWidget):
                 "Rejection reason is required so administrative desk staff can answer student inquiries.",
             )
             return
-        try:
-            self.client.rpc("reject_student", {"p_student": s["id"], "p_reason": reason.strip()}).execute()
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Rejection Error", str(exc))
-            return
-        QMessageBox.information(
-            self,
-            "Application Decision Saved",
-            f"Official decision for {s.get('first_name', '')} {s.get('last_name', '')} has been recorded.",
+
+        student = dict(s)
+        reason = reason.strip()
+        self._begin_working("Saving rejection…")
+        started = self.tasks.run(
+            "reject",
+            lambda: self._reject_rpc(student["id"], reason),
+            on_success=lambda snapshot: self._on_decision_success(snapshot, student),
+            on_failed=self._on_action_failed,
+            on_finished=self._end_working,
         )
-        try:
-            self.reload()
-        except Exception:
-            pass
+        if not started:
+            self._end_working()
 
     def on_delete(self):
+        if self._working:
+            return
         s = self.selected()
         if not s:
             QMessageBox.information(self, "Select Student", "Please select a student from the table first.")
@@ -920,12 +1286,14 @@ class PendingPage(QWidget):
         if not confirmed:
             return
 
-        try:
-            try:
-                self.client.rpc("delete_student", {"p_student": s["id"]}).execute()
-            except Exception:
-                self.client.table("students").delete().eq("id", s["id"]).execute()
-            QMessageBox.information(self, "Deleted", f"Resident record {name} deleted successfully.")
-            self.reload()
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Deletion Error", f"Failed to delete resident record: {exc}")
+        student = dict(s)
+        self._begin_working("Deleting record…")
+        started = self.tasks.run(
+            "delete",
+            lambda: self._delete_rpc(student["id"]),
+            on_success=lambda student_id: self._on_delete_success(student_id, student),
+            on_failed=self._on_action_failed,
+            on_finished=self._end_working,
+        )
+        if not started:
+            self._end_working()

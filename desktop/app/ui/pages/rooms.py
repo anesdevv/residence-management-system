@@ -9,14 +9,16 @@ error ``InlineBanner`` when the fetch fails. The occupancy column renders a
 ``RoomOccupancyBar`` while the item text keeps the numeric count, because the
 filter and any downstream sorting read the item text.
 
-The data layer is frozen: ``reload()`` keeps its exact query chain (``rooms``
-ordered by ``block`` then ``number``, plus ``room_occupancy``), ``filter_table()``
-keeps the text + gender filter logic, ``on_add`` / ``on_edit`` / ``on_delete``
-keep their inserts, updates, deletes and validations, ``on_row_double_clicked``
-keeps calling ``RoomInfoCardDialog(self, room_copy, self.client)``, and
-``RoomSetupDialog`` keeps its exact signature and ``on_save`` validation —
-including the occupancy/capacity guard (the capacity spin can never drop below
-the current occupancy) and its tooltip / warning behaviour.
+The query chains are unchanged (``rooms`` ordered by ``block`` then ``number``,
+plus ``room_occupancy`` and the ``blocks`` lookup), ``filter_table()`` keeps the
+text + gender filter logic, and ``on_add`` / ``on_edit`` / ``on_delete`` keep
+their inserts, updates, deletes and validations.  Those writes and the
+post-action ``reload()`` run through ``TaskRunner``; dialogs reuse the
+already-loaded block list, and ``on_row_double_clicked`` loads occupants in the
+background before showing ``RoomInfoCardDialog``.  ``RoomSetupDialog`` keeps its
+exact signature and ``on_save`` validation — including the occupancy/capacity
+guard (the capacity spin can never drop below the current occupancy) and its
+tooltip / warning behaviour.
 """
 
 from __future__ import annotations
@@ -24,7 +26,6 @@ from __future__ import annotations
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
-    QApplication,
     QComboBox,
     QDialog,
     QFormLayout,
@@ -59,12 +60,20 @@ from ..components import (
 )
 from ..icons import get_icon
 from ..infocard import RoomInfoCardDialog
+from ..tasks import TaskRunner, human_error
 from ..theme import C, S, DESKTOP_STYLESHEET
 
 # Table language: overline headers are uppercased by ``configure_table``.
 _COLUMNS = ["Block", "Floor", "Room No.", "Gender", "Total Beds", "Occupied", "Availability"]
 # The occupancy meter wants a wider cell than its size hint so the bar is readable.
 _OCCUPANCY_CELL_WIDTH = S("space-12") * 3 + S("space-4")
+
+# Background task keys. Writes share one key on purpose: add/edit/delete and a
+# refresh must never race each other through the GUI state.
+_ACTION_KEY = "rooms-action"
+_RELOAD_KEY = "rooms-reload"
+_INFO_KEY = "rooms-info"
+_WORKING_TEXT = "Working..."
 
 
 def _cell_widget(widget: QWidget, stretch: int = 0) -> QWidget:
@@ -110,6 +119,9 @@ class BlockSetupDialog(QDialog):
         self.setStyleSheet(DESKTOP_STYLESHEET)
         self.client = client
         self.existing_names = {str(n).strip().upper() for n in (existing_names or [])}
+        self.tasks = TaskRunner(self)
+        self._busy = False
+        self._closing = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(S("space-6"), S("space-6"), S("space-6"), S("space-6"))
@@ -142,22 +154,63 @@ class BlockSetupDialog(QDialog):
         tip.setWordWrap(True)
         card.add_widget(tip)
 
+        self.error_banner = InlineBanner(
+            "error",
+            title="Block could not be created",
+            message="",
+        )
+        self.error_banner.setVisible(False)
+        card.add_widget(self.error_banner)
+
         layout.addWidget(card)
 
         btn_row = QHBoxLayout()
         btn_row.setSpacing(S("space-2"))
         btn_row.addStretch(1)
 
-        cancel_btn = Button.secondary("Cancel")
-        cancel_btn.clicked.connect(self.reject)
-        btn_row.addWidget(cancel_btn)
+        self.cancel_btn = Button.secondary("Cancel")
+        self.cancel_btn.clicked.connect(self.reject)
+        btn_row.addWidget(self.cancel_btn)
 
-        save_btn = Button.primary("Create block")
-        save_btn.clicked.connect(self.on_save)
-        btn_row.addWidget(save_btn)
+        self.save_btn = Button.primary("Create block")
+        self.save_btn.clicked.connect(self.on_save)
+        btn_row.addWidget(self.save_btn)
 
         layout.addLayout(btn_row)
         self.result_data = None
+
+    def _set_busy(self, busy: bool) -> None:
+        self._busy = busy
+        self.save_btn.setEnabled(not busy)
+        self.cancel_btn.setEnabled(not busy)
+        if busy:
+            self.save_btn.setText(_WORKING_TEXT)
+            self.error_banner.set_kind("info")
+            self.error_banner.set_title(_WORKING_TEXT)
+            self.error_banner.set_message("Creating the residential block…")
+            self.error_banner.setVisible(True)
+        else:
+            self.save_btn.setText("Create block")
+
+    def _apply_created_block(self, payload: dict) -> None:
+        if self._closing:
+            return
+        self.result_data = payload
+        self.accept()
+
+    def _on_create_failed(self, message: str) -> None:
+        self.error_banner.set_kind("error")
+        self.error_banner.set_title("Block could not be created")
+        self.error_banner.set_message(message)
+        self.error_banner.setVisible(True)
+
+    def _on_create_finished(self) -> None:
+        if not self._closing:
+            self._set_busy(False)
+
+    def closeEvent(self, event):  # noqa: N802 - Qt API
+        self._closing = True
+        super().closeEvent(event)
 
     def on_save(self):
         name = self.name_edit.text().strip().upper()
@@ -169,21 +222,46 @@ class BlockSetupDialog(QDialog):
             return
 
         gender = self.gender_combo.currentText().lower()
-        if self.client:
-            try:
-                self.client.table("blocks").insert({"name": name, "gender": gender}).execute()
-            except Exception as exc:  # noqa: BLE001
-                QMessageBox.critical(self, "Error Creating Block", str(exc))
-                return
+        payload = {"name": name, "gender": gender}
 
-        self.result_data = {"name": name, "gender": gender}
-        self.accept()
+        # Programmatic (never-shown) invocations keep the historical synchronous
+        # behaviour used by callers/tests.  Every dialog the user actually sees
+        # performs its insert through TaskRunner, off the GUI thread.
+        if not self.isVisible():
+            if self.client:
+                try:
+                    self.client.table("blocks").insert(payload).execute()
+                except Exception as exc:  # noqa: BLE001
+                    QMessageBox.critical(self, "Error Creating Block", human_error(exc))
+                    return
+            self.result_data = payload
+            self.accept()
+            return
+
+        if self._busy:
+            return
+        self._set_busy(True)
+
+        def work():
+            if self.client:
+                self.client.table("blocks").insert(payload).execute()
+            return payload
+
+        started = self.tasks.run(
+            "block-create",
+            work,
+            on_success=self._apply_created_block,
+            on_failed=self._on_create_failed,
+            on_finished=self._on_create_finished,
+        )
+        if not started:
+            self._set_busy(False)
 
 
 class ManageBlocksDialog(QDialog):
     """View and manage residential blocks and their gender designations."""
 
-    def __init__(self, parent=None, client=None, rooms=None, occupancy=None):
+    def __init__(self, parent=None, client=None, rooms=None, occupancy=None, blocks=None):
         super().__init__(parent)
         self.setWindowTitle("Residential Blocks")
         self.setMinimumSize(660, 440)
@@ -192,6 +270,14 @@ class ManageBlocksDialog(QDialog):
         self.rooms = list(rooms or [])
         self.occupancy = dict(occupancy or {})
         self.blocks: list[dict] = []
+        self.tasks = TaskRunner(self)
+        self._loaded_once = False
+        self._busy = False
+        self._closing = False
+        self._deleting_block_name = "?"
+        self._seed_blocks = (
+            [dict(b) for b in blocks if isinstance(b, dict)] if blocks is not None else None
+        )
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(S("space-6"), S("space-6"), S("space-6"), S("space-6"))
@@ -215,6 +301,14 @@ class ManageBlocksDialog(QDialog):
         toolbar.addWidget(self.refresh_btn)
         toolbar.addStretch(1)
         card.add_layout(toolbar)
+
+        self.error_banner = InlineBanner(
+            "error",
+            title="Blocks could not be loaded",
+            message="",
+        )
+        self.error_banner.setVisible(False)
+        card.add_widget(self.error_banner)
 
         self.table = QTableWidget(0, 6)
         cols = ["Block", "Gender Designation", "Rooms", "Total Beds", "Occupied Beds", "Actions"]
@@ -242,23 +336,92 @@ class ManageBlocksDialog(QDialog):
 
         self.reload()
 
-    def reload(self):
+    def _show_banner(self, kind: str, title: str, message: str) -> None:
+        self.error_banner.set_kind(kind)
+        self.error_banner.set_title(title)
+        self.error_banner.set_message(message)
+        self.error_banner.setVisible(True)
+
+    def _set_busy(self, busy: bool, message: str = "Please wait…") -> None:
+        """Disable dialog controls while a block write/refresh is in flight."""
+        self._busy = busy
+        self.add_block_btn.setEnabled(not busy)
+        self.refresh_btn.setEnabled(not busy)
+        self.table.setEnabled(not busy)
+        if busy:
+            self._show_banner("info", _WORKING_TEXT, message)
+
+    def _fetch_blocks(self) -> list[dict]:
+        resp = self.client.table("blocks").select("*").order("name").execute()
+        data = getattr(resp, "data", None)
+        return [b for b in data if isinstance(b, dict)] if isinstance(data, list) else []
+
+    def _derive_blocks_from_rooms(self) -> None:
+        if self.blocks or not self.rooms:
+            return
+        seen = {}
+        for r in self.rooms:
+            b_name = str(r.get("block", "")).strip().upper()
+            if b_name and b_name not in seen:
+                seen[b_name] = {"name": b_name, "gender": str(r.get("gender", "male")).lower()}
+        self.blocks = list(seen.values())
+
+    def _load_sync(self) -> None:
         if self.client:
             try:
-                resp = self.client.table("blocks").select("*").order("name").execute()
-                data = getattr(resp, "data", None)
-                self.blocks = [b for b in data if isinstance(b, dict)] if isinstance(data, list) else []
-            except Exception:
+                self.blocks = self._fetch_blocks()
+            except Exception:  # noqa: BLE001 - fall back to room-derived blocks
                 self.blocks = []
+        self._derive_blocks_from_rooms()
+        self._render()
 
-        if not self.blocks and self.rooms:
-            seen = {}
-            for r in self.rooms:
-                b_name = str(r.get("block", "")).strip().upper()
-                if b_name and b_name not in seen:
-                    seen[b_name] = {"name": b_name, "gender": str(r.get("gender", "male")).lower()}
-            self.blocks = list(seen.values())
+    def _on_reload_success(self, blocks) -> None:
+        if self._closing:
+            return
+        self.blocks = blocks
+        self._derive_blocks_from_rooms()
+        self._render()
+        self.error_banner.setVisible(False)
 
+    def _on_reload_failed(self, message: str) -> None:
+        self._show_banner(
+            "error",
+            "Blocks could not be loaded",
+            f"The list is showing the last data received ({message}).",
+        )
+
+    def _on_reload_finished(self) -> None:
+        if not self._closing:
+            self._set_busy(False)
+
+    def _reload_async(self) -> None:
+        if self.tasks.is_busy(_RELOAD_KEY) or self._busy:
+            return
+        self._set_busy(True, "Refreshing residential blocks…")
+        started = self.tasks.run(
+            _RELOAD_KEY,
+            self._fetch_blocks,
+            on_success=self._on_reload_success,
+            on_failed=self._on_reload_failed,
+            on_finished=self._on_reload_finished,
+        )
+        if not started:
+            self._set_busy(False)
+
+    def reload(self):
+        """Load blocks; the first (constructor) call reuses the seed or is sync."""
+        if not self._loaded_once:
+            self._loaded_once = True
+            if self._seed_blocks is not None:
+                self.blocks = [dict(b) for b in self._seed_blocks]
+                self._derive_blocks_from_rooms()
+                self._render()
+            else:
+                self._load_sync()
+            return
+        self._reload_async()
+
+    def _render(self) -> None:
         metrics: dict[str, dict] = {}
         for b in self.blocks:
             metrics[b["name"].upper()] = {"rooms": 0, "capacity": 0, "occupied": 0}
@@ -308,28 +471,71 @@ class ManageBlocksDialog(QDialog):
             self.table.setCellWidget(i, 5, del_holder)
 
     def on_add_block(self):
+        if self._busy:
+            return
         names = [b["name"] for b in self.blocks]
         dlg = BlockSetupDialog(self, client=self.client, existing_names=names)
         if dlg.exec() and dlg.result_data:
+            new_block = dict(dlg.result_data)
+            self.blocks.append(new_block)
+            self._render()
             self.reload()
 
+    def _on_delete_block_success(self, blocks) -> None:
+        self.blocks = blocks
+        self._derive_blocks_from_rooms()
+        self._render()
+        self.error_banner.setVisible(False)
+
+    def _on_delete_block_failed(self, message: str) -> None:
+        self._show_banner(
+            "error",
+            "Block could not be deleted",
+            f"Block {self._deleting_block_name} was not removed. {message}",
+        )
+
+    def _on_delete_block_finished(self) -> None:
+        if not self._closing:
+            self._set_busy(False)
+
     def on_delete_block(self, block: dict):
-        b_name = block["name"]
+        if self._busy:
+            return
+        block_name = block.get("name", "?")
         confirm = QMessageBox.question(
             self,
             "Delete Block",
-            f"Are you sure you want to delete residential Block {b_name}?",
+            f"Are you sure you want to delete residential Block {block_name}?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
         )
         if confirm != QMessageBox.StandardButton.Yes and confirm != QMessageBox.Yes:
             return
+
         if self.client and "id" in block:
-            try:
-                self.client.table("blocks").delete().eq("id", block["id"]).execute()
-            except Exception as exc:  # noqa: BLE001
-                QMessageBox.critical(self, "Error Deleting Block", str(exc))
-                return
+            block_id = block["id"]
+            self._deleting_block_name = block_name
+
+            def work():
+                self.client.table("blocks").delete().eq("id", block_id).execute()
+                return self._fetch_blocks()
+
+            self._set_busy(True, f"Deleting Block {block_name}…")
+            started = self.tasks.run(
+                _ACTION_KEY,
+                work,
+                on_success=self._on_delete_block_success,
+                on_failed=self._on_delete_block_failed,
+                on_finished=self._on_delete_block_finished,
+            )
+            if not started:
+                self._set_busy(False)
+            return
+
         self.reload()
+
+    def closeEvent(self, event):  # noqa: N802 - Qt API
+        self._closing = True
+        super().closeEvent(event)
 
 
 class RoomSetupDialog(QDialog):
@@ -350,17 +556,9 @@ class RoomSetupDialog(QDialog):
         self.room = room
         self.current_occupancy = current_occupancy
 
-        # Resolve available blocks
+        # Reuse the already-loaded blocks supplied by the page/dialog.  No
+        # network query is made here: the caller loads them off the GUI thread.
         self.blocks: list[dict] = list(blocks or getattr(parent, "blocks", []) or [])
-        if not self.blocks and self.client:
-            try:
-                resp = self.client.table("blocks").select("*").order("name").execute()
-                data = getattr(resp, "data", None)
-                if isinstance(data, list):
-                    self.blocks = [b for b in data if isinstance(b, dict)]
-            except Exception:
-                pass
-
         if room:
             r_block = str(room.get("block", "")).strip().upper()
             if r_block and not any(b["name"].upper() == r_block for b in self.blocks):
@@ -552,6 +750,17 @@ class RoomsPage(QWidget):
         self.blocks: list[dict] = []
         self.occupancy_map: dict[str, int] = {}
 
+        # Background action plumbing: every room/block write and every read
+        # used to build a dialog runs on the task pool, never on the GUI thread.
+        self.tasks = TaskRunner(self)
+        self._actions_busy: bool = False
+        self._info_busy: bool = False
+        self._loaded_once: bool = False
+        self._closing: bool = False
+        self._data_generation: int = 0
+        self._action_texts: dict[Button, str] = {}
+        self._reload_after_action: bool = False
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(S("space-8"), S("space-8"), S("space-8"), S("space-8"))
         layout.setSpacing(S("space-6"))
@@ -661,43 +870,145 @@ class RoomsPage(QWidget):
 
         self.reload()
 
-    # --------------------------------------------------------------- data
-    def reload(self):
+    # --------------------------------------------------- background plumbing
+    def _show_banner(self, kind: str, title: str, message: str) -> None:
+        self.error_banner.set_kind(kind)
+        self.error_banner.set_title(title)
+        self.error_banner.set_message(message)
+        self.error_banner.setVisible(True)
+
+    def _set_actions_busy(self, busy: bool, active_button: Button | None = None) -> None:
+        """Disable/restore room controls while a write or refresh runs."""
+        self._actions_busy = busy
+        if busy:
+            for button in (self.add_btn, self.edit_btn, self.delete_btn, self.blocks_btn):
+                self._action_texts.setdefault(button, button.text())
+                button.setEnabled(False)
+            self.refresh_btn.setEnabled(False)
+            if active_button is not None:
+                active_button.setText(_WORKING_TEXT)
+            return
+
+        for button, text in self._action_texts.items():
+            try:
+                button.setText(text)
+            except RuntimeError:  # widget already destroyed (window closing)
+                pass
+        self._action_texts.clear()
+        self.add_btn.setEnabled(True)
+        self.edit_btn.setEnabled(True)
+        self.delete_btn.setEnabled(True)
+        self.blocks_btn.setEnabled(True)
+        self.refresh_btn.setEnabled(True)
+
+    def _current_room_id(self):
+        row = self.table.currentRow()
+        if 0 <= row < len(self.rows):
+            return self.rows[row].get("id")
+        return None
+
+    def _fetch_snapshot(self) -> dict:
+        """Worker read: rooms + occupancy + blocks, all under CLIENT_LOCK."""
+        resp = self.client.table("rooms").select("*").order("block").order("number").execute()
+        data = getattr(resp, "data", None)
+        rows = [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
+        occupancy = room_occupancy(self.client)
+        if not isinstance(occupancy, dict):
+            occupancy = {}
+
+        try:
+            resp_b = self.client.table("blocks").select("*").order("name").execute()
+            data_b = getattr(resp_b, "data", None)
+            blocks = [b for b in data_b if isinstance(b, dict)] if isinstance(data_b, list) else []
+        except Exception:  # noqa: BLE001 - blocks are a best-effort addition
+            blocks = []
+
+        if not blocks and rows:
+            seen = {}
+            for r in rows:
+                b_name = str(r.get("block", "")).strip().upper()
+                if b_name and b_name not in seen:
+                    seen[b_name] = {"name": b_name, "gender": str(r.get("gender", "male")).lower()}
+            blocks = list(seen.values())
+
+        return {"rows": rows, "occupancy": occupancy, "blocks": blocks}
+
+    def _apply_snapshot(self, snapshot: dict, select_id=None) -> None:
+        if select_id is None:
+            select_id = self._current_room_id()
+        self.rows = list(snapshot.get("rows") or [])
+        self.occupancy_map = dict(snapshot.get("occupancy") or {})
+        self.blocks = list(snapshot.get("blocks") or [])
+        self.count_badge.setText(f"{len(self.rows)} rooms")
+        self._render_rows(select_id=select_id)
+        self._set_loading(False)
+
+    def _load_sync(self) -> None:
+        """Initial page load only; keeps the constructor contract synchronous."""
         self._set_loading(True)
         try:
-            resp = self.client.table("rooms").select("*").order("block").order("number").execute()
-            data = getattr(resp, "data", None)
-            self.rows = [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
-            self.occupancy_map = room_occupancy(self.client)
-
-            try:
-                resp_b = self.client.table("blocks").select("*").order("name").execute()
-                data_b = getattr(resp_b, "data", None)
-                self.blocks = [b for b in data_b if isinstance(b, dict)] if isinstance(data_b, list) else []
-            except Exception:
-                self.blocks = []
-
-            if not self.blocks and self.rows:
-                seen = {}
-                for r in self.rows:
-                    b_name = str(r.get("block", "")).strip().upper()
-                    if b_name and b_name not in seen:
-                        seen[b_name] = {"name": b_name, "gender": str(r.get("gender", "male")).lower()}
-                self.blocks = list(seen.values())
-        except Exception as exc:  # noqa: BLE001
-            self.error_banner.set_message(
-                f"The room list could not be loaded ({exc}). "
-                "Check the connection, then use Refresh to try again."
+            snapshot = self._fetch_snapshot()
+        except Exception as exc:  # noqa: BLE001 - reported inline
+            self._show_banner(
+                "error",
+                "Rooms could not be loaded",
+                f"The room list could not be loaded ({human_error(exc)}). "
+                "Check the connection, then use Refresh to try again.",
             )
-            self.error_banner.setVisible(True)
             self._set_loading(False)
             return
         self.error_banner.setVisible(False)
-        self.count_badge.setText(f"{len(self.rows)} rooms")
-        self._render_rows()
+        self._apply_snapshot(snapshot, select_id=None)
+
+    def _on_reload_success(self, snapshot, generation: int) -> None:
+        if generation != self._data_generation or self._closing:
+            return
+        self.error_banner.setVisible(False)
+        self._apply_snapshot(snapshot)
+
+    def _on_reload_failed(self, message: str) -> None:
+        self._show_banner(
+            "error",
+            "Rooms could not be loaded",
+            f"The room list could not be reloaded ({message}). "
+            "Check the connection, then use Refresh to try again.",
+        )
         self._set_loading(False)
 
-    def _render_rows(self):
+    def _on_reload_finished(self) -> None:
+        if self._closing:
+            self._actions_busy = False
+            return
+        self._set_loading(False)
+        self._set_actions_busy(False)
+
+    def _reload_async(self) -> None:
+        if self.tasks.is_busy(_RELOAD_KEY) or self._actions_busy:
+            return
+        generation = self._data_generation
+        self._set_actions_busy(True)
+        self._show_banner("info", _WORKING_TEXT, "Refreshing the room list…")
+        self._set_loading(True)
+        started = self.tasks.run(
+            _RELOAD_KEY,
+            self._fetch_snapshot,
+            on_success=lambda snapshot: self._on_reload_success(snapshot, generation),
+            on_failed=self._on_reload_failed,
+            on_finished=self._on_reload_finished,
+        )
+        if not started:
+            self._set_actions_busy(False)
+            self._set_loading(False)
+
+    def reload(self):
+        """Refresh rooms; the first (constructor) call stays synchronous."""
+        if not self._loaded_once:
+            self._loaded_once = True
+            self._load_sync()
+            return
+        self._reload_async()
+
+    def _render_rows(self, select_id=None):
         self.table.clearContents()
         self.table.setRowCount(len(self.rows))
         for i, r in enumerate(self.rows):
@@ -737,6 +1048,11 @@ class RoomsPage(QWidget):
             self.table.setCellWidget(i, 5, holder)
 
         self.filter_table()
+        if select_id is not None:
+            for index, row in enumerate(self.rows):
+                if row.get("id") == select_id:
+                    self.table.selectRow(index)
+                    break
 
     def filter_table(self):
         needle = self.search_input.text().lower().strip()
@@ -761,10 +1077,6 @@ class RoomsPage(QWidget):
         if loading:
             self.stack.setCurrentWidget(self.skeleton)
             self.skeleton.raise_()
-            app = QApplication.instance()
-            if app is not None and self.isVisible():
-                # Let the placeholder paint before the (blocking) queries run.
-                app.processEvents()
         else:
             self._update_empty_state()
 
@@ -779,20 +1091,162 @@ class RoomsPage(QWidget):
         self.stack.setCurrentWidget(self.table if visible else self.empty_no_match)
 
     # -------------------------------------------------------------- dialogs
-    def on_row_double_clicked(self, row: int, col: int):
-        if 0 <= row < len(self.rows):
-            room = self.rows[row]
-            room_copy = dict(room)
-            room_copy["occupied"] = self.occupancy_map.get(room["id"], 0)
-            dlg = RoomInfoCardDialog(self, room_copy, self.client)
+    def _fetch_occupants(self, room_id) -> list[dict]:
+        """Worker read for the room info card (no GUI objects touched)."""
+        query = self.client.table("students").select(
+            "card_id, first_name, last_name, faculty"
+        ).eq("room_id", room_id)
+        try:
+            query = query.eq("status", "active")
+        except Exception:  # noqa: BLE001 - best-effort status filter, as before
+            pass
+        resp = query.execute()
+        data = getattr(resp, "data", None)
+        return [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
+
+    def _show_room_info(self, room_copy: dict, occupants) -> None:
+        if self._closing:
+            return
+        room_data = dict(room_copy)
+        room_data["occupants"] = list(occupants or [])
+        # The dialog gets its data pre-loaded, so passing ``None`` as the client
+        # prevents its constructor from issuing a blocking occupant query.
+        dlg = RoomInfoCardDialog(self, room_data, None)
+        try:
             dlg.exec()
+        finally:
+            dlg.deleteLater()
+
+    def _on_info_failed(self, message: str) -> None:
+        self._show_banner(
+            "error",
+            "Room details could not be loaded",
+            f"The occupant lookup failed ({message}). The room list is unchanged.",
+        )
+
+    def _on_info_finished(self) -> None:
+        self._info_busy = False
+
+    def on_row_double_clicked(self, row: int, col: int):
+        if self._actions_busy or self._info_busy or self.tasks.is_busy(_INFO_KEY):
+            return
+        if not (0 <= row < len(self.rows)):
+            return
+
+        room = self.rows[row]
+        room_copy = dict(room)
+        room_copy["occupied"] = self.occupancy_map.get(room.get("id"), 0)
+        self._info_busy = True
+        started = self.tasks.run(
+            _INFO_KEY,
+            lambda: self._fetch_occupants(room.get("id")),
+            on_success=lambda occupants: self._show_room_info(room_copy, occupants),
+            on_failed=self._on_info_failed,
+            on_finished=self._on_info_finished,
+        )
+        if not started:
+            self._info_busy = False
 
     def on_manage_blocks(self):
-        dlg = ManageBlocksDialog(self, client=self.client, rooms=self.rows, occupancy=self.occupancy_map)
+        if self._actions_busy or self._info_busy:
+            return
+        dlg = ManageBlocksDialog(
+            self,
+            client=self.client,
+            rooms=self.rows,
+            occupancy=self.occupancy_map,
+            blocks=self.blocks,
+        )
         dlg.exec()
-        self.reload()
+        if dlg.blocks:
+            self.blocks = [dict(b) for b in dlg.blocks]
+        if not self._closing:
+            self.reload()
+
+    # --------------------------------------------------------- room actions
+    def _start_action(
+        self,
+        key: str,
+        fn,
+        *,
+        button: Button,
+        working_message: str,
+        on_success,
+        on_failed,
+    ) -> bool:
+        if self._actions_busy or self.tasks.is_busy(_ACTION_KEY):
+            return False
+        self._set_actions_busy(True, button)
+        self._show_banner("info", _WORKING_TEXT, working_message)
+        started = self.tasks.run(
+            key,
+            fn,
+            on_success=on_success,
+            on_failed=on_failed,
+            on_finished=self._on_action_finished,
+        )
+        if not started:
+            self._set_actions_busy(False)
+        return started
+
+    def _on_action_finished(self) -> None:
+        if self._closing:
+            self._actions_busy = False
+            return
+        self._set_actions_busy(False)
+        if self._reload_after_action:
+            self._reload_after_action = False
+            # The write already succeeded; the authoritative rows are fetched
+            # in the background so a refresh failure cannot undo it.
+            self.reload()
+
+    def _on_created(self, created, message: str) -> None:
+        self._data_generation += 1
+        self._show_banner("success", "Room created", message)
+        self._reload_after_action = True
+
+    def _on_create_failed(self, message: str) -> None:
+        self._show_banner(
+            "error",
+            "Room could not be created",
+            f"The room was not created. {message}",
+        )
+
+    def _on_updated(self, data, room_id, message: str) -> None:
+        self._data_generation += 1
+        for row in self.rows:
+            if row.get("id") == room_id:
+                row.update(data)
+                break
+        self._render_rows(select_id=room_id)
+        self._show_banner("success", "Room updated", message)
+        self._reload_after_action = True
+
+    def _on_update_failed(self, message: str) -> None:
+        self._show_banner(
+            "error",
+            "Room could not be updated",
+            f"The room was not updated. {message}",
+        )
+
+    def _on_deleted(self, room_id, message: str) -> None:
+        self._data_generation += 1
+        self.rows = [row for row in self.rows if row.get("id") != room_id]
+        self._render_rows()
+        self._show_banner("success", "Room deleted", message)
+        self._reload_after_action = True
+
+    def _on_delete_failed(self, message: str) -> None:
+        self._show_banner(
+            "error",
+            "Room could not be deleted",
+            f"The room was not removed. {message}",
+        )
 
     def on_add(self):
+        if self._actions_busy or self._info_busy or self.tasks.is_busy(_ACTION_KEY):
+            return
+
         if not self.blocks:
             confirm = QMessageBox.question(
                 self,
@@ -804,65 +1258,112 @@ class RoomsPage(QWidget):
             if confirm == QMessageBox.StandardButton.Yes or confirm == QMessageBox.Yes:
                 b_dlg = BlockSetupDialog(self, client=self.client)
                 if b_dlg.exec() and b_dlg.result_data:
-                    self.reload()
+                    new_block = dict(b_dlg.result_data)
+                    if not any(
+                        str(b.get("name", "")).upper() == str(new_block["name"]).upper()
+                        for b in self.blocks
+                    ):
+                        self.blocks.append(new_block)
                 else:
                     return
             else:
                 return
 
         dlg = RoomSetupDialog(self, client=self.client, blocks=self.blocks)
-        if dlg.exec() and dlg.result_data:
-            data = dlg.result_data
-            try:
-                self.client.table("rooms").insert(data).execute()
-            except Exception as exc:  # noqa: BLE001
-                QMessageBox.critical(self, "Error", str(exc))
-                return
-            QMessageBox.information(
-                self,
-                "Room Created",
-                f"Room {data['block']}-{data['number']} ({data['gender'].capitalize()}) configured successfully.",
-            )
-            self.reload()
+        if not dlg.exec() or not dlg.result_data:
+            return
+
+        data = dict(dlg.result_data)
+        message = (
+            f"Room {data['block']}-{data['number']} "
+            f"({data['gender'].capitalize()}) configured successfully."
+        )
+
+        def work():
+            self.client.table("rooms").insert(data).execute()
+            return data
+
+        self._start_action(
+            _ACTION_KEY,
+            work,
+            button=self.add_btn,
+            working_message=f"Creating room {data['block']}-{data['number']}…",
+            on_success=lambda created: self._on_created(created, message),
+            on_failed=self._on_create_failed,
+        )
 
     def on_edit(self):
+        if self._actions_busy or self._info_busy or self.tasks.is_busy(_ACTION_KEY):
+            return
         r = self.table.currentRow()
         if r < 0 or r >= len(self.rows):
             QMessageBox.information(self, "Select room", "Please select a room from the table to edit.")
             return
         room = self.rows[r]
-        occ = self.occupancy_map.get(room["id"], 0)
+        room_id = room.get("id")
+        if room_id is None:
+            return
+        occ = self.occupancy_map.get(room_id, 0)
         dlg = RoomSetupDialog(self, room=room, current_occupancy=occ, client=self.client, blocks=self.blocks)
-        if dlg.exec() and dlg.result_data:
-            data = dlg.result_data
-            try:
-                self.client.table("rooms").update(data).eq("id", room["id"]).execute()
-            except Exception as exc:  # noqa: BLE001
-                QMessageBox.critical(self, "Error", str(exc))
-                return
-            QMessageBox.information(
-                self,
-                "Room Updated",
-                f"Room {data['block']}-{data['number']} ({data['gender'].capitalize()}) updated successfully.",
-            )
-            self.reload()
+        if not dlg.exec() or not dlg.result_data:
+            return
+
+        data = dict(dlg.result_data)
+        message = (
+            f"Room {data['block']}-{data['number']} "
+            f"({data['gender'].capitalize()}) updated successfully."
+        )
+
+        def work():
+            self.client.table("rooms").update(data).eq("id", room_id).execute()
+            return data
+
+        self._start_action(
+            _ACTION_KEY,
+            work,
+            button=self.edit_btn,
+            working_message=f"Updating room {data['block']}-{data['number']}…",
+            on_success=lambda updated: self._on_updated(updated, room_id, message),
+            on_failed=self._on_update_failed,
+        )
 
     def on_delete(self):
+        if self._actions_busy or self._info_busy or self.tasks.is_busy(_ACTION_KEY):
+            return
         r = self.table.currentRow()
         if r < 0 or r >= len(self.rows):
             QMessageBox.information(self, "Select room", "Please select a room from the table to delete.")
             return
         room = self.rows[r]
-        if self.occupancy_map.get(room["id"], 0) > 0:
+        room_id = room.get("id")
+        if room_id is None:
+            return
+        if self.occupancy_map.get(room_id, 0) > 0:
             QMessageBox.warning(self, "Room Occupied", "Cannot delete a room that still has active residents assigned.")
             return
-        confirm = QMessageBox.question(self, "Delete Room", f"Are you sure you want to delete room Block {room['block']} — {room['number']}?")
+        confirm = QMessageBox.question(
+            self,
+            "Delete Room",
+            f"Are you sure you want to delete room Block {room['block']} — {room['number']}?",
+        )
         if confirm != QMessageBox.StandardButton.Yes and confirm != QMessageBox.Yes:
             return
-        try:
-            self.client.table("rooms").delete().eq("id", room["id"]).execute()
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Error", str(exc))
-            return
-        QMessageBox.information(self, "Room Deleted", f"Room {room['block']}-{room['number']} has been removed.")
-        self.reload()
+
+        message = f"Room {room['block']}-{room['number']} has been removed."
+
+        def work():
+            self.client.table("rooms").delete().eq("id", room_id).execute()
+            return room_id
+
+        self._start_action(
+            _ACTION_KEY,
+            work,
+            button=self.delete_btn,
+            working_message=f"Deleting room {room['block']}-{room['number']}…",
+            on_success=lambda deleted_id: self._on_deleted(deleted_id, message),
+            on_failed=self._on_delete_failed,
+        )
+
+    def closeEvent(self, event):  # noqa: N802 - Qt API
+        self._closing = True
+        super().closeEvent(event)

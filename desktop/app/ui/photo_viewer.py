@@ -62,6 +62,21 @@ class ClickablePhotoLabel(QLabel):
         super().mousePressEvent(event)
 
 
+# Live fetchers are kept here until their QThread emits finished.
+_ACTIVE_FETCHERS: set[PhotoFetchWorker] = set()
+
+
+def running_photo_fetchers() -> list[PhotoFetchWorker]:
+    """Fetchers whose QThread has not finished yet."""
+    return [worker for worker in list(_ACTIVE_FETCHERS) if worker.isRunning()]
+
+
+def stop_photo_fetchers() -> None:
+    """Ask every live fetcher to stop; used by the main-window shutdown."""
+    for worker in list(_ACTIVE_FETCHERS):
+        worker.stop()
+
+
 class PhotoFetchWorker(QThread):
     """Fetches image bytes in a background thread to prevent UI freezing."""
 
@@ -72,6 +87,15 @@ class PhotoFetchWorker(QThread):
         super().__init__(parent)
         self.url = url
         self._stopped = False
+        # Keep the wrapper alive until the thread really finishes.  Callers
+        # disconnect signals and drop their own reference when a preview is
+        # replaced or a dialog closes; without this registry Python could
+        # destroy a running QThread ("Destroyed while thread is still running").
+        _ACTIVE_FETCHERS.add(self)
+        self.finished.connect(self._untrack)
+
+    def _untrack(self):
+        _ACTIVE_FETCHERS.discard(self)
 
     def stop(self):
         self._stopped = True
