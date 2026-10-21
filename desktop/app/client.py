@@ -310,23 +310,25 @@ def room_occupancy(client: Client, *, strict: bool = False) -> dict[str, int]:
     tables still render.  Callers that must not turn a failure into a fake zero
     pass ``strict=True`` to receive the exception instead.
     """
-    try:
-        resp = client.table("students").select("room_id").eq("status", "active").execute()
-        counts: dict[str, int] = {}
-        for row in resp.data or []:
-            rid = row.get("room_id")
-            if rid:
-                counts[rid] = counts.get(rid, 0) + 1
-        return counts
-    except Exception:
-        if strict:
-            raise
-        return {}
+    with CLIENT_LOCK:
+        try:
+            resp = client.table("students").select("room_id").eq("status", "active").execute()
+            counts: dict[str, int] = {}
+            for row in resp.data or []:
+                rid = row.get("room_id")
+                if rid:
+                    counts[rid] = counts.get(rid, 0) + 1
+            return counts
+        except Exception:
+            if strict:
+                raise
+            return {}
 
 
 def official_lookup(client: Client) -> dict[str, dict]:
-    try:
-        resp = client.table("official_residents").select("*").execute()
-        return {r["card_id"]: r for r in (resp.data or []) if "card_id" in r}
-    except Exception:
-        return {}
+    with CLIENT_LOCK:
+        try:
+            resp = client.table("official_residents").select("*").execute()
+            return {r["card_id"]: r for r in (resp.data or []) if "card_id" in r}
+        except Exception:
+            return {}

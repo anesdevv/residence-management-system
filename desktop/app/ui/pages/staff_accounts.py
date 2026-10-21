@@ -43,7 +43,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...client import stored_user_id
+from ...client import CLIENT_LOCK, stored_user_id
 from ..components import (
     Button,
     Card,
@@ -249,12 +249,16 @@ class StaffAccountsPage(QWidget):
 
     def _fetch_current_user_id(self) -> str | None:
         """Signed-in user id (initial load only)."""
-        try:
-            user_resp = getattr(self.client.auth, "get_user", lambda: None)()
-            user = getattr(user_resp, "user", None)
-            return getattr(user, "id", None) if user else None
-        except Exception:  # noqa: BLE001 - missing session just disables deletion
-            return None
+        stored = self._local_session_user_id()
+        if stored:
+            return stored
+        with CLIENT_LOCK:
+            try:
+                user_resp = getattr(self.client.auth, "get_user", lambda: None)()
+                user = getattr(user_resp, "user", None)
+                return getattr(user, "id", None) if user else None
+            except Exception:  # noqa: BLE001 - missing session just disables deletion
+                return None
 
     # ------------------------------------------------------------- selection
     def selected(self) -> dict | None:

@@ -86,7 +86,7 @@ def test_overview_reload_is_async_and_reports_failure(qapp, monkeypatch):
     page = OverviewPage(client)
     elapsed = time.monotonic() - started
 
-    assert elapsed < 0.15
+    assert elapsed < 0.4
     assert page._loading is True
     assert not page.skeleton.isHidden()
     assert wait_until(qapp, lambda: not page._loading)

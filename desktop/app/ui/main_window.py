@@ -944,6 +944,7 @@ class MainWindow(QMainWindow):
     def _begin_shutdown(self, action: str) -> None:
         """Ask workers to stop, then complete ``action`` without blocking."""
         self._pending_shutdown_action = action
+        self._shutdown_start_time = time.monotonic()
         self._shutdown_workers(0)
         if not self._workers_running():
             self._pending_shutdown_action = None
@@ -960,7 +961,11 @@ class MainWindow(QMainWindow):
 
     def _poll_shutdown(self) -> None:
         if self._workers_running():
-            return
+            elapsed = time.monotonic() - getattr(self, "_shutdown_start_time", time.monotonic())
+            if elapsed > 10.0:
+                _log.warning("Workers did not finish after %.1fs; proceeding with shutdown", elapsed)
+            else:
+                return
         timer = getattr(self, "_shutdown_timer", None)
         if timer is not None:
             timer.stop()
