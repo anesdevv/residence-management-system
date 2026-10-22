@@ -2,9 +2,8 @@
 
 <img src="docs/resivo_logo_transparent.png" alt="RÉSIVO Logo" width="180" />
 
-# RÉSIVO
+# RÉSIVO: University Residence & Facility Management System
 
-### University Residence & Facility Management System
 **Direction des Œuvres Universitaires • Cité Universitaire • Tlemcen**
 
 [![Astro](https://img.shields.io/badge/Astro-5.x-BC52EE?style=for-the-badge&logo=astro&logoColor=white)](https://astro.build)
@@ -16,46 +15,46 @@
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers_MCP-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
 
 <p align="center">
-  A secure, modern, multi-surface accommodation and facility operations platform designed for university student residences. Eliminates manual paper dossiers, accelerates maintenance triage, enforces gender-segregated room capacity rules, and cross-references registrations against official university enrollment rosters.
+  A management platform for university student residences. It replaces paper dossiers with digital registration, verifies applicant matriculation numbers against official university rosters, enforces gender-segregated room capacity rules, and tracks maintenance tickets.
 </p>
 
-[Key Capabilities](#-key-capabilities) •
-[System Architecture](#-system-architecture) •
-[Quickstart](#-quickstart--installation) •
-[Security & Privacy](#-security--privacy-architecture) •
-[Official Roster Dataset](#-official-university-roster-dataset) •
-[Testing](#-automated-testing--verification)
+[Key capabilities](#key-capabilities) •
+[System architecture](#system-architecture) •
+[Quickstart](#quickstart-and-installation) •
+[Security and privacy](#security-and-privacy-architecture) •
+[Official roster dataset](#official-university-roster-dataset) •
+[Testing](#automated-testing-and-verification)
 
 ---
 
 </div>
 
-## 📌 Overview
+## Overview
 
-**RÉSIVO** (*Résidence Universitaire*) provides an integrated operations ecosystem tailored for higher-education student housing:
+RÉSIVO (*Résidence Universitaire*) provides an operations system for university student housing across four components:
 
-1. **Resident Web Portal (`web/`)**: Mobile-first, responsive web application built with **Astro 5** and **Tailwind CSS v4**. Enrolled students register with their university card ID, view housing approval status, access digital resident passes, report dormitory maintenance issues with photo attachments, and request room transfers.
-2. **Staff Operations Console (`desktop/`)**: High-contrast, dense administrative workstation built with **Python 3.11** and **PySide6 (Qt 6)**. Housing officers review pending dossiers, verify students against university rosters, assign room blocks, manage facility tickets with an asynchronous photo viewer, adjudicate room swaps, and configure staff accounts.
-3. **AI Facility Assistant (`mcp-worker/` & `mcp/`)**: **Model Context Protocol (MCP)** server deployed to Cloudflare Workers. Allows authorized administrators to query occupancy statistics, pending tickets, and dormitory status directly through ChatGPT or any compatible MCP client.
-4. **Backend Infrastructure (`supabase/`)**: **Supabase** (PostgreSQL 15, Auth, Storage) featuring fine-grained Row Level Security (RLS) policies, idempotent migrations, and transactional PL/pgSQL stored procedures.
+1. **Resident Web Portal (`web/`)**: responsive web application built with Astro 5 and Tailwind CSS v4. Enrolled students register with their university card ID, check housing approval status, access digital resident passes, report dormitory maintenance issues with photos, and submit room transfer requests.
+2. **Staff Operations Console (`desktop/`)**: administrative desktop workstation built with Python 3.11 and PySide6 (Qt 6). Housing staff review pending applications, verify students against university rosters, assign room blocks, manage maintenance tickets with an asynchronous photo viewer, adjudicate room swaps, and configure staff accounts.
+3. **AI Facility Assistant (`mcp-worker/` and `mcp/`)**: Model Context Protocol (MCP) server deployed to Cloudflare Workers. Enables authorized staff to query occupancy statistics, pending tickets, and dormitory status through ChatGPT or compatible MCP clients.
+4. **Backend Infrastructure (`supabase/`)**: Supabase (PostgreSQL 15, Auth, Storage) configured with Row Level Security (RLS) policies, versioned migrations, and transactional PL/pgSQL stored procedures.
 
 ---
 
-## 🏛️ System Architecture
+## System architecture
 
 ```mermaid
 flowchart TD
     subgraph Clients["User Surfaces"]
-        Web["🌐 Student Web Portal<br/><i>(Astro 5 + Tailwind v4 + SSR)</i>"]
-        Desktop["🖥️ Staff Operations Console<br/><i>(PySide6 / Qt 6 Desktop)</i>"]
-        MCP["🤖 AI Operations Assistant<br/><i>(Cloudflare Workers MCP / ChatGPT)</i>"]
+        Web["Student Web Portal<br/><i>(Astro 5 + Tailwind v4 + SSR)</i>"]
+        Desktop["Staff Operations Console<br/><i>(PySide6 / Qt 6 Desktop)</i>"]
+        MCP["AI Operations Assistant<br/><i>(Cloudflare Workers MCP / ChatGPT)</i>"]
     end
 
     subgraph Backend["Supabase Cloud Platform"]
-        Auth["🔐 Supabase Auth<br/><i>(Role-based JWT: student, staff, admin)</i>"]
-        Edge["⚡ Edge Functions<br/><i>(admin-users: secure user provisioning)</i>"]
-        Storage["📦 Supabase Storage<br/><i>(maintenance-photos bucket)</i>"]
-        Postgres[("🗄️ PostgreSQL Database<br/><i>(RLS Policies + SECURITY DEFINER RPCs)</i>")]
+        Auth["Supabase Auth<br/><i>(Role-based JWT: student, staff, admin)</i>"]
+        Edge["Edge Functions<br/><i>(admin-users: secure user provisioning)</i>"]
+        Storage["Supabase Storage<br/><i>(maintenance-photos bucket)</i>"]
+        Postgres[("PostgreSQL Database<br/><i>(RLS Policies + SECURITY DEFINER RPCs)</i>")]
     end
 
     Web -->|HTTPS / JWT| Auth
@@ -72,51 +71,55 @@ flowchart TD
 
 ---
 
-## 🌟 Key Capabilities
+## Key capabilities
 
-### 🌐 Student Resident Web Portal
-- **Academic Verification**: Enforce enrollment matching against official university card IDs upon registration.
-- **Digital Resident Pass**: View assigned dormitory block, room number, floor, and official residency pass.
-- **Maintenance Triage**: File maintenance faults with category selection, description, and photo attachments; track progress through a 3-stage lifecycle (`Pending` → `In Progress` → `Resolved`).
-- **Room Transfers**: Submit room transfer justifications with gender-segregated block matching.
-- **Safety Locks**: Inactive and rejected applicants are prevented from filing room requests until administrative approval.
+### Student resident web portal
 
-### 🖥️ Staff Operations Console
-- **Live Background Sync**: 2-second background polling (`LiveSyncWorker`) with unread badge counters and toast notifications.
-- **Application Adjudication**:
-  - Filter across `Pending Applications`, `Approved Residents`, `Rejected Applications`, and `All`.
-  - **Desk Inquiry Reference**: Rejection reasons are mandatory and displayed prominently in applicant inspector cards for answering desk inquiries.
-  - **Safe Deletion Guards**: Pending applications cannot be deleted until approved or rejected.
-- **Room & Resident Directories**: Real-time room occupancy tracking, block capacity visualization, and instant student profile inspections.
-- **High-Resolution Photo Viewer**: Dedicated multi-threaded photo viewer dialog (`PhotoViewerDialog`) with asynchronous fetching and 25%–400% zoom controls.
-- **Staff Access Control**: Multi-tier protected staff management with strict self-deletion prevention across UI, Edge Functions, and database RPCs.
-- **Flexible UI Layout**: Resilient layout supporting minimum resolutions (980×640) up to 4K displays without crushed controls.
+- Academic verification: registration requires student card ID matching against official university records.
+- Digital resident pass: displays assigned building block, room number, floor, and official resident pass.
+- Maintenance triage: students submit issues by category with photos and descriptions, tracking status across Pending, In Progress, and Resolved stages.
+- Room transfers: transfer requests include written justifications and enforce gender-segregated block matching.
+- Access guards: unapproved or rejected accounts cannot file room requests until approved by staff.
 
-### 🤖 AI Assistant (Model Context Protocol)
-- **Natural Language Inquiries**: Query dormitory metrics ("*How many rooms are available in Block B?*", "*List open plumbing tickets*").
-- **Admin Role Enforcement**: Read-only by default with audit trails; administrative mutations require explicit user confirmation.
+### Staff operations console
+
+- Background sync: 2-second background polling via `LiveSyncWorker` with unread badges and notifications.
+- Application adjudication:
+  - Filter by Pending Applications, Approved Residents, Rejected Applications, and All.
+  - Desk inquiry reference: mandatory rejection notes displayed on applicant cards to answer in-person student questions.
+  - Deletion guards: pending applications cannot be deleted until formally approved or rejected.
+- Room and resident directories: live room occupancy tracking, block capacity visualization, and student profile inspection.
+- Photo viewer: multi-threaded dialog (`PhotoViewerDialog`) with asynchronous image fetching and 25% to 400% zoom controls.
+- Staff access controls: multi-tier account management preventing self-deletion across UI, Edge Functions, and database functions.
+- Adaptive layout: interface scales from minimum desktop resolutions (980x640) up to 4K displays.
+
+### AI Assistant (Model Context Protocol)
+
+- Natural language queries: inspect occupancy numbers and open maintenance tickets.
+- Access enforcement: read-only by default with audit trails; write operations require confirmation.
 
 ---
 
-## 🚀 Quickstart & Installation
+## Quickstart and installation
 
 ### Prerequisites
-- **Node.js**: `v22.12.0` or higher
-- **Python**: `3.11` or higher
-- **Supabase CLI**: `npx supabase`
+
+- Node.js: v22.12.0 or higher
+- Python: 3.11 or higher
+- Supabase CLI: `npx supabase`
 
 ---
 
-### 1. Backend Configuration (Supabase)
+### 1. Backend configuration (Supabase)
 
-1. Clone repository and initialize environment variables:
+1. Clone the repository and create your local environment file:
    ```bash
    git clone https://github.com/anesdevv/residence-management-system.git
    cd residence-management-system
    cp .env.example .env
    ```
 
-2. Configure `.env` with your project credentials (never commit real credentials):
+2. Configure `.env` with your project credentials:
    ```ini
    SUPABASE_URL=https://<your-project-id>.supabase.co
    SUPABASE_ANON_KEY=your-anon-key
@@ -130,25 +133,26 @@ flowchart TD
    npx supabase db push
    ```
 
-4. Seed initial dormitory rooms and administrator accounts:
+4. Seed initial rooms and administrator accounts:
    ```bash
    python scripts/seed.py
    ```
 
 ---
 
-### 2. Student Web Portal Setup
+### 2. Student web portal setup
 
 ```bash
 cd web
 npm install
 npm run dev
 ```
-The student portal is available at `http://localhost:4321`.
+
+The portal runs at `http://localhost:4321`.
 
 ---
 
-### 3. Staff Desktop Console Setup
+### 3. Staff desktop console setup
 
 1. Create and activate a Python virtual environment:
    ```bash
@@ -166,87 +170,84 @@ The student portal is available at `http://localhost:4321`.
    pip install -r desktop/requirements.txt
    ```
 
-3. Launch the Staff Console:
+3. Launch the staff console:
    ```bash
    python desktop/main.py
    ```
 
 ---
 
-### 4. AI Assistant MCP Worker Setup
+### 4. AI assistant MCP worker setup
 
 ```bash
 cd mcp-worker
 npm install
 npx wrangler deploy
 ```
-Connect the deployed worker URL (`https://<your-worker-subdomain>.workers.dev/mcp`) to ChatGPT Plus/Pro or your preferred MCP client.
+
+Connect the deployed worker URL (`https://<your-worker-subdomain>.workers.dev/mcp`) to ChatGPT or your preferred MCP client.
 
 ---
 
-## 🔒 Security & Privacy Architecture
-
-Security and privacy are enforced at every tier of the application stack:
+## Security and privacy architecture
 
 | Layer | Mechanism | Protection |
-| :--- | :--- | :--- |
-| **Database** | Row Level Security (RLS) | Restricts students to their own records; grants staff read/write on housing operations. |
-| **Database** | `SECURITY DEFINER` RPCs | Operations like `delete_student` and `delete_staff` enforce parameter checks and search paths (`public, auth, pg_temp`). |
-| **Edge Functions** | Bearer JWT & Service Role | `admin-users` function validates admin claims before creating or revoking staff credentials. |
-| **Client UI** | Multi-Tier Self-Deletion Guard | Prevents staff officers from deleting their own administrative accounts across UI, Edge Function, and PostgreSQL levels. |
-| **Audit Trails** | Rejection Documentation | Requires formal reasons upon application rejection for transparency during administrative desk inquiries. |
-| **Credentials** | Zero Plaintext Secrets | No secrets, private tokens, or database passwords are hardcoded in the codebase; configuration uses template `.env.example` files. |
+|---|---|---|
+| Database | Row Level Security (RLS) | Restricts students to their own rows; grants staff read and write access for housing operations. |
+| Database | `SECURITY DEFINER` RPCs | Functions like `delete_student` and `delete_staff` enforce parameter checks and explicit search paths (`public, auth, pg_temp`). |
+| Edge Functions | Bearer JWT & Service Role | `admin-users` function verifies admin claims before creating or revoking staff accounts. |
+| Client UI | Multi-tier self-deletion guard | Prevents staff members from deleting their own active accounts across UI, Edge Function, and database tiers. |
+| Audit trails | Rejection documentation | Enforces mandatory recorded explanations when applications are rejected. |
+| Credentials | Environment variables | Configuration uses `.env.example` templates; secrets are not committed to source control. |
 
 ---
 
-## 📋 Official University Roster Dataset
+## Official university roster dataset
 
-The repository includes pre-built student rosters formatted for the **Official List** bulk import feature:
+The repository includes student rosters formatted for the bulk import tool:
 
-- [`official_students_roster.csv`](official_students_roster.csv) *(Root directory)*
-- [`data/official_students_sample.csv`](data/official_students_sample.csv) *(Data directory)*
+- [`official_students_roster.csv`](official_students_roster.csv) (Root directory)
+- [`data/official_students_sample.csv`](data/official_students_sample.csv) (Data directory)
 
-**Dataset Specifications:**
-- **Institution**: Université Abou Bekr Belkaïd - Tlemcen
-- **Faculties**: 7 Academic faculties (*Technologie, Médecine, Sciences, Sciences Économiques, Droit, Lettres, SNV*)
-- **Student IDs**: 40 standard matriculation numbers (`202437010001` through `202437010040`)
-- **Fields**: `card_id`, `first_name`, `last_name`, `gender`, `birth_date`, `faculty`, `university`
-
----
+Specifications:
+- Institution: Université Abou Bekr Belkaïd, Tlemcen
+- Faculties: Technologie, Médecine, Sciences, Sciences Économiques, Droit, Lettres, SNV
+- Student IDs: 40 matriculation numbers (`202437010001` through `202437010040`)
+- Fields: `card_id`, `first_name`, `last_name`, `gender`, `birth_date`, `faculty`, `university`
 
 ---
 
-## 🎨 Design System & Visual Redesign
+## Design system
 
-The RÉSIVO platform features an institutional, high-trust design system documented in detail in [`docs/DESIGN.md`](docs/DESIGN.md).
+The design system specification is documented in [`docs/DESIGN.md`](docs/DESIGN.md):
 
-- **Brand Foundations**: Strict logo geometry, brand gradient (`navy-800` → `teal-600` → `green-500`) reserved exclusively for hero surfaces and resident pass.
-- **Color Palette & Semantic Tokens**: WCAG AA-compliant tokens across desktop (`desktop/app/ui/theme.py`) and web (`web/src/styles/tokens.css`).
-- **Zero-Emoji Policy**: Pure authored Lucide-style SVG icons (`Icon.astro` and `icons.py`).
-- **Typography**: Local self-hosted OFL fonts (**Outfit** for headings and digital pass, **Inter** with tabular numerics `tnum` for data tables and IDs).
-- **Universal Component Language**: Identical component contracts on desktop and web (`StatusPill`, `Stepper`, `Card`, `PageHeader`, `InlineBanner`, `EmptyState`, `KeyValue`).
-- **Visual Evidence**: Offscreen grab screenshots preserved in [`docs/screenshots/desktop/`](docs/screenshots/desktop/) and [`docs/screenshots/web/`](docs/screenshots/web/).
+- Color palette: WCAG AA-compliant tokens used across desktop (`desktop/app/ui/theme.py`) and web (`web/src/styles/tokens.css`).
+- Icons: SVG icons based on Lucide conventions (`Icon.astro` and `icons.py`).
+- Typography: Local OFL fonts (Outfit for headings and digital pass, Inter with tabular numbers for tables).
+- Common component patterns: matching contracts across desktop and web (`StatusPill`, `Stepper`, `Card`, `PageHeader`, `InlineBanner`, `EmptyState`, `KeyValue`).
+- Screenshots: interface captures stored in [`docs/screenshots/desktop/`](docs/screenshots/desktop/) and [`docs/screenshots/web/`](docs/screenshots/web/).
 
 ---
 
-## 🧪 Automated Testing & Verification
+## Automated testing and verification
 
-The codebase includes automated test suites across both desktop and web clients:
+### Desktop test suite (PySide6 / Pytest)
 
-### Desktop Test Suite (PySide6 / Pytest)
 ```bash
-# Run all 23 desktop unit and integration tests (in offscreen mode)
+# Run all 23 desktop unit and integration tests in offscreen mode
 $env:QT_QPA_PLATFORM="offscreen"; desktop\.venv\Scripts\pytest.exe desktop\tests -v
 ```
-**Test Coverage Includes (23 passed):**
-- `test_deletion_and_filters.py`: Status filtering, mandatory rejection reasons, live sync filter preservation, deletion restrictions, self-deletion defense.
-- `test_flexible_window.py`: Minimum window size enforcement, splitter min/max widths, responsive geometry.
-- `test_photo_viewer.py`: Async photo loading worker, zoom scaling, dialog termination.
-- `test_sign_out.py`: Background worker shutdown, session invalidation, window transitions.
-- `test_importer.py`: Official roster CSV/Excel parsing and validation.
-- `test_client.py`: Client connection and authentication tests.
 
-### Web Test Suite (Vitest)
+Test coverage includes:
+- `test_deletion_and_filters.py`: status filtering, mandatory rejection notes, live sync filter preservation, deletion restrictions, self-deletion defense
+- `test_flexible_window.py`: minimum window dimensions, splitter limits, layout geometry
+- `test_photo_viewer.py`: asynchronous image worker, zoom scaling, dialog termination
+- `test_sign_out.py`: worker shutdown, session invalidation, window transitions
+- `test_importer.py`: CSV and Excel roster parsing and validation
+- `test_client.py`: API client connection and authentication
+
+### Web test suite (Vitest)
+
 ```bash
 cd web
 npm test
@@ -254,7 +255,7 @@ npm test
 
 ---
 
-## 📁 Repository Structure
+## Repository structure
 
 ```text
 residence-management-system/
@@ -264,20 +265,20 @@ residence-management-system/
 │   ├── app/
 │   │   ├── importers/                  # CSV/Excel roster importers
 │   │   └── ui/
-│   │       ├── pages/                  # Desktop views (Pending, Rooms, Maintenance, etc.)
-│   │       ├── live_sync.py            # 2s background polling worker
+│   │       ├── pages/                  # Desktop views (Pending, Rooms, Maintenance)
+│   │       ├── live_sync.py            # 2-second background polling worker
 │   │       ├── photo_viewer.py         # Multi-threaded photo viewer dialog
-│   │       └── theme.py                # Institutional high-contrast dark theme
-│   ├── tests/                          # 19 automated desktop unit/integration tests
+│   │       └── theme.py                # High-contrast dark theme
+│   ├── tests/                          # Automated unit and integration tests
 │   ├── main.py                         # Desktop application entrypoint
 │   └── requirements.txt                # Python dependencies
 ├── docs/                               # Architecture, logos, and specifications
 │   ├── resivo_logo.svg                 # Vector brand mark
 │   └── resivo_logo_transparent.png     # Transparent brand logo
-├── mcp-worker/                         # Cloudflare Workers MCP server (ChatGPT assistant)
-├── mcp/                                # Local Python MCP fallback server
+├── mcp-worker/                         # Cloudflare Workers MCP server
+├── mcp/                                # Local Python MCP server
 ├── scripts/                            # Database seed and maintenance scripts
-├── supabase/                           # Database migrations, seed data, and Edge Functions
+├── supabase/                           # Database migrations, seed data, Edge Functions
 │   ├── functions/admin-users/          # Edge Function for staff user management
 │   └── migrations/                     # Version-controlled SQL migrations
 ├── web/                                # Student Resident Portal (Astro 5 + Tailwind v4)
@@ -286,13 +287,13 @@ residence-management-system/
 │   │   ├── layouts/                    # Application shells
 │   │   └── pages/                      # Web routes (Registration, Dashboard, Maintenance)
 │   └── package.json                    # Node.js dependencies and scripts
-├── official_students_roster.csv        # Production-ready import roster
+├── official_students_roster.csv        # Production import roster
 └── README.md                           # Project documentation
 ```
 
 ---
 
-## 📄 License & Attribution
+## License and attribution
 
-Developed for **Cité Universitaire — Direction des Œuvres Universitaires (DOU)**.  
+Developed for the Direction des Œuvres Universitaires (DOU), Cité Universitaire, Tlemcen.  
 Licensed under the [MIT License](LICENSE).
