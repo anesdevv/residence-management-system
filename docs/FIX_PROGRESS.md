@@ -91,3 +91,13 @@ WHERE p.role = 'admin';
 | Step B.3 | P2: Rejected Room Changes Visibility & Desk Reference | **DONE** | `desktop/app/ui/pages/room_changes.py` | 4 views, search, rejection persistence, desk inquiry card, and post-reject navigation verified. |
 | Step B.4 | P3: Admin Features & EXE Packaging | **DONE** | `desktop/resivo.spec`, `desktop/BUILD.md`, `desktop/app/config.py`, `desktop/app/ui/diagnostics.py` | Anti-downgrade retry banner, frozen config search order, diagnostics dialog verified. |
 | Step B.5 | Manual Test Checklist Documentation | **DONE** | `docs/manual-test-desktop.md` | All 10 explicit manual test points and EXE instructions enumerated in the checklist. |
+
+---
+
+## 5. 3 Tasks Execution Progress (Roster, Maintenance Stages & Categories)
+
+| Task | Title | Status | Files Changed | Description / Details |
+|---|---|---|---|---|
+| **T1** | **Modify and Delete Official Roster Entries** | **DONE** | `supabase/migrations/20261022133000_official_roster_management.sql`, `desktop/app/ui/pages/official_list.py`, `desktop/app/ui/main_window.py`, `desktop/tests/test_official_roster_actions.py` | Added idempotent migration with `add_official_resident`, `update_official_resident`, `delete_official_residents`, and `clear_official_residents` RPCs (security definer, admin check). Added search preservation, multi-row selection, Add, Edit, Delete selected, and Clear all (typed DELETE confirmation) actions to OfficialListPage with background TaskRunner execution. Gated write actions for admins with staff tooltips. Connected roster update notifications to PendingPage badge refresh. Added 7 unit tests (146 passed in pytest). |
+| **T2** | **Remove "Under Review" Stage Everywhere** | **PENDING** | TBD | Maintenance lifecycle becomes Pending > In Progress > Resolved. |
+| **T3** | **Maintenance Categories (Plumbing, Electricity, Carpentry, Others)** | **PENDING** | TBD | Rename Heating to Others, remove General, update web form, desktop icons/filters, migrations and tests. |

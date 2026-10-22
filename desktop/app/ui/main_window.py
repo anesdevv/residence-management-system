@@ -459,6 +459,10 @@ class MainWindow(QMainWindow):
         self.maintenance_page = MaintenancePage(client)
         self.room_changes_page = RoomChangesPage(client)
         self.official_list_page = OfficialListPage(client)
+        if hasattr(self.official_list_page, "pending_page"):
+            self.official_list_page.pending_page = self.pending_page
+        if hasattr(self.official_list_page, "roster_changed"):
+            self.official_list_page.roster_changed.connect(self._on_roster_changed)
 
         self._add_nav_item("Overview", "overview", self.overview_page)
         self._add_nav_item("Pending accounts", "pending", self.pending_page)
@@ -746,6 +750,11 @@ class MainWindow(QMainWindow):
             self.official_list_page.set_role(self.role)
         if hasattr(self, "settings_page") and hasattr(self.settings_page, "set_role"):
             self.settings_page.set_role(self.role)
+
+    def _on_roster_changed(self) -> None:
+        """Refresh pending student records and badges when official admissions data is updated."""
+        if hasattr(self, "pending_page") and hasattr(self.pending_page, "reload"):
+            self.pending_page.reload()
 
     def _retry_role_check(self) -> None:
         """Re-check the role off the GUI thread, then apply the gating."""
