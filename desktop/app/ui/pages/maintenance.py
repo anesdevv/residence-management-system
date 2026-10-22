@@ -37,6 +37,7 @@ from __future__ import annotations
 from PySide6.QtCore import QEvent, QSize, Qt
 from PySide6.QtGui import QBrush, QColor, QPixmap
 from PySide6.QtWidgets import (
+    QComboBox,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -99,15 +100,58 @@ _STATUS_KINDS = {
 }
 _DEFAULT_STATUS = ("pending", "Pending")
 
+# 4 canonical categories: Plumbing, Electricity, Carpentry, Others (in order)
+_CATEGORIES = [
+    ("plumbing", "Plumbing"),
+    ("electricity", "Electricity"),
+    ("carpentry", "Carpentry"),
+    ("others", "Others"),
+]
+
+_CATEGORY_LABELS = {
+    "plumbing": "Plumbing",
+    "electricity": "Electricity",
+    "electrical": "Electricity",
+    "carpentry": "Carpentry",
+    "furniture": "Carpentry",
+    "others": "Others",
+    "other": "Others",
+    "heating": "Others",
+    "general": "Others",
+}
+
 # maintenance_category -> icon name (table cell and inspector header)
 _CATEGORY_ICONS = {
     "plumbing": "droplet",
+    "electricity": "zap",
     "electrical": "zap",
+    "carpentry": "hammer",
     "furniture": "hammer",
-    "internet": "wifi",
+    "others": "wrench",
     "other": "wrench",
+    "heating": "wrench",
+    "general": "wrench",
+    "internet": "wifi",
 }
 _CATEGORY_FALLBACK = "wrench"
+
+
+def _normalize_category(category) -> str:
+    key = str(category or "").lower().strip()
+    if key in ("electricity", "electrical"):
+        return "electricity"
+    if key in ("carpentry", "furniture"):
+        return "carpentry"
+    if key in ("others", "other", "heating", "general"):
+        return "others"
+    if key == "plumbing":
+        return "plumbing"
+    return "others"
+
+
+def _category_label(category) -> str:
+    key = str(category or "").lower().strip()
+    return _CATEGORY_LABELS.get(key, "Others")
 
 # The exact string asserted by the no-photo contract test.
 _NO_PHOTO_TEXT = "No photo attached by resident"
@@ -140,7 +184,8 @@ def _status_meta(raw_status) -> tuple[str, str]:
 
 def _category_icon(category) -> str:
     """Icon name for a maintenance category (unknown categories -> wrench)."""
-    return _CATEGORY_ICONS.get(str(category or "").lower(), _CATEGORY_FALLBACK)
+    key = str(category or "").lower().strip()
+    return _CATEGORY_ICONS.get(key, _CATEGORY_FALLBACK)
 
 
 def _fmt_date(value) -> str:
@@ -296,6 +341,16 @@ class MaintenancePage(QWidget):
         self.btn_resolved = self.segments.buttons["resolved"]
         self.segments.changed.connect(self.set_filter)
         toolbar.addWidget(self.segments)
+
+        self.category_filter = QComboBox()
+        self.category_filter.addItem("All categories", "all")
+        for cat_id, cat_label in _CATEGORIES:
+            self.category_filter.addItem(cat_label, cat_id)
+        self.category_filter.categories = [cat_label for _id, cat_label in _CATEGORIES]
+        self.categories = list(self.category_filter.categories)
+        self.category_filter.setToolTip("Filter tickets by category")
+        self.category_filter.currentIndexChanged.connect(lambda _idx: self.apply_filter())
+        toolbar.addWidget(self.category_filter)
 
         self.search = SearchField("Search by description, resident or category…")
         self.search.changed.connect(self.apply_filter)
@@ -535,19 +590,23 @@ class MaintenancePage(QWidget):
 
     def apply_filter(self):
         needle = self.search.text().lower().strip()
+        selected_cat = self.category_filter.currentData() if hasattr(self, "category_filter") else "all"
         for r in range(self.table.rowCount()):
             row_data = self.rows[r] if r < len(self.rows) else {}
             st = _normalise_student(row_data)
             status = str(row_data.get("status", ""))
             if status == "under_review":
                 status = "pending"
-            cat = str(row_data.get("category", "")).lower()
+            raw_cat = str(row_data.get("category", "")).lower()
+            cat_norm = _normalize_category(raw_cat)
+            cat_label = _category_label(raw_cat).lower()
             desc = str(row_data.get("description", "")).lower()
             name = f"{st.get('first_name', '')} {st.get('last_name', '')}".lower()
 
             status_matches = self.filter_mode == "all" or status == self.filter_mode
-            text_matches = needle in f"{cat} {desc} {name}"
-            self.table.setRowHidden(r, not (status_matches and text_matches))
+            cat_matches = (selected_cat in (None, "all")) or (cat_norm == selected_cat)
+            text_matches = needle in f"{cat_norm} {cat_label} {desc} {name}"
+            self.table.setRowHidden(r, not (status_matches and cat_matches and text_matches))
         self._update_view_state()
 
     def _update_view_state(self):
@@ -704,8 +763,9 @@ class MaintenancePage(QWidget):
             status_kind, status_text = _status_meta(status)
             category = str(r.get("category") or "other")
 
-            cat_item = QTableWidgetItem(category.capitalize())
-            cat_item.setIcon(get_icon(_category_icon(category), 14, C("text-secondary")))
+            cat_label = _category_label(r.get("category"))
+            cat_item = QTableWidgetItem(cat_label)
+            cat_item.setIcon(get_icon(_category_icon(r.get("category")), 14, C("text-secondary")))
             student_item = QTableWidgetItem(f"{st.get('first_name', '')} {st.get('last_name', '')}".strip())
             status_holder = _cell_widget(StatusPill(status_kind, status_text))
             status_item = _pill_item(status_text, status_holder)
@@ -838,7 +898,7 @@ class MaintenancePage(QWidget):
         status = str(r.get("status", "pending"))
         status_kind, status_text = _status_meta(status)
         stage = _stage_index(status)
-        category = str(r.get("category") or "other")
+        category = _category_label(r.get("category"))
         st = _normalise_student(r)
         name = f"{st.get('first_name', '')} {st.get('last_name', '')}".strip() or "Unnamed resident"
 
@@ -847,8 +907,8 @@ class MaintenancePage(QWidget):
         self.stepper.set_states([index < stage for index in range(len(_STAGES))])
 
         # Category + status header.
-        self.category_icon.setPixmap(get_pixmap(_category_icon(category), S("size-icon"), C("navy-800")))
-        self.category_label.setText(category.capitalize())
+        self.category_icon.setPixmap(get_pixmap(_category_icon(r.get("category")), S("size-icon"), C("navy-800")))
+        self.category_label.setText(category)
         self.status_pill.set_kind(status_kind, status_text)
 
         # Resident identity.
@@ -1166,7 +1226,7 @@ class MaintenancePage(QWidget):
             return
 
         ticket_id = str(t.get("id", ""))[:8]
-        category = str(t.get("category") or "—").capitalize()
+        category = _category_label(t.get("category"))
         status_text = _status_meta(t.get("status", "pending"))[1]
         confirmed = ConfirmDialog.ask(
             self,

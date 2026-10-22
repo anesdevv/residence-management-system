@@ -63,14 +63,7 @@ const statusPill = isActive
 
 const subtitle = [student?.faculty, student?.university || 'Université de Tlemcen'].filter(Boolean).join(' · ');
 
-/** Maintenance category to authored icon + label (docs/DESIGN.md section 5 aliases). */
-const CATEGORY: Record<string, { icon: string; label: string }> = {
-  plumbing: { icon: 'droplet', label: 'Plumbing' },
-  electrical: { icon: 'zap', label: 'Electrical' },
-  furniture: { icon: 'hammer', label: 'Furniture' },
-  internet: { icon: 'wifi', label: 'Internet' },
-  other: { icon: 'wrench', label: 'Other' },
-};
+import { getCategoryMeta } from '../../lib/maintenance';
 ---
 
 <Layout title="Dashboard — RÉSIVO" activeNav="dashboard">
@@ -256,7 +249,7 @@ const CATEGORY: Record<string, { icon: string; label: string }> = {
               </span>
               <h3 class="mt-4 text-h3 text-ink transition-colors group-hover:text-teal-600">Maintenance requests</h3>
               <p class="mt-1 text-small font-normal text-muted">
-                Report plumbing, electricity, furniture, heating, or internet issues with attached photos.
+                Report plumbing, electricity, carpentry, or other issues with attached photos.
               </p>
             </div>
             <span class="flex items-center gap-1 text-small font-semibold text-teal-600">
@@ -275,7 +268,7 @@ const CATEGORY: Record<string, { icon: string; label: string }> = {
                 <StatusPill kind="neutral" icon="lock" label="Locked" size="sm" />
               </div>
               <p class="mt-1 text-small font-normal text-muted">
-                Report plumbing, electricity, furniture, heating, or internet issues with attached photos.
+                Report plumbing, electricity, carpentry, or other issues with attached photos.
               </p>
             </div>
             <span class="flex items-start gap-2 text-small font-normal text-muted">
@@ -392,10 +385,10 @@ const CATEGORY: Record<string, { icon: string; label: string }> = {
               <li class="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <div class="flex min-w-0 items-start gap-3">
                   <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input bg-subtle text-teal-600">
-                    <Icon name={CATEGORY[r.category]?.icon ?? 'wrench'} size={20} />
+                    <Icon name={getCategoryMeta(r.category).icon} size={20} />
                   </span>
                   <div class="min-w-0">
-                    <p class="overline">Maintenance · {CATEGORY[r.category]?.label ?? r.category}</p>
+                    <p class="overline">Maintenance · {getCategoryMeta(r.category).label}</p>
                     <p class="line-clamp-1 text-body font-semibold text-ink">{r.description}</p>
                     <time class="tnum block text-small font-normal text-muted" datetime={r.created_at}>
                       {new Date(r.created_at).toLocaleDateString()}

@@ -2,7 +2,7 @@ export const prerender = false;
 import type { APIRoute } from 'astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
-const CATEGORIES = ['plumbing', 'electrical', 'furniture', 'internet', 'other'];
+import { isAllowedCategory } from '../../lib/maintenance';
 const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB
 
@@ -16,7 +16,7 @@ export const POST: APIRoute = async (context) => {
   const description = String(form.get('description') ?? '').trim();
   const photo = form.get('photo');
 
-  if (!CATEGORIES.includes(category) || description.length < 5) {
+  if (!isAllowedCategory(category) || description.length < 5) {
     return context.redirect('/dashboard/maintenance?error=Invalid+report');
   }
 

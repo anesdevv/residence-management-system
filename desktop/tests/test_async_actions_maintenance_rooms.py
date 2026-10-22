@@ -649,3 +649,45 @@ def test_legacy_under_review_ticket_displays_as_pending(qapp):
     page.table.selectRow(0)
     assert page.in_progress_btn.isEnabled()
     assert page.resolved_btn.isEnabled()
+
+
+def test_desktop_category_filter_lists_the_same_four(qapp):
+    client = FakeClient(maintenance_rows=[])
+    page = MaintenancePage(client)
+    assert hasattr(page, 'category_filter')
+    expected = ['Plumbing', 'Electricity', 'Carpentry', 'Others']
+    assert page.categories == expected
+    filter_categories = [
+        page.category_filter.itemText(i)
+        for i in range(page.category_filter.count())
+        if page.category_filter.itemData(i) != 'all'
+    ]
+    assert filter_categories == expected
+    assert [c[1] for c in maintenance_mod._CATEGORIES] == expected
+
+
+def test_migrated_old_general_heating_ticket_displays_as_others(qapp):
+    heating_ticket = _ticket('m_heating', category='heating')
+    general_ticket = _ticket('m_general', category='general')
+    other_ticket = _ticket('m_other', category='other')
+    client = FakeClient(maintenance_rows=[heating_ticket, general_ticket, other_ticket])
+    page = MaintenancePage(client)
+    assert page.table.rowCount() == 3
+
+    for row_idx in range(3):
+        item = page.table.item(row_idx, 0)
+        assert item.text() == 'Others'
+
+    page.table.selectRow(0)
+    assert page.category_label.text() == 'Others'
+    assert 'CATEGORY: OTHERS' in page.detail_text.toPlainText()
+
+    page.table.selectRow(1)
+    assert page.category_label.text() == 'Others'
+    assert 'CATEGORY: OTHERS' in page.detail_text.toPlainText()
+
+    assert maintenance_mod._normalize_category('heating') == 'others'
+    assert maintenance_mod._normalize_category('general') == 'others'
+    assert maintenance_mod._normalize_category('other') == 'others'
+    assert maintenance_mod._normalize_category('furniture') == 'carpentry'
+    assert maintenance_mod._normalize_category('electrical') == 'electricity'

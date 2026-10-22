@@ -8,7 +8,7 @@ import InlineBanner from '../../components/InlineBanner.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import StatCard from '../../components/StatCard.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
-import { MAINTENANCE_STAGES, getStageIndex } from '../../lib/maintenance';
+import { MAINTENANCE_STAGES, getStageIndex, MAINTENANCE_CATEGORIES, getCategoryMeta } from '../../lib/maintenance';
 
 export const prerender = false;
 
@@ -44,13 +44,7 @@ const resolvedCount = withUrls.filter(r => r.status === 'resolved').length;
 const error = Astro.url.searchParams.get('error');
 const created = Astro.url.searchParams.get('created');
 
-const categories = [
-  { id: 'plumbing', label: 'Plumbing', icon: 'droplet', desc: 'Leaks, faucets, drainage, pipes' },
-  { id: 'electrical', label: 'Electrical', icon: 'zap', desc: 'Lighting, power outlets, switches' },
-  { id: 'furniture', label: 'Furniture', icon: 'hammer', desc: 'Beds, desks, doors, locks, closets' },
-  { id: 'internet', label: 'Campus Wi-Fi', icon: 'wifi', desc: 'Connectivity & ethernet jacks' },
-  { id: 'other', label: 'General / Heating', icon: 'wrench', desc: 'Radiators, windows, structural' },
-];
+const categories = [...MAINTENANCE_CATEGORIES];
 
 const STAGES = [...MAINTENANCE_STAGES];
 ---
@@ -237,7 +231,7 @@ const STAGES = [...MAINTENANCE_STAGES];
     ) : (
       <div class="flex flex-col gap-4" id="ticketList">
         {withUrls.map((r) => {
-          const catSpec = categories.find(c => c.id === r.category) ?? { label: r.category, icon: 'wrench' };
+          const catSpec = getCategoryMeta(r.category);
           const stageIdx = getStageIndex(r.status);
           const normStatus = r.status === 'under_review' ? 'pending' : r.status;
           const statusKind = normStatus === 'resolved' ? 'ok' : normStatus === 'in_progress' ? 'progress' : 'pending';

@@ -21,3 +21,31 @@ export function getMaintenanceStatusLabel(status: string): string {
   if (norm === 'in_progress') return 'In progress';
   return 'Pending';
 }
+
+export const MAINTENANCE_CATEGORIES = [
+  { id: 'plumbing', label: 'Plumbing', icon: 'droplet', desc: 'Leaks, faucets, drainage, pipes' },
+  { id: 'electricity', label: 'Electricity', icon: 'zap', desc: 'Lighting, power outlets, switches' },
+  { id: 'carpentry', label: 'Carpentry', icon: 'hammer', desc: 'Beds, desks, doors, locks, closets' },
+  { id: 'others', label: 'Others', icon: 'wrench', desc: 'Radiators, windows, structural & other issues' },
+] as const;
+
+export const ALLOWED_CATEGORY_IDS = ['plumbing', 'electricity', 'carpentry', 'others'] as const;
+export type MaintenanceCategoryId = (typeof ALLOWED_CATEGORY_IDS)[number];
+
+export function isAllowedCategory(category: string): boolean {
+  return (ALLOWED_CATEGORY_IDS as readonly string[]).includes(category);
+}
+
+export function normalizeMaintenanceCategory(category: string): MaintenanceCategoryId {
+  const c = String(category || '').toLowerCase().trim();
+  if (c === 'plumbing') return 'plumbing';
+  if (c === 'electricity' || c === 'electrical') return 'electricity';
+  if (c === 'carpentry' || c === 'furniture') return 'carpentry';
+  return 'others'; // 'others', 'other', 'heating', 'general', etc.
+}
+
+export function getCategoryMeta(category: string): { id: MaintenanceCategoryId; label: string; icon: string } {
+  const norm = normalizeMaintenanceCategory(category);
+  const found = MAINTENANCE_CATEGORIES.find((c) => c.id === norm);
+  return found ?? { id: 'others', label: 'Others', icon: 'wrench' };
+}
