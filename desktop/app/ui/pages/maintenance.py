@@ -79,11 +79,9 @@ from ..tasks import TaskRunner, human_error
 from ..theme import C, S
 
 # Lifecycle stages (UI): the segmented filter and the inspector Stepper share
-# this order. "Under review" is a UI-only stage — no ``maintenance_reports``
-# row carries it yet, so its count is always 0 and the empty state explains it.
+# this order: Pending > In progress > Resolved (3 stages).
 _STAGES = [
     ("pending", "Pending"),
-    ("under_review", "Under review"),
     ("in_progress", "In progress"),
     ("resolved", "Resolved"),
 ]
@@ -95,7 +93,7 @@ _COLUMNS = ["Category", "Resident", "Status", "Reported"]
 # report status -> (StatusPill kind, status word)
 _STATUS_KINDS = {
     "pending": ("pending", "Pending"),
-    "under_review": ("review", "Under review"),
+    "under_review": ("pending", "Pending"),
     "in_progress": ("progress", "In progress"),
     "resolved": ("ok", "Resolved"),
 }
@@ -134,7 +132,10 @@ def _normalise_student(row: dict) -> dict:
 
 def _status_meta(raw_status) -> tuple[str, str]:
     """``(StatusPill kind, status word)`` for any report status value."""
-    return _STATUS_KINDS.get(str(raw_status), _DEFAULT_STATUS)
+    key = str(raw_status or "").lower()
+    if key == "under_review":
+        key = "pending"
+    return _STATUS_KINDS.get(key, _DEFAULT_STATUS)
 
 
 def _category_icon(category) -> str:
@@ -172,9 +173,12 @@ def _room_text(row: dict, student: dict) -> str:
 
 
 def _stage_index(status) -> int:
-    """Stepper index for a report status (unknown -> Pending)."""
-    for index, (key, _label) in enumerate(_STAGES):
-        if key == str(status):
+    """Stepper index for a report status (unknown/under_review -> Pending)."""
+    key = str(status or "").lower()
+    if key == "under_review":
+        key = "pending"
+    for index, (k, _label) in enumerate(_STAGES):
+        if k == key:
             return index
     return 0
 
@@ -288,7 +292,6 @@ class MaintenancePage(QWidget):
 
         self.segments = SegmentedControl(_STAGES)
         self.btn_pending = self.segments.buttons["pending"]
-        self.btn_under_review = self.segments.buttons["under_review"]
         self.btn_in_progress = self.segments.buttons["in_progress"]
         self.btn_resolved = self.segments.buttons["resolved"]
         self.segments.changed.connect(self.set_filter)
@@ -535,7 +538,9 @@ class MaintenancePage(QWidget):
         for r in range(self.table.rowCount()):
             row_data = self.rows[r] if r < len(self.rows) else {}
             st = _normalise_student(row_data)
-            status = row_data.get("status", "")
+            status = str(row_data.get("status", ""))
+            if status == "under_review":
+                status = "pending"
             cat = str(row_data.get("category", "")).lower()
             desc = str(row_data.get("description", "")).lower()
             name = f"{st.get('first_name', '')} {st.get('last_name', '')}".lower()
@@ -555,6 +560,8 @@ class MaintenancePage(QWidget):
         counts = {key: 0 for key, _label in _STAGES}
         for r in self.rows:
             status = str(r.get("status", ""))
+            if status == "under_review":
+                status = "pending"
             if status in counts:
                 counts[status] += 1
         for key, value in counts.items():

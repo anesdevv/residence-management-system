@@ -628,3 +628,24 @@ def test_manage_blocks_delete_runs_in_background(qapp):
     assert dialog.table.rowCount() == 1
     dialog.close()
     qapp.processEvents()
+
+
+def test_maintenance_stages_are_exactly_three(qapp):
+    client = FakeClient(maintenance_rows=[])
+    page = MaintenancePage(client)
+    assert [s[0] for s in maintenance_mod._STAGES] == ['pending', 'in_progress', 'resolved']
+    assert list(page.segments.buttons.keys()) == ['pending', 'in_progress', 'resolved']
+    assert 'under_review' not in page.segments.buttons
+
+
+def test_legacy_under_review_ticket_displays_as_pending(qapp):
+    client = FakeClient(maintenance_rows=[_ticket('m_old', status='under_review')])
+    page = MaintenancePage(client)
+    assert page.table.rowCount() == 1
+    assert '1' in page.segments.buttons['pending'].text()
+    assert maintenance_mod._stage_index('under_review') == 0
+    kind, label = maintenance_mod._status_meta('under_review')
+    assert label == 'Pending'
+    page.table.selectRow(0)
+    assert page.in_progress_btn.isEnabled()
+    assert page.resolved_btn.isEnabled()

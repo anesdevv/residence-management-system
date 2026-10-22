@@ -77,7 +77,7 @@ flowchart TD
 ### 🌐 Student Resident Web Portal
 - **Academic Verification**: Enforce enrollment matching against official university card IDs upon registration.
 - **Digital Resident Pass**: View assigned dormitory block, room number, floor, and official residency pass.
-- **Maintenance Triage**: File maintenance faults with category selection, description, and photo attachments; track progress through a 4-stage lifecycle (`Submitted` → `Under Review` → `In Progress` → `Resolved`).
+- **Maintenance Triage**: File maintenance faults with category selection, description, and photo attachments; track progress through a 3-stage lifecycle (`Pending` → `In Progress` → `Resolved`).
 - **Room Transfers**: Submit room transfer justifications with gender-segregated block matching.
 - **Safety Locks**: Inactive and rejected applicants are prevented from filing room requests until administrative approval.
 

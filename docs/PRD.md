@@ -103,7 +103,7 @@ flowchart TB
 
 ### Module 3: Maintenance Ticketing & Visual Triage (`MaintenancePage`)
 - **FR-3.1 Resident Submission**: Students submit tickets with category (`Plumbing`, `Electricity`, `Carpentry`, `Heating`, `General`), text description, and photo attachments.
-- **FR-3.2 Four-Stage Lifecycle Tracking**: Both web and desktop track tickets through `Pending` → `Under Review` → `In Progress` → `Resolved`.
+- **FR-3.2 Three-Stage Lifecycle Tracking**: Both web and desktop track tickets through `Pending` → `In Progress` → `Resolved`.
 - **FR-3.3 Asynchronous Photo Viewer**:
   - Clicking a ticket thumbnail opens `PhotoViewerDialog`.
   - Photos are fetched asynchronously via a dedicated `QThread` (`PhotoFetchWorker`), preventing UI freezing.
