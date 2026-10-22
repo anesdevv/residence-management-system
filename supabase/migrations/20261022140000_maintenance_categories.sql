@@ -1,13 +1,7 @@
 -- Migration: 20261022140000_maintenance_categories.sql
--- T3: Rename "Heating" to "Others" and REMOVE "General"
--- Canonical categories everywhere: Plumbing, Electricity, Carpentry, Others (4 options).
+-- Step 2: Migrate existing records and enforce allowed categories.
 
--- 1. Extend the enum with new categories if missing.
-alter type maintenance_category add value if not exists 'electricity';
-alter type maintenance_category add value if not exists 'carpentry';
-alter type maintenance_category add value if not exists 'others';
-
--- 2. Migrate existing records to the canonical set:
+-- 1. Migrate existing records to the canonical set:
 -- 'electrical' -> 'electricity'
 -- 'furniture'  -> 'carpentry'
 -- 'heating', 'general', 'other', 'internet', etc. -> 'others'
@@ -28,7 +22,7 @@ update maintenance_reports
 set category = 'others'::maintenance_category
 where category::text not in ('plumbing', 'electricity', 'carpentry', 'others');
 
--- 3. Replace/add CHECK constraint so only the 4 canonical values are accepted for NEW rows.
+-- 2. Replace/add CHECK constraint so only the 4 canonical values are accepted for NEW rows.
 -- Note: Postgres does not safely allow dropping values from an existing enum type,
 -- so legacy values ('electrical', 'furniture', 'internet', 'other') remain in the enum
 -- type definition for backwards compatibility, but are strictly blocked from insertion
