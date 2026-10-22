@@ -370,9 +370,9 @@ const tableRows = [
             <label class="label" for="sg-select">Maintenance category</label>
             <select class="select" id="sg-select">
               <option>Plumbing</option>
-              <option>Electrical</option>
-              <option>Furniture</option>
-              <option>Internet</option>
+              <option>Electricity</option>
+              <option>Carpentry</option>
+              <option>Others</option>
             </select>
             <p class="field-hint">Native select keeps the platform picker on mobile.</p>
           </div>
@@ -562,14 +562,14 @@ const tableRows = [
 
       <section class={section}>
         <h2 class={heading}>Steppers</h2>
-        <p class={lede}>Maintenance lifecycle: Pending › Under review › In progress › Resolved. Horizontal on desktop, vertical on mobile.</p>
+        <p class={lede}>Maintenance lifecycle: Pending › In progress › Resolved. Horizontal on desktop, vertical on mobile.</p>
         <div class="card mt-6 flex flex-col gap-8 p-4 sm:p-6">
-          <Stepper steps={['Pending', 'Under review', 'In progress', 'Resolved']} current={2} />
-          <Stepper steps={['Pending', 'Under review', 'In progress', 'Resolved']} current={4} />
+          <Stepper steps={['Pending', 'In progress', 'Resolved']} current={1} />
+          <Stepper steps={['Pending', 'In progress', 'Resolved']} current={3} />
           <Stepper
-            steps={['Pending', 'Under review', 'In progress', 'Resolved']}
+            steps={['Pending', 'In progress', 'Resolved']}
             current={1}
-            states={['done', 'done', 'current', 'todo']}
+            states={['done', 'current', 'todo']}
           />
           <p class="text-small font-normal text-muted">
             done = ok tokens with a check, current = teal-600 with aria-current="step", todo = line/muted. states lets a

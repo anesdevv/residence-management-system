@@ -3,7 +3,7 @@ from pathlib import Path
 
 block_cipher = None
 
-ROOT = Path(r"C:\Users\Admin\Documents\OpenCode\my school project THE MAIN")
+ROOT = Path(SPECPATH).resolve().parent
 DESKTOP_DIR = ROOT / "desktop"
 ASSETS_DIR = DESKTOP_DIR / "assets"
 
@@ -28,13 +28,16 @@ hiddenimports = [
     "dotenv",
     "app.client",
     "app.config",
-    "app.live_sync",
+    "app.ui.live_sync",
+    "app.logging_setup",
     "app.ui.components",
+    "app.ui.diagnostics",
     "app.ui.icons",
     "app.ui.infocard",
     "app.ui.login_window",
     "app.ui.main_window",
     "app.ui.photo_viewer",
+    "app.ui.tasks",
     "app.ui.theme",
     "app.ui.pages.maintenance",
     "app.ui.pages.official_list",

@@ -17,7 +17,6 @@ from datetime import datetime
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QApplication,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -27,18 +26,20 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...client import room_occupancy
+from ...client import room_occupancy, stored_user_display_name
 from .. import theme
 from ..components import (
     Avatar,
     Card,
     EmptyState,
     IconButton,
+    InlineBanner,
     PageHeader,
     Skeleton,
     StatCard,
     StatusPill,
 )
+from ..tasks import TaskRunner
 from ..icons import get_pixmap
 from ..theme import C, S
 
@@ -81,23 +82,7 @@ def _staff_display_name(client) -> str:
     ``name``), then the email local part. Returns ``""`` when nothing usable is
     available so the greeting degrades to a name-free line.
     """
-    try:
-        session = client.auth.get_session()
-        user = getattr(session, "user", None)
-        metadata = getattr(user, "user_metadata", None) or {}
-        if isinstance(metadata, dict):
-            for key in ("full_name", "name"):
-                value = metadata.get(key)
-                if isinstance(value, str) and value.strip():
-                    return value.strip()
-        email = getattr(user, "email", None)
-        if isinstance(email, str) and email.strip():
-            local = email.split("@")[0].replace(".", " ").replace("_", " ").strip()
-            if local:
-                return local.title()
-    except Exception:
-        pass
-    return ""
+    return stored_user_display_name(client, "")
 
 
 def _greeting_word() -> str:
@@ -170,6 +155,13 @@ class OverviewPage(QWidget):
         self._metrics: dict[str, int | None] | None = None
         self._events: list[tuple[str, str, str, str]] = []
         self._last_tick: str | None = None
+        self._loading = False
+        # Monotonic revision of data delivered by live sync.  A reload snapshot
+        # that started before a tick is older than that tick and must not
+        # overwrite it when it lands.
+        self._live_revision = 0
+        self._reload_revision = 0
+        self.tasks = TaskRunner(self)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -197,6 +189,14 @@ class OverviewPage(QWidget):
         self.refresh_btn.clicked.connect(self.reload)
         self.header.actions.addWidget(self.refresh_btn)
         layout.addWidget(self.header)
+
+        self.error_banner = InlineBanner(
+            "error",
+            title="Overview could not be refreshed",
+            message="The cards are showing the last counters received. Use Refresh to try again.",
+        )
+        self.error_banner.setVisible(False)
+        layout.addWidget(self.error_banner)
 
         # --- greeting line ------------------------------------------------
         greeting_row = QHBoxLayout()
@@ -284,15 +284,37 @@ class OverviewPage(QWidget):
 
     # ------------------------------------------------------------------ data
     def _count(self, table, **filters) -> int:
-        try:
-            q = self.client.table(table).select("id", count="exact")
-            for col, val in filters.items():
-                q = q.eq(col, val)
-            return q.execute().count or 0
-        except Exception:
-            return 0
+        """Count rows; failures propagate to the refresh task, not to a fake 0."""
+        q = self.client.table(table).select("id", count="exact")
+        for col, val in filters.items():
+            q = q.eq(col, val)
+        return q.execute().count or 0
 
-    def apply_live_data(self, pending: int, reports: int, requests: int, occupancy: int | None = None):
+    def _fetch_snapshot(self):
+        """Network-only counters for a worker thread."""
+        pending = self._count("students", status="pending")
+        reports = (
+            self.client.table("maintenance_reports")
+            .select("id", count="exact")
+            .neq("status", "resolved")
+            .execute()
+            .count
+            or 0
+        )
+        requests = self._count("room_change_requests", status="pending")
+        occupancy = sum(room_occupancy(self.client, strict=True).values())
+        return pending, reports, requests, occupancy
+
+    def apply_live_data(
+        self,
+        pending: int,
+        reports: int,
+        requests: int,
+        occupancy: int | None = None,
+        live: bool = True,
+    ):
+        if live:
+            self._live_revision += 1
         self.pending_card.set_value(pending)
         self.reports_card.set_value(reports)
         self.requests_card.set_value(requests)
@@ -323,37 +345,65 @@ class OverviewPage(QWidget):
                     continue
                 self._metrics[key] = value
 
-        self._last_tick = datetime.now().strftime("%H:%M:%S")
-        self._update_tick_label()
+        if live:
+            self._last_tick = datetime.now().strftime("%H:%M:%S")
+            self._update_tick_label()
         if changed:
             self._render_occupancy()
             self._render_attention()
             self._render_events()
 
     def reload(self):
+        """Refresh on the thread pool; the greeting/first paint never blocks."""
+        if self._loading:
+            return
+        self._loading = True
+        self._reload_revision = self._live_revision
+        self.error_banner.setVisible(False)
+        self.refresh_btn.setEnabled(False)
         self._set_loading(True)
-        try:
-            pending = self._count("students", status="pending")
-            reports = self.client.table("maintenance_reports").select("id", count="exact").neq("status", "resolved").execute().count or 0
-            requests = self._count("room_change_requests", status="pending")
-            occupancy = sum(room_occupancy(self.client).values())
-            self.apply_live_data(pending, reports, requests, occupancy)
-        except Exception:
-            pass
-        finally:
-            self._set_loading(False)
+        started = self.tasks.run(
+            "overview-reload",
+            self._fetch_snapshot,
+            on_success=self._on_reload_success,
+            on_failed=self._on_reload_failed,
+            on_finished=self._on_reload_finished,
+        )
+        if not started:
+            self._on_reload_finished()
+
+    def _on_reload_success(self, snapshot):
+        if self._live_revision != self._reload_revision:
+            # A live-sync tick arrived while this snapshot was in flight.  Keep
+            # the newer live counts but merge in any field the tick omitted
+            # (notably occupancy), rather than discarding the whole snapshot.
+            latest = self._metrics or {}
+            snapshot = (
+                latest.get("pending", snapshot[0]),
+                latest.get("reports", snapshot[1]),
+                latest.get("requests", snapshot[2]),
+                latest.get("occupancy")
+                if latest.get("occupancy") is not None
+                else snapshot[3],
+            )
+        self.apply_live_data(*snapshot, live=False)
+
+    def _on_reload_failed(self, message: str):
+        self.error_banner.set_message(
+            f"{message} The cards are showing the last counters received."
+        )
+        self.error_banner.setVisible(True)
+
+    def _on_reload_finished(self):
+        self._loading = False
+        self.refresh_btn.setEnabled(True)
+        self._set_loading(False)
 
     # ------------------------------------------------------------ rendering
     def _set_loading(self, loading: bool) -> None:
-        """Swap the content for the Skeleton while reload() is in flight."""
+        """Swap the content for the Skeleton while the worker fetches counters."""
         self.skeleton.setVisible(loading)
         self.content.setVisible(not loading)
-        if loading:
-            self.skeleton.raise_()
-            app = QApplication.instance()
-            if app is not None and self.isVisible():
-                # Let the placeholder paint before the (blocking) queries run.
-                app.processEvents()
 
     def _update_tick_label(self) -> None:
         if self._last_tick:

@@ -1,5 +1,15 @@
+import logging
+import time
 from datetime import datetime
+
 from PySide6.QtCore import QThread, Signal
+
+from ..client import CLIENT_LOCK
+
+_log = logging.getLogger(__name__)
+
+# Keep a broken network from flooding the log at every tick.
+_ERROR_LOG_INTERVAL_S = 60.0
 
 
 class LiveSyncWorker(QThread):
@@ -15,6 +25,7 @@ class LiveSyncWorker(QThread):
         self._last_student_ids: set[str] | None = None
         self._last_report_ids: set[str] | None = None
         self._last_request_ids: set[str] | None = None
+        self._last_error_logged_at = 0.0
 
     def stop(self):
         self._running = False
@@ -29,49 +40,53 @@ class LiveSyncWorker(QThread):
         while self._running:
             if not self._paused:
                 try:
-                    # 1. Fetch pending students
-                    s_resp = (
-                        self.client.table("students")
-                        .select("*")
-                        .eq("status", "pending")
-                        .order("created_at", desc=True)
-                        .execute()
-                    )
-                    pending_students = s_resp.data or []
+                    with CLIENT_LOCK:
+                        # 1. Fetch pending students
+                        s_resp = (
+                            self.client.table("students")
+                            .select("*")
+                            .eq("status", "pending")
+                            .order("created_at", desc=True)
+                            .execute()
+                        )
+                        pending_students = s_resp.data or []
 
-                    # 2. Fetch maintenance reports
-                    m_resp = (
-                        self.client.table("maintenance_reports")
-                        .select("*, students(first_name, last_name, card_id)")
-                        .order("created_at", desc=True)
-                        .execute()
-                    )
-                    reports = m_resp.data or []
-                    open_reports_count = sum(1 for r in reports if r.get("status") != "resolved")
+                        # 2. Fetch maintenance reports
+                        m_resp = (
+                            self.client.table("maintenance_reports")
+                            .select("*, students(first_name, last_name, card_id)")
+                            .order("created_at", desc=True)
+                            .execute()
+                        )
+                        reports = m_resp.data or []
+                        open_reports_count = sum(1 for r in reports if r.get("status") != "resolved")
 
-                    # 3. Fetch pending room change requests
-                    r_resp = (
-                        self.client.table("room_change_requests")
-                        .select("*, students(first_name, last_name, gender)")
-                        .eq("status", "pending")
-                        .order("created_at", desc=True)
-                        .execute()
-                    )
-                    pending_requests = r_resp.data or []
+                        # 3. Fetch ALL room change requests so processed rows stay
+                        # visible in the status views; the badge stays pending-only.
+                        r_resp = (
+                            self.client.table("room_change_requests")
+                            .select(
+                                "*, students(first_name, last_name, gender, card_id),"
+                                " staff(full_name)"
+                            )
+                            .order("created_at", desc=True)
+                            .execute()
+                        )
+                        requests = r_resp.data or []
 
-                    # 4. Fetch active residents count for live KPI updates
-                    a_resp = (
-                        self.client.table("students")
-                        .select("id", count="exact")
-                        .eq("status", "active")
-                        .execute()
-                    )
-                    active_count = a_resp.count if a_resp.count is not None else 0
+                        # 4. Fetch active residents count for live KPI updates
+                        a_resp = (
+                            self.client.table("students")
+                            .select("id", count="exact")
+                            .eq("status", "active")
+                            .execute()
+                        )
+                        active_count = a_resp.count if a_resp.count is not None else 0
 
                     # Detect new arrivals for live notifications
                     cur_s_ids = {s["id"] for s in pending_students}
                     cur_m_ids = {m["id"] for m in reports}
-                    cur_r_ids = {r["id"] for r in pending_requests}
+                    cur_r_ids = {r["id"] for r in requests}
 
                     if self._last_student_ids is not None:
                         new_students = cur_s_ids - self._last_student_ids
@@ -97,8 +112,8 @@ class LiveSyncWorker(QThread):
 
                     if self._last_request_ids is not None:
                         new_reqs = cur_r_ids - self._last_request_ids
-                        for req in pending_requests:
-                            if req["id"] in new_reqs:
+                        for req in requests:
+                            if req["id"] in new_reqs and req.get("status") == "pending":
                                 st = req.get("students") or {}
                                 if isinstance(st, list) and st:
                                     st = st[0]
@@ -119,14 +134,22 @@ class LiveSyncWorker(QThread):
                         "pending_students": pending_students,
                         "reports": reports,
                         "open_reports_count": open_reports_count,
-                        "pending_requests": pending_requests,
+                        # Legacy payload key kept for the shell; it now carries
+                        # every status (pending / approved / rejected).
+                        "pending_requests": requests,
+                        "room_change_requests": requests,
                         "active_residents_count": active_count,
                         "timestamp": now_str,
                     }
                     self.sync_tick.emit(payload)
                 except Exception:
-                    # Ignore transient network timeouts to keep the thread running smoothly
-                    pass
+                    # Keep the thread running through transient network
+                    # timeouts, but record them at a bounded rate instead of
+                    # swallowing every failure silently.
+                    now = time.monotonic()
+                    if now - self._last_error_logged_at >= _ERROR_LOG_INTERVAL_S:
+                        self._last_error_logged_at = now
+                        _log.warning("Live sync tick failed", exc_info=True)
 
             # Responsive sleep so thread exits cleanly without hanging
             sleep_elapsed = 0

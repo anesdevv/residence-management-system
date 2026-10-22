@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...client import official_lookup
+from ...client import CLIENT_LOCK, official_lookup
 from .. import theme
 from ..components import (
     EmptyState,
@@ -42,6 +42,7 @@ from ..components import (
     configure_table,
 )
 from ..infocard import StudentInfoCardDialog
+from ..tasks import TaskRunner, human_error
 from ..theme import S
 
 # Table language: overline headers are uppercased by configure_table().
@@ -100,12 +101,13 @@ def _small_label(text: str) -> QLabel:
 class ResidentsPage(QWidget):
     """Active residents: toolbar, DataTable and the profile card dialog."""
 
-    def __init__(self, client):
+    def __init__(self, client, *, defer_initial_load: bool = False):
         super().__init__()
         self.client = client
+        self.tasks = TaskRunner(self)
         self.rows: list[dict] = []
         self.filtered_rows: list[tuple[dict, dict]] = []
-        # Official roster cache: filled by the existing lookup in
+        # Official roster cache: filled by the lookup in
         # ``on_row_double_clicked`` (no extra query is issued by this page).
         self.roster: dict[str, dict] = {}
 
@@ -189,24 +191,45 @@ class ResidentsPage(QWidget):
         tip = _small_label("Double-click a resident to open the complete profile card.")
         layout.addWidget(tip)
 
-        self.reload()
+        if not defer_initial_load:
+            self.reload()
 
     # ------------------------------------------------------------------ data
     def reload(self):
-        try:
-            resp = self.client.table("students") \
-                .select("*, rooms(block, number, floor)") \
-                .eq("status", "active").order("last_name").execute()
-            self.rows = resp.data or []
-        except Exception as exc:
-            self.error_banner.set_message(
-                f"The residents list could not be loaded ({exc}). Use Refresh to try again."
-            )
-            self.error_banner.setVisible(True)
-            self.render()
+        if self.tasks.is_busy("residents-reload"):
             return
+        self.refresh_btn.setEnabled(False)
+        self.tasks.run(
+            "residents-reload",
+            self._fetch_residents,
+            on_success=self._on_reload_success,
+            on_failed=self._on_reload_failed,
+        )
+
+    def _fetch_residents(self) -> list[dict]:
+        with CLIENT_LOCK:
+            resp = (
+                self.client.table("students")
+                .select("*, rooms(block, number, floor)")
+                .eq("status", "active")
+                .order("last_name")
+                .execute()
+            )
+            return resp.data or []
+
+    def _on_reload_success(self, rows: list[dict]):
+        self.refresh_btn.setEnabled(True)
+        self.rows = rows
         self.error_banner.setVisible(False)
         self.count_badge.setText(f"{len(self.rows)} active residents")
+        self.render()
+
+    def _on_reload_failed(self, error: str):
+        self.refresh_btn.setEnabled(True)
+        self.error_banner.set_message(
+            f"The residents list could not be loaded ({human_error(error)}). Use Refresh to try again."
+        )
+        self.error_banner.setVisible(True)
         self.render()
 
     def render(self):
@@ -280,16 +303,25 @@ class ResidentsPage(QWidget):
             student, room = self.filtered_rows[row]
             st_data = dict(student)
             st_data["rooms"] = room
-            roster_map = {}
-            try:
-                roster_map = official_lookup(self.client)
-            except Exception:
-                pass
-            roster_item = roster_map.get(st_data.get("card_id"))
-            dlg = StudentInfoCardDialog(self, st_data, roster_item)
-            dlg.exec()
-            # The lookup above is the one source of roster data on this page:
-            # cache it and refresh the badges (no extra query, no new call).
-            if roster_map:
-                self.roster = roster_map
-                self.render()
+            if self.roster:
+                self._open_student_card(st_data, self.roster)
+                return
+            if self.tasks.is_busy("residents-roster"):
+                return
+            self.tasks.run(
+                "residents-roster",
+                lambda: official_lookup(self.client),
+                on_success=lambda roster_map: self._on_roster_loaded(st_data, roster_map),
+                on_failed=lambda _: self._open_student_card(st_data, {}),
+            )
+
+    def _on_roster_loaded(self, st_data: dict, roster_map: dict[str, dict]):
+        if roster_map:
+            self.roster = roster_map
+            self.render()
+        self._open_student_card(st_data, roster_map or {})
+
+    def _open_student_card(self, st_data: dict, roster_map: dict[str, dict]):
+        roster_item = roster_map.get(st_data.get("card_id"))
+        dlg = StudentInfoCardDialog(self, st_data, roster_item)
+        dlg.exec()

@@ -7,10 +7,15 @@ health URL, the 5 s interval and its up/down transition signalling), the writes
 off-switch RPCs (``mcp_get_settings`` / ``mcp_set_writes_enabled``) with their
 fail-safe revert, the admin-only role gating, and the MCP token read / reveal /
 copy flow.
+
+After the constructor's first load, the writes RPCs and settings reload run on
+the shared :class:`TaskRunner`; reveal/copy use the role cached by the page and
+never re-query the network.
 """
 
 from __future__ import annotations
 
+import sys
 import urllib.request
 from pathlib import Path
 
@@ -31,6 +36,7 @@ from PySide6.QtWidgets import (
 from ...client import current_role
 from .. import theme
 from ..components import Button, Card, InlineBanner, PageHeader, StatusPill
+from ..tasks import TaskRunner, human_error
 from ..theme import C, S
 
 
@@ -38,6 +44,11 @@ MCP_HEALTH_URL = "http://127.0.0.1:8000/health"
 MCP_HEALTH_TIMEOUT_S = 2.0
 MCP_HEALTH_INTERVAL_MS = 5000
 MCP_HOSTED_URL = "https://resivo-mcp.anes4tlm.workers.dev/mcp"
+
+_LOAD_KEY = "settings-load"
+_WRITES_KEY = "settings-writes"
+_WORKING_TEXT = "Working..."
+_WRITES_TOOLTIP = "Allow the ChatGPT connection to change data after your confirmation"
 
 _WRITES_NOTE = (
     "ChatGPT asks you to confirm every change first. "
@@ -126,16 +137,42 @@ def build_mcp_url(raw: str) -> str:
     return url
 
 
+def _normalize_role(role) -> str | None:
+    """Case/whitespace-insensitive role value (``" Admin "`` -> ``"admin"``)."""
+    if role is None:
+        return None
+    normalized = str(role).strip().lower()
+    return normalized or None
+
+
+def _application_root() -> Path:
+    """Executable folder for frozen builds, repo root during development."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parents[4]
+
+
+def _mcp_env_candidates() -> list[Path]:
+    """Where ``mcp/.env`` may live (never bundled: it contains a secret)."""
+    if getattr(sys, "frozen", False):
+        candidates = [_application_root() / "mcp" / ".env"]
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            candidates.append(Path(meipass) / "mcp" / ".env")
+        return candidates
+    return [_application_root() / "mcp" / ".env"]
+
+
 def _read_mcp_token() -> str:
-    """Read MCP_AUTH_TOKEN from <repo-root>/mcp/.env. The value is never logged."""
-    env_path = Path(__file__).resolve().parents[4] / "mcp" / ".env"
-    try:
-        for line in env_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line.startswith("MCP_AUTH_TOKEN="):
-                return line.split("=", 1)[1].strip().strip('"').strip("'")
-    except Exception:
-        return ""
+    """Read MCP_AUTH_TOKEN from ``mcp/.env``. The value is never logged."""
+    for env_path in _mcp_env_candidates():
+        try:
+            for line in env_path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line.startswith("MCP_AUTH_TOKEN="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+        except Exception:
+            continue
     return ""
 
 
@@ -181,10 +218,17 @@ class SettingsPage(QWidget):
     def __init__(self, client):
         super().__init__()
         self.client = client
-        self.role = current_role(client)
+        self.role = _normalize_role(current_role(client))
+        self._role_unverified = self.role is None
+        self._health_started = False
         self._token = ""
         self._token_revealed = False
         self._writes_loading = False
+        self._writes_available = False
+        self._writes_saving = False
+        self._settings_loading = False
+        self._initializing = True
+        self.tasks = TaskRunner(self)
 
         # Root layout hosting the QScrollArea
         root_layout = QVBoxLayout(self)
@@ -266,25 +310,70 @@ class SettingsPage(QWidget):
         self.scroll_area.setWidget(scroll_content)
         root_layout.addWidget(self.scroll_area)
 
-        # Role gating — developer mode is session-only, never persisted
-        if self.role == "admin":
-            self.staff_note.setVisible(False)
-        else:
-            self.dev_checkbox.setEnabled(False)
-            self.dev_checkbox.setToolTip("Developer mode is available to administrators only.")
-            self.enable_note.setVisible(False)
-        self.writes_checkbox.setVisible(self.role == "admin")
-        self.writes_note.setVisible(self.role == "admin")
-        self.writes_checkbox.setEnabled(False)  # enabled once the setting loads
-        self.content.setVisible(False)
-
-        # Background health poller (admins only)
+        # Background health poller (admins only; set_role starts/stops it)
         self.health_worker = McpHealthWorker()
         self.health_worker.health_changed.connect(self._on_health_changed)
-        if self.role == "admin":
-            self.health_worker.start()
+
+        # Role gating — developer mode is session-only, never persisted.
+        # ``_role_unverified`` is exposed so MainWindow can show its banner
+        # instead of pretending a failed lookup is an ordinary staff account.
+        self.writes_checkbox.setEnabled(False)  # enabled once the setting loads
+        self.set_role(self.role)
 
         self.reload()
+        self._initializing = False
+
+    def set_role(self, role) -> None:
+        """Apply admin gating for a (re)verified role without rebuilding the UI.
+
+        MainWindow calls this after its background role retry succeeds.  The
+        gating itself is local; a staff/None -> admin promotion starts the
+        existing asynchronous settings reload so the writes switch becomes
+        usable without reopening Settings.  Role comparison is
+        case-insensitive via normalization.
+        """
+        previous = self.role
+        normalized = _normalize_role(role)
+        self.role = normalized
+        self._role_unverified = normalized is None
+        is_admin = normalized == "admin"
+
+        if is_admin:
+            self.staff_note.setVisible(False)
+            self.dev_checkbox.setEnabled(True)
+            self.dev_checkbox.setToolTip(
+                "Show the ChatGPT connection steps for this session"
+            )
+            self.enable_note.setVisible(not self.dev_checkbox.isChecked())
+            self.content.setVisible(self.dev_checkbox.isChecked())
+        else:
+            self.dev_checkbox.setEnabled(False)
+            self.dev_checkbox.setToolTip(
+                "Developer mode is available to administrators only."
+            )
+            self.staff_note.setVisible(True)
+            self.enable_note.setVisible(False)
+            self.content.setVisible(False)
+
+        self.writes_checkbox.setVisible(is_admin)
+        self.writes_note.setVisible(is_admin)
+
+        if is_admin:
+            if previous != "admin" and not self._initializing:
+                # Promotion after a late role check: show the local token now
+                # and let the async reload fetch the writes setting.
+                self._token = _read_mcp_token()
+                self._render_token_row()
+                self.reload()
+            if not self._health_started:
+                self.health_worker.start()
+                self._health_started = True
+        else:
+            self._token = ""
+            self._render_token_row()
+            if self._health_started:
+                self.health_worker.stop()
+                self._health_started = False
 
     # -------------------------------------------------------------
     # Content construction
@@ -366,7 +455,7 @@ class SettingsPage(QWidget):
         s1.setContentsMargins(0, 0, 0, 0)
         s1.setSpacing(S("space-2"))
         s1.addWidget(self._step_title("Step 1 · Start the MCP server"))
-        repo_root = Path(__file__).resolve().parents[4]
+        repo_root = _application_root()
         s1.addWidget(self._command_box(f'cd "{repo_root}"; & "mcp\\.venv\\Scripts\\python.exe" "mcp\\server.py"'))
         s1.addWidget(self._hint("Paste into any PowerShell window and leave it open while a testing client is connected. The badge above turns green once the server is running."))
         loc.addWidget(step1)
@@ -575,64 +664,157 @@ class SettingsPage(QWidget):
     # Behavior
     # -------------------------------------------------------------
     def reload(self):
-        """Refresh the token row (mcp/.env is re-read on demand) and the writes off-switch."""
-        if self.role == "admin":
-            self._token = _read_mcp_token()
-        else:
-            self._token = ""
-        self._render_token_row()
-        self._load_writes_setting()
+        """Refresh the token row and the writes off-switch.
 
-    def _load_writes_setting(self):
-        """Read the ChatGPT off-switch from the DB. Failure leaves the checkbox disabled (fail-safe)."""
+        The constructor keeps one synchronous first load; every later call
+        re-reads the token file and the RPC on the thread pool.
+        """
         if self.role != "admin":
+            self._token = ""
+            self._render_token_row()
             return
-        self.writes_checkbox.setEnabled(False)  # no interaction while loading
-        ok = True
+        if self._initializing:
+            self._apply_settings(self._fetch_settings())
+            return
+        self._reload_async()
+
+    def _fetch_settings(self) -> dict:
+        """Token + writes off-switch gathered off the GUI thread."""
+        token = _read_mcp_token()
+        if self.role != "admin":
+            return {"token": "", "writes_ok": False, "writes_enabled": False, "error": None}
         try:
             resp = self.client.rpc("mcp_get_settings", {}).execute()
-            writes_enabled = bool((resp.data or {}).get("writes_enabled", False))
-        except Exception:  # noqa: BLE001
-            # Fail-safe: never show a state we could not verify.
-            ok = False
-            writes_enabled = False
+            enabled = bool((resp.data or {}).get("writes_enabled", False))
+        except Exception as exc:  # noqa: BLE001 - fail-safe state below
+            return {
+                "token": token,
+                "writes_ok": False,
+                "writes_enabled": False,
+                "error": human_error(exc),
+            }
+        return {"token": token, "writes_ok": True, "writes_enabled": enabled, "error": None}
+
+    def _reload_async(self) -> None:
+        if self._settings_loading or self.tasks.is_busy(_LOAD_KEY):
+            return
+        self._settings_loading = True
+        self.writes_checkbox.setEnabled(False)
+        self.writes_note.setText(_WORKING_TEXT)
+        self.token_label.setStyleSheet(_hint_qss())
+        self.token_label.setText("Loading token…")
+        self.reveal_btn.setVisible(False)
+        self.token_copy_btn.setVisible(False)
+        started = self.tasks.run(
+            _LOAD_KEY,
+            self._fetch_settings,
+            on_success=self._apply_settings,
+            on_failed=self._on_settings_failed,
+            on_finished=self._on_settings_finished,
+        )
+        if not started:
+            self._on_settings_finished()
+
+    def _on_settings_finished(self) -> None:
+        self._settings_loading = False
+        if self.role != "admin":
+            return
+        self.writes_checkbox.setEnabled(self._writes_available and not self._writes_saving)
+        if self._writes_available:
+            self.writes_note.setText(_WRITES_NOTE)
+            self.writes_checkbox.setToolTip(_WRITES_TOOLTIP)
+        else:
+            self.writes_note.setText("Could not load this setting — check the connection.")
+            self.writes_checkbox.setToolTip("Disabled until the setting can be loaded")
+
+    def _on_settings_failed(self, message: str) -> None:
+        self._writes_available = False
+        self.writes_note.setText("Could not load this setting — check the connection.")
+        self.writes_banner.set_message(
+            f"The ChatGPT writes switch stays disabled until this setting can be read again ({message}). "
+            "Check the connection, then reopen Settings to retry."
+        )
+        self.writes_banner.setVisible(True)
+        self._render_token_row()
+
+    def _apply_settings(self, result: dict) -> None:
+        """Render a fetched settings snapshot on the GUI thread."""
+        self._token = str(result.get("token") or "")
+        self._render_token_row()
+        self._writes_available = bool(result.get("writes_ok"))
+        if self.role != "admin":
+            return
+        if self._writes_available:
+            self.writes_note.setText(_WRITES_NOTE)
+            self.writes_banner.setVisible(False)
+        else:
             self.writes_note.setText("Could not load this setting — check the connection.")
             self.writes_banner.set_message(
                 "The ChatGPT writes switch stays disabled until this setting can be read again. "
                 "Check the connection, then reopen Settings to retry."
             )
             self.writes_banner.setVisible(True)
-        else:
-            self.writes_note.setText(_WRITES_NOTE)
-            self.writes_banner.setVisible(False)
         self._writes_loading = True
         try:
             self.writes_checkbox.blockSignals(True)
-            self.writes_checkbox.setChecked(writes_enabled)
+            self.writes_checkbox.setChecked(bool(result.get("writes_enabled")))
         finally:
             self.writes_checkbox.blockSignals(False)
             self._writes_loading = False
-        self.writes_checkbox.setEnabled(ok)
+        self.writes_checkbox.setEnabled(self._writes_available)
         self.writes_checkbox.setToolTip(
-            "Disabled until the setting can be loaded" if not ok else
-            "Allow the ChatGPT connection to change data after your confirmation"
+            "Disabled until the setting can be loaded" if not self._writes_available
+            else _WRITES_TOOLTIP
         )
 
     def _on_writes_toggled(self, checked: bool):
-        if self._writes_loading or self.role != "admin":
+        if self._writes_loading or self._writes_saving or self.role != "admin":
             return
+        if self._settings_loading or not self._writes_available:
+            return
+        if self.tasks.is_busy(_WRITES_KEY):
+            return
+        self._writes_saving = True
+        self.writes_checkbox.setEnabled(False)
+        self.writes_note.setText(_WORKING_TEXT)
+        self.writes_checkbox.setToolTip("Saving the setting…")
+        started = self.tasks.run(
+            _WRITES_KEY,
+            lambda: self.client.rpc("mcp_set_writes_enabled", {"p_enabled": checked}).execute(),
+            on_success=lambda _result: self._on_writes_saved(),
+            on_failed=lambda message: self._on_writes_failed(checked, message),
+            on_finished=self._on_writes_finished,
+        )
+        if not started:
+            self._on_writes_finished()
+
+    def _on_writes_saved(self) -> None:
+        self.writes_banner.setVisible(False)
+
+    def _on_writes_failed(self, checked: bool, message: str) -> None:
+        # DB is the source of truth — revert the UI and tell the admin.
+        self._writes_loading = True
         try:
-            self.client.rpc("mcp_set_writes_enabled", {"p_enabled": checked}).execute()
-        except Exception as exc:  # noqa: BLE001
-            # DB is the source of truth — revert the UI and tell the admin.
             self.writes_checkbox.blockSignals(True)
             self.writes_checkbox.setChecked(not checked)
+        finally:
             self.writes_checkbox.blockSignals(False)
-            self.writes_banner.set_message(f"The switch was reverted: {exc}")
-            self.writes_banner.setVisible(True)
-            QMessageBox.warning(self, "Settings", f"Could not save the setting: {exc}")
-        else:
-            self.writes_banner.setVisible(False)
+            self._writes_loading = False
+        self.writes_note.setText(_WRITES_NOTE)
+        self.writes_banner.set_message(f"The switch was reverted: {message}")
+        self.writes_banner.setVisible(True)
+        QMessageBox.warning(self, "Settings", f"Could not save the setting: {message}")
+
+    def _on_writes_finished(self) -> None:
+        self._writes_saving = False
+        if self.role != "admin":
+            return
+        self.writes_checkbox.setEnabled(self._writes_available)
+        self.writes_checkbox.setToolTip(
+            _WRITES_TOOLTIP if self._writes_available else "Disabled until the setting can be loaded"
+        )
+        if self._writes_available:
+            self.writes_note.setText(_WRITES_NOTE)
 
     def _on_dev_mode_toggled(self, checked: bool):
         if self.role != "admin":
@@ -650,15 +832,15 @@ class SettingsPage(QWidget):
         self.url_output.setText(build_mcp_url(text))
 
     def _on_reveal_clicked(self):
-        # Defense in depth: re-check the live role before showing the secret
-        if current_role(self.client) != "admin":
+        # Defense in depth: the page already holds the role; never re-query.
+        if self.role != "admin":
             return
         self._token_revealed = not self._token_revealed
         self._update_token_display()
 
     def _on_copy_token(self):
-        # Defense in depth: re-check the live role before copying the secret
-        if current_role(self.client) != "admin":
+        # Defense in depth: the page already holds the role; never re-query.
+        if self.role != "admin":
             return
         self._copy_to_clipboard(self.token_copy_btn, self._token)
 

@@ -1,24 +1,34 @@
 """RÉSIVO — desktop shell: authored sidebar navigation, stacked pages, live sync.
 
 Visual layer only (``docs/DESIGN.md`` §7). Behaviour is frozen: every client
-call, the ``LiveSyncWorker`` lifecycle, the 3-second bounded worker shutdown,
-the sign-out flow and the page instantiation order are unchanged.
+call, the ``LiveSyncWorker`` lifecycle, the cooperative worker shutdown, the
+sign-out flow and the page instantiation order are unchanged.
 
 Widget contracts kept for the tests
 -----------------------------------
 ``MainWindow(client)``; minimum 980x640; ``QPushButton#signOutButton`` with the
-text ``"Sign out"``; ``_shutdown_workers()`` (3 s bounded); ``on_sign_out_clicked()``
-(shutdown → ``client.auth.sign_out()`` → lazy ``LoginWindow``); module-level page
-names imported from ``.pages.*`` (monkeypatched by tests); ``self.pages`` keyed by
-nav label; ``self.nav`` wired with ``currentRowChanged`` → ``stack.setCurrentIndex``;
+text ``"Sign out"``; ``_shutdown_workers()`` (3 s bounded, never terminates);
+``on_sign_out_clicked()`` (shutdown → ``client.auth.sign_out()`` → lazy
+``LoginWindow``); module-level page names imported from ``.pages.*``
+(monkeypatched by tests); ``self.pages`` keyed by nav label; ``self.nav`` wired
+with ``currentRowChanged`` → ``stack.setCurrentIndex``;
 ``LiveSyncWorker(client, interval_ms=2000)`` started after the UI is built.
 """
 
 from __future__ import annotations
 
+import logging
 import time
 
-from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt, QTimer, Signal
+from PySide6.QtCore import (
+    QEasingCurve,
+    QPropertyAnimation,
+    QSize,
+    Qt,
+    QThreadPool,
+    QTimer,
+    Signal,
+)
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -36,11 +46,22 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..client import current_role
+from ..client import (
+    clear_local_session,
+    current_role,
+    forget_role,
+    remember_role,
+    resolve_role,
+    stored_user_display_name,
+    stored_user_email,
+    stored_user_id,
+)
 from . import components, theme
-from .components import Avatar, BrandMark, Button, LiveDot
+from .components import Avatar, BrandMark, Button, InlineBanner, LiveDot
+from .diagnostics import DiagnosticsDialog
 from .icons import get_icon, get_pixmap
 from .live_sync import LiveSyncWorker
+from .photo_viewer import running_photo_fetchers
 from .pages.overview import OverviewPage
 from .pages.pending import PendingPage
 from .pages.residents import ResidentsPage
@@ -50,7 +71,10 @@ from .pages.room_changes import RoomChangesPage
 from .pages.official_list import OfficialListPage
 from .pages.staff_accounts import StaffAccountsPage
 from .pages.settings import SettingsPage
+from .tasks import TaskRunner, active_task_count, human_error
 from .theme import C, DESKTOP_STYLESHEET, S
+
+_log = logging.getLogger("resivo.ui.main_window")
 
 # Menu row dimensions (enlarged for prominence and readability)
 _NAV_ROW_HEIGHT = 48
@@ -64,6 +88,38 @@ _LIVE_CONNECTED_WINDOW_S = 6.0
 _LIVE_OFFLINE_WINDOW_S = 30.0
 _IDLE_STATUS = "Live sync active"
 _ROLE_LABELS = {"admin": "Administrator", "staff": "Housing staff"}
+_ROLE_ERROR_TEXT = "Could not verify your role. Check your connection or configuration."
+_UNVERIFIED_LABEL = "Role not verified"
+_ROLE_TASK_KEY = "main-role-check"
+# Cooperative shutdown: poll while a worker finishes; never terminate a thread
+# that may be holding CLIENT_LOCK.
+_SHUTDOWN_POLL_MS = 100
+
+
+def _normalize_role(role) -> str | None:
+    """Case/whitespace-insensitive role comparison value."""
+    if role is None:
+        return None
+    normalized = str(role).strip().lower()
+    return normalized or None
+
+
+def _role_label(role) -> str:
+    """Human label for the sidebar pill / diagnostics."""
+    normalized = _normalize_role(role)
+    if not normalized:
+        return _UNVERIFIED_LABEL
+    return _ROLE_LABELS.get(normalized, normalized.title())
+
+
+def _session_email(client) -> str:
+    """Signed-in email from the stored session only (never a network call)."""
+    return stored_user_email(client)
+
+
+def _session_user_id(client) -> str | None:
+    """Signed-in user id from the stored session only (never a network call)."""
+    return stored_user_id(client)
 
 
 def _brand_strip_qss() -> str:
@@ -134,23 +190,7 @@ def _session_display_name(client) -> str:
     Reads the already-persisted session (no network call) and only accepts
     string metadata, so mock clients fall through to the fallback.
     """
-    try:
-        session = client.auth.get_session()
-        user = getattr(session, "user", None)
-        metadata = getattr(user, "user_metadata", None) or {}
-        if isinstance(metadata, dict):
-            for key in ("full_name", "name"):
-                value = metadata.get(key)
-                if isinstance(value, str) and value.strip():
-                    return value.strip()
-        email = getattr(user, "email", None)
-        if isinstance(email, str) and email.strip():
-            local = email.split("@")[0].replace(".", " ").replace("_", " ").strip()
-            if local:
-                return local.title()
-    except Exception:
-        pass
-    return "Housing staff"
+    return stored_user_display_name(client, "Housing staff")
 
 
 class _NavRow(QPushButton):
@@ -365,10 +405,36 @@ class _SidebarNav(QWidget):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, client):
+    def __init__(self, client, role=None):
         super().__init__()
         self.client = client
-        self.role = current_role(client)
+        self._role_retry_running = False
+        if role is None:
+            try:
+                self.role = _normalize_role(current_role(client))
+            except Exception:  # noqa: BLE001 - never block the shell on a lookup
+                _log.exception("Role lookup failed while opening the main window")
+                self.role = None
+        else:
+            self.role = _normalize_role(role)
+
+        if self.role in ("staff", "admin"):
+            # Remembered so SettingsPage and later pages reuse the verified
+            # role instead of issuing another profile query.
+            try:
+                remember_role(client, self.role)
+            except Exception:  # noqa: BLE001 - cache failure is non-fatal
+                _log.exception("Could not cache the verified role")
+        elif not self.role:
+            _log.warning(
+                "Main window opened without a verified role; showing the retry banner"
+            )
+
+        self.tasks = TaskRunner(self)
+        self._pending_shutdown_action: str | None = None
+        self._signing_out = False
+        self._sign_out_show_login = True
+        self._sign_out_error: str | None = None
         self._sidebar_minimized = False
         self.setWindowTitle("RÉSIVO — Staff Console")
         self.setMinimumSize(980, 640)
@@ -393,6 +459,10 @@ class MainWindow(QMainWindow):
         self.maintenance_page = MaintenancePage(client)
         self.room_changes_page = RoomChangesPage(client)
         self.official_list_page = OfficialListPage(client)
+        if hasattr(self.official_list_page, "pending_page"):
+            self.official_list_page.pending_page = self.pending_page
+        if hasattr(self.official_list_page, "roster_changed"):
+            self.official_list_page.roster_changed.connect(self._on_roster_changed)
 
         self._add_nav_item("Overview", "overview", self.overview_page)
         self._add_nav_item("Pending accounts", "pending", self.pending_page)
@@ -411,6 +481,10 @@ class MainWindow(QMainWindow):
 
         self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
         self.nav.setCurrentRow(0)
+
+        # Reflect the effective role in the footer and, when it could not be
+        # verified, show the retry banner instead of silently using staff.
+        self._apply_role_state()
 
         # Status bar — the live-sync line only (events go to toasts).
         self.status_bar = QStatusBar()
@@ -489,7 +563,7 @@ class MainWindow(QMainWindow):
         self.user_row_layout.setContentsMargins(0, 0, 0, 0)
         self.user_row_layout.setSpacing(S("space-3"))
         self.user_avatar = Avatar(display_name, size=S("size-control"))
-        self.user_avatar.setToolTip(f"{display_name} • {_ROLE_LABELS.get(self.role, 'Housing staff')}")
+        self.user_avatar.setToolTip(f"{display_name} • {_role_label(self.role)}")
 
         self.user_texts = QWidget()
         name_column = QVBoxLayout(self.user_texts)
@@ -498,7 +572,7 @@ class MainWindow(QMainWindow):
         self.user_name = QLabel(display_name)
         theme.apply_role(self.user_name, "small")
         self.user_name.setStyleSheet(f"color: {C('text-on-dark')};")
-        self.role_pill = QLabel(_ROLE_LABELS.get(self.role, "Housing staff"))
+        self.role_pill = QLabel(_role_label(self.role))
         self.role_pill.setStyleSheet(_role_pill_qss())
         name_column.addWidget(self.user_name)
         name_column.addWidget(self.role_pill, 0, Qt.AlignmentFlag.AlignLeft)
@@ -529,6 +603,20 @@ class MainWindow(QMainWindow):
         self.toggle_menu_btn.setAccessibleName("Minimize menu")
         self.toggle_menu_btn.clicked.connect(self.toggle_sidebar)
         self.sidebar_footer_layout.addWidget(self.toggle_menu_btn)
+
+        # About & Diagnostics (ghost, same footer treatment as the buttons above).
+        self.about_diagnostics_btn = Button.ghost("About & Diagnostics")
+        self.about_diagnostics_btn.setObjectName("aboutDiagnosticsButton")
+        self.about_diagnostics_btn.setIcon(get_icon("info", size=18, color=C("text-on-dark")))
+        self.about_diagnostics_btn.setIconSize(QSize(18, 18))
+        self.about_diagnostics_btn.setStyleSheet(
+            _ghost_on_navy_qss("aboutDiagnosticsButton", centered=False)
+        )
+        self.about_diagnostics_btn.setFixedHeight(38)
+        self.about_diagnostics_btn.setToolTip("About RÉSIVO and diagnostics")
+        self.about_diagnostics_btn.setAccessibleName("About & Diagnostics")
+        self.about_diagnostics_btn.clicked.connect(self.on_about_diagnostics_clicked)
+        self.sidebar_footer_layout.addWidget(self.about_diagnostics_btn)
 
         # Live-sync indicator: dot + text label (never colour alone).
         self.live_row_widget = QWidget()
@@ -568,6 +656,12 @@ class MainWindow(QMainWindow):
             self.toggle_menu_btn.setIcon(get_icon("chevron-right", size=18, color=C("text-on-dark")))
             self.toggle_menu_btn.setStyleSheet(_ghost_on_navy_qss("toggleMenuButton", centered=True))
 
+            self.about_diagnostics_btn.setText("")
+            self.about_diagnostics_btn.setToolTip("About RÉSIVO and diagnostics")
+            self.about_diagnostics_btn.setStyleSheet(
+                _ghost_on_navy_qss("aboutDiagnosticsButton", centered=True)
+            )
+
             self.live_label.hide()
             self.live_row.setAlignment(self.live_dot, Qt.AlignmentFlag.AlignCenter)
         else:
@@ -591,6 +685,12 @@ class MainWindow(QMainWindow):
             self.toggle_menu_btn.setIcon(get_icon("chevron-left", size=18, color=C("text-on-dark")))
             self.toggle_menu_btn.setStyleSheet(_ghost_on_navy_qss("toggleMenuButton", centered=False))
 
+            self.about_diagnostics_btn.setText("About & Diagnostics")
+            self.about_diagnostics_btn.setToolTip("About RÉSIVO and diagnostics")
+            self.about_diagnostics_btn.setStyleSheet(
+                _ghost_on_navy_qss("aboutDiagnosticsButton", centered=False)
+            )
+
             self.live_row.setAlignment(self.live_dot, Qt.AlignmentFlag.AlignVCenter)
             self.live_label.show()
 
@@ -600,11 +700,106 @@ class MainWindow(QMainWindow):
         content.setProperty("background", "canvas")
         layout = QVBoxLayout(content)
         layout.setContentsMargins(S("space-8"), S("space-8"), S("space-8"), S("space-8"))
-        layout.setSpacing(0)
+        layout.setSpacing(S("space-4"))
+
+        # Role gate: an unverified lookup is an error state, not a staff session.
+        self.role_banner = InlineBanner(
+            kind="error",
+            title="Role not verified",
+            message=_ROLE_ERROR_TEXT,
+        )
+        self.role_retry_btn = Button.secondary("Retry")
+        self.role_retry_btn.setObjectName("retryRoleButton")
+        self.role_retry_btn.setToolTip("Check the signed-in account's role again")
+        self.role_retry_btn.clicked.connect(self._retry_role_check)
+        self.role_banner.add_action(self.role_retry_btn)
+        self.role_banner.setVisible(not bool(self.role))
+        layout.addWidget(self.role_banner)
+
         self.stack = QStackedWidget()
         self.stack.currentChanged.connect(self._animate_stack_page)
-        layout.addWidget(self.stack)
+        layout.addWidget(self.stack, 1)
         return content
+
+    def _apply_role_state(self) -> None:
+        """Apply the effective role to the footer, banner and role-gated pages."""
+        label = _role_label(self.role)
+        self.role_pill.setText(label)
+        self.user_avatar.setToolTip(f"{self.user_name.text()} • {label}")
+
+        if self.role:
+            self.role_banner.setVisible(False)
+        else:
+            self.role_banner.set_message(_ROLE_ERROR_TEXT)
+            self.role_banner.setVisible(True)
+
+        if self.role == "admin" and "Staff accounts" not in self.pages:
+            # Late promotion happens inside the retry success slot: defer the
+            # page's synchronous identity/list round-trip and let its existing
+            # async reload run on the worker pool.
+            self.staff_accounts_page = StaffAccountsPage(
+                self.client,
+                defer_initial_load=True,
+                current_uid=_session_user_id(self.client),
+            )
+            self._add_nav_item("Staff accounts", "staff_accounts", self.staff_accounts_page)
+
+        # Pages exposing set_role() apply late verification without rebuilding
+        # themselves or performing another synchronous lookup.
+        if hasattr(self, "official_list_page") and hasattr(self.official_list_page, "set_role"):
+            self.official_list_page.set_role(self.role)
+        if hasattr(self, "settings_page") and hasattr(self.settings_page, "set_role"):
+            self.settings_page.set_role(self.role)
+
+    def _on_roster_changed(self) -> None:
+        """Refresh pending student records and badges when official admissions data is updated."""
+        if hasattr(self, "pending_page") and hasattr(self.pending_page, "reload"):
+            self.pending_page.reload()
+
+    def _retry_role_check(self) -> None:
+        """Re-check the role off the GUI thread, then apply the gating."""
+        if self._role_retry_running:
+            return
+        self._role_retry_running = True
+        self.role_retry_btn.setEnabled(False)
+        self.role_retry_btn.setText("Checking...")
+        self.role_banner.set_message(_ROLE_ERROR_TEXT)
+        self.role_banner.setVisible(True)
+
+        started = self.tasks.run(
+            _ROLE_TASK_KEY,
+            lambda: resolve_role(self.client),
+            on_success=self._on_role_retry_success,
+            on_failed=self._on_role_retry_failed,
+            on_finished=self._on_role_retry_finished,
+        )
+        if not started:
+            self._on_role_retry_finished()
+
+    def _on_role_retry_success(self, role) -> None:
+        normalized = _normalize_role(role)
+        if normalized not in ("staff", "admin"):
+            self._on_role_retry_failed(
+                "This account is not allowed to use the staff console."
+            )
+            return
+        self.role = normalized
+        try:
+            remember_role(self.client, normalized)
+        except Exception:  # noqa: BLE001 - cache failure is non-fatal
+            _log.exception("Could not cache the re-verified role")
+        _log.info("Role re-verified as %s", normalized)
+        self._apply_role_state()
+
+    def _on_role_retry_failed(self, message: str) -> None:
+        _log.warning("Role retry failed: %s", message)
+        self.role_banner.set_message(f"{_ROLE_ERROR_TEXT} ({message})")
+        self.role_banner.setVisible(True)
+
+    def _on_role_retry_finished(self) -> None:
+        self._role_retry_running = False
+        self.role_retry_btn.setText("Retry")
+        self.role_retry_btn.setEnabled(True)
 
     # -------------------------------------------------------------- navigation
     def _add_nav_item(self, title: str, icon_name: str, widget: QWidget):
@@ -660,13 +855,20 @@ class MainWindow(QMainWindow):
         pending_students = data.get("pending_students", [])
         reports = data.get("reports", [])
         open_reports_count = data.get("open_reports_count", 0)
-        pending_requests = data.get("pending_requests", [])
+        # Every status is delivered to the page; the Transfers badge/status
+        # line stays pending-only.
+        request_rows = data.get("room_change_requests", data.get("pending_requests", []))
         timestamp = data.get("timestamp", "")
 
         p_count = len(pending_students)
         m_count = open_reports_count
-        r_count = len(pending_requests)
-        active_count = data.get("active_residents_count", 0)
+        r_count = sum(
+            1 for request in request_rows
+            if str(request.get("status") or "pending") == "pending"
+        )
+        # Missing occupancy means "unknown", not zero; the Overview card keeps
+        # its previous value until a payload carries a real count.
+        active_count = data.get("active_residents_count")
 
         # 1. Live-sync line: last update time + counts.
         self.status_bar.showMessage(
@@ -687,36 +889,254 @@ class MainWindow(QMainWindow):
         self.overview_page.apply_live_data(p_count, m_count, r_count, active_count)
         self.pending_page.apply_live_data(pending_students)
         self.maintenance_page.apply_live_data(reports)
-        self.room_changes_page.apply_live_data(pending_requests)
+        self.room_changes_page.apply_live_data(request_rows)
 
     # ------------------------------------------------------------------- flow
-    def _shutdown_workers(self):
-        if hasattr(self, "sync_worker") and self.sync_worker.isRunning():
-            self.sync_worker.stop()
-            if not self.sync_worker.wait(3000):
-                self.sync_worker.terminate()
-                self.sync_worker.wait(1000)
-        if hasattr(self, "settings_page") and hasattr(self.settings_page, "health_worker") and self.settings_page.health_worker.isRunning():
-            self.settings_page.health_worker.stop()
-            if not self.settings_page.health_worker.wait(3000):
-                self.settings_page.health_worker.terminate()
-                self.settings_page.health_worker.wait(1000)
+    def _long_lived_workers(self) -> list:
+        """Sync/health/photo QThreads that must finish before the window dies."""
+        workers = []
+        sync = getattr(self, "sync_worker", None)
+        if sync is not None:
+            workers.append(sync)
+        settings = getattr(self, "settings_page", None)
+        health = getattr(settings, "health_worker", None) if settings is not None else None
+        if health is not None:
+            workers.append(health)
+        # Photo previews may outlive the row/dialog that started them.
+        workers.extend(running_photo_fetchers())
+        return workers
 
-    def on_sign_out_clicked(self):
-        self._shutdown_workers()
+    def _workers_running(self) -> bool:
+        """True while a window thread or any action-pool task is still alive."""
+        if any(worker.isRunning() for worker in self._long_lived_workers()):
+            return True
+        tasks = getattr(self, "tasks", None)
+        if tasks is not None and tasks.is_busy("sign-out"):
+            return True
+        # Cover tasks reserved but not yet counted by QThreadPool, including
+        # page-owned TaskRunner instances on other pools.
+        if active_task_count() > 0:
+            return True
+        return QThreadPool.globalInstance().activeThreadCount() > 0
+
+    def _shutdown_workers(self, wait_ms: int = 3000) -> bool:
+        """Request a cooperative stop and report whether everything finished.
+
+        ``wait_ms`` bounds how long the GUI thread may block; ``0`` only checks.
+        ``QThread.terminate()`` is never used: a terminated worker can die while
+        holding ``CLIENT_LOCK`` and deadlock the next session.  Callers that get
+        ``False`` must defer sign-out/close and retry once the workers finish.
+        """
+        workers = self._long_lived_workers()
+        for worker in workers:
+            worker.stop()
+
+        if wait_ms <= 0:
+            return not self._workers_running()
+
+        deadline = time.monotonic() + (wait_ms / 1000.0)
+        for worker in workers:
+            if not worker.isRunning():
+                continue
+            remaining_ms = max(0, int((deadline - time.monotonic()) * 1000))
+            if remaining_ms <= 0 or not worker.wait(remaining_ms):
+                return False
+
+        remaining_ms = max(0, int((deadline - time.monotonic()) * 1000))
+        if remaining_ms > 0:
+            if not QThreadPool.globalInstance().waitForDone(remaining_ms):
+                return False
+        elif QThreadPool.globalInstance().activeThreadCount() > 0:
+            return False
+        return not self._workers_running()
+
+    def _begin_shutdown(self, action: str) -> None:
+        """Ask workers to stop, then complete ``action`` without blocking."""
+        self._pending_shutdown_action = action
+        self._shutdown_start_time = time.monotonic()
+        self._shutdown_workers(0)
+        if not self._workers_running():
+            self._pending_shutdown_action = None
+            self._complete_shutdown(action)
+            return
+        self.status_bar.showMessage("Finishing background work…")
+        timer = getattr(self, "_shutdown_timer", None)
+        if timer is None:
+            timer = QTimer(self)
+            timer.setInterval(_SHUTDOWN_POLL_MS)
+            timer.timeout.connect(self._poll_shutdown)
+            self._shutdown_timer = timer
+        timer.start()
+
+    def _poll_shutdown(self) -> None:
+        if self._workers_running():
+            elapsed = time.monotonic() - getattr(self, "_shutdown_start_time", time.monotonic())
+            if elapsed > 10.0:
+                _log.warning("Workers did not finish after %.1fs; proceeding with shutdown", elapsed)
+            else:
+                return
+        timer = getattr(self, "_shutdown_timer", None)
+        if timer is not None:
+            timer.stop()
+        action = getattr(self, "_pending_shutdown_action", None)
+        self._pending_shutdown_action = None
+        if action:
+            self._complete_shutdown(action)
+
+    def _complete_shutdown(self, action: str) -> None:
+        if action == "sign_out":
+            self._finish_sign_out(show_login=True)
+        elif action == "sign_out_close":
+            # The user closed the window while sign-out was waiting: still clear
+            # the session, but do not pop a login window they did not ask for.
+            self._finish_sign_out(show_login=False)
+        elif action == "close":
+            self._stop_live_timer()
+            self.close()
+
+    def _stop_live_timer(self) -> None:
+        timer = getattr(self, "_live_timer", None)
+        if timer is not None:
+            timer.stop()
+
+    def _connection_status(self) -> str:
+        """Human live-sync state for the diagnostics dialog (no network)."""
+        reference = self._last_tick_at if self._last_tick_at is not None else self._started_at
+        elapsed = time.monotonic() - reference
+        if self._last_tick_at is not None and elapsed <= _LIVE_CONNECTED_WINDOW_S:
+            return "Connected"
+        if elapsed <= _LIVE_OFFLINE_WINDOW_S:
+            return "Reconnecting"
+        return "Offline"
+
+    def on_about_diagnostics_clicked(self):
+        self.diagnostics_dialog = DiagnosticsDialog(
+            self,
+            email=_session_email(self.client),
+            role=self.role,
+            connection_status=self._connection_status(),
+        )
+        self.diagnostics_dialog.exec()
+
+    @staticmethod
+    def _sign_out_session(client):
+        """Network/credential work only; never call this on the GUI thread."""
+        auth = getattr(client, "auth", None)
+        sign_out = getattr(auth, "sign_out", None)
+        if not callable(sign_out):
+            raise RuntimeError("The authentication client is not available.")
+        sign_out()
+
+    def _finish_sign_out(self, show_login: bool = True) -> None:
+        """Sign out off the GUI thread, then land on the login window.
+
+        If a close request arrives while the request is in flight,
+        ``closeEvent`` flips ``_sign_out_show_login`` so the session is still
+        cleared without opening a window the operator did not ask for.
+        """
+        self._stop_live_timer()
+        self._sign_out_show_login = show_login
+        self._sign_out_error = None
+        if self.tasks.is_busy("sign-out"):
+            self._signing_out = True
+            return
+        started = self.tasks.run(
+            "sign-out",
+            lambda: self._sign_out_session(self.client),
+            on_success=self._on_sign_out_succeeded,
+            on_failed=self._on_sign_out_failed,
+            on_finished=self._on_sign_out_finished,
+        )
+        if not started:
+            self._signing_out = False
+            self.sign_out_btn.setEnabled(True)
+            self.status_bar.showMessage("Could not start sign-out. Please try again.")
+            return
+        self._signing_out = True
+        self.status_bar.showMessage("Signing out…")
+
+    def _forget_cached_role(self) -> None:
         try:
-            if hasattr(self.client, "auth") and hasattr(self.client.auth, "sign_out"):
-                self.client.auth.sign_out()
-        except Exception:
-            pass
+            forget_role(self.client)
+        except Exception as exc:  # noqa: BLE001 - local cache only
+            _log.error(
+                "Could not clear the cached role while signing out: %s",
+                human_error(exc),
+            )
 
-        from .login_window import LoginWindow
-        self.login_window = LoginWindow()
-        self.login_window.show()
+    def _on_sign_out_succeeded(self, _result) -> None:
+        self._forget_cached_role()
+
+    def _on_sign_out_failed(self, message: str) -> None:
+        # The window is already leaving; clear the local session explicitly so
+        # a failed server call cannot leave refresh credentials behind, then
+        # surface the failure on the login window.
+        self._sign_out_error = message
+        try:
+            clear_local_session(self.client)
+        except Exception as exc:  # noqa: BLE001 - reported on the login window
+            self._sign_out_error = (
+                f"{message} The local session could not be cleared: "
+                f"{human_error(exc)}"
+            )
+            _log.error("Local session cleanup failed: %s", human_error(exc))
+        _log.warning("Sign-out request failed: %s", message)
+        self._forget_cached_role()
+
+    def _on_sign_out_finished(self) -> None:
+        self._stop_live_timer()
+        self._signing_out = False
+        if self._sign_out_show_login:
+            from .login_window import LoginWindow
+
+            self.login_window = LoginWindow()
+            if self._sign_out_error:
+                self.login_window.show_error(
+                    "Sign-out could not reach the server. The local session was "
+                    "cleared as a precaution; check your connection before "
+                    f"signing in again. ({self._sign_out_error})"
+                )
+            self.login_window.show()
         self.close()
 
+    def on_sign_out_clicked(self):
+        if self._signing_out or self.tasks.is_busy("sign-out"):
+            return
+        if getattr(self, "_pending_shutdown_action", None) in (
+            "sign_out",
+            "sign_out_close",
+        ):
+            return
+        self.sign_out_btn.setEnabled(False)
+        self._begin_shutdown("sign_out")
+
     def closeEvent(self, event):
-        self._shutdown_workers()
-        if getattr(self, "_live_timer", None) is not None:
-            self._live_timer.stop()
+        # A sign-out that is still waiting for workers must survive the close:
+        # switch it to the no-login variant and keep the shutdown poll running.
+        action = getattr(self, "_pending_shutdown_action", None)
+        if action in ("sign_out", "sign_out_close"):
+            self._sign_out_show_login = False
+            self._begin_shutdown("sign_out_close")
+            event.ignore()
+            return
+
+        # A sign-out already running owns the shutdown: remember that the
+        # operator does not want the login window, then let the task close us.
+        if self._signing_out or self.tasks.is_busy("sign-out"):
+            self._sign_out_show_login = False
+            event.ignore()
+            return
+
+        self._shutdown_workers(0)
+        if self._workers_running():
+            # Never destroy a running QThread (or leave it holding CLIENT_LOCK):
+            # keep the window alive and finish the close when they are done.
+            event.ignore()
+            self._begin_shutdown("close")
+            return
+        self._stop_live_timer()
+        timer = getattr(self, "_shutdown_timer", None)
+        if timer is not None:
+            timer.stop()
+        self._pending_shutdown_action = None
         super().closeEvent(event)

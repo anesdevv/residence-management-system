@@ -8,13 +8,15 @@ status header, resident identity, key facts, the fault-photo card with its
 hover zoom cue, the staff-note block, the guarded status actions, the flat
 delete row and the plain-text record block.
 
-The data layer is frozen: ``reload()`` keeps its ``maintenance_reports`` select
-(``*, students(first_name, last_name, card_id)``), ``apply_live_data`` keeps the
-``(id, status)`` diff plus the selection restore by id, ``set_status`` keeps the
-``QInputDialog`` note flow and the ``maintenance_reports`` update, ``on_delete``
-keeps the delete + reload, ``official_lookup`` stays behind the double-click
-``StudentInfoCardDialog`` path, and the signed-URL + ``PhotoFetchWorker`` photo
-flow keeps its ``_photo_req_id`` stale-response guard.
+The data layer keeps its exact queries: ``reload()`` selects
+``maintenance_reports`` (``*, students(first_name, last_name, card_id)``) and
+``apply_live_data`` keeps the ``(id, status)`` diff plus the selection restore
+by id.  ``set_status`` keeps the ``QInputDialog`` note flow, ``on_delete`` keeps
+its confirmation text, and both run ``auth.get_user()`` / update / delete /
+refresh through ``TaskRunner`` (off the GUI thread).  ``official_lookup`` is
+also loaded in the background before the double-click ``StudentInfoCardDialog``
+is shown, and the signed-URL + ``PhotoFetchWorker`` photo flow keeps its
+``_photo_req_id`` stale-response guard.
 
 Widget contracts kept for the tests
 -----------------------------------
@@ -35,6 +37,7 @@ from __future__ import annotations
 from PySide6.QtCore import QEvent, QSize, Qt
 from PySide6.QtGui import QBrush, QColor, QPixmap
 from PySide6.QtWidgets import (
+    QComboBox,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -73,14 +76,13 @@ from ..components import (
 from ..icons import get_icon, get_pixmap
 from ..infocard import StudentInfoCardDialog
 from ..photo_viewer import ClickablePhotoLabel, PhotoFetchWorker, PhotoViewerDialog
+from ..tasks import TaskRunner, human_error
 from ..theme import C, S
 
 # Lifecycle stages (UI): the segmented filter and the inspector Stepper share
-# this order. "Under review" is a UI-only stage — no ``maintenance_reports``
-# row carries it yet, so its count is always 0 and the empty state explains it.
+# this order: Pending > In progress > Resolved (3 stages).
 _STAGES = [
     ("pending", "Pending"),
-    ("under_review", "Under review"),
     ("in_progress", "In progress"),
     ("resolved", "Resolved"),
 ]
@@ -92,24 +94,74 @@ _COLUMNS = ["Category", "Resident", "Status", "Reported"]
 # report status -> (StatusPill kind, status word)
 _STATUS_KINDS = {
     "pending": ("pending", "Pending"),
-    "under_review": ("review", "Under review"),
+    "under_review": ("pending", "Pending"),
     "in_progress": ("progress", "In progress"),
     "resolved": ("ok", "Resolved"),
 }
 _DEFAULT_STATUS = ("pending", "Pending")
 
+# 4 canonical categories: Plumbing, Electricity, Carpentry, Others (in order)
+_CATEGORIES = [
+    ("plumbing", "Plumbing"),
+    ("electricity", "Electricity"),
+    ("carpentry", "Carpentry"),
+    ("others", "Others"),
+]
+
+_CATEGORY_LABELS = {
+    "plumbing": "Plumbing",
+    "electricity": "Electricity",
+    "electrical": "Electricity",
+    "carpentry": "Carpentry",
+    "furniture": "Carpentry",
+    "others": "Others",
+    "other": "Others",
+    "heating": "Others",
+    "general": "Others",
+}
+
 # maintenance_category -> icon name (table cell and inspector header)
 _CATEGORY_ICONS = {
     "plumbing": "droplet",
+    "electricity": "zap",
     "electrical": "zap",
+    "carpentry": "hammer",
     "furniture": "hammer",
-    "internet": "wifi",
+    "others": "wrench",
     "other": "wrench",
+    "heating": "wrench",
+    "general": "wrench",
+    "internet": "wifi",
 }
 _CATEGORY_FALLBACK = "wrench"
 
+
+def _normalize_category(category) -> str:
+    key = str(category or "").lower().strip()
+    if key in ("electricity", "electrical"):
+        return "electricity"
+    if key in ("carpentry", "furniture"):
+        return "carpentry"
+    if key in ("others", "other", "heating", "general"):
+        return "others"
+    if key == "plumbing":
+        return "plumbing"
+    return "others"
+
+
+def _category_label(category) -> str:
+    key = str(category or "").lower().strip()
+    return _CATEGORY_LABELS.get(key, "Others")
+
 # The exact string asserted by the no-photo contract test.
 _NO_PHOTO_TEXT = "No photo attached by resident"
+
+# Task keys: writes share one key so status changes and deletes can never
+# overlap; reads use their own keys so a refresh cannot masquerade as a write.
+_ACTION_KEY = "maintenance-action"
+_RELOAD_KEY = "maintenance-reload"
+_INFO_KEY = "maintenance-info"
+_WORKING_TEXT = "Working..."
 
 
 def _normalise_student(row: dict) -> dict:
@@ -124,12 +176,16 @@ def _normalise_student(row: dict) -> dict:
 
 def _status_meta(raw_status) -> tuple[str, str]:
     """``(StatusPill kind, status word)`` for any report status value."""
-    return _STATUS_KINDS.get(str(raw_status), _DEFAULT_STATUS)
+    key = str(raw_status or "").lower()
+    if key == "under_review":
+        key = "pending"
+    return _STATUS_KINDS.get(key, _DEFAULT_STATUS)
 
 
 def _category_icon(category) -> str:
     """Icon name for a maintenance category (unknown categories -> wrench)."""
-    return _CATEGORY_ICONS.get(str(category or "").lower(), _CATEGORY_FALLBACK)
+    key = str(category or "").lower().strip()
+    return _CATEGORY_ICONS.get(key, _CATEGORY_FALLBACK)
 
 
 def _fmt_date(value) -> str:
@@ -162,9 +218,12 @@ def _room_text(row: dict, student: dict) -> str:
 
 
 def _stage_index(status) -> int:
-    """Stepper index for a report status (unknown -> Pending)."""
-    for index, (key, _label) in enumerate(_STAGES):
-        if key == str(status):
+    """Stepper index for a report status (unknown/under_review -> Pending)."""
+    key = str(status or "").lower()
+    if key == "under_review":
+        key = "pending"
+    for index, (k, _label) in enumerate(_STAGES):
+        if k == key:
             return index
     return 0
 
@@ -246,6 +305,19 @@ class MaintenancePage(QWidget):
         self._photo_fetch_failed: bool = False
         self._photo_loading: bool = False
 
+        # Background action plumbing. Every network call started by a status
+        # change, a delete, a refresh or the roster lookup runs through this
+        # runner; the GUI thread only renders results.
+        self.tasks = TaskRunner(self)
+        self._actions_busy: bool = False
+        self._info_busy: bool = False
+        self._closing: bool = False
+        self._loaded_once: bool = False
+        self._data_generation: int = 0
+        self._banner_mode: str | None = None
+        self._action_texts: dict[Button, str] = {}
+        self._reload_after_action: bool = False
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(S("space-8"), S("space-8"), S("space-8"), S("space-8"))
         layout.setSpacing(S("space-6"))
@@ -265,11 +337,20 @@ class MaintenancePage(QWidget):
 
         self.segments = SegmentedControl(_STAGES)
         self.btn_pending = self.segments.buttons["pending"]
-        self.btn_under_review = self.segments.buttons["under_review"]
         self.btn_in_progress = self.segments.buttons["in_progress"]
         self.btn_resolved = self.segments.buttons["resolved"]
         self.segments.changed.connect(self.set_filter)
         toolbar.addWidget(self.segments)
+
+        self.category_filter = QComboBox()
+        self.category_filter.addItem("All categories", "all")
+        for cat_id, cat_label in _CATEGORIES:
+            self.category_filter.addItem(cat_label, cat_id)
+        self.category_filter.categories = [cat_label for _id, cat_label in _CATEGORIES]
+        self.categories = list(self.category_filter.categories)
+        self.category_filter.setToolTip("Filter tickets by category")
+        self.category_filter.currentIndexChanged.connect(lambda _idx: self.apply_filter())
+        toolbar.addWidget(self.category_filter)
 
         self.search = SearchField("Search by description, resident or category…")
         self.search.changed.connect(self.apply_filter)
@@ -509,17 +590,23 @@ class MaintenancePage(QWidget):
 
     def apply_filter(self):
         needle = self.search.text().lower().strip()
+        selected_cat = self.category_filter.currentData() if hasattr(self, "category_filter") else "all"
         for r in range(self.table.rowCount()):
             row_data = self.rows[r] if r < len(self.rows) else {}
             st = _normalise_student(row_data)
-            status = row_data.get("status", "")
-            cat = str(row_data.get("category", "")).lower()
+            status = str(row_data.get("status", ""))
+            if status == "under_review":
+                status = "pending"
+            raw_cat = str(row_data.get("category", "")).lower()
+            cat_norm = _normalize_category(raw_cat)
+            cat_label = _category_label(raw_cat).lower()
             desc = str(row_data.get("description", "")).lower()
             name = f"{st.get('first_name', '')} {st.get('last_name', '')}".lower()
 
             status_matches = self.filter_mode == "all" or status == self.filter_mode
-            text_matches = needle in f"{cat} {desc} {name}"
-            self.table.setRowHidden(r, not (status_matches and text_matches))
+            cat_matches = (selected_cat in (None, "all")) or (cat_norm == selected_cat)
+            text_matches = needle in f"{cat_norm} {cat_label} {desc} {name}"
+            self.table.setRowHidden(r, not (status_matches and cat_matches and text_matches))
         self._update_view_state()
 
     def _update_view_state(self):
@@ -532,6 +619,8 @@ class MaintenancePage(QWidget):
         counts = {key: 0 for key, _label in _STAGES}
         for r in self.rows:
             status = str(r.get("status", ""))
+            if status == "under_review":
+                status = "pending"
             if status in counts:
                 counts[status] += 1
         for key, value in counts.items():
@@ -543,11 +632,122 @@ class MaintenancePage(QWidget):
         for widget in self._selection_widgets:
             widget.setVisible(has_selection)
 
+    # --------------------------------------------------- background plumbing
+    def _show_banner(self, kind: str, title: str, message: str, mode: str = "action") -> None:
+        """Show the page's inline banner with a human-readable message."""
+        self._banner_mode = mode
+        self.error_banner.set_kind(kind)
+        self.error_banner.set_title(title)
+        self.error_banner.set_message(message)
+        self.error_banner.setVisible(True)
+
+    def _hide_banner(self, mode: str | None = None) -> None:
+        """Hide the banner, optionally only when it belongs to ``mode``."""
+        if mode is None or self._banner_mode == mode:
+            self._banner_mode = None
+            self.error_banner.setVisible(False)
+
+    def _set_actions_busy(self, busy: bool, active_button: Button | None = None) -> None:
+        """Disable/restore the action controls while a background write runs."""
+        self._actions_busy = busy
+        if busy:
+            for button in (self.in_progress_btn, self.resolved_btn, self.delete_btn):
+                self._action_texts.setdefault(button, button.text())
+                button.setEnabled(False)
+            self.refresh_btn.setEnabled(False)
+            if active_button is not None:
+                active_button.setText(_WORKING_TEXT)
+            return
+
+        for button, text in self._action_texts.items():
+            try:
+                button.setText(text)
+            except RuntimeError:  # widget already destroyed (window closing)
+                pass
+        self._action_texts.clear()
+        self.refresh_btn.setEnabled(True)
+        self._apply_action_buttons(self.selected())
+
+    def _apply_action_buttons(self, row: dict | None) -> None:
+        """Enable status/delete controls for the selected ticket (or clear them)."""
+        if row is None:
+            self.delete_btn.setEnabled(False)
+            self.delete_btn.setToolTip("Select a ticket to delete it.")
+            self.in_progress_btn.setEnabled(False)
+            self.in_progress_btn.setToolTip("Select a ticket to dispatch a technician.")
+            self.resolved_btn.setEnabled(False)
+            self.resolved_btn.setToolTip("Select a ticket to close it as resolved.")
+            return
+
+        if self._actions_busy:
+            for button in (self.in_progress_btn, self.resolved_btn, self.delete_btn):
+                button.setEnabled(False)
+                button.setToolTip("An action is already in progress for this queue.")
+            return
+
+        status = str(row.get("status", "pending"))
+        if status == "resolved":
+            self.in_progress_btn.setEnabled(False)
+            self.in_progress_btn.setToolTip("This ticket is already resolved.")
+            self.resolved_btn.setEnabled(False)
+            self.resolved_btn.setToolTip("This ticket is already resolved.")
+        elif status == "in_progress":
+            self.in_progress_btn.setEnabled(False)
+            self.in_progress_btn.setToolTip("A technician is already dispatched for this ticket.")
+            self.resolved_btn.setEnabled(True)
+            self.resolved_btn.setToolTip("")
+        else:
+            self.in_progress_btn.setEnabled(True)
+            self.in_progress_btn.setToolTip("")
+            self.resolved_btn.setEnabled(True)
+            self.resolved_btn.setToolTip("")
+
+        self.delete_btn.setEnabled(True)
+        self.delete_btn.setToolTip("")
+
+    def _start_action(
+        self,
+        key: str,
+        fn,
+        *,
+        button: Button | None,
+        working_message: str,
+        on_success,
+        on_failed,
+    ) -> bool:
+        """Run a write in the background; return False if one is already running."""
+        if self._actions_busy or self.tasks.is_busy(_ACTION_KEY):
+            return False
+
+        self._set_actions_busy(True, button)
+        self._show_banner("info", _WORKING_TEXT, working_message, mode="action")
+        started = self.tasks.run(
+            key,
+            fn,
+            on_success=on_success,
+            on_failed=on_failed,
+            on_finished=self._on_action_finished,
+        )
+        if not started:
+            self._set_actions_busy(False)
+        return started
+
+    def _on_action_finished(self) -> None:
+        if self._closing:
+            self._actions_busy = False
+            return
+        self._set_actions_busy(False)
+        if self._reload_after_action:
+            self._reload_after_action = False
+            # The authoritative rows are fetched in the background; the write
+            # itself already succeeded, so a refresh failure cannot roll it back.
+            self.reload()
+
     # -------------------------------------------------------- live sync data
-    def apply_live_data(self, rows: list[dict]):
+    def apply_live_data(self, rows: list[dict], force: bool = False):
         old_keys = [(r.get("id"), r.get("status")) for r in self.rows]
         new_keys = [(r.get("id"), r.get("status")) for r in rows]
-        if old_keys == new_keys and len(rows) == len(self.rows):
+        if not force and old_keys == new_keys and len(rows) == len(self.rows):
             return
 
         selected_id = self.selected().get("id") if self.selected() else None
@@ -563,8 +763,9 @@ class MaintenancePage(QWidget):
             status_kind, status_text = _status_meta(status)
             category = str(r.get("category") or "other")
 
-            cat_item = QTableWidgetItem(category.capitalize())
-            cat_item.setIcon(get_icon(_category_icon(category), 14, C("text-secondary")))
+            cat_label = _category_label(r.get("category"))
+            cat_item = QTableWidgetItem(cat_label)
+            cat_item.setIcon(get_icon(_category_icon(r.get("category")), 14, C("text-secondary")))
             student_item = QTableWidgetItem(f"{st.get('first_name', '')} {st.get('last_name', '')}".strip())
             status_holder = _cell_widget(StatusPill(status_kind, status_text))
             status_item = _pill_item(status_text, status_holder)
@@ -605,15 +806,72 @@ class MaintenancePage(QWidget):
         self.resolved_btn.setToolTip("Select a ticket to close it as resolved.")
         self._show_selection(False)
 
-    def reload(self):
+    def _fetch_rows(self) -> list[dict]:
+        """Network read: the maintenance queue (call from a worker thread)."""
+        resp = self.client.table("maintenance_reports") \
+            .select("*, students(first_name, last_name, card_id)") \
+            .order("created_at", desc=True).execute()
+        data = getattr(resp, "data", None)
+        return [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
+
+    def _load_sync(self) -> None:
+        """Initial page load only; keeps the constructor contract synchronous."""
         try:
-            resp = self.client.table("maintenance_reports") \
-                .select("*, students(first_name, last_name, card_id)") \
-                .order("created_at", desc=True).execute()
-            self.error_banner.setVisible(False)
-            self.apply_live_data(resp.data or [])
-        except Exception:
-            self.error_banner.setVisible(True)
+            rows = self._fetch_rows()
+        except Exception as exc:  # noqa: BLE001 - reported inline
+            self._show_banner(
+                "error",
+                "Maintenance queue could not be loaded",
+                f"The table is showing the last data received ({human_error(exc)}). "
+                "Use Refresh to try again.",
+                mode="load",
+            )
+            return
+        self._hide_banner("load")
+        self.apply_live_data(rows)
+
+    def _on_reload_success(self, rows, generation: int) -> None:
+        if generation != self._data_generation or self._closing:
+            return
+        self._hide_banner("reload")
+        self.apply_live_data(rows)
+
+    def _on_reload_failed(self, message: str) -> None:
+        self._show_banner(
+            "error",
+            "Maintenance queue could not be loaded",
+            f"The table is showing the last data received ({message}). "
+            "Use Refresh to try again.",
+            mode="reload",
+        )
+
+    def _on_reload_finished(self) -> None:
+        if not self._actions_busy:
+            self.refresh_btn.setEnabled(True)
+
+    def _reload_async(self) -> None:
+        if self.tasks.is_busy(_RELOAD_KEY) or self._actions_busy:
+            return
+        generation = self._data_generation
+        started = self.tasks.run(
+            _RELOAD_KEY,
+            self._fetch_rows,
+            on_success=lambda rows: self._on_reload_success(rows, generation),
+            on_failed=self._on_reload_failed,
+            on_finished=self._on_reload_finished,
+        )
+        if not started:
+            return
+        self.refresh_btn.setEnabled(False)
+        self._show_banner("info", _WORKING_TEXT, "Refreshing the maintenance queue…", mode="reload")
+
+    def reload(self):
+        """Refresh the queue; the first (constructor) call stays synchronous."""
+        if not self._loaded_once:
+            self._loaded_once = True
+            self._load_sync()
+            return
+        self._reload_async()
 
     def selected(self) -> dict | None:
         r = self.table.currentRow()
@@ -640,7 +898,7 @@ class MaintenancePage(QWidget):
         status = str(r.get("status", "pending"))
         status_kind, status_text = _status_meta(status)
         stage = _stage_index(status)
-        category = str(r.get("category") or "other")
+        category = _category_label(r.get("category"))
         st = _normalise_student(r)
         name = f"{st.get('first_name', '')} {st.get('last_name', '')}".strip() or "Unnamed resident"
 
@@ -649,8 +907,8 @@ class MaintenancePage(QWidget):
         self.stepper.set_states([index < stage for index in range(len(_STAGES))])
 
         # Category + status header.
-        self.category_icon.setPixmap(get_pixmap(_category_icon(category), S("size-icon"), C("navy-800")))
-        self.category_label.setText(category.capitalize())
+        self.category_icon.setPixmap(get_pixmap(_category_icon(r.get("category")), S("size-icon"), C("navy-800")))
+        self.category_label.setText(category)
         self.status_pill.set_kind(status_kind, status_text)
 
         # Resident identity.
@@ -666,24 +924,7 @@ class MaintenancePage(QWidget):
         ])
 
         # Status actions: disabled with the reason in the tooltip.
-        if status == "resolved":
-            self.in_progress_btn.setEnabled(False)
-            self.in_progress_btn.setToolTip("This ticket is already resolved.")
-            self.resolved_btn.setEnabled(False)
-            self.resolved_btn.setToolTip("This ticket is already resolved.")
-        elif status == "in_progress":
-            self.in_progress_btn.setEnabled(False)
-            self.in_progress_btn.setToolTip("A technician is already dispatched for this ticket.")
-            self.resolved_btn.setEnabled(True)
-            self.resolved_btn.setToolTip("")
-        else:
-            self.in_progress_btn.setEnabled(True)
-            self.in_progress_btn.setToolTip("")
-            self.resolved_btn.setEnabled(True)
-            self.resolved_btn.setToolTip("")
-
-        self.delete_btn.setEnabled(True)
-        self.delete_btn.setToolTip("")
+        self._apply_action_buttons(r)
 
         # Staff / dispatch note.
         note = str(r.get("staff_note") or "").strip()
@@ -811,6 +1052,7 @@ class MaintenancePage(QWidget):
             dlg.deleteLater()
 
     def closeEvent(self, event):  # noqa: N802 - Qt API
+        self._closing = True
         worker = self._thumb_worker
         self._cleanup_thumb_worker()
         if worker is not None and worker.isRunning():
@@ -829,19 +1071,118 @@ class MaintenancePage(QWidget):
 
     def on_row_double_clicked(self, row: int, col: int):
         r = self.selected()
-        if r and r.get("students"):
-            st = dict(_normalise_student(r))
-            roster_map = {}
-            try:
-                roster_map = official_lookup(self.client)
-            except Exception:
-                pass
-            roster_match = roster_map.get(st.get("card_id"))
-            dlg = StudentInfoCardDialog(self, st, roster_match)
+        if not r or not r.get("students"):
+            return
+        if self._actions_busy or self._info_busy or self.tasks.is_busy(_INFO_KEY):
+            return
+
+        st = dict(_normalise_student(r))
+        self._info_busy = True
+        started = self.tasks.run(
+            _INFO_KEY,
+            lambda: official_lookup(self.client),
+            on_success=lambda roster: self._show_student_card(st, roster),
+            on_failed=self._on_info_failed,
+            on_finished=self._on_info_finished,
+        )
+        if not started:
+            self._info_busy = False
+
+    def _show_student_card(self, student: dict, roster_map) -> None:
+        if self._closing:
+            return
+        roster_match = (roster_map or {}).get(student.get("card_id"))
+        dlg = StudentInfoCardDialog(self, student, roster_match)
+        try:
             dlg.exec()
+        finally:
+            dlg.deleteLater()
+
+    def _on_info_failed(self, message: str) -> None:
+        self._show_banner(
+            "error",
+            "Resident record could not be loaded",
+            f"The roster lookup failed ({message}). The maintenance queue is unchanged.",
+            mode="info",
+        )
+
+    def _on_info_finished(self) -> None:
+        self._info_busy = False
 
     # ------------------------------------------------------------- decisions
+    def _update_status_worker(self, ticket_id, status: str, note_val):
+        """Worker: resolve the signed-in staff member, then update the ticket."""
+        update_data = {"status": status, "staff_note": note_val}
+        try:
+            user = getattr(self.client.auth.get_user(), "user", None)
+        except Exception:  # noqa: BLE001 - auth is best-effort, update still runs
+            user = None
+        if user:
+            update_data["handled_by"] = user.id
+        try:
+            self.client.table("maintenance_reports").update(update_data) \
+                .eq("id", ticket_id).execute()
+        except Exception as exc:  # noqa: BLE001 - re-raised with context
+            raise RuntimeError(f"Network error updating ticket: {exc}") from exc
+        return update_data
+
+    def _delete_ticket_worker(self, ticket_id):
+        """Worker: delete the ticket."""
+        try:
+            self.client.table("maintenance_reports").delete() \
+                .eq("id", ticket_id).execute()
+        except Exception as exc:  # noqa: BLE001 - re-raised with context
+            raise RuntimeError(f"Failed to delete ticket: {exc}") from exc
+        return True
+
+    def _on_status_success(self, update_data, ticket_id, status: str) -> None:
+        self._data_generation += 1
+        for row in self.rows:
+            if row.get("id") == ticket_id:
+                row.update(update_data)
+                break
+        self.apply_live_data(self.rows, force=True)
+        label = status.replace("_", " ")
+        self._show_banner(
+            "success",
+            "Status updated",
+            f"Maintenance ticket updated to '{label}'.",
+            mode="action",
+        )
+        self._reload_after_action = True
+
+    def _on_status_failed(self, message: str) -> None:
+        self._show_banner(
+            "error",
+            "Ticket could not be updated",
+            f"The maintenance ticket was not changed. {message}",
+            mode="action",
+        )
+
+    def _on_delete_success(self, deleted, ticket_id) -> None:
+        self._data_generation += 1
+        self.rows = [row for row in self.rows if row.get("id") != ticket_id]
+        self.apply_live_data(self.rows, force=True)
+        self._show_banner(
+            "success",
+            "Ticket deleted",
+            "Maintenance ticket deleted successfully.",
+            mode="action",
+        )
+        self._reload_after_action = True
+
+    def _on_delete_failed(self, message: str) -> None:
+        self._show_banner(
+            "error",
+            "Ticket could not be deleted",
+            f"The maintenance ticket was not removed. {message}",
+            mode="action",
+        )
+
     def set_status(self, status: str):
+        if self._actions_busy or self._info_busy or self.tasks.is_busy(_ACTION_KEY):
+            return
+
         r = self.selected()
         if not r:
             QMessageBox.information(self, "Select ticket", "Please select a maintenance ticket from the table first.")
@@ -857,36 +1198,35 @@ class MaintenancePage(QWidget):
         if not ok:
             return
 
-        note_val = note.strip() or default_note or None
-        user = None
-        try:
-            user = getattr(self.client.auth.get_user(), "user", None)
-        except Exception:
-            pass
-
-        update_data = {"status": status, "staff_note": note_val}
-        if user:
-            update_data["handled_by"] = user.id
-
-        try:
-            self.client.table("maintenance_reports").update(update_data).eq("id", r["id"]).execute()
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Update Error", f"Network error updating ticket: {exc}")
+        ticket_id = r.get("id")
+        if ticket_id is None:
             return
 
-        QMessageBox.information(self, "Status Updated", f"Maintenance ticket updated to '{status.replace('_', ' ')}'.")
-        try:
-            self.reload()
-        except Exception:
-            pass
+        note_val = note.strip() or default_note or None
+        button = self.resolved_btn if status == "resolved" else self.in_progress_btn
+        started = self._start_action(
+            _ACTION_KEY,
+            lambda: self._update_status_worker(ticket_id, status, note_val),
+            button=button,
+            working_message=f"Updating maintenance ticket to '{status.replace('_', ' ')}'…",
+            on_success=lambda update_data: self._on_status_success(
+                update_data, ticket_id, status
+            ),
+            on_failed=self._on_status_failed,
+        )
+        if not started:
+            return
 
     def on_delete(self):
+        if self._actions_busy or self._info_busy or self.tasks.is_busy(_ACTION_KEY):
+            return
+
         t = self.selected()
         if not t:
             return
 
         ticket_id = str(t.get("id", ""))[:8]
-        category = str(t.get("category") or "—").capitalize()
+        category = _category_label(t.get("category"))
         status_text = _status_meta(t.get("status", "pending"))[1]
         confirmed = ConfirmDialog.ask(
             self,
@@ -899,11 +1239,16 @@ class MaintenancePage(QWidget):
         if not confirmed:
             return
 
-        try:
-            self.client.table("maintenance_reports").delete().eq("id", t["id"]).execute()
-            QMessageBox.information(self, "Deleted", "Maintenance ticket deleted successfully.")
-            self.reload()
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Error", f"Failed to delete ticket: {exc}")
+        raw_id = t.get("id")
+        if raw_id is None:
+            return
+        self._start_action(
+            _ACTION_KEY,
+            lambda: self._delete_ticket_worker(raw_id),
+            button=self.delete_btn,
+            working_message="Deleting the maintenance ticket…",
+            on_success=lambda deleted: self._on_delete_success(deleted, raw_id),
+            on_failed=self._on_delete_failed,
+        )
 
 

@@ -1,3 +1,4 @@
+import logging
 import sys
 from pathlib import Path
 
@@ -5,7 +6,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QMessageBox
+from app.config import config_error
+from app.logging_setup import (
+    SafeApplication,
+    install_exception_hooks,
+    log_path,
+    setup_logging,
+)
 from app.ui.login_window import LoginWindow
 from app.ui.theme import load_fonts
 
@@ -29,8 +37,25 @@ _BRAND_ICON = _resolve_brand_icon()
 
 
 def main() -> int:
-    app = QApplication(sys.argv)
+    # Configure the file log before creating any widget: --noconsole builds
+    # have no stderr, and startup failures must still be diagnosable.
+    setup_logging()
+    app = SafeApplication(sys.argv)
+    install_exception_hooks()
     app.setApplicationName("RÉSIVO")
+
+    # Validate before the login window: a broken deployment gets one clear
+    # message (no key material) instead of a misleading auth failure.
+    error = config_error()
+    if error:
+        logging.getLogger("resivo").error("Configuration error: %s", error)
+        QMessageBox.critical(
+            None,
+            "RÉSIVO — Configuration error",
+            f"{error}\n\nLog file: {log_path()}",
+        )
+        return 1
+
     load_fonts()  # bundled Outfit/Inter; must run after the QApplication exists
     if _BRAND_ICON.is_file():
         app.setWindowIcon(QIcon(str(_BRAND_ICON)))
