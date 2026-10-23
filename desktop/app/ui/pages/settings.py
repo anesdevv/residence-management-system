@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
 
 from ...client import current_role
 from .. import theme
+from ..close_policy import get_confirm_close_setting, set_confirm_close_setting
 from ..components import Button, Card, InlineBanner, PageHeader, StatusPill
 from ..tasks import TaskRunner, human_error
 from ..theme import C, S
@@ -256,6 +257,28 @@ class SettingsPage(QWidget):
         )
         layout.addWidget(self.header)
 
+        # General settings card
+        self.general_card = Card(
+            "General",
+            "Console behavior and application closing preferences.",
+            icon="settings",
+        )
+
+        self.confirm_close_checkbox = QCheckBox("Confirm before closing the app")
+        self.confirm_close_checkbox.setStyleSheet(_checkbox_qss())
+        self.confirm_close_checkbox.setChecked(get_confirm_close_setting())
+        self.confirm_close_checkbox.setToolTip("Ask for confirmation before quitting RÉSIVO")
+        self.confirm_close_checkbox.toggled.connect(self._on_confirm_close_toggled)
+        self.general_card.add_widget(self.confirm_close_checkbox)
+
+        self.confirm_close_note = QLabel(
+            "When enabled, RÉSIVO asks for confirmation before closing to prevent interrupting active tasks or live sync."
+        )
+        _apply_small(self.confirm_close_note)
+        self.general_card.add_widget(self.confirm_close_note)
+
+        layout.addWidget(self.general_card)
+
         # Advanced settings (developer mode) card
         self.dev_card = Card(
             "Advanced settings",
@@ -374,6 +397,9 @@ class SettingsPage(QWidget):
             if self._health_started:
                 self.health_worker.stop()
                 self._health_started = False
+
+    def _on_confirm_close_toggled(self, checked: bool) -> None:
+        set_confirm_close_setting(checked)
 
     # -------------------------------------------------------------
     # Content construction

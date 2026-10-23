@@ -29,9 +29,10 @@ from PySide6.QtCore import (
     QTimer,
     Signal,
 )
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QGuiApplication
 from PySide6.QtWidgets import (
     QButtonGroup,
+    QDialog,
     QFrame,
     QGraphicsOpacityEffect,
     QHBoxLayout,
@@ -57,6 +58,7 @@ from ..client import (
     stored_user_id,
 )
 from . import components, theme
+from .close_policy import CloseConfirmDialog, ClosePolicy, get_confirm_close_setting
 from .components import Avatar, BrandMark, Button, InlineBanner, LiveDot
 from .icons import get_icon, get_pixmap
 from .live_sync import LiveSyncWorker
@@ -443,6 +445,12 @@ class MainWindow(QMainWindow):
         self._signing_out = False
         self._sign_out_show_login = True
         self._sign_out_error: str | None = None
+        self._is_session_ending = False
+        self._shutdown_confirmed = False
+
+        qapp = QGuiApplication.instance()
+        if qapp is not None:
+            qapp.commitDataRequest.connect(self._on_commit_data_request)
         self._sidebar_minimized = False
         self.setWindowTitle("RÉSIVO — Staff Console")
         self.setMinimumSize(980, 640)
@@ -1088,6 +1096,7 @@ class MainWindow(QMainWindow):
     def _on_sign_out_finished(self) -> None:
         self._stop_live_timer()
         self._signing_out = False
+        self._shutdown_confirmed = True
         if self._sign_out_show_login:
             from .login_window import LoginWindow
 
@@ -1109,8 +1118,16 @@ class MainWindow(QMainWindow):
             "sign_out_close",
         ):
             return
+        self._shutdown_confirmed = True
         self.sign_out_btn.setEnabled(False)
         self._begin_shutdown("sign_out")
+
+    def _on_commit_data_request(self, session_manager=None) -> None:
+        self._is_session_ending = True
+
+    def request_quit(self) -> None:
+        """Trigger application close, obeying confirmation policy."""
+        self.close()
 
     def closeEvent(self, event):
         # A sign-out that is still waiting for workers must survive the close:
@@ -1128,6 +1145,23 @@ class MainWindow(QMainWindow):
             self._sign_out_show_login = False
             event.ignore()
             return
+
+        if not getattr(self, "_shutdown_confirmed", False):
+            # A window that is not visible and not minimized to tray does not prompt.
+            if not self.isVisible() and not getattr(self, "_in_tray", False):
+                self._shutdown_confirmed = True
+            else:
+                is_busy = self._workers_running()
+                is_session_ending = getattr(self, "_is_session_ending", False)
+                confirm_setting = get_confirm_close_setting()
+
+                if ClosePolicy.should_confirm(confirm_setting, is_busy, is_session_ending):
+                    dlg = CloseConfirmDialog(self, is_busy=is_busy)
+                    if dlg.exec() != QDialog.DialogCode.Accepted:
+                        event.ignore()
+                        return
+
+                self._shutdown_confirmed = True
 
         self._shutdown_workers(0)
         if self._workers_running():
