@@ -58,7 +58,6 @@ from ..client import (
 )
 from . import components, theme
 from .components import Avatar, BrandMark, Button, InlineBanner, LiveDot
-from .diagnostics import DiagnosticsDialog
 from .icons import get_icon, get_pixmap
 from .live_sync import LiveSyncWorker
 from .photo_viewer import running_photo_fetchers
@@ -170,6 +169,7 @@ def _ghost_on_navy_qss(obj_name: str = "signOutButton", centered: bool = False) 
         f" border-color: {C('sidebar-hover')};"
         " }"
         f"QPushButton#{obj_name}:pressed {{ background-color: {C('navy-800')}; }}"
+        f"QPushButton#{obj_name}:checked {{ background-color: {C('navy-800')}; border-left: 2px solid {C('gold-500')}; }}"
         f"QPushButton#{obj_name}:focus {{ border: 2px solid {C('teal-500')}; padding: {focus_pad}; }}"
     )
 
@@ -396,6 +396,14 @@ class _SidebarNav(QWidget):
         self._activate(target)
         self._rows[target].setFocus(Qt.FocusReason.OtherFocusReason)
 
+    def clear_selection(self) -> None:
+        self._current = -1
+        checked = self._group.checkedButton()
+        if checked is not None:
+            self._group.setExclusive(False)
+            checked.setChecked(False)
+            self._group.setExclusive(True)
+
     def _activate(self, index: int) -> None:
         if not 0 <= index < len(self._rows) or index == self._current:
             return
@@ -477,9 +485,10 @@ class MainWindow(QMainWindow):
             self._add_nav_item("Staff accounts", "staff_accounts", self.staff_accounts_page)
 
         self.settings_page = SettingsPage(client)
-        self._add_nav_item("Settings", "settings", self.settings_page)
+        self.pages["Settings"] = self.settings_page
+        self.stack.addWidget(self.settings_page)
 
-        self.nav.currentRowChanged.connect(self.stack.setCurrentIndex)
+        self.nav.currentRowChanged.connect(self._on_nav_row_changed)
         self.nav.setCurrentRow(0)
 
         # Reflect the effective role in the footer and, when it could not be
@@ -604,19 +613,20 @@ class MainWindow(QMainWindow):
         self.toggle_menu_btn.clicked.connect(self.toggle_sidebar)
         self.sidebar_footer_layout.addWidget(self.toggle_menu_btn)
 
-        # About & Diagnostics (ghost, same footer treatment as the buttons above).
-        self.about_diagnostics_btn = Button.ghost("About & Diagnostics")
-        self.about_diagnostics_btn.setObjectName("aboutDiagnosticsButton")
-        self.about_diagnostics_btn.setIcon(get_icon("info", size=18, color=C("text-on-dark")))
-        self.about_diagnostics_btn.setIconSize(QSize(18, 18))
-        self.about_diagnostics_btn.setStyleSheet(
-            _ghost_on_navy_qss("aboutDiagnosticsButton", centered=False)
+        # Settings (ghost, same footer treatment as the buttons above).
+        self.settings_btn = Button.ghost("Settings")
+        self.settings_btn.setObjectName("settingsButton")
+        self.settings_btn.setCheckable(True)
+        self.settings_btn.setIcon(get_icon("settings", size=18, color=C("text-on-dark")))
+        self.settings_btn.setIconSize(QSize(18, 18))
+        self.settings_btn.setStyleSheet(
+            _ghost_on_navy_qss("settingsButton", centered=False)
         )
-        self.about_diagnostics_btn.setFixedHeight(38)
-        self.about_diagnostics_btn.setToolTip("About RÉSIVO and diagnostics")
-        self.about_diagnostics_btn.setAccessibleName("About & Diagnostics")
-        self.about_diagnostics_btn.clicked.connect(self.on_about_diagnostics_clicked)
-        self.sidebar_footer_layout.addWidget(self.about_diagnostics_btn)
+        self.settings_btn.setFixedHeight(38)
+        self.settings_btn.setToolTip("Settings")
+        self.settings_btn.setAccessibleName("Settings")
+        self.settings_btn.clicked.connect(self.on_settings_clicked)
+        self.sidebar_footer_layout.addWidget(self.settings_btn)
 
         # Live-sync indicator: dot + text label (never colour alone).
         self.live_row_widget = QWidget()
@@ -656,10 +666,10 @@ class MainWindow(QMainWindow):
             self.toggle_menu_btn.setIcon(get_icon("chevron-right", size=18, color=C("text-on-dark")))
             self.toggle_menu_btn.setStyleSheet(_ghost_on_navy_qss("toggleMenuButton", centered=True))
 
-            self.about_diagnostics_btn.setText("")
-            self.about_diagnostics_btn.setToolTip("About RÉSIVO and diagnostics")
-            self.about_diagnostics_btn.setStyleSheet(
-                _ghost_on_navy_qss("aboutDiagnosticsButton", centered=True)
+            self.settings_btn.setText("")
+            self.settings_btn.setToolTip("Settings")
+            self.settings_btn.setStyleSheet(
+                _ghost_on_navy_qss("settingsButton", centered=True)
             )
 
             self.live_label.hide()
@@ -685,10 +695,10 @@ class MainWindow(QMainWindow):
             self.toggle_menu_btn.setIcon(get_icon("chevron-left", size=18, color=C("text-on-dark")))
             self.toggle_menu_btn.setStyleSheet(_ghost_on_navy_qss("toggleMenuButton", centered=False))
 
-            self.about_diagnostics_btn.setText("About & Diagnostics")
-            self.about_diagnostics_btn.setToolTip("About RÉSIVO and diagnostics")
-            self.about_diagnostics_btn.setStyleSheet(
-                _ghost_on_navy_qss("aboutDiagnosticsButton", centered=False)
+            self.settings_btn.setText("Settings")
+            self.settings_btn.setToolTip("Settings")
+            self.settings_btn.setStyleSheet(
+                _ghost_on_navy_qss("settingsButton", centered=False)
             )
 
             self.live_row.setAlignment(self.live_dot, Qt.AlignmentFlag.AlignVCenter)
@@ -999,24 +1009,16 @@ class MainWindow(QMainWindow):
         if timer is not None:
             timer.stop()
 
-    def _connection_status(self) -> str:
-        """Human live-sync state for the diagnostics dialog (no network)."""
-        reference = self._last_tick_at if self._last_tick_at is not None else self._started_at
-        elapsed = time.monotonic() - reference
-        if self._last_tick_at is not None and elapsed <= _LIVE_CONNECTED_WINDOW_S:
-            return "Connected"
-        if elapsed <= _LIVE_OFFLINE_WINDOW_S:
-            return "Reconnecting"
-        return "Offline"
+    def _on_nav_row_changed(self, index: int) -> None:
+        if hasattr(self, "settings_btn") and self.settings_btn.isChecked():
+            self.settings_btn.setChecked(False)
+        self.stack.setCurrentIndex(index)
 
-    def on_about_diagnostics_clicked(self):
-        self.diagnostics_dialog = DiagnosticsDialog(
-            self,
-            email=_session_email(self.client),
-            role=self.role,
-            connection_status=self._connection_status(),
-        )
-        self.diagnostics_dialog.exec()
+    def on_settings_clicked(self) -> None:
+        self.nav.clear_selection()
+        if hasattr(self, "settings_btn"):
+            self.settings_btn.setChecked(True)
+        self.stack.setCurrentWidget(self.settings_page)
 
     @staticmethod
     def _sign_out_session(client):

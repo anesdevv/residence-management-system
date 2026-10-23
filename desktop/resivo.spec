@@ -31,7 +31,6 @@ hiddenimports = [
     "app.ui.live_sync",
     "app.logging_setup",
     "app.ui.components",
-    "app.ui.diagnostics",
     "app.ui.icons",
     "app.ui.infocard",
     "app.ui.login_window",

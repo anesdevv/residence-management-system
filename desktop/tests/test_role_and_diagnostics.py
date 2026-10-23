@@ -28,10 +28,8 @@ from desktop.app.client import (
     resolve_role,
 )
 from desktop.app.logging_setup import log_path
-from desktop.app.ui import diagnostics as diagnostics_mod
 from desktop.app.ui import login_window as login_mod
 from desktop.app.ui import main_window as main_mod
-from desktop.app.ui.diagnostics import DiagnosticsDialog
 from desktop.app.ui.login_window import LoginWindow
 from desktop.app.ui.main_window import MainWindow
 from desktop.app.ui.pages import official_list as official_mod
@@ -646,53 +644,44 @@ def test_login_admin_role_is_passed_to_main_window(qapp, monkeypatch):
     window.close()
 
 
-# ----------------------------------------------------------------- diagnostics
-def test_diagnostics_shows_safe_information_only(qapp, monkeypatch):
-    fake_key = "FAKE-ANON-KEY-MUST-NOT-APPEAR"
-    monkeypatch.setattr(
-        diagnostics_mod.config,
-        "SUPABASE_URL",
-        "https://fake-project.supabase.co/rest/v1?token=hidden",
-    )
-    monkeypatch.setattr(diagnostics_mod.config, "SUPABASE_ANON_KEY", fake_key)
+# ------------------------------------------------------------- settings footer (C1)
+def test_about_diagnostics_removed_and_settings_in_footer(qapp, monkeypatch):
+    _patch_main_pages(monkeypatch)
+    window = MainWindow(MagicMock(), role="staff")
+    _qapp.processEvents()
 
-    dialog = DiagnosticsDialog(
-        email="admin@example.com", role="admin", connection_status="Connected"
-    )
-    text = " ".join(label.text() for label in dialog.findChildren(QLabel))
+    # About & Diagnostics button and dialog are gone
+    assert not hasattr(window, "about_diagnostics_btn")
+    assert window.findChild(QPushButton, "aboutDiagnosticsButton") is None
 
-    assert "fake-project.supabase.co" in text
-    assert "rest/v1" not in text  # host only
-    assert "admin@example.com" in text
-    assert "Administrator" in text
-    assert "admin" in text.lower()
-    assert config_mod.APP_VERSION in text
-    assert str(log_path()) in text
-    assert fake_key not in text
-    assert dialog.findChild(QPushButton, "openLogFolderButton") is not None
-    assert dialog.findChild(QPushButton, "closeDiagnosticsButton") is not None
-    dialog.close()
+    # Settings is in the sidebar footer
+    assert hasattr(window, "settings_btn")
+    settings_btn = window.findChild(QPushButton, "settingsButton")
+    assert settings_btn is not None
+    assert settings_btn.text() == "Settings"
+    assert settings_btn.toolTip() == "Settings"
 
+    # Settings appears ONLY ONCE: in the footer, NOT as a row in window.nav
+    assert "settings" not in window.nav._by_key
+    assert all(row._label_text != "Settings" for row in window.nav._rows)
 
-def test_diagnostics_open_log_folder_uses_the_active_fallback_path(
-    qapp, monkeypatch, tmp_path
-):
-    active = tmp_path / "fallback" / "logs" / "app.log"
-    opened = []
-    monkeypatch.setattr(diagnostics_mod, "log_path", lambda: active)
-    monkeypatch.setattr(
-        diagnostics_mod.QDesktopServices,
-        "openUrl",
-        staticmethod(lambda url: opened.append(url.toLocalFile())),
-    )
+    # Initially Overview is selected
+    assert window.stack.currentWidget() == window.overview_page
 
-    dialog = DiagnosticsDialog(email="staff@example.com", role="staff")
-    dialog.open_log_folder()
+    # Clicking Settings button switches the stack to settings_page and deselects nav
+    settings_btn.click()
+    _qapp.processEvents()
+    assert window.stack.currentWidget() == window.settings_page
+    assert window.nav.currentRow() == -1
 
-    assert active.parent.is_dir()
-    assert len(opened) == 1
-    assert Path(opened[0]) == active.parent
-    dialog.close()
+    # Clicking a nav row switches back
+    window.nav.setCurrentRow(1)
+    _qapp.processEvents()
+    assert window.stack.currentWidget() == window.pending_page
+    assert not settings_btn.isChecked()
+
+    window.close()
+    _qapp.processEvents()
 
 
 # ---------------------------------------------------------------------- config

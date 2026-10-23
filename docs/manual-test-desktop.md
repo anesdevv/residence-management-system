@@ -19,7 +19,7 @@ Prereqs: backend applied + seeded; `desktop/.env` set; venv active; `python desk
 Build with `desktop\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean desktop\resivo.spec`.
 
 - [ ] On a clean Windows profile, double-click `dist\RESIVO\RESIVO.exe`; the login window opens (no console flash, no missing-DLL dialog).
-- [ ] `%APPDATA%\RESIVO\logs\app.log` is created; **About & Diagnostics** shows that path and **Open log folder** opens it.
+- [ ] `%APPDATA%\RESIVO\logs\app.log` is created; on any unhandled exception, the error dialog shows that path and **Open log folder** opens it.
 - [ ] Log in as the seeded admin. The footer shows **Administrator**, **Staff accounts** is present, and Settings shows **Advanced settings / Developer mode** enabled.
 - [ ] Log in as staff. **Staff accounts** is absent and Developer mode is disabled with the admin-only note.
 - [ ] Approve a pending room-change request: the button disables immediately, the window stays responsive, and the request moves to **Approved** with the reassigned room after the worker finishes.
@@ -45,4 +45,4 @@ Execute each step directly in `dist\RESIVO\RESIVO.exe` to verify full operationa
 - [ ] **Create a staff account and log in with it**: On the **Staff accounts** page, enter full name, position, email, and password, then click **Create staff account**. Confirm the new account appears in the list. Sign out, and log in with the newly created staff credentials. Confirm login succeeds and **Staff accounts** is absent for this non-admin user.
 - [ ] **Delete a staff account**: Log back in as admin, select the newly created staff account, and click **Delete staff account**. Confirm the deletion prompt; verify the row is removed from the table asynchronously.
 - [ ] **Confirm admin cannot delete own account**: On the **Staff accounts** page as admin, select your own account row. Confirm the **Delete** button is disabled, the tooltip states *"You cannot delete your own staff account."*, and the inline self-delete warning banner is displayed. Confirm even attempting deletion programmatically or via shortcut is blocked.
-- [ ] **Open About & Diagnostics and confirm role shown is admin**: Click **About & Diagnostics** in the sidebar footer. Confirm the dialog displays version `0.0.1`, the Supabase host (hostname only without secret keys or tokens), connection status as Connected, the signed-in email, and effective role as **Administrator (admin)**. Click **Open log folder** and confirm Windows File Explorer opens directly to `%APPDATA%\RESIVO\logs`.
+- [ ] **Open Settings from sidebar footer**: Click **Settings** in the sidebar footer. Confirm Settings opens with Console preferences, Developer mode (admin only), and About RÉSIVO credits. Confirm Settings appears only once (in the sidebar footer, not in the upper nav list), and clicking other nav items returns cleanly.

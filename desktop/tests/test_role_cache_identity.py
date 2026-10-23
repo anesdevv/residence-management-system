@@ -14,7 +14,6 @@ from desktop.app.client import (
     stored_user_email,
     stored_user_id,
 )
-from desktop.app.ui.diagnostics import _session_email as diagnostics_email
 from desktop.app.ui.main_window import (
     _session_display_name,
     _session_email,
@@ -169,13 +168,12 @@ def test_stored_session_details_never_refresh_or_query():
 
 
 def test_ui_session_labels_read_only_the_stored_session():
-    """Shell, Overview and Diagnostics must not call get_session()."""
+    """Shell and Overview must not call get_session()."""
     client = _ProfileClient()
 
     assert _session_email(client) == "nadia.haddad@test.local"
     assert _session_display_name(client) == "Nadia Haddad"
     assert _staff_display_name(client) == "Nadia Haddad"
-    assert diagnostics_email(client) == "nadia.haddad@test.local"
     assert client.auth.get_session_calls == 0
 
 

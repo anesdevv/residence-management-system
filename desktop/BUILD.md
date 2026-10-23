@@ -69,8 +69,8 @@ The rotating log lives at:
 ```
 
 Set `RESIVO_DATA_DIR` to override the base directory (useful for a portable or
-test run). The log path is also shown in **About & Diagnostics** in the sidebar,
-together with an **Open log folder** button.
+test run). If an unexpected exception occurs, the error dialog provides an
+**Open log folder** button to access logs directly.
 
 ## Developer-mode MCP token
 
