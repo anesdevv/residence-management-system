@@ -100,5 +100,5 @@ message.
 ## Version
 
 `APP_VERSION` in `desktop\app\config.py` is the single application version
-(currently `0.0.1`). Keep it in sync with `MyAppVersion` in
-`desktop\installer.iss`.
+(currently `0.0.3`). Keep it in sync with `MyAppVersion` in
+`desktop\installer.iss` and `desktop\version_info.txt`.

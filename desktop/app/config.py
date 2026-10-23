@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
-APP_VERSION = "0.0.1"
+APP_VERSION = "0.0.3"
 
 
 def _env_candidates() -> list[Path]:
