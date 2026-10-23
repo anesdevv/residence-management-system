@@ -79,14 +79,22 @@ from ..photo_viewer import ClickablePhotoLabel, PhotoFetchWorker, PhotoViewerDia
 from ..tasks import TaskRunner, human_error
 from ..theme import C, S
 
-# Lifecycle stages (UI): the segmented filter and the inspector Stepper share
-# this order: Pending > In progress > Resolved (3 stages).
+# Lifecycle stages (UI): the inspector Stepper uses this order:
+# Pending > In progress > Resolved (3 stages).
 _STAGES = [
     ("pending", "Pending"),
     ("in_progress", "In progress"),
     ("resolved", "Resolved"),
 ]
 _STAGE_LABELS = [label for _key, label in _STAGES]
+
+# Filter modes for SegmentedControl: All - Pending - In progress - Resolved
+_FILTER_MODES = [
+    ("all", "All"),
+    ("pending", "Pending"),
+    ("in_progress", "In progress"),
+    ("resolved", "Resolved"),
+]
 
 # Table language: overline headers are uppercased by configure_table().
 _COLUMNS = ["Category", "Resident", "Status", "Reported"]
@@ -335,10 +343,12 @@ class MaintenancePage(QWidget):
         toolbar = QHBoxLayout()
         toolbar.setSpacing(S("space-3"))
 
-        self.segments = SegmentedControl(_STAGES)
+        self.segments = SegmentedControl(_FILTER_MODES)
+        self.btn_all = self.segments.buttons["all"]
         self.btn_pending = self.segments.buttons["pending"]
         self.btn_in_progress = self.segments.buttons["in_progress"]
         self.btn_resolved = self.segments.buttons["resolved"]
+        self.segments.set_current("pending")
         self.segments.changed.connect(self.set_filter)
         toolbar.addWidget(self.segments)
 
@@ -616,11 +626,12 @@ class MaintenancePage(QWidget):
         self._update_segment_counts()
 
     def _update_segment_counts(self):
-        counts = {key: 0 for key, _label in _STAGES}
+        counts = {key: 0 for key, _label in _FILTER_MODES}
         for r in self.rows:
             status = str(r.get("status", ""))
             if status == "under_review":
                 status = "pending"
+            counts["all"] += 1
             if status in counts:
                 counts[status] += 1
         for key, value in counts.items():

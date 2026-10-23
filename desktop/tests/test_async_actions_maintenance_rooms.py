@@ -634,8 +634,65 @@ def test_maintenance_stages_are_exactly_three(qapp):
     client = FakeClient(maintenance_rows=[])
     page = MaintenancePage(client)
     assert [s[0] for s in maintenance_mod._STAGES] == ['pending', 'in_progress', 'resolved']
-    assert list(page.segments.buttons.keys()) == ['pending', 'in_progress', 'resolved']
+    assert list(page.segments.buttons.keys()) == ['all', 'pending', 'in_progress', 'resolved']
     assert 'under_review' not in page.segments.buttons
+
+
+def test_maintenance_filter_all_order_default_and_counts(qapp):
+    rows = [
+        {"id": "t1", "category": "plumbing", "status": "pending", "description": "Sink leak", "students": {"first_name": "Ali", "last_name": "B", "card_id": "111"}},
+        {"id": "t2", "category": "electricity", "status": "in_progress", "description": "Light broken", "students": {"first_name": "Sara", "last_name": "C", "card_id": "222"}},
+        {"id": "t3", "category": "carpentry", "status": "resolved", "description": "Door stuck", "students": {"first_name": "Omar", "last_name": "D", "card_id": "333"}},
+    ]
+    client = FakeClient(maintenance_rows=rows)
+    page = MaintenancePage(client)
+
+    # 1. Exact order: All - Pending - In progress - Resolved
+    assert list(page.segments.buttons.keys()) == ["all", "pending", "in_progress", "resolved"]
+
+    # 2. Default selection is Pending (staff land on what needs action)
+    assert page.filter_mode == "pending"
+    assert page.btn_pending.isChecked()
+    assert not page.btn_all.isChecked()
+
+    # In pending mode, only t1 is visible
+    assert not page.table.isRowHidden(0)
+    assert page.table.isRowHidden(1)
+    assert page.table.isRowHidden(2)
+
+    # 3. Switching to 'all' shows all 3 rows
+    page.btn_all.click()
+    assert page.filter_mode == "all"
+    assert not page.table.isRowHidden(0)
+    assert not page.table.isRowHidden(1)
+    assert not page.table.isRowHidden(2)
+
+    # 4. Search works in 'all' view
+    page.search.set_text("Sink")
+    page.apply_filter()
+    assert not page.table.isRowHidden(0)
+    assert page.table.isRowHidden(1)
+    assert page.table.isRowHidden(2)
+
+    # 5. LiveSync preserves 'all' filter and search
+    new_rows = rows + [
+        {"id": "t4", "category": "plumbing", "status": "pending", "description": "Sink clog", "students": {"first_name": "Zaki", "last_name": "E", "card_id": "444"}}
+    ]
+    page.apply_live_data(new_rows)
+    assert page.filter_mode == "all"
+    assert page.btn_all.isChecked()
+    assert page.search.text() == "Sink"
+    # Rows matching "Sink" (t1 and t4) visible
+    assert not page.table.isRowHidden(0)
+    assert page.table.isRowHidden(1)
+    assert page.table.isRowHidden(2)
+    assert not page.table.isRowHidden(3)
+
+    # 6. Segment counts: all=4, pending=2, in_progress=1, resolved=1
+    assert "4" in page.btn_all.text()
+    assert "2" in page.btn_pending.text()
+    assert "1" in page.btn_in_progress.text()
+    assert "1" in page.btn_resolved.text()
 
 
 def test_legacy_under_review_ticket_displays_as_pending(qapp):
