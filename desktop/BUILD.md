@@ -34,6 +34,13 @@ dist\RESIVO\RESIVO.exe
 The folder (`dist\RESIVO\`) is self-contained. The optional installer is built
 with Inno Setup from `desktop\installer.iss` and ships that folder's contents.
 
+### Windows Icon Caching Note
+Windows caches executable icons aggressively in `%LocalAppData%\IconCache.db`. After
+rebuilding `RESIVO.exe`, if Explorer or Task Manager still displays an old or generic icon:
+1. Rename the executable temporarily (e.g. `RESIVO_test.exe`), or
+2. Run `ie4uinit.exe -show` in PowerShell / Command Prompt, or
+3. Restart Windows Explorer (`Stop-Process -Name explorer -Force`).
+
 The spec bundles `assets\` and the repository-root `.env` (when present) as the
 packaged fallback. It intentionally does **not** bundle `mcp/.env`.
 

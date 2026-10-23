@@ -84,6 +84,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=str(ASSETS_DIR / "brand" / "resivo.ico"),
+    version=str(DESKTOP_DIR / "version_info.txt"),
 )
 
 coll = COLLECT(

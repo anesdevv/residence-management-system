@@ -40,9 +40,18 @@ def main() -> int:
     # Configure the file log before creating any widget: --noconsole builds
     # have no stderr, and startup failures must still be diagnosable.
     setup_logging()
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("dz.dou.resivo.desktop")
+        except Exception:  # pragma: no cover - non-fatal Windows shell API
+            logging.getLogger("resivo").warning("Could not set process AppUserModelID")
+
     app = SafeApplication(sys.argv)
     install_exception_hooks()
     app.setApplicationName("RÉSIVO")
+    app.setApplicationDisplayName("RÉSIVO")
+    app.setDesktopFileName("dz.dou.resivo.desktop")
 
     # Validate before the login window: a broken deployment gets one clear
     # message (no key material) instead of a misleading auth failure.
