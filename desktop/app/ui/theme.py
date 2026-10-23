@@ -56,6 +56,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QFontDatabase, QGuiApplication
 from PySide6.QtWidgets import QGraphicsDropShadowEffect, QPushButton, QWidget
 
+from .resource import get_asset_path
+
 _log = logging.getLogger("resivo.ui.theme")
 
 # ---------------------------------------------------------------------------
@@ -157,6 +159,10 @@ TOKENS: dict[str, str | int] = {
     "dur-toast": 4000,
     "ease": "ease-out",
     "ease-curve": "OutCubic",
+    # -- icon assets --------------------------------------------------------
+    "icon-chevron-down": get_asset_path("icons/chevron-down.svg").as_posix(),
+    "icon-chevron-down-disabled": get_asset_path("icons/chevron-down-disabled.svg").as_posix(),
+    "icon-chevron-up": get_asset_path("icons/chevron-up.svg").as_posix(),
 }
 
 _PX_RE = re.compile(r"^(-?\d+(?:\.\d+)?)px$")
@@ -690,8 +696,74 @@ QDateTimeEdit:disabled {
     background-color: @surface-subtle; color: @text-muted; border-color: @border;
 }
 QLineEdit:read-only { background-color: @surface-subtle; color: @text-secondary; }
-QComboBox { padding-right: 28px; }
-QComboBox::drop-down { subcontrol-origin: padding; subcontrol-position: top right; width: 24px; border: none; }
+QComboBox, QDateEdit, QTimeEdit, QDateTimeEdit {
+    padding-right: 32px;
+}
+QComboBox::drop-down, QDateEdit::drop-down, QTimeEdit::drop-down, QDateTimeEdit::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 32px;
+    border: none;
+    background: transparent;
+}
+QComboBox::down-arrow, QDateEdit::down-arrow, QTimeEdit::down-arrow, QDateTimeEdit::down-arrow {
+    image: url(@icon-chevron-down);
+    width: 14px;
+    height: 14px;
+}
+QComboBox::down-arrow:disabled, QDateEdit::down-arrow:disabled, QTimeEdit::down-arrow:disabled, QDateTimeEdit::down-arrow:disabled {
+    image: url(@icon-chevron-down-disabled);
+    width: 14px;
+    height: 14px;
+}
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left: 1px solid @border;
+    border-bottom: 1px solid @border;
+    background-color: @surface-subtle;
+}
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {
+    background-color: @border;
+}
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: url(@icon-chevron-up);
+    width: 10px;
+    height: 10px;
+}
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 20px;
+    border-left: 1px solid @border;
+    background-color: @surface-subtle;
+}
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+    background-color: @border;
+}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: url(@icon-chevron-down);
+    width: 10px;
+    height: 10px;
+}
+NumberStepper {
+    background-color: @surface;
+    border: 1px solid @border;
+    border-radius: @radius-input;
+    min-height: 40px;
+    max-height: 40px;
+}
+NumberStepper:hover {
+    border-color: @border-strong;
+}
+NumberStepper[focused="true"] {
+    border: 2px solid @teal-600;
+}
+NumberStepper:disabled {
+    background-color: @surface-subtle;
+    border-color: @border;
+}
 QComboBox QAbstractItemView {
     background-color: @surface;
     color: @text-primary;

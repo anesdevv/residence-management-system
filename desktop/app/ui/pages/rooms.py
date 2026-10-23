@@ -28,8 +28,10 @@ from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
+    QDialogButtonBox,
     QFormLayout,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -51,6 +53,7 @@ from ..components import (
     EmptyState,
     IconButton,
     InlineBanner,
+    NumberStepper,
     PageHeader,
     RoomOccupancyBar,
     SearchField,
@@ -549,12 +552,14 @@ class RoomSetupDialog(QDialog):
 
     def __init__(self, parent=None, room=None, current_occupancy=0, client=None, blocks=None):
         super().__init__(parent)
-        self.setWindowTitle("Edit Room Configuration" if room else "Add Dormitory Room")
-        self.setMinimumWidth(440)
+        self.setWindowTitle("Edit Dormitory Room" if room else "Add Dormitory Room")
+        self.setMinimumWidth(480)
         self.setStyleSheet(DESKTOP_STYLESHEET)
         self.client = client or getattr(parent, "client", None)
         self.room = room
         self.current_occupancy = current_occupancy
+        self._busy = False
+        self._num_touched = bool(room and str(room.get("number", "")).strip())
 
         # Reuse the already-loaded blocks supplied by the page/dialog.  No
         # network query is made here: the caller loads them off the GUI thread.
@@ -569,40 +574,85 @@ class RoomSetupDialog(QDialog):
         layout.setSpacing(S("space-4"))
 
         card = Card(
-            "Edit room configuration" if room else "Configure new dormitory room",
+            "Edit Dormitory Room" if room else "Add Dormitory Room",
             "Select residential block, floor, capacity. Room gender is automatically inherited from the block.",
             icon="bed",
         )
 
-        form = QFormLayout()
-        form.setSpacing(S("space-3"))
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        grid = QGridLayout()
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setHorizontalSpacing(S("space-4"))  # 16px gap
+        grid.setVerticalSpacing(S("space-4"))    # 16px gap
+        grid.setColumnMinimumWidth(0, 160)
+
+        # Row 0: Block
+        lbl_block = QLabel("Dormitory Block:")
+        lbl_block.setFixedWidth(160)
+        theme.apply_role(lbl_block, "body")
 
         block_row = QHBoxLayout()
         block_row.setSpacing(S("space-2"))
 
         self.block_combo = QComboBox()
+        self.block_combo.setFixedHeight(40)
         self.block_combo.setToolTip("Select the residential block for this room.")
         block_row.addWidget(self.block_combo, 1)
 
-        self.new_block_btn = Button.secondary("+ Block", icon="plus")
+        self.new_block_btn = Button.secondary("Add block", icon="plus")
+        self.new_block_btn.setFixedHeight(40)
         self.new_block_btn.setToolTip("Create a new residential block designating Female or Male.")
         self.new_block_btn.clicked.connect(self._on_quick_create_block)
         block_row.addWidget(self.new_block_btn)
+
+        grid.addWidget(lbl_block, 0, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        grid.addLayout(block_row, 0, 1)
 
         # Backwards compatibility: keep self.block_edit synced
         self.block_edit = QLineEdit(room.get("block", "A") if room else "A")
         self.block_edit.setVisible(False)
 
-        self.floor_spin = QSpinBox()
+        # Row 1: Floor
+        lbl_floor = QLabel("Floor Level:")
+        lbl_floor.setFixedWidth(160)
+        theme.apply_role(lbl_floor, "body")
+
+        self.floor_spin = NumberStepper(self)
         self.floor_spin.setRange(0, 15)
         self.floor_spin.setValue(int(room.get("floor", 0)) if room else 0)
 
-        self.num_edit = QLineEdit(str(room.get("number", "")) if room else "")
-        self.num_edit.setPlaceholderText("e.g. 101, 204…")
+        grid.addWidget(lbl_floor, 1, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        grid.addWidget(self.floor_spin, 1, 1)
 
+        # Row 2: Room Number
+        lbl_num = QLabel("Room Number:")
+        lbl_num.setFixedWidth(160)
+        theme.apply_role(lbl_num, "body")
+
+        num_container = QVBoxLayout()
+        num_container.setSpacing(2)
+        num_container.setContentsMargins(0, 0, 0, 0)
+
+        self.num_edit = QLineEdit(str(room.get("number", "")) if room else "")
+        self.num_edit.setFixedHeight(40)
+        self.num_edit.setPlaceholderText("e.g. 101, 204…")
+        self.num_edit.textChanged.connect(self._on_num_changed)
+        num_container.addWidget(self.num_edit)
+
+        self.num_error_label = QLabel("")
+        self.num_error_label.setStyleSheet(f"color: {C('status-danger-ink')}; font-size: 12px; padding-left: 2px;")
+        self.num_error_label.setVisible(False)
+        num_container.addWidget(self.num_error_label)
+
+        grid.addWidget(lbl_num, 2, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        grid.addLayout(num_container, 2, 1)
+
+        # Row 3: Bed Capacity
         min_cap = max(1, current_occupancy)
-        self.cap_spin = QSpinBox()
+        lbl_cap = QLabel(f"Bed Capacity (Min {min_cap}):")
+        lbl_cap.setFixedWidth(160)
+        theme.apply_role(lbl_cap, "body")
+
+        self.cap_spin = NumberStepper(self)
         self.cap_spin.setRange(min_cap, 8)
         self.cap_spin.setValue(int(room.get("capacity", 2)) if room else 2)
         if current_occupancy > 0:
@@ -612,27 +662,40 @@ class RoomSetupDialog(QDialog):
             )
         else:
             self.cap_spin.setToolTip("Total beds in this room (1–8).")
+        self.cap_spin.valueChanged.connect(self._validate_inputs)
 
-        self.gender_combo = QComboBox()
-        self.gender_combo.addItems(["Male", "Female"])
-        self.gender_combo.setEnabled(False)
-        self.gender_combo.setToolTip("Designated gender is inherited automatically from the selected block.")
+        grid.addWidget(lbl_cap, 3, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        grid.addWidget(self.cap_spin, 3, 1)
 
-        self.gender_note = QLabel()
-        theme.apply_role(self.gender_note, "small")
-        self.gender_note.setStyleSheet(f"color: {C('text-muted')}; font-style: italic;")
+        # Row 4: Designated Gender
+        lbl_gender = QLabel("Designated Gender:")
+        lbl_gender.setFixedWidth(160)
+        theme.apply_role(lbl_gender, "body")
 
         gender_layout = QVBoxLayout()
         gender_layout.setSpacing(2)
+        gender_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.gender_combo = QComboBox()
+        self.gender_combo.setFixedHeight(40)
+        self.gender_combo.addItems(["Male", "Female"])
+        self.gender_combo.setEnabled(False)
+        # Higher contrast for disabled state: text #5B6B82 on #EDF2F7
+        self.gender_combo.setStyleSheet(
+            f"QComboBox:disabled {{ color: #5B6B82; background-color: #EDF2F7; border: 1px solid #DCE4EE; }}"
+        )
+        self.gender_combo.setToolTip("Designated gender is inherited automatically from the selected block.")
         gender_layout.addWidget(self.gender_combo)
+
+        self.gender_note = QLabel()
+        theme.apply_role(self.gender_note, "small")
+        self.gender_note.setStyleSheet(f"color: {C('text-muted')}; font-style: italic; margin-top: 2px;")
         gender_layout.addWidget(self.gender_note)
 
-        form.addRow("Dormitory Block:", block_row)
-        form.addRow("Floor Level:", self.floor_spin)
-        form.addRow("Room Number:", self.num_edit)
-        form.addRow(f"Bed Capacity (Min {min_cap}):", self.cap_spin)
-        form.addRow("Designated Gender:", gender_layout)
-        card.add_layout(form)
+        grid.addWidget(lbl_gender, 4, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        grid.addLayout(gender_layout, 4, 1)
+
+        card.add_layout(grid)
 
         if current_occupancy > 0:
             self.block_combo.setEnabled(False)
@@ -648,17 +711,23 @@ class RoomSetupDialog(QDialog):
 
         layout.addWidget(card)
 
+        # Right-aligned QDialogButtonBox: Cancel (secondary) then Create/Save (primary default)
         btn_row = QHBoxLayout()
-        btn_row.setSpacing(S("space-2"))
         btn_row.addStretch(1)
 
-        cancel_btn = Button.secondary("Cancel")
-        cancel_btn.clicked.connect(self.reject)
-        btn_row.addWidget(cancel_btn)
+        self.button_box = QDialogButtonBox(Qt.Orientation.Horizontal, self)
+        self.cancel_btn = Button.secondary("Cancel")
+        self.cancel_btn.setFixedHeight(40)
+        self.cancel_btn.clicked.connect(self.reject)
 
-        self.save_btn = Button.primary("Save room" if room else "Create room")
+        self.save_btn = Button.primary("Save changes" if room else "Create room")
+        self.save_btn.setFixedHeight(40)
+        self.save_btn.setDefault(True)
         self.save_btn.clicked.connect(self.on_save)
-        btn_row.addWidget(self.save_btn)
+
+        self.button_box.addButton(self.cancel_btn, QDialogButtonBox.ButtonRole.RejectRole)
+        self.button_box.addButton(self.save_btn, QDialogButtonBox.ButtonRole.AcceptRole)
+        btn_row.addWidget(self.button_box)
 
         layout.addLayout(btn_row)
 
@@ -667,6 +736,34 @@ class RoomSetupDialog(QDialog):
         self._populate_block_combo(initial_block=room.get("block") if room else None)
         self.block_combo.currentIndexChanged.connect(self._on_block_changed)
         self._on_block_changed()
+        self._validate_inputs()
+
+    def _on_num_changed(self, _text: str) -> None:
+        self._num_touched = True
+        self._validate_inputs()
+
+    def _validate_inputs(self, *_args) -> bool:
+        num = self.num_edit.text().strip()
+        cap = self.cap_spin.value()
+        has_block = self._get_selected_block() is not None
+
+        is_valid = True
+        if not num:
+            is_valid = False
+            self.num_error_label.setText("Room number is required.")
+            self.num_error_label.setVisible(self._num_touched)
+        else:
+            self.num_error_label.setText("")
+            self.num_error_label.setVisible(False)
+
+        if cap < 1:
+            is_valid = False
+
+        if not has_block:
+            is_valid = False
+
+        self.save_btn.setEnabled(is_valid and not self._busy)
+        return is_valid
 
     def _populate_block_combo(self, initial_block: str | None = None):
         self.block_combo.blockSignals(True)
@@ -681,13 +778,12 @@ class RoomSetupDialog(QDialog):
 
         if self.blocks:
             self.block_combo.setCurrentIndex(selected_index)
-            self.save_btn.setEnabled(True)
         else:
             self.block_combo.addItem("No blocks available", userData=None)
-            self.save_btn.setEnabled(False)
-            self.gender_note.setText("Click '+ Block' to create a residential block first.")
+            self.gender_note.setText("Click 'Add block' to create a residential block first.")
 
         self.block_combo.blockSignals(False)
+        self._validate_inputs()
 
     def _get_selected_block(self) -> dict | None:
         idx = self.block_combo.currentIndex()
@@ -702,10 +798,10 @@ class RoomSetupDialog(QDialog):
             self.gender_combo.setCurrentText(gender)
             self.gender_note.setText(f"Automatically inherited from Block {block['name'].upper()} ({gender}).")
             self.block_edit.setText(block["name"].upper())
-            self.save_btn.setEnabled(True)
         else:
             self.gender_note.setText("Please create or select a residential block.")
-            self.save_btn.setEnabled(False)
+
+        self._validate_inputs()
 
     def _on_quick_create_block(self):
         names = [b["name"] for b in self.blocks]
@@ -717,6 +813,10 @@ class RoomSetupDialog(QDialog):
             self._on_block_changed()
 
     def on_save(self):
+        self._num_touched = True
+        if not self._validate_inputs():
+            return
+
         block_data = self._get_selected_block()
         if not block_data:
             QMessageBox.warning(self, "No Block", "Please create or select a residential block first.")
@@ -727,8 +827,13 @@ class RoomSetupDialog(QDialog):
 
         num = self.num_edit.text().strip()
         if not num:
-            QMessageBox.warning(self, "Missing Data", "Room Number cannot be empty.")
+            self.num_error_label.setText("Room number is required.")
+            self.num_error_label.setVisible(True)
             return
+
+        self._busy = True
+        self.save_btn.setEnabled(False)
+        self.cancel_btn.setEnabled(False)
 
         self.result_data = {
             "block": block_name,
@@ -760,6 +865,7 @@ class RoomsPage(QWidget):
         self._data_generation: int = 0
         self._action_texts: dict[Button, str] = {}
         self._reload_after_action: bool = False
+        self._last_deleted_row: int = -1
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(S("space-8"), S("space-8"), S("space-8"), S("space-8"))
@@ -773,11 +879,6 @@ class RoomsPage(QWidget):
         self.blocks_btn.setToolTip("Manage residential blocks and designated genders")
         self.blocks_btn.clicked.connect(self.on_manage_blocks)
         self.header.actions.addWidget(self.blocks_btn)
-
-        self.add_btn = Button.primary("Add room", icon="plus")
-        self.add_btn.setToolTip("Configure a new dormitory room")
-        self.add_btn.clicked.connect(self.on_add)
-        self.header.actions.addWidget(self.add_btn)
         layout.addWidget(self.header)
 
         # ------------------------------------------------------------ toolbar
@@ -799,17 +900,28 @@ class RoomsPage(QWidget):
         self.count_badge = StatusPill("neutral", "0 rooms")
         toolbar.addWidget(self.count_badge)
 
+        self.add_btn = Button.primary("Add room", icon="plus")
+        self.add_btn.setFixedHeight(36)
+        self.add_btn.setToolTip("Configure a new dormitory room")
+        self.add_btn.clicked.connect(self.on_add)
+        toolbar.addWidget(self.add_btn)
+
         self.edit_btn = Button.secondary("Edit", icon="edit")
-        self.edit_btn.setToolTip("Edit the selected room")
+        self.edit_btn.setFixedHeight(36)
+        self.edit_btn.setEnabled(False)
+        self.edit_btn.setToolTip("Select a room from the table to edit")
         self.edit_btn.clicked.connect(self.on_edit)
         toolbar.addWidget(self.edit_btn)
 
         self.delete_btn = Button.danger("Delete", icon="trash")
-        self.delete_btn.setToolTip("Delete the selected room (only when no resident is assigned)")
+        self.delete_btn.setFixedHeight(36)
+        self.delete_btn.setEnabled(False)
+        self.delete_btn.setToolTip("Select a room from the table to delete")
         self.delete_btn.clicked.connect(self.on_delete)
         toolbar.addWidget(self.delete_btn)
 
         self.refresh_btn = IconButton("refresh", "Reload the room list")
+        self.refresh_btn.setFixedHeight(36)
         self.refresh_btn.clicked.connect(self.reload)
         toolbar.addWidget(self.refresh_btn)
         layout.addLayout(toolbar)
@@ -844,6 +956,7 @@ class RoomsPage(QWidget):
             ],
         )
         self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
+        self.table.itemSelectionChanged.connect(self._update_action_buttons)
         self.stack.addWidget(self.table)
 
         self.empty_no_data = EmptyState(
@@ -896,10 +1009,28 @@ class RoomsPage(QWidget):
                 pass
         self._action_texts.clear()
         self.add_btn.setEnabled(True)
-        self.edit_btn.setEnabled(True)
-        self.delete_btn.setEnabled(True)
         self.blocks_btn.setEnabled(True)
         self.refresh_btn.setEnabled(True)
+        self._update_action_buttons()
+
+    def _update_action_buttons(self) -> None:
+        """Update edit/delete button state and tooltips based on current selection."""
+        if self._actions_busy:
+            return
+        row = self.table.currentRow()
+        has_sel = (
+            0 <= row < len(self.rows)
+            and bool(self.table.selectionModel() and self.table.selectionModel().hasSelection())
+            and not self.table.isRowHidden(row)
+        )
+        self.edit_btn.setEnabled(has_sel)
+        self.delete_btn.setEnabled(has_sel)
+        if has_sel:
+            self.edit_btn.setToolTip("Edit the selected room")
+            self.delete_btn.setToolTip("Delete the selected room (only when no resident is assigned)")
+        else:
+            self.edit_btn.setToolTip("Select a room from the table to edit")
+            self.delete_btn.setToolTip("Select a room from the table to delete")
 
     def _current_room_id(self):
         row = self.table.currentRow()
@@ -1053,6 +1184,7 @@ class RoomsPage(QWidget):
                 if row.get("id") == select_id:
                     self.table.selectRow(index)
                     break
+        self._update_action_buttons()
 
     def filter_table(self):
         needle = self.search_input.text().lower().strip()
@@ -1070,6 +1202,7 @@ class RoomsPage(QWidget):
             self.table.setRowHidden(r, not (matches_text and matches_gender))
 
         self._update_empty_state()
+        self._update_action_buttons()
 
     # ------------------------------------------------------------ rendering
     def _set_loading(self, loading: bool) -> None:
@@ -1232,7 +1365,11 @@ class RoomsPage(QWidget):
     def _on_deleted(self, room_id, message: str) -> None:
         self._data_generation += 1
         self.rows = [row for row in self.rows if row.get("id") != room_id]
-        self._render_rows()
+        select_id = None
+        if self.rows and getattr(self, "_last_deleted_row", -1) >= 0:
+            target_idx = min(self._last_deleted_row, len(self.rows) - 1)
+            select_id = self.rows[target_idx].get("id")
+        self._render_rows(select_id=select_id)
         self._show_banner("success", "Room deleted", message)
         self._reload_after_action = True
 
@@ -1334,6 +1471,7 @@ class RoomsPage(QWidget):
         if r < 0 or r >= len(self.rows):
             QMessageBox.information(self, "Select room", "Please select a room from the table to delete.")
             return
+        self._last_deleted_row = r
         room = self.rows[r]
         room_id = room.get("id")
         if room_id is None:

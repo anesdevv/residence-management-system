@@ -97,6 +97,7 @@ from PySide6.QtWidgets import (
 
 from . import theme
 from .icons import get_icon, get_pixmap
+from .stepper import NumberStepper
 from .theme import C, S, apply_button_style, apply_elevation, qcolor
 
 # status kind -> (default label, icon) for pills and banners
