@@ -86,10 +86,10 @@ from ..theme import C, S
 
 # Live view keys -> segment labels (order = the four application views).
 _VIEWS = [
+    ("all", "All"),
     ("pending", "Pending"),
     ("approved", "Approved"),
     ("rejected", "Rejected"),
-    ("all", "All"),
 ]
 # Table language: overline headers are uppercased by configure_table().
 _COLUMNS = ["Card ID", "Student", "University", "Status", "Roster"]
@@ -375,10 +375,11 @@ class PendingPage(QWidget):
         toolbar.setSpacing(S("space-3"))
 
         self.segments = SegmentedControl(_VIEWS)
+        self.btn_all = self.segments.buttons["all"]
         self.btn_pending = self.segments.buttons["pending"]
         self.btn_approved = self.segments.buttons["approved"]
         self.btn_rejected = self.segments.buttons["rejected"]
-        self.btn_all = self.segments.buttons["all"]
+        self.segments.set_current("pending")
         self.segments.changed.connect(self.set_filter)
         toolbar.addWidget(self.segments)
 
