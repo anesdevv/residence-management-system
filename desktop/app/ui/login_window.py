@@ -21,7 +21,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QToolButton, QVBoxLayout, QWidget
 
 from ..client import (
     RoleLookupError,
@@ -32,6 +32,7 @@ from ..client import (
     sign_in,
 )
 from .components import BrandMark, Button, GradientHero, InlineBanner
+from .icons import get_icon
 from .tasks import human_error
 from .theme import C, DESKTOP_STYLESHEET, S, apply_role
 
@@ -53,6 +54,52 @@ def _credential_key(email: str, password: str) -> tuple[str, str]:
     return email.strip().lower(), hashlib.sha256(
         password.encode("utf-8")
     ).hexdigest()
+
+
+class PasswordField(QLineEdit):
+    """Password input with trailing eye toggle, Tab accessibility and echo mode switching."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setPlaceholderText("••••••••")
+        self.setMinimumHeight(S("size-control"))
+        self.setStyleSheet("QLineEdit { padding-right: 34px; }")
+
+        self.toggle_btn = QToolButton(self)
+        self.toggle_btn.setObjectName("togglePasswordButton")
+        self.toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.toggle_btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.toggle_btn.setFixedSize(26, 26)
+        self.toggle_btn.setStyleSheet(
+            "QToolButton { background: transparent; border: none; padding: 2px; margin: 0; border-radius: 4px; }"
+            f"QToolButton:hover {{ background-color: {C('surface-subtle')}; }}"
+            f"QToolButton:focus {{ border: 2px solid {C('teal-600')}; }}"
+        )
+        self.toggle_btn.clicked.connect(self.toggle_visibility)
+        self.set_visible(False)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        btn_w, btn_h = self.toggle_btn.width(), self.toggle_btn.height()
+        x = self.width() - btn_w - 6
+        y = (self.height() - btn_h) // 2
+        self.toggle_btn.move(x, y)
+
+    def set_visible(self, visible: bool):
+        self._is_visible = bool(visible)
+        if self._is_visible:
+            self.setEchoMode(QLineEdit.EchoMode.Normal)
+            self.toggle_btn.setIcon(get_icon("eye-off", 16, C("text-muted")))
+            self.toggle_btn.setToolTip("Hide password")
+            self.toggle_btn.setAccessibleName("Hide password")
+        else:
+            self.setEchoMode(QLineEdit.EchoMode.Password)
+            self.toggle_btn.setIcon(get_icon("eye", 16, C("text-muted")))
+            self.toggle_btn.setToolTip("Show password")
+            self.toggle_btn.setAccessibleName("Show password")
+
+    def toggle_visibility(self):
+        self.set_visible(not getattr(self, "_is_visible", False))
 
 
 class LoginWindow(QWidget):
@@ -148,10 +195,8 @@ class LoginWindow(QWidget):
 
         password_label = QLabel("Password")
         apply_role(password_label, "small")
-        self.password = QLineEdit()
-        self.password.setPlaceholderText("••••••••")
-        self.password.setEchoMode(QLineEdit.EchoMode.Password)
-        self.password.setMinimumHeight(S("size-control"))
+        self.password = PasswordField()
+        self.toggle_password_btn = self.password.toggle_btn
         self.password.returnPressed.connect(self.attempt)
         col.addWidget(password_label)
         col.addWidget(self.password)
@@ -188,6 +233,11 @@ class LoginWindow(QWidget):
         available = self.width() if not hero_visible else self.width() // 2
         width = max(280, min(_FORM_MAX_WIDTH, available - 2 * S("space-8")))
         self.form_column.setFixedWidth(width)
+
+    def showEvent(self, event):  # noqa: N802 - Qt API
+        super().showEvent(event)
+        if hasattr(self, "password") and hasattr(self.password, "set_visible"):
+            self.password.set_visible(False)
 
     def resizeEvent(self, event):  # noqa: N802 - Qt API
         super().resizeEvent(event)
@@ -312,6 +362,8 @@ class LoginWindow(QWidget):
         self._role_retry_pending = False
         self._pending_credentials = None
         self.switch_account_btn.setVisible(False)
+        if hasattr(self, "password") and hasattr(self.password, "set_visible"):
+            self.password.set_visible(False)
         from .main_window import MainWindow
 
         self.window = MainWindow(self.client, role=role)
