@@ -37,6 +37,7 @@ from ...client import current_role
 from .. import theme
 from ..close_policy import get_confirm_close_setting, set_confirm_close_setting
 from ..components import Button, Card, InlineBanner, PageHeader, StatusPill
+from ..notifications import NotificationManager
 from ..tasks import TaskRunner, human_error
 from ..theme import C, S
 
@@ -279,6 +280,115 @@ class SettingsPage(QWidget):
 
         layout.addWidget(self.general_card)
 
+        # Notifications settings card
+        self.notif_card = Card(
+            "Notifications",
+            "Windows desktop notifications for new requests and activity.",
+            icon="bell",
+        )
+
+        self.notif_manager = NotificationManager(self)
+        ns = self.notif_manager.settings
+
+        self.notif_master_cb = QCheckBox("Enable desktop notifications")
+        self.notif_master_cb.setStyleSheet(_checkbox_qss())
+        self.notif_master_cb.setChecked(ns.enabled)
+        self.notif_master_cb.toggled.connect(self._on_notif_master_toggled)
+        self.notif_card.add_widget(self.notif_master_cb)
+
+        self.notif_options_container = QWidget()
+        noc_layout = QVBoxLayout(self.notif_options_container)
+        noc_layout.setContentsMargins(S("space-4"), 0, 0, 0)
+        noc_layout.setSpacing(S("space-3"))
+
+        # Event toggles
+        self.notif_maint_cb = QCheckBox("New maintenance reports")
+        self.notif_maint_cb.setStyleSheet(_checkbox_qss())
+        self.notif_maint_cb.setChecked(ns.notify_maintenance)
+        self.notif_maint_cb.toggled.connect(lambda v: setattr(ns, "notify_maintenance", v))
+        noc_layout.addWidget(self.notif_maint_cb)
+
+        self.notif_rooms_cb = QCheckBox("New room change requests")
+        self.notif_rooms_cb.setStyleSheet(_checkbox_qss())
+        self.notif_rooms_cb.setChecked(ns.notify_room_changes)
+        self.notif_rooms_cb.toggled.connect(lambda v: setattr(ns, "notify_room_changes", v))
+        noc_layout.addWidget(self.notif_rooms_cb)
+
+        self.notif_regs_cb = QCheckBox("New student registrations / applications")
+        self.notif_regs_cb.setStyleSheet(_checkbox_qss())
+        self.notif_regs_cb.setChecked(ns.notify_registrations)
+        self.notif_regs_cb.toggled.connect(lambda v: setattr(ns, "notify_registrations", v))
+        noc_layout.addWidget(self.notif_regs_cb)
+
+        # Delivery & Privacy
+        self.notif_names_cb = QCheckBox("Show student names in notifications")
+        self.notif_names_cb.setStyleSheet(_checkbox_qss())
+        self.notif_names_cb.setChecked(ns.show_student_names)
+        self.notif_names_cb.toggled.connect(lambda v: setattr(ns, "show_student_names", v))
+        noc_layout.addWidget(self.notif_names_cb)
+
+        self.notif_unfocused_cb = QCheckBox("Only notify when window is in background or minimized")
+        self.notif_unfocused_cb.setStyleSheet(_checkbox_qss())
+        self.notif_unfocused_cb.setChecked(ns.only_unfocused)
+        self.notif_unfocused_cb.toggled.connect(lambda v: setattr(ns, "only_unfocused", v))
+        noc_layout.addWidget(self.notif_unfocused_cb)
+
+        self.notif_sound_cb = QCheckBox("Play notification sound")
+        self.notif_sound_cb.setStyleSheet(_checkbox_qss())
+        self.notif_sound_cb.setChecked(ns.play_sound)
+        self.notif_sound_cb.toggled.connect(lambda v: setattr(ns, "play_sound", v))
+        noc_layout.addWidget(self.notif_sound_cb)
+
+        # Quiet hours
+        self.notif_quiet_cb = QCheckBox("Quiet hours (suppress notifications)")
+        self.notif_quiet_cb.setStyleSheet(_checkbox_qss())
+        self.notif_quiet_cb.setChecked(ns.quiet_hours_enabled)
+        self.notif_quiet_cb.toggled.connect(self._on_quiet_hours_toggled)
+        noc_layout.addWidget(self.notif_quiet_cb)
+
+        quiet_row = QHBoxLayout()
+        quiet_row.setSpacing(S("space-2"))
+        lbl_start = QLabel("From:")
+        _apply_small(lbl_start)
+        quiet_row.addWidget(lbl_start)
+
+        self.quiet_start_edit = QLineEdit(ns.quiet_hours_start)
+        self.quiet_start_edit.setFixedWidth(70)
+        self.quiet_start_edit.setFixedHeight(32)
+        self.quiet_start_edit.setPlaceholderText("22:00")
+        self.quiet_start_edit.textChanged.connect(lambda v: setattr(ns, "quiet_hours_start", v))
+        quiet_row.addWidget(self.quiet_start_edit)
+
+        lbl_end = QLabel("to:")
+        _apply_small(lbl_end)
+        quiet_row.addWidget(lbl_end)
+
+        self.quiet_end_edit = QLineEdit(ns.quiet_hours_end)
+        self.quiet_end_edit.setFixedWidth(70)
+        self.quiet_end_edit.setFixedHeight(32)
+        self.quiet_end_edit.setPlaceholderText("07:00")
+        self.quiet_end_edit.textChanged.connect(lambda v: setattr(ns, "quiet_hours_end", v))
+        quiet_row.addWidget(self.quiet_end_edit)
+        quiet_row.addStretch(1)
+
+        self.quiet_row_widget = QWidget()
+        self.quiet_row_widget.setLayout(quiet_row)
+        self.quiet_row_widget.setVisible(ns.quiet_hours_enabled)
+        noc_layout.addWidget(self.quiet_row_widget)
+
+        # Send test notification button
+        btn_row = QHBoxLayout()
+        self.test_notif_btn = Button.secondary("Send test notification", icon="bell")
+        self.test_notif_btn.setFixedHeight(36)
+        self.test_notif_btn.clicked.connect(self._on_send_test_notif)
+        btn_row.addWidget(self.test_notif_btn)
+        btn_row.addStretch(1)
+        noc_layout.addLayout(btn_row)
+
+        self.notif_card.add_widget(self.notif_options_container)
+        self.notif_options_container.setVisible(ns.enabled)
+        layout.addWidget(self.notif_card)
+
         # Advanced settings (developer mode) card
         self.dev_card = Card(
             "Advanced settings",
@@ -400,6 +510,20 @@ class SettingsPage(QWidget):
 
     def _on_confirm_close_toggled(self, checked: bool) -> None:
         set_confirm_close_setting(checked)
+
+    def _on_notif_master_toggled(self, checked: bool) -> None:
+        self.notif_manager.settings.enabled = checked
+        self.notif_options_container.setVisible(checked)
+
+    def _on_quiet_hours_toggled(self, checked: bool) -> None:
+        self.notif_manager.settings.quiet_hours_enabled = checked
+        self.quiet_row_widget.setVisible(checked)
+
+    def _on_send_test_notif(self) -> None:
+        # If parent MainWindow has notification_manager with tray_icon, use that
+        parent_mw = self.window()
+        nm = getattr(parent_mw, "notification_manager", self.notif_manager)
+        nm.send_test_notification()
 
     # -------------------------------------------------------------
     # Content construction

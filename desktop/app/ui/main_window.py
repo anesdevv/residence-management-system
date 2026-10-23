@@ -38,11 +38,13 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMenu,
     QPushButton,
     QScrollArea,
     QSizePolicy,
     QStackedWidget,
     QStatusBar,
+    QSystemTrayIcon,
     QVBoxLayout,
     QWidget,
 )
@@ -60,6 +62,7 @@ from ..client import (
 from . import components, theme
 from .close_policy import CloseConfirmDialog, ClosePolicy, get_confirm_close_setting
 from .components import Avatar, BrandMark, Button, InlineBanner, LiveDot
+from .notifications import NotificationManager
 from .icons import get_icon, get_pixmap
 from .live_sync import LiveSyncWorker
 from .photo_viewer import running_photo_fetchers
@@ -517,6 +520,11 @@ class MainWindow(QMainWindow):
         self._live_timer.start()
         self._set_live_state("reconnecting")
 
+        # System tray icon and desktop notifications
+        self.tray_icon = None
+        self._setup_tray_icon()
+        self.notification_manager = NotificationManager(self, tray_icon=self.tray_icon)
+
         # Start live background sync worker (unchanged behaviour).
         self.sync_worker = LiveSyncWorker(client, interval_ms=2000)
         self.sync_worker.sync_tick.connect(self.on_live_sync_tick)
@@ -865,9 +873,44 @@ class MainWindow(QMainWindow):
         else:
             self._set_live_state("offline")
 
+    def _setup_tray_icon(self) -> None:
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+        tray = QSystemTrayIcon(self)
+        app_icon = self.windowIcon()
+        if not app_icon.isNull():
+            tray.setIcon(app_icon)
+        tray.setToolTip("RÉSIVO — University Residence Management")
+
+        tray_menu = QMenu()
+        open_action = tray_menu.addAction("Open RÉSIVO")
+        open_action.triggered.connect(self._restore_from_tray)
+        tray_menu.addSeparator()
+        quit_action = tray_menu.addAction("Quit")
+        quit_action.triggered.connect(self.request_quit)
+
+        tray.setContextMenu(tray_menu)
+        tray.activated.connect(self._on_tray_activated)
+        tray.show()
+        self.tray_icon = tray
+
+    def _restore_from_tray(self) -> None:
+        self.showNormal()
+        self.activateWindow()
+        self.raise_()
+
+    def _on_tray_activated(self, reason) -> None:
+        if reason in (
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick,
+        ):
+            self._restore_from_tray()
+
     def on_live_alert(self, msg: str):
-        """Live event → Toast (icon + message); no emoji status text."""
+        """Live event → In-app Toast + Desktop Notification."""
         components.show_toast(self, msg, kind="info", icon="bell")
+        if hasattr(self, "notification_manager"):
+            self.notification_manager.process_alert(msg, window=self)
 
     def on_live_sync_tick(self, data: dict):
         pending_students = data.get("pending_students", [])
@@ -1174,5 +1217,7 @@ class MainWindow(QMainWindow):
         timer = getattr(self, "_shutdown_timer", None)
         if timer is not None:
             timer.stop()
+        if getattr(self, "tray_icon", None) is not None:
+            self.tray_icon.hide()
         self._pending_shutdown_action = None
         super().closeEvent(event)
