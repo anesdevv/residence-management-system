@@ -49,3 +49,106 @@ drop index if exists public.idx_maintenance_reports_student_id;
 drop index if exists public.idx_students_room_id_active;
 drop index if exists public.idx_students_status_created;
 ```
+
+---
+
+## Region & Latency
+
+### Supabase Project Region Identification
+
+> [!IMPORTANT]
+> The database region must **never be guessed**. To find the authoritative geographic region hosting your Supabase database:
+> 1. Open the **Supabase Dashboard** -> Select project `kjqbnurycfjsuufibkac` -> **Project Settings** -> **General** -> View **Region** (e.g. `us-east-1` (North Virginia), `eu-central-1` (Frankfurt), etc.).
+> 2. Alternatively, run via Supabase CLI:
+>    ```bash
+>    npx supabase projects list
+>    ```
+
+- **Project Host**: `kjqbnurycfjsuufibkac.supabase.co`
+- **Project Ref**: `kjqbnurycfjsuufibkac`
+- **Measurement Tool**: `tools/perf/latency_probe.py` (30 sequential samples after 2 warm-ups)
+
+---
+
+### Measured Latency & Transport Breakdown
+
+| Target / Measurement Phase | Min (ms) | Median (ms) | p95 (ms) | Max (ms) | Assessment |
+|---|---|---|---|---|---|
+| **DNS Lookup** | 0.53 | 0.55 | 0.60 | 9.33 | Instant local/ISP DNS cache resolution |
+| **TCP Connect (SYN/ACK)** | 4.57 | 19.29 | 23.39 | 24.04 | Low transport round-trip latency |
+| **TLS Handshake** | 12.26 | 15.62 | 22.34 | 53.86 | Rapid TLS 1.3 negotiation |
+| **Total Connection Handshake** | 19.12 | 35.27 | 41.62 | 61.98 | Transport establishment < 42 ms (p95) |
+| **GET `/auth/v1/health`** | 78.87 | **87.93** | 107.95 | 113.46 | **Fine** (< 150 ms threshold) |
+| **GET `/rest/v1/rooms?limit=1`** | 81.94 | **88.41** | 103.60 | 115.15 | **Fine** (< 150 ms threshold) |
+
+---
+
+### Latency Decision Framework
+
+| Median Round-Trip Latency | Classification | Production Impact & Recommendation | Current Status |
+|---|---|---|:---:|
+| **< 150 ms** | **Fine** | Excellent responsiveness. Server round-trips feel instant. Desktop live-sync and web SSR pages render without noticeable delay. | **Current (~88 ms)** |
+| **150 ms – 400 ms** | **Acceptable** | Acceptable for a class project, but pages with multiple sequential RPCs/queries will feel slightly sluggish. Caching and batching recommended. | |
+| **> 400 ms** | **High Latency** | Severe geographic distance penalty. Consider creating a new Supabase project in a region nearer to users and services. | |
+
+---
+
+### Architectural Latency Considerations & Potential Options (Report Only)
+
+*(The options below are evaluated for architectural reporting only; no migrations or infrastructure modifications have been applied).*
+
+#### 1. Vercel SSR Serverless Function Region
+- **Current Architecture**: The web application uses Astro SSR (`output: 'server'` with `@astrojs/vercel`). Web pages call Supabase exclusively on the server (`createSupabaseServerClient` in frontmatter / API routes), with zero direct browser-to-database requests.
+- **Vercel Hobby Plan Capabilities**:
+  - On the Vercel Hobby (Free) plan, serverless functions can only be deployed to a **single region** (multi-region failover requires Enterprise).
+  - By default, Vercel deploys functions to `iad1` (Washington, D.C., USA).
+  - However, the Hobby plan **does allow configuring any single region** closer to your database.
+  - Configuration can be set in `vercel.json` (e.g. `{"regions": ["fra1"]}` or `{"regions": ["iad1"]}`) or under Vercel Dashboard -> *Project Settings* -> *Functions* -> *Function Region*.
+  - Aligning the Vercel function region to the exact cloud region of your Supabase database eliminates cross-continent hops between the SSR server and Postgres.
+
+#### 2. Cloudflare MCP Worker Smart Placement
+- **Current Architecture**: `mcp-worker/` is a Cloudflare Worker providing MCP server endpoints that proxy tool calls to the Supabase database.
+- **Cloudflare Free Tier Capabilities**:
+  - **Smart Placement is available on all Cloudflare Workers plans**, including the Free plan, at no additional charge.
+  - Smart Placement can be enabled in `wrangler.jsonc` (or `wrangler.toml`) via:
+    ```jsonc
+    {
+      "placement": {
+        "mode": "smart"
+      }
+    }
+    ```
+  - **Mechanism**: Cloudflare automatically measures the round-trip latency of outbound `fetch()` requests (such as queries to `https://kjqbnurycfjsuufibkac.supabase.co`). If moving worker invocation to data centers closer to the Supabase database reduces total execution time, Cloudflare routes execution there automatically.
+
+#### 3. Supabase Geographic Region Migration Outline
+Because Supabase **does not support changing the region of an existing project in-place**, moving the database to a new region requires creating a replacement project. The migration procedure entails:
+
+1. **Provision New Project**:
+   - Create a new project in the target region via the Supabase Dashboard.
+2. **Link Local Repository**:
+   ```bash
+   npx supabase link --project-ref <new-project-ref>
+   ```
+3. **Deploy Schema & Migrations**:
+   ```bash
+   npx supabase db push
+   ```
+4. **Seed Application Data**:
+   - Run seed scripts or `npx supabase db reset` to populate base rooms, term dates, and official student roster records.
+5. **Redeploy Edge Functions**:
+   ```bash
+   npx supabase functions deploy admin-users
+   ```
+6. **Update Environment Secrets**:
+   - Update `SUPABASE_URL` and `SUPABASE_ANON_KEY` in `web/.env` and Vercel Project Environment Variables.
+   - Update `desktop/.env` and `mcp/.env`.
+   - Update Cloudflare Worker secrets: `npx wrangler secret put SUPABASE_URL` and `SUPABASE_ANON_KEY`.
+7. **Recreate Admin Accounts**:
+   - Register the primary administrator account in the new project and grant admin role via Supabase SQL or the admin-users Edge Function.
+8. **Rebuild Desktop Executable**:
+   - Re-run PyInstaller build (`desktop/build_exe.py` / `pyinstaller desktop.spec`) so packaged Windows binaries point to the new project URL.
+9. **Data Migration Caveats**:
+   > [!WARNING]
+   > - **Auth Users (`auth.users`)**: Passwords are cryptographically hashed and cannot be exported in plaintext. User accounts must be exported using `pg_dump` of the `auth` schema or users must undergo a password reset flow.
+   > - **Storage Objects (`storage.objects`)**: Uploaded student maintenance photos stored in Supabase Storage buckets do not transfer automatically. Files must be synchronized using an S3-compatible transfer tool (e.g. `rclone` or Supabase CLI storage script).
+
