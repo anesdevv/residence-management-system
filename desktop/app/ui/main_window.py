@@ -50,6 +50,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..client import (
+    invalidate_official_lookup_cache,
     clear_local_session,
     current_role,
     forget_role,
@@ -779,6 +780,7 @@ class MainWindow(QMainWindow):
 
     def _on_roster_changed(self) -> None:
         """Refresh pending student records and badges when official admissions data is updated."""
+        invalidate_official_lookup_cache(self.client)
         if hasattr(self, "pending_page") and hasattr(self.pending_page, "reload"):
             self.pending_page.reload()
 

@@ -1,4 +1,5 @@
 import json
+import time
 import logging
 import re
 import threading
@@ -365,10 +366,46 @@ def room_occupancy(client: Client, *, strict: bool = False) -> dict[str, int]:
             return {}
 
 
-def official_lookup(client: Client) -> dict[str, dict]:
+_OFFICIAL_CACHE: dict[int, tuple[float, dict[str, dict]]] = {}
+_OFFICIAL_CACHE_LOCK = threading.RLock()
+_OFFICIAL_CACHE_TTL = 30.0  # seconds
+
+
+def invalidate_official_lookup_cache(client: Client | None = None) -> None:
+    """Invalidate cached official admissions roster records."""
+    with _OFFICIAL_CACHE_LOCK:
+        if client is not None:
+            _OFFICIAL_CACHE.pop(id(client), None)
+        else:
+            _OFFICIAL_CACHE.clear()
+
+
+def official_lookup(client: Client, *, force: bool = False) -> dict[str, dict]:
+    """Look up official roster entries keyed by card_id.
+
+    Results are cached in memory for up to 30 seconds per client object, or until
+    explicitly invalidated by ``invalidate_official_lookup_cache()`` (e.g. after
+    roster import or edits). This eliminates redundant full table downloads during
+    application reloads and resident inspections.
+    """
+    now = time.monotonic()
+    if not force:
+        with _OFFICIAL_CACHE_LOCK:
+            entry = _OFFICIAL_CACHE.get(id(client))
+            if entry is not None and (now - entry[0]) < _OFFICIAL_CACHE_TTL:
+                return dict(entry[1])
+
     with CLIENT_LOCK:
+        if not force:
+            with _OFFICIAL_CACHE_LOCK:
+                entry = _OFFICIAL_CACHE.get(id(client))
+                if entry is not None and (now - entry[0]) < _OFFICIAL_CACHE_TTL:
+                    return dict(entry[1])
         try:
             query = client.table("official_residents").select("*")
-            return {r["card_id"]: r for r in _fetch_all_rows(query) if "card_id" in r}
+            result = {r["card_id"]: r for r in _fetch_all_rows(query) if "card_id" in r}
+            with _OFFICIAL_CACHE_LOCK:
+                _OFFICIAL_CACHE[id(client)] = (time.monotonic(), result)
+            return dict(result)
         except Exception:
             return {}

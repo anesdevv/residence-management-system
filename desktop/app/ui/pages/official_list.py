@@ -668,6 +668,8 @@ class OfficialListPage(QWidget):
 
     def _notify_roster_changed(self) -> None:
         """Notify MainWindow and PendingPage that official admissions data has changed."""
+        from ...client import invalidate_official_lookup_cache
+        invalidate_official_lookup_cache(self.client)
         self.roster_changed.emit()
         if self.pending_page and hasattr(self.pending_page, "reload"):
             self.pending_page.reload()
