@@ -327,18 +327,37 @@ def _fetch_all_rows(query) -> list[dict]:
 def room_occupancy(client: Client, *, strict: bool = False) -> dict[str, int]:
     """Count occupied beds per room.
 
+    Attempts server-side aggregation via RPC ``get_room_occupancy`` first.
+    Falls back to client-side counting if the RPC is unavailable or in mock test
+    environments.
+
     The legacy pages treat a read failure as "no occupancy data" so their
     tables still render.  Callers that must not turn a failure into a fake zero
     pass ``strict=True`` to receive the exception instead.
     """
     with CLIENT_LOCK:
         try:
+            # 1. Fast path: server-side Postgres aggregation via RPC
+            if hasattr(client, "rpc") and callable(getattr(client, "rpc", None)):
+                try:
+                    rpc_resp = client.rpc("get_room_occupancy", {}).execute()
+                    data = getattr(rpc_resp, "data", None)
+                    if isinstance(data, list):
+                        return {
+                            str(r["room_id"]): int(r.get("occupied", 0) or 0)
+                            for r in data
+                            if isinstance(r, dict) and r.get("room_id")
+                        }
+                except Exception:
+                    pass
+
+            # 2. Fallback path: client-side aggregation
             query = client.table("students").select("room_id").eq("status", "active")
             counts: dict[str, int] = {}
             for row in _fetch_all_rows(query):
                 rid = row.get("room_id")
                 if rid:
-                    counts[rid] = counts.get(rid, 0) + 1
+                    counts[str(rid)] = counts.get(str(rid), 0) + 1
             return counts
         except Exception:
             if strict:
