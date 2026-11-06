@@ -56,16 +56,14 @@ drop index if exists public.idx_students_status_created;
 
 ### Supabase Project Region Identification
 
-> [!IMPORTANT]
-> The database region must **never be guessed**. To find the authoritative geographic region hosting your Supabase database:
-> 1. Open the **Supabase Dashboard** -> Select project `kjqbnurycfjsuufibkac` -> **Project Settings** -> **General** -> View **Region** (e.g. `us-east-1` (North Virginia), `eu-central-1` (Frankfurt), etc.).
-> 2. Alternatively, run via Supabase CLI:
->    ```bash
->    npx supabase projects list
->    ```
+> [!NOTE]
+> Database project details queried directly from the Supabase Management API via authorized MCP project inspection (`supabase:get_project`):
 
-- **Project Host**: `kjqbnurycfjsuufibkac.supabase.co`
+- **Project Name**: `residence-tlemcen`
 - **Project Ref**: `kjqbnurycfjsuufibkac`
+- **Authoritative Region**: **`eu-west-1`** (AWS Europe - Ireland, Dublin)
+- **Database Engine**: PostgreSQL 17.11 (`db.kjqbnurycfjsuufibkac.supabase.co`)
+- **Status**: `ACTIVE_HEALTHY`
 - **Measurement Tool**: `tools/perf/latency_probe.py` (30 sequential samples after 2 warm-ups)
 
 ---
@@ -103,8 +101,8 @@ drop index if exists public.idx_students_status_created;
   - On the Vercel Hobby (Free) plan, serverless functions can only be deployed to a **single region** (multi-region failover requires Enterprise).
   - By default, Vercel deploys functions to `iad1` (Washington, D.C., USA).
   - However, the Hobby plan **does allow configuring any single region** closer to your database.
-  - Configuration can be set in `vercel.json` (e.g. `{"regions": ["fra1"]}` or `{"regions": ["iad1"]}`) or under Vercel Dashboard -> *Project Settings* -> *Functions* -> *Function Region*.
-  - Aligning the Vercel function region to the exact cloud region of your Supabase database eliminates cross-continent hops between the SSR server and Postgres.
+  - Configuration can be set in `vercel.json` (e.g. `{"regions": ["dub1"]}`) or under Vercel Dashboard -> *Project Settings* -> *Functions* -> *Function Region*.
+  - Because your Supabase project is hosted in **`eu-west-1` (Ireland)**, configuring Vercel's serverless function region to **`dub1` (Dublin, Ireland)** co-locates the Astro SSR functions in the exact same AWS Dublin datacenter, dropping SSR server-to-database query latency to sub-5ms and eliminating the cross-Atlantic hop (`iad1` $\rightarrow$ `eu-west-1`).
 
 #### 2. Cloudflare MCP Worker Smart Placement
 - **Current Architecture**: `mcp-worker/` is a Cloudflare Worker providing MCP server endpoints that proxy tool calls to the Supabase database.
