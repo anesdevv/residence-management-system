@@ -9,6 +9,7 @@ import {
   isAllowedCategory,
   normalizeMaintenanceCategory,
   getCategoryMeta,
+  batchResolveSignedUrls,
 } from './maintenance';
 
 describe('Maintenance Lifecycle (T2: Exactly 3 Stages)', () => {
@@ -85,5 +86,62 @@ describe('Maintenance Categories (T3: Plumbing, Electricity, Carpentry, Others)'
 
     expect(normalizeMaintenanceCategory('furniture')).toBe('carpentry');
     expect(getCategoryMeta('furniture').label).toBe('Carpentry');
+  });
+});
+
+
+describe('Batch Storage URL Resolution (PERF-5)', () => {
+  it('returns empty map for empty or whitespace paths without calling storage', async () => {
+    const mockStorage = {
+      from: () => ({
+        createSignedUrls: async () => ({ data: [] }),
+      }),
+    };
+    const res = await batchResolveSignedUrls(mockStorage as any, 'test-bucket', []);
+    expect(res.size).toBe(0);
+  });
+
+  it('batches multiple photo paths into a single createSignedUrls call', async () => {
+    let callCount = 0;
+    let requestedBucket = '';
+    let requestedPaths: string[] = [];
+
+    const mockStorage = {
+      from: (bucket: string) => {
+        requestedBucket = bucket;
+        return {
+          createSignedUrls: async (paths: string[], expiresIn: number) => {
+            callCount++;
+            return {
+              data: paths.map((p) => ({
+                path: p,
+                signedUrl: `https://mock-storage.test/${bucket}/${p}?token=xyz`,
+              })),
+            };
+          },
+        };
+      },
+    };
+
+    const inputPaths = ['user1/photo1.jpg', 'user1/photo2.png', 'user2/photo3.webp'];
+    const res = await batchResolveSignedUrls(mockStorage as any, 'maintenance-photos', inputPaths, 300);
+
+    expect(callCount).toBe(1); // Single batch call instead of 3
+    expect(requestedBucket).toBe('maintenance-photos');
+    expect(res.size).toBe(3);
+    expect(res.get('user1/photo1.jpg')).toBe('https://mock-storage.test/maintenance-photos/user1/photo1.jpg?token=xyz');
+    expect(res.get('user2/photo3.webp')).toBe('https://mock-storage.test/maintenance-photos/user2/photo3.webp?token=xyz');
+  });
+
+  it('handles storage exceptions gracefully without crashing', async () => {
+    const mockStorage = {
+      from: () => ({
+        createSignedUrls: async () => {
+          throw new Error('Storage network timeout');
+        },
+      }),
+    };
+    const res = await batchResolveSignedUrls(mockStorage as any, 'maintenance-photos', ['photo.jpg']);
+    expect(res.size).toBe(0);
   });
 });

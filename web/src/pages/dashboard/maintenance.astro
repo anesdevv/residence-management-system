@@ -8,7 +8,7 @@ import InlineBanner from '../../components/InlineBanner.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import StatCard from '../../components/StatCard.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
-import { MAINTENANCE_STAGES, getStageIndex, MAINTENANCE_CATEGORIES, getCategoryMeta } from '../../lib/maintenance';
+import { MAINTENANCE_STAGES, getStageIndex, MAINTENANCE_CATEGORIES, getCategoryMeta, batchResolveSignedUrls } from '../../lib/maintenance';
 
 export const prerender = false;
 
@@ -30,10 +30,11 @@ const [{ data: reports }, { data: student }] = await Promise.all([
 
 const isActive = student?.status === 'active';
 
-const withUrls = await Promise.all((reports ?? []).map(async (r) => {
-  if (!r.photo_path) return { ...r, url: null };
-  const { data } = await supabase.storage.from('maintenance-photos').createSignedUrl(r.photo_path, 300);
-  return { ...r, url: data?.signedUrl ?? null };
+const photoPaths = (reports ?? []).map((r: any) => r.photo_path).filter((p: any): p is string => Boolean(p));
+const urlMap = await batchResolveSignedUrls(supabase.storage, 'maintenance-photos', photoPaths, 300);
+const withUrls = (reports ?? []).map((r: any) => ({
+  ...r,
+  url: r.photo_path ? (urlMap.get(r.photo_path) ?? null) : null,
 }));
 
 const totalCount = withUrls.length;
