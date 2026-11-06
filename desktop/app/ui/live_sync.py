@@ -40,8 +40,8 @@ class LiveSyncWorker(QThread):
         while self._running:
             if not self._paused:
                 try:
+                    # 1. Fetch pending students
                     with CLIENT_LOCK:
-                        # 1. Fetch pending students
                         s_resp = (
                             self.client.table("students")
                             .select("*")
@@ -51,7 +51,8 @@ class LiveSyncWorker(QThread):
                         )
                         pending_students = s_resp.data or []
 
-                        # 2. Fetch maintenance reports
+                    # 2. Fetch maintenance reports
+                    with CLIENT_LOCK:
                         m_resp = (
                             self.client.table("maintenance_reports")
                             .select("*, students(first_name, last_name, card_id)")
@@ -61,8 +62,9 @@ class LiveSyncWorker(QThread):
                         reports = m_resp.data or []
                         open_reports_count = sum(1 for r in reports if r.get("status") != "resolved")
 
-                        # 3. Fetch ALL room change requests so processed rows stay
-                        # visible in the status views; the badge stays pending-only.
+                    # 3. Fetch ALL room change requests so processed rows stay
+                    # visible in the status views; the badge stays pending-only.
+                    with CLIENT_LOCK:
                         r_resp = (
                             self.client.table("room_change_requests")
                             .select(
@@ -74,7 +76,8 @@ class LiveSyncWorker(QThread):
                         )
                         requests = r_resp.data or []
 
-                        # 4. Fetch active residents count for live KPI updates
+                    # 4. Fetch active residents count for live KPI updates
+                    with CLIENT_LOCK:
                         a_resp = (
                             self.client.table("students")
                             .select("id", count="exact")

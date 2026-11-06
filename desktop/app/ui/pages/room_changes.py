@@ -161,9 +161,9 @@ def _staff_name(row: dict) -> str:
     return f"Unknown ({_short_id(decided_by)})" if decided_by else "Unknown"
 
 
-def _row_signature(row: dict) -> str:
-    """Stable signature of every field of one request row."""
-    return json.dumps(row, sort_keys=True, default=str)
+def _row_signature(row: dict):
+    """Stable signature of every field of one request row (fast tuple)."""
+    return tuple(sorted((k, str(v)) for k, v in row.items()))
 
 
 def _rpc_row(response) -> dict:

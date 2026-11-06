@@ -310,3 +310,20 @@ def test_rooms_occupancy_column_no_duplicate_text(qapp):
         assert bar is not None
         assert bar._value.text() == expected_text
 
+
+
+
+def test_row_signature_order_independent_and_detects_changes():
+    from desktop.app.ui.pages.room_changes import _row_signature as rc_sig
+
+    row1 = {"id": "1", "status": "pending", "first_name": "Amine", "card_id": "123"}
+    row2 = {"card_id": "123", "first_name": "Amine", "status": "pending", "id": "1"}
+    row3 = {"id": "1", "status": "active", "first_name": "Amine", "card_id": "123"}
+
+    # Order independent
+    assert PendingPage._row_signature(row1) == PendingPage._row_signature(row2)
+    assert rc_sig(row1) == rc_sig(row2)
+
+    # Detects field updates
+    assert PendingPage._row_signature(row1) != PendingPage._row_signature(row3)
+    assert rc_sig(row1) != rc_sig(row3)

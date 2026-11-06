@@ -613,9 +613,9 @@ class PendingPage(QWidget):
 
     # -------------------------------------------------------- live sync data
     @staticmethod
-    def _row_signature(row: dict) -> str:
-        """Stable signature of every field of one row (order independent)."""
-        return json.dumps(row, sort_keys=True, default=str)
+    def _row_signature(row: dict):
+        """Stable signature of every field of one row (order independent, fast tuple)."""
+        return tuple(sorted((k, str(v)) for k, v in row.items()))
 
     def _index(self, rows) -> dict[str, str]:
         """``{student id: field signature}`` for the given rows."""
