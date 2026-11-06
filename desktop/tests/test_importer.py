@@ -76,3 +76,16 @@ def test_gender_and_date_variations(tmp_path):
     assert rows[2]["birth_date"] == "2002-06-01"
 
 
+def test_unmapped_gender_and_invalid_date_graceful(tmp_path):
+    path = tmp_path / "unmapped.csv"
+    with open(path, "w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["card_id", "first_name", "last_name", "birth_date", "gender"])
+        w.writerow(["C04", "G", "H", "not-a-valid-date", "Unknown"])
+        w.writerow(["C05", "I", "J", "2004.11.20", "N/A"])
+    rows = read_official_file(str(path))
+    assert len(rows) == 2
+    assert rows[0]["gender"] is None
+    assert rows[0]["birth_date"] is None
+    assert rows[1]["gender"] is None
+    assert rows[1]["birth_date"] == "2004-11-20"

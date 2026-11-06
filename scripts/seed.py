@@ -47,6 +47,13 @@ def main():
         "id": staff_id, "full_name": "Amina Staff", "position": "Front desk",
     }).execute()
 
+    blocks = [
+        {"name": "A", "gender": "male"},
+        {"name": "B", "gender": "female"},
+    ]
+    for b in blocks:
+        sb.table("blocks").upsert(b, on_conflict="name").execute()
+
     rooms = [
         {"block": "A", "floor": 1, "number": "101", "capacity": 2, "gender": "male"},
         {"block": "A", "floor": 1, "number": "102", "capacity": 2, "gender": "male"},

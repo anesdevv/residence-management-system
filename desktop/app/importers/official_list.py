@@ -39,23 +39,30 @@ def read_official_file(path: str) -> list[dict]:
             b_str = str(b or "").strip()
             if b_str:
                 parsed_date = None
-                for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d"):
+                for fmt in (
+                    "%Y-%m-%d",
+                    "%d/%m/%Y",
+                    "%d-%m-%Y",
+                    "%Y/%m/%d",
+                    "%d.%m.%Y",
+                    "%Y.%m.%d",
+                ):
                     try:
                         parsed_date = datetime.strptime(b_str, fmt).strftime("%Y-%m-%d")
                         break
                     except ValueError:
                         pass
-                birth_date = parsed_date if parsed_date else b_str
+                birth_date = parsed_date
             else:
                 birth_date = None
 
         gender_raw = str(r.get("gender") or "").strip().lower()
-        if gender_raw in ("m", "homme", "masculin", "male"):
+        if gender_raw in ("m", "homme", "masculin", "male", "h"):
             gender_val = "male"
         elif gender_raw in ("f", "femme", "feminin", "féminin", "female"):
             gender_val = "female"
         else:
-            gender_val = gender_raw or None
+            gender_val = None
 
         cleaned.append({
             "card_id": card,
@@ -67,4 +74,3 @@ def read_official_file(path: str) -> list[dict]:
             "faculty": str(r.get("faculty") or "").strip() or None,
         })
     return cleaned
-

@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="en" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>RÉSIVO — Mobile App Ad</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      :root {
+        --navy-900: #0a2342;
+        --navy-800: #0a2f5a;
+        --navy-700: #0d436f;
+        --teal-600: #0d7180;
+        --teal-500: #109d9a;
+        --green-500: #0ca792;
+        --gold-500: #e5a853;
+        --gold-300: #f1ce92;
+        --canvas: #f5f8fb;
+        --surface: #ffffff;
+        --surface-subtle: #edf2f7;
+        --border: #dce4ee;
+        --text-primary: #0b1b33;
+        --text-secondary: #44546a;
+        --text-muted: #5b6b82;
+        --text-on-dark: #ffffff;
+        --status-ok: #05603a;
+        --status-ok-bg: #e8f7ef;
+        --status-ok-line: #a9e2c4;
+        --status-pending: #8a4b08;
+        --status-pending-bg: #fff6e5;
+        --status-pending-line: #f3d49b;
+        --grad-brand: linear-gradient(135deg, #0a2f5a 0%, #0d7180 50%, #0ca792 100%);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--navy-900);
+        font-family: 'Inter', system-ui, sans-serif;
+        color: var(--text-primary);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% 30%, #0f3668 0%, #0a2342 70%);
+      }
+
+      .clip {
+        position: absolute;
+        inset: 0;
+        width: 1080px;
+        height: 1920px;
+      }
+
+      /* =========================================================================
+         Top Header & Callouts (Y: 80px - 280px)
+         ========================================================================= */
+      .top-banner {
+        position: absolute;
+        top: 80px;
+        left: 0;
+        width: 1080px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 16px;
+        z-index: 100;
+        padding: 0 40px;
+      }
+
+      .step-pill {
+        font-family: 'Outfit', sans-serif;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--gold-300);
+        background: rgba(10, 47, 90, 0.85);
+        border: 2px solid var(--gold-500);
+        padding: 10px 32px;
+        border-radius: 9999px;
+      }
+
+      .banner-heading {
+        font-family: 'Outfit', sans-serif;
+        font-size: 60px;
+        font-weight: 800;
+        color: var(--text-on-dark);
+        line-height: 1.15;
+      }
+
+      /* =========================================================================
+         Phone Frame Mockup (Y: 300px - 1760px)
+         ========================================================================= */
+      .phone-wrapper {
+        position: absolute;
+        top: 290px;
+        left: 120px;
+        width: 840px;
+        height: 1490px;
+        background: #0f172a;
+        border: 14px solid #1e293b;
+        border-radius: 56px;
+        box-shadow: 0 40px 90px -15px rgba(0, 0, 0, 0.75), 0 0 0 2px rgba(255, 255, 255, 0.1);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        z-index: 50;
+      }
+
+      /* Phone Dynamic Island / Notch */
+      .dynamic-island {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 190px;
+        height: 38px;
+        background: #000000;
+        border-radius: 20px;
+        z-index: 200;
+      }
+
+      /* Phone Status Bar */
+      .status-bar {
+        height: 56px;
+        padding: 12px 36px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 28px;
+        font-weight: 600;
+        color: #ffffff;
+        background: #0a2342;
+        z-index: 150;
+      }
+
+      /* Phone Screens Container */
+      .screen-viewport {
+        position: relative;
+        flex: 1;
+        width: 100%;
+        background: var(--canvas);
+        overflow: hidden;
+      }
+
+      .phone-screen {
+        position: absolute;
+        top: 88px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--canvas);
+      }
+
+      /* App Top Navigation inside Phone */
+      .app-header {
+        background: #0a2342;
+        padding: 24px 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .app-brand-lockup {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .app-brand-name {
+        font-family: 'Outfit', sans-serif;
+        font-size: 36px;
+        font-weight: 800;
+        color: #ffffff;
+        letter-spacing: 0.05em;
+      }
+
+      .bell-icon {
+        position: relative;
+        color: #ffffff;
+      }
+
+      .bell-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        width: 12px;
+        height: 12px;
+        background: #ef4444;
+        border-radius: 50%;
+      }
+
+      /* =========================================================================
+         SCREEN 1: Landing & Hook Screen
+         ========================================================================= */
+      .screen-landing-content {
+        padding: 40px 36px;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+      }
+
+      .landing-hero-card {
+        background: var(--grad-brand);
+        border-radius: 28px;
+        padding: 44px 36px;
+        color: #ffffff;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        box-shadow: 0 15px 35px -10px rgba(10, 47, 90, 0.4);
+      }
+
+      .landing-hero-overline {
+        font-family: 'Outfit', sans-serif;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--gold-300);
+      }
+
+      .landing-hero-h1 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 52px;
+        font-weight: 800;
+        line-height: 1.1;
+      }
+
+      .landing-hero-p {
+        font-size: 28px;
+        color: #e6edf6;
+        line-height: 1.4;
+      }
+
+      .landing-btn {
+        background: var(--surface);
+        color: var(--navy-900);
+        font-family: 'Outfit', sans-serif;
+        font-size: 32px;
+        font-weight: 700;
+        padding: 20px 32px;
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      }
+
+      /* =========================================================================
+         SCREEN 2: Step 1 - Registration & Verification Screen
+         ========================================================================= */
+      .screen-step-content {
+        padding: 36px 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+      }
+
+      .form-card {
+        background: var(--surface);
+        border: 2px solid var(--border);
+        border-radius: 24px;
+        padding: 36px 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        box-shadow: 0 15px 35px rgba(10, 35, 66, 0.08);
+      }
+
+      .form-label {
+        font-family: 'Outfit', sans-serif;
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--navy-900);
+      }
+
+      .form-input-mock {
+        background: var(--surface-subtle);
+        border: 2px solid var(--teal-600);
+        border-radius: 14px;
+        padding: 18px 24px;
+        font-size: 32px;
+        font-weight: 600;
+        color: var(--navy-900);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .match-alert {
+        background: #e8f7ef;
+        border: 2px solid #a9e2c4;
+        border-radius: 18px;
+        padding: 24px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        color: #05603a;
+        font-size: 28px;
+        font-weight: 700;
+      }
+
+      .status-badge-step {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 24px;
+        border-radius: 9999px;
+        font-size: 28px;
+        font-weight: 700;
+      }
+
+      /* =========================================================================
+         SCREEN 3: Step 2 - Digital Resident Pass Screen
+         ========================================================================= */
+      .mobile-pass-card {
+        background: var(--grad-brand);
+        border-radius: 26px;
+        padding: 36px 32px;
+        color: #ffffff;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+        position: relative;
+        overflow: hidden;
+        border: 2px solid rgba(241, 206, 146, 0.45);
+        box-shadow: 0 25px 50px -10px rgba(0, 0, 0, 0.4);
+      }
+
+      .pass-top-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .pass-student-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 40px;
+        font-weight: 800;
+      }
+
+      .pass-room-banner {
+        background: rgba(10, 35, 66, 0.75);
+        border: 2px solid var(--gold-300);
+        border-radius: 18px;
+        padding: 22px 26px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .pass-room-num {
+        font-family: 'Outfit', sans-serif;
+        font-size: 46px;
+        font-weight: 800;
+        color: #ffffff;
+      }
+
+      .mobile-qr-row {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      .mobile-qr-svg {
+        width: 110px;
+        height: 110px;
+      }
+
+      .mobile-qr-text {
+        font-family: 'Outfit', sans-serif;
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--navy-900);
+      }
+
+      /* =========================================================================
+         SCREEN 4: Step 3 - Maintenance Ticket Screen
+         ========================================================================= */
+      .ticket-card {
+        background: var(--surface);
+        border: 2px solid var(--border);
+        border-radius: 22px;
+        padding: 32px 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        box-shadow: 0 15px 35px rgba(10, 35, 66, 0.08);
+      }
+
+      .ticket-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 34px;
+        font-weight: 700;
+        color: var(--navy-900);
+      }
+
+      .ticket-photo-box {
+        height: 180px;
+        background: #0a2342;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--gold-300);
+        gap: 12px;
+        font-size: 28px;
+        font-weight: 600;
+      }
+
+      /* =========================================================================
+         SCREEN 5: Outro & CTA Screen
+         ========================================================================= */
+      #screen-5 {
+        background: var(--grad-brand);
+        color: #ffffff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 40px;
+        gap: 24px;
+      }
+
+      .outro-mark {
+        width: 140px;
+        height: 140px;
+      }
+
+      .outro-brand-text {
+        font-family: 'Outfit', sans-serif;
+        font-size: 80px;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .outro-sub-text {
+        font-family: 'Outfit', sans-serif;
+        font-size: 38px;
+        font-weight: 600;
+        color: var(--gold-300);
+      }
+
+      .outro-cta-button {
+        margin-top: 18px;
+        background: #ffffff;
+        color: var(--navy-900);
+        font-family: 'Outfit', sans-serif;
+        font-size: 34px;
+        font-weight: 700;
+        padding: 20px 48px;
+        border-radius: 9999px;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="21.5"
+      data-width="1080"
+      data-height="1920"
+    >
+      <!-- Background Audio & Music -->
+      <audio
+        id="bg-music"
+        class="clip"
+        data-start="0"
+        data-duration="21.5"
+        data-volume="0.22"
+        data-fade-out="1.5"
+        src="assets/music/happy-beats-business-moves-vol-10-by-ende-dot-app.mp3"
+      ></audio>
+
+      <!-- Voiceover Audio Clips -->
+      <audio
+        id="vo-1"
+        class="clip"
+        data-start="0.1"
+        data-duration="3.4"
+        data-volume="1.0"
+        src="assets/audio/vo-1.wav"
+      ></audio>
+      <audio
+        id="vo-2"
+        class="clip"
+        data-start="3.5"
+        data-duration="5.6"
+        data-volume="1.0"
+        src="assets/audio/vo-2.wav"
+      ></audio>
+      <audio
+        id="vo-3"
+        class="clip"
+        data-start="9.1"
+        data-duration="5.4"
+        data-volume="1.0"
+        src="assets/audio/vo-3.wav"
+      ></audio>
+      <audio
+        id="vo-4"
+        class="clip"
+        data-start="14.5"
+        data-duration="4.1"
+        data-volume="1.0"
+        src="assets/audio/vo-4.wav"
+      ></audio>
+      <audio
+        id="vo-5"
+        class="clip"
+        data-start="18.6"
+        data-duration="2.9"
+        data-volume="1.0"
+        src="assets/audio/vo-5.wav"
+      ></audio>
+
+      <!-- SFX Clips -->
+      <audio
+        id="sfx-tap"
+        class="clip"
+        data-start="3.7"
+        data-duration="0.06"
+        data-volume="0.6"
+        src="assets/sfx/ui/mouseclick1.ogg"
+      ></audio>
+      <audio
+        id="sfx-ding"
+        class="clip"
+        data-start="9.3"
+        data-duration="1.48"
+        data-volume="0.65"
+        src="assets/sfx/impact/impactBell_heavy_000.ogg"
+      ></audio>
+
+      <!-- TOP DYNAMIC BANNER (Changes with each step) -->
+      <header class="top-banner">
+        <div id="step-pill" class="step-pill">HOW TO USE RÉSIVO</div>
+        <h1 id="banner-heading" class="banner-heading">Dormitory Housing On Your Phone</h1>
+      </header>
+
+      <!-- SMARTPHONE MOCKUP -->
+      <div class="phone-wrapper">
+        <div class="dynamic-island"></div>
+
+        <div class="status-bar" data-layout-ignore="true">
+          <span>09:41</span>
+          <span>5G · 100%</span>
+        </div>
+
+        <div class="screen-viewport" data-layout-allow-overlap="true">
+          <!-- Common App Header inside phone -->
+          <div class="app-header">
+            <div class="app-brand-lockup">
+              <svg width="40" height="40" viewBox="0 0 48 48" fill="none">
+                <rect x="4" y="4" width="18" height="18" rx="4" fill="#ffffff" />
+                <rect x="26" y="4" width="18" height="18" rx="4" fill="#109d9a" />
+                <rect x="4" y="26" width="18" height="18" rx="4" fill="#109d9a" />
+                <circle cx="35" cy="35" r="7" fill="#f1ce92" />
+              </svg>
+              <span class="app-brand-name">RÉSIVO</span>
+            </div>
+            <div class="bell-icon">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <div class="bell-badge"></div>
+            </div>
+          </div>
+
+          <!-- SCREEN 1: Landing (0.0s – 3.5s) -->
+          <div id="screen-1" class="phone-screen" data-hold="true">
+            <div class="screen-landing-content">
+              <div class="landing-hero-card">
+                <div class="landing-hero-overline">Cité Universitaire Tlemcen</div>
+                <h2 class="landing-hero-h1">Student Residence Intake Portal</h2>
+                <p class="landing-hero-p">
+                  Zero paperwork. Zero queues. Register and manage your room directly from your phone.
+                </p>
+              </div>
+
+              <div class="landing-btn">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                <span>Register As Resident</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- SCREEN 2: Step 1 Registration (3.5s – 9.1s) -->
+          <div id="screen-2" class="phone-screen" style="opacity: 0;" data-hold="true">
+            <div class="screen-step-content">
+              <div class="form-card">
+                <div class="form-label">Student Card ID</div>
+                <div class="form-input-mock">
+                  <span>2026-38491</span>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#05603a" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+
+                <div class="form-label">Resident Name</div>
+                <div class="form-input-mock">
+                  <span>Khelil Rayane</span>
+                  <span style="font-size: 28px; color: var(--text-secondary);">Faculté Sciences</span>
+                </div>
+              </div>
+
+              <div id="match-card" class="match-alert">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+                <div>
+                  <div>Roster Match Verified!</div>
+                  <div style="font-size: 28px; font-weight: 500; opacity: 0.9;">Admissions list confirmed</div>
+                </div>
+              </div>
+
+              <div class="status-badge-step" style="background: #e8f7ef; color: #05603a; border: 2px solid #a9e2c4;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <span>Active resident · Approved</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- SCREEN 3: Step 2 Digital Pass (9.1s – 14.5s) -->
+          <div id="screen-3" class="phone-screen" style="opacity: 0;" data-hold="true">
+            <div class="screen-step-content">
+              <div class="mobile-pass-card">
+                <div class="pass-top-row">
+                  <div>
+                    <div style="font-size: 28px; font-weight: 600; color: #f1ce92; letter-spacing: 0.1em; text-transform: uppercase;">
+                      Digital Pass
+                    </div>
+                    <div class="pass-student-title">Khelil Rayane</div>
+                  </div>
+                  <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
+                    <rect x="4" y="4" width="18" height="18" rx="4" fill="#ffffff" />
+                    <rect x="26" y="4" width="18" height="18" rx="4" fill="#109d9a" />
+                    <rect x="4" y="26" width="18" height="18" rx="4" fill="#109d9a" />
+                    <circle cx="35" cy="35" r="7" fill="#f1ce92" />
+                  </svg>
+                </div>
+
+                <div class="pass-room-banner">
+                  <div style="font-size: 28px; font-weight: 700; color: #f1ce92; text-transform: uppercase;">
+                    Assigned Accommodation
+                  </div>
+                  <div class="pass-room-num">BLOCK B · ROOM 204</div>
+                  <div style="font-size: 28px; color: #d0e0f0;">Floor 2 · Faculté des Sciences</div>
+                </div>
+
+                <div class="mobile-qr-row">
+                  <svg class="mobile-qr-svg" viewBox="0 0 105 105">
+                    <rect x="5" y="5" width="35" height="35" fill="#0A2342" rx="4" />
+                    <rect x="10" y="10" width="25" height="25" fill="#ffffff" rx="2" />
+                    <rect x="15" y="15" width="15" height="15" fill="#0A2342" rx="2" />
+                    <rect x="65" y="5" width="35" height="35" fill="#0A2342" rx="4" />
+                    <rect x="70" y="10" width="25" height="25" fill="#ffffff" rx="2" />
+                    <rect x="75" y="15" width="15" height="15" fill="#0A2342" rx="2" />
+                    <rect x="5" y="65" width="35" height="35" fill="#0A2342" rx="4" />
+                    <rect x="10" y="70" width="25" height="25" fill="#ffffff" rx="2" />
+                    <rect x="15" y="75" width="15" height="15" fill="#0A2342" rx="2" />
+                    <rect x="45" y="25" width="6" height="6" fill="#0A2342" />
+                    <rect x="55" y="35" width="6" height="6" fill="#0A2342" />
+                    <rect x="45" y="45" width="6" height="6" fill="#0A2342" />
+                    <rect x="65" y="55" width="6" height="6" fill="#0A2342" />
+                    <rect x="75" y="75" width="6" height="6" fill="#0A2342" />
+                    <rect x="85" y="85" width="6" height="6" fill="#0A2342" />
+                  </svg>
+                  <div class="mobile-qr-text">
+                    <div>SCAN FOR ACCESS</div>
+                    <div style="font-size: 28px; color: #5b6b82;">ID #2026-38491</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SCREEN 4: Step 3 Maintenance (14.5s – 18.6s) -->
+          <div id="screen-4" class="phone-screen" style="opacity: 0;" data-hold="true">
+            <div class="screen-step-content">
+              <div class="ticket-card">
+                <div class="ticket-title">Fast Maintenance Dispatch</div>
+                <div style="font-size: 28px; color: var(--text-secondary);">
+                  Room 204 · Radiator Valve Leak
+                </div>
+
+                <div class="ticket-photo-box">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                  <span>radiator_leak_photo.jpg (Attached)</span>
+                </div>
+
+                <div class="status-badge-step" style="background: #eaf1fd; color: #174ea6; border: 2px solid #b9d0f7;">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 14 14" />
+                  </svg>
+                  <span>In progress · Triage dispatched</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SCREEN 5: Outro & Call to Action (18.6s – 21.5s) -->
+          <div id="screen-5" class="phone-screen" style="opacity: 0;" data-hold="true">
+            <div class="outro-mark">
+              <svg width="140" height="140" viewBox="0 0 48 48" fill="none">
+                <rect x="4" y="4" width="18" height="18" rx="4" fill="#ffffff" />
+                <rect x="26" y="4" width="18" height="18" rx="4" fill="#109d9a" />
+                <rect x="4" y="26" width="18" height="18" rx="4" fill="#109d9a" />
+                <circle cx="35" cy="35" r="7" fill="#f1ce92" />
+              </svg>
+            </div>
+            <div class="outro-brand-text">RÉSIVO</div>
+            <div class="outro-sub-text">Student Living, Made Simple.</div>
+            <div style="font-size: 28px; color: #ffffff; margin-top: 8px;">
+              Cité Universitaire Tlemcen
+            </div>
+            <div class="outro-cta-button">Sign In At resivo.dz</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GSAP Master Timeline -->
+    <script>
+      const tl = gsap.timeline({ paused: true });
+
+      // Frame 0 setup
+      tl.set('#step-pill', { textContent: 'HOW TO USE RÉSIVO' }, 0);
+      tl.set('#banner-heading', { textContent: 'Dormitory Housing On Your Phone' }, 0);
+      tl.set('.phone-wrapper', { y: 20, scale: 0.98 }, 0);
+
+      // Intro float
+      tl.to('.phone-wrapper', { y: 0, scale: 1, duration: 0.8, ease: 'power3.out' }, 0.2);
+
+      // Transition to Step 1 (3.5s)
+      tl.to('#screen-1', { opacity: 0, x: -40, duration: 0.35, ease: 'power2.in' }, 3.3);
+      tl.fromTo(
+        '#screen-2',
+        { opacity: 0, x: 40 },
+        { opacity: 1, x: 0, duration: 0.45, ease: 'power3.out' },
+        3.5
+      );
+      tl.set('#step-pill', { textContent: 'STEP 1 · CARD VERIFICATION' }, 3.5);
+      tl.set('#banner-heading', { textContent: 'Instant University Roster Matching' }, 3.5);
+      tl.fromTo(
+        '#match-card',
+        { scale: 0.9, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(1.4)' },
+        5.2
+      );
+
+      // Transition to Step 2 (9.1s)
+      tl.to('#screen-2', { opacity: 0, x: -40, duration: 0.35, ease: 'power2.in' }, 8.9);
+      tl.fromTo(
+        '#screen-3',
+        { opacity: 0, x: 40 },
+        { opacity: 1, x: 0, duration: 0.45, ease: 'power3.out' },
+        9.1
+      );
+      tl.set('#step-pill', { textContent: 'STEP 2 · DIGITAL ROOM PASS' }, 9.1);
+      tl.set('#banner-heading', { textContent: 'Your Assigned Room 204 & QR Access' }, 9.1);
+      tl.fromTo(
+        '.pass-room-banner',
+        { scale: 0.92 },
+        { scale: 1, duration: 0.5, ease: 'back.out(1.3)' },
+        10.4
+      );
+
+      // Transition to Step 3 (14.5s)
+      tl.to('#screen-3', { opacity: 0, x: -40, duration: 0.35, ease: 'power2.in' }, 14.3);
+      tl.fromTo(
+        '#screen-4',
+        { opacity: 0, x: 40 },
+        { opacity: 1, x: 0, duration: 0.45, ease: 'power3.out' },
+        14.5
+      );
+      tl.set('#step-pill', { textContent: 'STEP 3 · PHOTO DISPATCH' }, 14.5);
+      tl.set('#banner-heading', { textContent: 'Fast In-Residence Maintenance' }, 14.5);
+
+      // Transition to Outro (18.6s – 21.5s)
+      tl.to('#screen-4', { opacity: 0, scale: 0.95, duration: 0.35, ease: 'power2.in' }, 18.4);
+      tl.fromTo(
+        '#screen-5',
+        { opacity: 0, scale: 1.05 },
+        { opacity: 1, scale: 1, duration: 0.45, ease: 'power3.out' },
+        18.6
+      );
+      tl.set('#step-pill', { textContent: 'STUDENT LIVING · SIMPLIFIED' }, 18.6);
+      tl.set('#banner-heading', { textContent: 'Join Cité Universitaire on RÉSIVO' }, 18.6);
+
+      window.__timelines['main'] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

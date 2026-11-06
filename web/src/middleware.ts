@@ -13,14 +13,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   const PROTECTED_API_ROUTES = ['/api/maintenance', '/api/room-change', '/api/profile'];
   if (PROTECTED_API_ROUTES.some((route) => path === route || path.startsWith(`${route}/`)) && !data.user) {
-    const acceptHeader = context.request.headers.get('accept') ?? '';
-    if (acceptHeader.includes('application/json')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    return context.redirect('/login');
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   return next();

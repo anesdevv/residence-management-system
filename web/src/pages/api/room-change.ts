@@ -80,6 +80,17 @@ export const POST: APIRoute = async (context) => {
     reason,
   });
   if (error) {
+    const isDuplicate =
+      error.code === '23505' ||
+      error.message?.toLowerCase().includes('duplicate') ||
+      error.message?.toLowerCase().includes('idx_one_pending_room_change');
+    if (isDuplicate) {
+      return context.redirect(
+        `/dashboard/room-change?error=${encodeURIComponent(
+          'You already have a pending room transfer request undergoing administrative review.',
+        )}`,
+      );
+    }
     return context.redirect(`/dashboard/room-change?error=${encodeURIComponent(error.message)}`);
   }
   return context.redirect('/dashboard/room-change?created=1');

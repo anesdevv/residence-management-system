@@ -303,6 +303,27 @@ def current_role(client: Client) -> str | None:
         return None
 
 
+PAGE_SIZE = 1000
+
+
+def _fetch_all_rows(query) -> list[dict]:
+    """Fetch all rows from a PostgREST query, paginating if supported."""
+    if not hasattr(query, "range") or not callable(getattr(query, "range", None)):
+        resp = query.execute()
+        return list(resp.data or [])
+
+    all_rows: list[dict] = []
+    offset = 0
+    while True:
+        resp = query.range(offset, offset + PAGE_SIZE - 1).execute()
+        rows = list(resp.data or [])
+        all_rows.extend(rows)
+        if len(rows) < PAGE_SIZE:
+            break
+        offset += PAGE_SIZE
+    return all_rows
+
+
 def room_occupancy(client: Client, *, strict: bool = False) -> dict[str, int]:
     """Count occupied beds per room.
 
@@ -312,9 +333,9 @@ def room_occupancy(client: Client, *, strict: bool = False) -> dict[str, int]:
     """
     with CLIENT_LOCK:
         try:
-            resp = client.table("students").select("room_id").eq("status", "active").execute()
+            query = client.table("students").select("room_id").eq("status", "active")
             counts: dict[str, int] = {}
-            for row in resp.data or []:
+            for row in _fetch_all_rows(query):
                 rid = row.get("room_id")
                 if rid:
                     counts[rid] = counts.get(rid, 0) + 1
@@ -328,7 +349,7 @@ def room_occupancy(client: Client, *, strict: bool = False) -> dict[str, int]:
 def official_lookup(client: Client) -> dict[str, dict]:
     with CLIENT_LOCK:
         try:
-            resp = client.table("official_residents").select("*").execute()
-            return {r["card_id"]: r for r in (resp.data or []) if "card_id" in r}
+            query = client.table("official_residents").select("*")
+            return {r["card_id"]: r for r in _fetch_all_rows(query) if "card_id" in r}
         except Exception:
             return {}

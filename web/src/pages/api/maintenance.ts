@@ -4,6 +4,12 @@ import { createSupabaseServerClient } from '../../lib/supabase';
 
 import { isAllowedCategory } from '../../lib/maintenance';
 const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const PHOTO_EXTENSIONS: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+};
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB
 
 export const POST: APIRoute = async (context) => {
@@ -51,7 +57,7 @@ export const POST: APIRoute = async (context) => {
         )}`,
       );
     }
-    const ext = photo.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const ext = PHOTO_EXTENSIONS[photo.type] ?? 'jpg';
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
     const { error: upErr } = await supabase.storage
       .from('maintenance-photos')
