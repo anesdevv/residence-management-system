@@ -90,6 +90,15 @@ Set `RESIVO_DATA_DIR` to override the base directory (useful for a portable or
 test run). If an unexpected exception occurs, the error dialog provides an
 **Open log folder** button to access logs directly.
 
+## Windows Autostart & Startup Settings
+
+RÉSIVO provides an opt-in "Start RÉSIVO when Windows starts" switch in **Settings → General**.
+- **Per-User Registry Key**: Writes the quoted executable path and `--autostart` to `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run` under value `"RESIVO"`. No administrator rights or elevated privileges are required.
+- **Windows Startup Settings**: Reads `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run` to respect user toggles made directly in Task Manager > Startup apps or Windows Settings. Turning the switch ON automatically clears any disabled flag.
+- **Single Instance & Minimized Launch**: Launches with `--autostart` exit silently if another copy of RÉSIVO is already running (guarded via `QLockFile`). When "Start minimized to the taskbar" is enabled, both the login window and subsequent main console window open minimized.
+- **Moved Executable Handling**: Normal launches verify the registered Run key path and repair it automatically if the executable was moved or reinstalled.
+- **Uninstallation**: When using the Inno Setup uninstaller (`desktop\installer.iss`), registry entries under `Run` and `StartupApproved\Run` are automatically deleted. For portable folder installations, turning the switch OFF in Settings before deleting the folder cleanly removes the registry value.
+
 ## Developer-mode MCP token
 
 The local MCP server token lives in `mcp\.env` (`MCP_AUTH_TOKEN=...`) and is

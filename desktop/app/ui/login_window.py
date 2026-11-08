@@ -103,13 +103,14 @@ class PasswordField(QLineEdit):
 
 
 class LoginWindow(QWidget):
-    def __init__(self):
+    def __init__(self, client=None, start_minimized: bool = False):
         super().__init__()
         self.setWindowTitle("Staff Login — RÉSIVO")
         self.setMinimumSize(380, 480)
         self.resize(940, 580)
         self.setStyleSheet(DESKTOP_STYLESHEET)
-        self.client = make_client()
+        self.client = client if client is not None else make_client()
+        self._start_minimized = bool(start_minimized)
         self._role_retry_pending = False
         # (email, password digest) for the signed-in session, so an edited
         # credential is treated as a fresh sign-in, not another role retry.
@@ -367,7 +368,10 @@ class LoginWindow(QWidget):
         from .main_window import MainWindow
 
         self.window = MainWindow(self.client, role=role)
-        self.window.show()
+        if getattr(self, "_start_minimized", False):
+            self.window.showMinimized()
+        else:
+            self.window.show()
         self.close()
 
     def _show_role_error(self):

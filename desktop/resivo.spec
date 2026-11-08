@@ -48,6 +48,7 @@ hiddenimports = [
     "app.ui.pages.settings",
     "app.ui.pages.staff_accounts",
     "app.importers.official_list",
+    "desktop.platform.autostart",
 ]
 
 excludes = [
@@ -111,7 +112,7 @@ excludes = [
 
 a = Analysis(
     [str(DESKTOP_DIR / "main.py")],
-    pathex=[str(DESKTOP_DIR)],
+    pathex=[str(ROOT), str(DESKTOP_DIR)],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,

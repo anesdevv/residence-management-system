@@ -87,3 +87,50 @@ Execute directly with `dist\RESIVO\RESIVO.exe`:
   1. Configure throttling to **150 ms latency, 1.6 Mbps download, 750 kbps upload** (simulated 3G/Slow 4G).
   2. Navigate across Pending, Residents, Rooms, Maintenance, Room changes, and Official list pages.
   3. Verify table contents populate cleanly, search filtering remains instantaneous (debounced locally), and photos display loading spinners followed by smooth off-thread thumbnail decoding.
+
+
+## Windows Autostart & Single-Instance Checklist (Rebuilt EXE)
+
+Execute directly with `dist\RESIVO\RESIVO.exe` (and `python desktop/main.py` for source check):
+
+- [ ] **Default state in Settings**:
+  1. Open `dist\RESIVO\RESIVO.exe`, log in, and go to **Settings → General**.
+  2. Confirm "Start RÉSIVO when Windows starts" switch is **OFF** by default.
+  3. Confirm the "Start minimized to the taskbar" sub-option is disabled while the main switch is OFF.
+- [ ] **Enable autostart & restart check**:
+  1. Turn the "Start RÉSIVO when Windows starts" switch **ON**.
+  2. Sign out of Windows or restart the PC.
+  3. Confirm RÉSIVO opens by itself at the login window upon Windows sign-in (credentials never stored).
+- [ ] **Task Manager Startup apps listing**:
+  1. Open Windows Task Manager (`Ctrl+Shift+Esc`) and go to the **Startup apps** tab.
+  2. Confirm "RÉSIVO" is listed with the brand icon and the correct publisher/application name.
+- [ ] **Disable via Task Manager**:
+  1. In Task Manager > Startup apps, right-click "RÉSIVO" and click **Disable**.
+  2. Open RÉSIVO Settings → General.
+  3. Confirm the switch displays **OFF** and displays the warning note: *"Turned off in Windows Startup settings. Re-enable it there, or turn this switch off and on again."*
+  4. Toggle the switch ON in RÉSIVO: verify the disabled flag is cleared and the note disappears.
+- [ ] **Turn switch OFF**:
+  1. Turn the autostart switch **OFF** in Settings.
+  2. Restart the PC or sign out: verify the app does not launch on Windows startup.
+- [ ] **Start minimized to taskbar**:
+  1. Turn the autostart switch **ON** and check "Start minimized to the taskbar".
+  2. Restart the PC or launch with `--autostart`: verify the app starts minimized to the taskbar.
+  3. Log in: verify the main console window also opens minimized to the taskbar.
+- [ ] **Startup without network (offline/Wi-Fi off)**:
+  1. Launch with Wi-Fi disabled.
+  2. Confirm the login window opens cleanly without crashing or freezing.
+  3. Attempt login: verify the friendly connection banner appears with Retry, and re-enabling Wi-Fi allows immediate successful sign-in.
+- [ ] **Single-instance guard**:
+  1. Launch `dist\RESIVO\RESIVO.exe`.
+  2. Launch a second copy of `dist\RESIVO\RESIVO.exe`.
+  3. Confirm only ONE window opens and the second launch brings the existing window to the foreground.
+  4. Launch `dist\RESIVO\RESIVO.exe --autostart` while already running: confirm it exits immediately and silently without opening a second copy.
+- [ ] **Moved EXE path repair**:
+  1. Enable autostart in Settings.
+  2. Close RÉSIVO, move `dist\RESIVO` to another directory (e.g. `dist\RESIVO_Moved`).
+  3. Launch `RESIVO.exe` from the new folder.
+  4. Check the Run key in Registry Editor (`regedit`): verify `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` now points to the new path.
+- [ ] **Run from source check (`python desktop/main.py`)**:
+  1. Run the app from source code with `python desktop/main.py`.
+  2. Open **Settings → General**.
+  3. Confirm the "Start RÉSIVO when Windows starts" switch is disabled with the helper text: *"Available in the installed app (EXE) only."*

@@ -41,6 +41,11 @@ from ..notifications import NotificationManager
 from ..tasks import TaskRunner, human_error
 from ..theme import C, S
 
+try:
+    from desktop.platform import autostart
+except ImportError:
+    from platform import autostart
+
 
 MCP_HEALTH_URL = "http://127.0.0.1:8000/health"
 MCP_HEALTH_TIMEOUT_S = 2.0
@@ -278,6 +283,61 @@ class SettingsPage(QWidget):
         _apply_small(self.confirm_close_note)
         self.general_card.add_widget(self.confirm_close_note)
 
+        # Autostart settings (Windows only)
+        self.autostart_container = QWidget()
+        autostart_layout = QVBoxLayout(self.autostart_container)
+        autostart_layout.setContentsMargins(0, S("space-3"), 0, 0)
+        autostart_layout.setSpacing(S("space-2"))
+
+        self.autostart_checkbox = QCheckBox("Start RÉSIVO when Windows starts")
+        self.autostart_checkbox.setStyleSheet(_checkbox_qss())
+        self.autostart_checkbox.setToolTip("Launch RÉSIVO automatically when signing in to Windows")
+        self.autostart_checkbox.toggled.connect(self._on_autostart_toggled)
+        autostart_layout.addWidget(self.autostart_checkbox)
+
+        self.autostart_helper = QLabel(
+            "The app opens automatically when you sign in to Windows. You will still need to log in."
+        )
+        _apply_small(self.autostart_helper)
+        autostart_layout.addWidget(self.autostart_helper)
+
+        self.autostart_win_note = QLabel(
+            "Turned off in Windows Startup settings. Re-enable it there, or turn this switch off and on again."
+        )
+        _apply_small(self.autostart_win_note)
+        self.autostart_win_note.setStyleSheet(
+            f"color: {C('status-pending-ink')}; font-size: {C('fs-small')}; font-weight: {C('fw-medium')};"
+        )
+        self.autostart_win_note.setVisible(False)
+        autostart_layout.addWidget(self.autostart_win_note)
+
+        # Sub-option: Start minimized
+        self.start_minimized_container = QWidget()
+        sm_layout = QHBoxLayout(self.start_minimized_container)
+        sm_layout.setContentsMargins(S("space-6"), 0, 0, 0)
+        sm_layout.setSpacing(S("space-2"))
+
+        self.start_minimized_checkbox = QCheckBox("Start minimized to the taskbar")
+        self.start_minimized_checkbox.setStyleSheet(_checkbox_qss())
+        self.start_minimized_checkbox.setToolTip("Start with the window minimized to the taskbar")
+        self.start_minimized_checkbox.setChecked(autostart.get_start_minimized_setting())
+        self.start_minimized_checkbox.toggled.connect(self._on_start_minimized_toggled)
+        sm_layout.addWidget(self.start_minimized_checkbox)
+        autostart_layout.addWidget(self.start_minimized_container)
+
+        self.autostart_error_banner = InlineBanner(kind="error")
+        self.autostart_error_banner.setVisible(False)
+        autostart_layout.addWidget(self.autostart_error_banner)
+
+        self.autostart_note = QLabel(
+            "Notifications and live updates only work while RÉSIVO is running."
+        )
+        _apply_small(self.autostart_note)
+        autostart_layout.addWidget(self.autostart_note)
+
+        self.general_card.add_widget(self.autostart_container)
+        self._update_autostart_ui()
+
         layout.addWidget(self.general_card)
 
         # Notifications settings card
@@ -510,6 +570,72 @@ class SettingsPage(QWidget):
 
     def _on_confirm_close_toggled(self, checked: bool) -> None:
         set_confirm_close_setting(checked)
+
+    def _update_autostart_ui(self) -> None:
+        """Update autostart switch and sub-option according to OS and registry."""
+        if sys.platform != "win32":
+            self.autostart_container.setVisible(False)
+            return
+
+        self.autostart_container.setVisible(True)
+        if not autostart.is_supported():
+            self.autostart_checkbox.blockSignals(True)
+            self.autostart_checkbox.setEnabled(False)
+            self.autostart_checkbox.setChecked(False)
+            self.autostart_checkbox.blockSignals(False)
+            self.autostart_helper.setText("Available in the installed app (EXE) only.")
+            self.start_minimized_checkbox.setEnabled(False)
+            self.start_minimized_checkbox.setChecked(autostart.get_start_minimized_setting())
+            self.autostart_win_note.setVisible(False)
+            return
+
+        self.autostart_checkbox.setEnabled(True)
+        self.autostart_helper.setText(
+            "The app opens automatically when you sign in to Windows. You will still need to log in."
+        )
+        state = autostart.get_state()
+        is_active = (state == "enabled")
+        self.autostart_checkbox.blockSignals(True)
+        self.autostart_checkbox.setChecked(is_active)
+        self.autostart_checkbox.blockSignals(False)
+        self.start_minimized_checkbox.setEnabled(is_active)
+        self.start_minimized_checkbox.setChecked(autostart.get_start_minimized_setting())
+        self.autostart_win_note.setVisible(state == "disabled_by_windows")
+
+    def _on_autostart_toggled(self, checked: bool) -> None:
+        self.autostart_error_banner.setVisible(False)
+        if checked:
+            success, err = autostart.enable()
+            if not success:
+                self.autostart_error_banner.set_message(err or "Failed to enable autostart")
+                self.autostart_error_banner.setVisible(True)
+                self.autostart_checkbox.blockSignals(True)
+                self.autostart_checkbox.setChecked(False)
+                self.autostart_checkbox.blockSignals(False)
+                self.start_minimized_checkbox.setEnabled(False)
+                return
+        else:
+            success, err = autostart.disable()
+            if not success:
+                self.autostart_error_banner.set_message(err or "Failed to disable autostart")
+                self.autostart_error_banner.setVisible(True)
+                self.autostart_checkbox.blockSignals(True)
+                self.autostart_checkbox.setChecked(True)
+                self.autostart_checkbox.blockSignals(False)
+                self.start_minimized_checkbox.setEnabled(True)
+                return
+
+        # Re-read get_state() from registry as the source of truth
+        state = autostart.get_state()
+        is_active = (state == "enabled")
+        self.autostart_checkbox.blockSignals(True)
+        self.autostart_checkbox.setChecked(is_active)
+        self.autostart_checkbox.blockSignals(False)
+        self.start_minimized_checkbox.setEnabled(is_active)
+        self.autostart_win_note.setVisible(state == "disabled_by_windows")
+
+    def _on_start_minimized_toggled(self, checked: bool) -> None:
+        autostart.set_start_minimized_setting(checked)
 
     def _on_notif_master_toggled(self, checked: bool) -> None:
         self.notif_manager.settings.enabled = checked
