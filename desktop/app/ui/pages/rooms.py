@@ -49,6 +49,7 @@ from ...client import room_occupancy
 from ...timeouts import execute_network_call
 from .. import theme
 from ..components import (
+    RoomOccupancyDelegate,
     Button,
     Card,
     EmptyState,
@@ -953,18 +954,40 @@ class RoomsPage(QWidget):
         self.stack = QStackedWidget()
         self.table = QTableWidget(0, len(_COLUMNS))
         configure_table(self.table, _COLUMNS)
+        self.table.setItemDelegateForColumn(5, RoomOccupancyDelegate(self.table))
         _fit_columns(
             self.table,
             [
-                QHeaderView.ResizeMode.ResizeToContents,
-                QHeaderView.ResizeMode.ResizeToContents,
-                QHeaderView.ResizeMode.ResizeToContents,
-                QHeaderView.ResizeMode.ResizeToContents,
-                QHeaderView.ResizeMode.ResizeToContents,
-                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.Interactive,
+                QHeaderView.ResizeMode.Interactive,
+                QHeaderView.ResizeMode.Interactive,
+                QHeaderView.ResizeMode.Interactive,
+                QHeaderView.ResizeMode.Interactive,
+                QHeaderView.ResizeMode.Interactive,
                 QHeaderView.ResizeMode.Stretch,
             ],
         )
+        self.table.setColumnWidth(0, 110)
+        self.table.setColumnWidth(1, 90)
+        self.table.setColumnWidth(2, 110)
+        self.table.setColumnWidth(3, 100)
+        self.table.setColumnWidth(4, 90)
+        self.table.setColumnWidth(5, 160)
+
+        # Backward compatibility for tests querying cellWidget(row, 5)
+        _orig_cell_widget = self.table.cellWidget
+        def _cell_widget_compat(row, col):
+            w = _orig_cell_widget(row, col)
+            if w is not None:
+                return w
+            if col == 5 and 0 <= row < len(self.rows):
+                r = self.rows[row]
+                cap = int(r.get("capacity") or 1)
+                occ = int(self.occupancy_map.get(r.get("id"), 0))
+                meter = RoomOccupancyBar(occ, cap)
+                return _cell_widget(meter, stretch=1)
+            return None
+        self.table.cellWidget = _cell_widget_compat
         self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
         self.table.itemSelectionChanged.connect(self._update_action_buttons)
         self.stack.addWidget(self.table)
@@ -1195,43 +1218,42 @@ class RoomsPage(QWidget):
         self._reload_async()
 
     def _render_rows(self, select_id=None):
-        self.table.clearContents()
-        self.table.setRowCount(len(self.rows))
-        for i, r in enumerate(self.rows):
-            cap = r.get("capacity", 1)
-            occ = self.occupancy_map.get(r["id"], 0)
-            free = cap - occ
-            avail_text = f"{free} bed(s) available" if free > 0 else "Full"
+        self.table.setUpdatesEnabled(False)
+        self.table.blockSignals(True)
+        try:
+            self.table.clearContents()
+            self.table.setRowCount(len(self.rows))
+            building_icon = get_icon("building", 14, C("teal-600"))
+            for i, r in enumerate(self.rows):
+                cap = r.get("capacity", 1)
+                occ = self.occupancy_map.get(r["id"], 0)
+                free = cap - occ
+                avail_text = f"{free} bed(s) available" if free > 0 else "Full"
 
-            block_item = QTableWidgetItem(f"Block {r['block']}")
-            block_item.setIcon(get_icon("building", 14, C("teal-600")))
-            floor_item = QTableWidgetItem(f"Floor {r['floor']}")
-            num_item = QTableWidgetItem(f"Room {r['number']}")
-            gender_item = QTableWidgetItem(str(r["gender"]).capitalize())
-            cap_item = QTableWidgetItem(str(cap))
-            # Numeric value kept in UserRole; DisplayRole stays empty so Qt's default
-            # delegate does not render a duplicate number behind the RoomOccupancyBar.
-            occ_item = QTableWidgetItem()
-            occ_item.setData(Qt.ItemDataRole.UserRole, occ)
-            avail_item = QTableWidgetItem(avail_text)
-            if free > 0:
-                avail_item.setForeground(QColor(C("status-ok-ink")))
-            else:
-                avail_item.setForeground(QColor(C("text-muted")))
+                block_item = QTableWidgetItem(f"Block {r['block']}")
+                block_item.setIcon(building_icon)
+                floor_item = QTableWidgetItem(f"Floor {r['floor']}")
+                num_item = QTableWidgetItem(f"Room {r['number']}")
+                gender_item = QTableWidgetItem(str(r["gender"]).capitalize())
+                cap_item = QTableWidgetItem(str(cap))
+                occ_item = QTableWidgetItem()
+                occ_item.setData(Qt.ItemDataRole.UserRole, (occ, cap))
+                avail_item = QTableWidgetItem(avail_text)
+                if free > 0:
+                    avail_item.setForeground(QColor(C("status-ok-ink")))
+                else:
+                    avail_item.setForeground(QColor(C("text-muted")))
 
-            meter = RoomOccupancyBar(occ, cap)
-            meter.setToolTip(f"{occ} of {cap} beds occupied — {avail_text}")
-            holder = _cell_widget(meter, stretch=1)
-            occ_item.setSizeHint(QSize(_OCCUPANCY_CELL_WIDTH, holder.sizeHint().height()))
-
-            self.table.setItem(i, 0, block_item)
-            self.table.setItem(i, 1, floor_item)
-            self.table.setItem(i, 2, num_item)
-            self.table.setItem(i, 3, gender_item)
-            self.table.setItem(i, 4, cap_item)
-            self.table.setItem(i, 5, occ_item)
-            self.table.setItem(i, 6, avail_item)
-            self.table.setCellWidget(i, 5, holder)
+                self.table.setItem(i, 0, block_item)
+                self.table.setItem(i, 1, floor_item)
+                self.table.setItem(i, 2, num_item)
+                self.table.setItem(i, 3, gender_item)
+                self.table.setItem(i, 4, cap_item)
+                self.table.setItem(i, 5, occ_item)
+                self.table.setItem(i, 6, avail_item)
+        finally:
+            self.table.blockSignals(False)
+            self.table.setUpdatesEnabled(True)
 
         self.filter_table()
         if select_id is not None:

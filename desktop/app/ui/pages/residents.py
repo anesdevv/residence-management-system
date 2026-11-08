@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
 from ...client import CLIENT_LOCK, official_lookup
 from .. import theme
 from ..components import (
+    StatusPillDelegate,
     EmptyState,
     IconButton,
     InlineBanner,
@@ -158,18 +159,25 @@ class ResidentsPage(QWidget):
         self.stack = QStackedWidget()
         self.table = QTableWidget(0, len(_COLUMNS))
         configure_table(self.table, _COLUMNS)
+        self.table.setItemDelegateForColumn(5, StatusPillDelegate(self.table))
+        self.table.setItemDelegateForColumn(6, StatusPillDelegate(self.table))
         _fit_columns(
             self.table,
             [
-                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.Interactive,
                 QHeaderView.ResizeMode.Stretch,
-                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.Interactive,
                 QHeaderView.ResizeMode.Stretch,
-                QHeaderView.ResizeMode.ResizeToContents,
-                QHeaderView.ResizeMode.ResizeToContents,
-                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.Interactive,
+                QHeaderView.ResizeMode.Interactive,
+                QHeaderView.ResizeMode.Interactive,
             ],
         )
+        self.table.setColumnWidth(0, 130)
+        self.table.setColumnWidth(2, 180)
+        self.table.setColumnWidth(4, 110)
+        self.table.setColumnWidth(5, 130)
+        self.table.setColumnWidth(6, 140)
         self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
         self.stack.addWidget(self.table)
 
@@ -256,39 +264,44 @@ class ResidentsPage(QWidget):
                 filtered.append((r, room))
 
         self.filtered_rows = filtered
-        self.table.setRowCount(len(filtered))
-        for i, (r, room) in enumerate(filtered):
-            card_id = str(r.get("card_id", ""))
-            name = f"{r.get('first_name', '')} {r.get('last_name', '')}".strip() or "—"
-            room_item = (
-                QTableWidgetItem(f"Block {room.get('block', '—')} — Room {room.get('number', '—')}")
-                if room else QTableWidgetItem("Not assigned")
-            )
-            faculty_item = QTableWidgetItem(str(r.get("faculty") or "—"))
-            date_item = QTableWidgetItem(str(r.get("created_at", ""))[:10])
+        self.table.setUpdatesEnabled(False)
+        self.table.blockSignals(True)
+        try:
+            self.table.setRowCount(len(filtered))
+            for i, (r, room) in enumerate(filtered):
+                card_id = str(r.get("card_id", ""))
+                name = f"{r.get('first_name', '')} {r.get('last_name', '')}".strip() or "—"
+                room_item = (
+                    QTableWidgetItem(f"Block {room.get('block', '—')} — Room {room.get('number', '—')}")
+                    if room else QTableWidgetItem("Not assigned")
+                )
+                faculty_item = QTableWidgetItem(str(r.get("faculty") or "—"))
+                date_item = QTableWidgetItem(str(r.get("created_at", ""))[:10])
 
-            card_item = QTableWidgetItem(card_id)
-            name_item = QTableWidgetItem(name)
-            status_holder = _cell_widget(StatusPill(_ACTIVE_STATUS_KIND, "Active"))
-            status_item = _pill_item("Active", status_holder)
+                card_item = QTableWidgetItem(card_id)
+                name_item = QTableWidgetItem(name)
+                status_item = QTableWidgetItem("Active")
+                status_item.setData(Qt.ItemDataRole.UserRole, (_ACTIVE_STATUS_KIND, "check-circle", "Active"))
 
-            matched = None
-            if self.roster:
-                matched = card_id in self.roster
-            roster_text = "Matched" if matched is True else "Not in roster" if matched is False else "Not checked"
-            roster_holder = _cell_widget(RosterMatchBadge(matched))
-            roster_item = _pill_item(roster_text, roster_holder)
+                matched = None
+                if self.roster:
+                    matched = card_id in self.roster
+                roster_text = "Matched" if matched is True else "Not in roster" if matched is False else "Not checked"
+                roster_kind = "ok" if matched is True else "danger" if matched is False else "neutral"
+                roster_icon = "check-circle" if matched is True else "x-circle" if matched is False else "info"
+                roster_item = QTableWidgetItem(roster_text)
+                roster_item.setData(Qt.ItemDataRole.UserRole, (roster_kind, roster_icon, roster_text))
 
-            self.table.setItem(i, 0, card_item)
-            self.table.setItem(i, 1, name_item)
-            self.table.setItem(i, 2, room_item)
-            self.table.setItem(i, 3, faculty_item)
-            self.table.setItem(i, 4, date_item)
-            self.table.setItem(i, 5, status_item)
-            self.table.setItem(i, 6, roster_item)
-
-            self.table.setCellWidget(i, 5, status_holder)
-            self.table.setCellWidget(i, 6, roster_holder)
+                self.table.setItem(i, 0, card_item)
+                self.table.setItem(i, 1, name_item)
+                self.table.setItem(i, 2, room_item)
+                self.table.setItem(i, 3, faculty_item)
+                self.table.setItem(i, 4, date_item)
+                self.table.setItem(i, 5, status_item)
+                self.table.setItem(i, 6, roster_item)
+        finally:
+            self.table.blockSignals(False)
+            self.table.setUpdatesEnabled(True)
 
         self._update_empty_state()
 

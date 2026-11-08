@@ -562,15 +562,20 @@ class OfficialListPage(QWidget):
         _fit_columns(
             self.table,
             [
-                QHeaderView.ResizeMode.ResizeToContents,
-                QHeaderView.ResizeMode.ResizeToContents,
-                QHeaderView.ResizeMode.ResizeToContents,
-                QHeaderView.ResizeMode.ResizeToContents,
-                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.Interactive,
+                QHeaderView.ResizeMode.Interactive,
+                QHeaderView.ResizeMode.Interactive,
+                QHeaderView.ResizeMode.Interactive,
+                QHeaderView.ResizeMode.Interactive,
                 QHeaderView.ResizeMode.Stretch,
                 QHeaderView.ResizeMode.Stretch,
             ],
         )
+        self.table.setColumnWidth(0, 140)
+        self.table.setColumnWidth(1, 140)
+        self.table.setColumnWidth(2, 140)
+        self.table.setColumnWidth(3, 110)
+        self.table.setColumnWidth(4, 90)
         self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
         self.stack.addWidget(self.table)
 
@@ -758,27 +763,38 @@ class OfficialListPage(QWidget):
         self._update_action_states()
 
     def _render_rows(self):
-        self.table.setRowCount(len(self.rows))
+        self.table.setUpdatesEnabled(False)
+        self.table.blockSignals(True)
+        try:
+            self.table.setRowCount(len(self.rows))
+            card_icon = get_icon("official_list", 14, C("teal-600"))
 
-        for i, r in enumerate(self.rows):
-            card_item = QTableWidgetItem(str(r.get("card_id") or ""))
-            card_item.setIcon(get_icon("official_list", 14, C("teal-600")))
-            self.table.setItem(i, 0, card_item)
-            self.table.setItem(i, 1, QTableWidgetItem(str(r.get("first_name") or "")))
-            self.table.setItem(i, 2, QTableWidgetItem(str(r.get("last_name") or "")))
-            self.table.setItem(i, 3, QTableWidgetItem(str(r.get("birth_date") or "")))
-            self.table.setItem(i, 4, QTableWidgetItem(str(r.get("gender") or "").capitalize()))
-            self.table.setItem(i, 5, QTableWidgetItem(str(r.get("university") or "")))
-            self.table.setItem(i, 6, QTableWidgetItem(str(r.get("faculty") or "")))
+            for i, r in enumerate(self.rows):
+                card_item = QTableWidgetItem(str(r.get("card_id") or ""))
+                card_item.setIcon(card_icon)
+                self.table.setItem(i, 0, card_item)
+                self.table.setItem(i, 1, QTableWidgetItem(str(r.get("first_name") or "")))
+                self.table.setItem(i, 2, QTableWidgetItem(str(r.get("last_name") or "")))
+                self.table.setItem(i, 3, QTableWidgetItem(str(r.get("birth_date") or "")))
+                self.table.setItem(i, 4, QTableWidgetItem(str(r.get("gender") or "").capitalize()))
+                self.table.setItem(i, 5, QTableWidgetItem(str(r.get("university") or "")))
+                self.table.setItem(i, 6, QTableWidgetItem(str(r.get("faculty") or "")))
+        finally:
+            self.table.blockSignals(False)
+            self.table.setUpdatesEnabled(True)
 
         self.filter_table()
 
     def filter_table(self):
         needle = self.search_input.text().lower().strip()
-        for r in range(self.table.rowCount()):
-            row_data = self.rows[r] if r < len(self.rows) else {}
-            haystack = f"{row_data.get('card_id', '')} {row_data.get('first_name', '')} {row_data.get('last_name', '')} {row_data.get('university', '')} {row_data.get('faculty', '')}".lower()
-            self.table.setRowHidden(r, needle not in haystack)
+        self.table.setUpdatesEnabled(False)
+        try:
+            for r in range(self.table.rowCount()):
+                row_data = self.rows[r] if r < len(self.rows) else {}
+                haystack = f"{row_data.get('card_id', '')} {row_data.get('first_name', '')} {row_data.get('last_name', '')} {row_data.get('university', '')} {row_data.get('faculty', '')}".lower()
+                self.table.setRowHidden(r, needle not in haystack)
+        finally:
+            self.table.setUpdatesEnabled(True)
 
         self._update_empty_state()
         self._update_action_states()

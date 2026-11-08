@@ -68,6 +68,7 @@ from ...timeouts import execute_network_call
 from .. import theme
 from ..tasks import TaskRunner, human_error
 from ..components import (
+    StatusPillDelegate,
     Avatar,
     Button,
     ConfirmDialog,
@@ -407,15 +408,18 @@ class RoomChangesPage(QWidget):
         self.stack = QStackedWidget()
         self.table = QTableWidget(0, len(_COLUMNS))
         configure_table(self.table, _COLUMNS)
+        self.table.setItemDelegateForColumn(1, StatusPillDelegate(self.table))
         _fit_columns(
             self.table,
             [
                 QHeaderView.ResizeMode.Stretch,
-                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.Interactive,
                 QHeaderView.ResizeMode.Stretch,
-                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.Interactive,
             ],
         )
+        self.table.setColumnWidth(1, 130)
+        self.table.setColumnWidth(3, 110)
         self.table.itemSelectionChanged.connect(self.show_detail)
         self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
         self.stack.addWidget(self.table)
@@ -779,29 +783,34 @@ class RoomChangesPage(QWidget):
 
     def _render_table(self, selected_id=None):
         """Rebuild the table from ``rows`` and restore the selection by id."""
-        self.table.setRowCount(len(self.rows))
-        restore_row = -1
+        self.table.setUpdatesEnabled(False)
+        self.table.blockSignals(True)
+        try:
+            self.table.setRowCount(len(self.rows))
+            restore_row = -1
 
-        for i, r in enumerate(self.rows):
-            if selected_id is not None and str(r.get("id")) == str(selected_id):
-                restore_row = i
-            st = _normalise_student(r)
-            status = str(r.get("status", "pending"))
-            status_kind, status_text = _status_meta(status)
+            for i, r in enumerate(self.rows):
+                if selected_id is not None and str(r.get("id")) == str(selected_id):
+                    restore_row = i
+                st = _normalise_student(r)
+                status = str(r.get("status", "pending"))
+                status_kind, status_text = _status_meta(status)
 
-            name_item = QTableWidgetItem(f"{st.get('first_name', '')} {st.get('last_name', '')}".strip())
-            status_holder = _cell_widget(StatusPill(status_kind, status_text))
-            status_item = _pill_item(status_text, status_holder)
-            reason = str(r.get("reason", ""))
-            reason_disp = (reason[:42] + "...") if len(reason) > 45 else reason
-            reason_item = QTableWidgetItem(reason_disp)
-            date_item = QTableWidgetItem(_fmt_date(r.get("created_at")))
+                name_item = QTableWidgetItem(f"{st.get('first_name', '')} {st.get('last_name', '')}".strip())
+                status_item = QTableWidgetItem(status_text)
+                status_item.setData(Qt.ItemDataRole.UserRole, (status_kind, None, status_text))
+                reason = str(r.get("reason", ""))
+                reason_disp = (reason[:42] + "...") if len(reason) > 45 else reason
+                reason_item = QTableWidgetItem(reason_disp)
+                date_item = QTableWidgetItem(_fmt_date(r.get("created_at")))
 
-            self.table.setItem(i, 0, name_item)
-            self.table.setItem(i, 1, status_item)
-            self.table.setItem(i, 2, reason_item)
-            self.table.setItem(i, 3, date_item)
-            self.table.setCellWidget(i, 1, status_holder)
+                self.table.setItem(i, 0, name_item)
+                self.table.setItem(i, 1, status_item)
+                self.table.setItem(i, 2, reason_item)
+                self.table.setItem(i, 3, date_item)
+        finally:
+            self.table.blockSignals(False)
+            self.table.setUpdatesEnabled(True)
 
         if restore_row >= 0:
             self.table.selectRow(restore_row)

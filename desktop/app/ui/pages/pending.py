@@ -65,6 +65,7 @@ from ...timeouts import execute_network_call
 from .. import theme
 from ..tasks import GatherResult, TaskRunner, human_error
 from ..components import (
+    StatusPillDelegate,
     Avatar,
     Button,
     ConfirmDialog,
@@ -424,16 +425,21 @@ class PendingPage(QWidget):
         self.stack = QStackedWidget()
         self.table = QTableWidget(0, len(_COLUMNS))
         configure_table(self.table, _COLUMNS)
+        self.table.setItemDelegateForColumn(3, StatusPillDelegate(self.table))
+        self.table.setItemDelegateForColumn(4, StatusPillDelegate(self.table))
         _fit_columns(
             self.table,
             [
-                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.Interactive,
                 QHeaderView.ResizeMode.Stretch,
                 QHeaderView.ResizeMode.Stretch,
-                QHeaderView.ResizeMode.ResizeToContents,
-                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.Interactive,
+                QHeaderView.ResizeMode.Interactive,
             ],
         )
+        self.table.setColumnWidth(0, 130)
+        self.table.setColumnWidth(3, 130)
+        self.table.setColumnWidth(4, 140)
         self.table.itemSelectionChanged.connect(self.show_detail)
         self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
         self.stack.addWidget(self.table)
@@ -678,35 +684,39 @@ class PendingPage(QWidget):
         # never performs its own roster query: filters and post-action redraws
         # must stay on the GUI thread without network I/O.
 
-        self.table.setRowCount(len(self.rows))
-        restore_row = -1
-        for i, s in enumerate(self.rows):
-            if s.get("id") == selected_id:
-                restore_row = i
-            card_id = str(s.get("card_id", ""))
-            is_match = card_id in self.official
-            raw_status = s.get("status", "pending")
-            status_kind, status_text = _status_meta(raw_status)
-            matched = True if is_match else (False if self.official else None)
+        self.table.setUpdatesEnabled(False)
+        self.table.blockSignals(True)
+        try:
+            self.table.setRowCount(len(self.rows))
+            restore_row = -1
+            for i, s in enumerate(self.rows):
+                if s.get("id") == selected_id:
+                    restore_row = i
+                card_id = str(s.get("card_id", ""))
+                is_match = card_id in self.official
+                raw_status = s.get("status", "pending")
+                status_kind, status_text = _status_meta(raw_status)
+                matched = True if is_match else (False if self.official else None)
 
-            card_item = QTableWidgetItem(card_id)
-            name_item = QTableWidgetItem(f"{s.get('first_name', '')} {s.get('last_name', '')}".strip())
-            univ_item = QTableWidgetItem(str(s.get("university") or "—"))
-            # Item text keeps the status word readable for the tests (the pill
-            # widget above it paints the colour + icon + label).
-            status_holder = _cell_widget(StatusPill(status_kind, status_text))
-            status_item = _pill_item(status_text, status_holder)
-            roster_text = "Matched" if matched is True else "Not in roster" if matched is False else "Not checked"
-            roster_holder = _cell_widget(RosterMatchBadge(matched))
-            roster_item = _pill_item(roster_text, roster_holder)
+                card_item = QTableWidgetItem(card_id)
+                name_item = QTableWidgetItem(f"{s.get('first_name', '')} {s.get('last_name', '')}".strip())
+                univ_item = QTableWidgetItem(str(s.get("university") or "—"))
+                status_item = QTableWidgetItem(status_text)
+                status_item.setData(Qt.ItemDataRole.UserRole, (status_kind, None, status_text))
+                roster_text = "Matched" if matched is True else "Not in roster" if matched is False else "Not checked"
+                roster_kind = "ok" if matched is True else "danger" if matched is False else "neutral"
+                roster_icon = "check-circle" if matched is True else "x-circle" if matched is False else "info"
+                roster_item = QTableWidgetItem(roster_text)
+                roster_item.setData(Qt.ItemDataRole.UserRole, (roster_kind, roster_icon, roster_text))
 
-            self.table.setItem(i, 0, card_item)
-            self.table.setItem(i, 1, name_item)
-            self.table.setItem(i, 2, univ_item)
-            self.table.setItem(i, 3, status_item)
-            self.table.setItem(i, 4, roster_item)
-            self.table.setCellWidget(i, 3, status_holder)
-            self.table.setCellWidget(i, 4, roster_holder)
+                self.table.setItem(i, 0, card_item)
+                self.table.setItem(i, 1, name_item)
+                self.table.setItem(i, 2, univ_item)
+                self.table.setItem(i, 3, status_item)
+                self.table.setItem(i, 4, roster_item)
+        finally:
+            self.table.blockSignals(False)
+            self.table.setUpdatesEnabled(True)
 
         if restore_row >= 0:
             self.table.selectRow(restore_row)

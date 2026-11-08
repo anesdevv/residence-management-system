@@ -142,10 +142,11 @@ class StaffAccountsPage(QWidget):
             self.table,
             [
                 QHeaderView.ResizeMode.Stretch,
-                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.Interactive,
                 QHeaderView.ResizeMode.Stretch,
             ],
         )
+        self.table.setColumnWidth(1, 160)
         self.table.itemSelectionChanged.connect(self.on_selection_changed)
         self.stack.addWidget(self.table)
 
@@ -363,13 +364,15 @@ class StaffAccountsPage(QWidget):
         selected_id = selected.get("id") if selected else None
         self.rows = [r for r in (rows or []) if isinstance(r, dict)]
 
+        self.table.setUpdatesEnabled(False)
         self.table.blockSignals(True)
         try:
             self.table.setRowCount(len(self.rows))
             restore_row = -1
+            officer_icon = get_icon("staff_accounts", 14, C("teal-600"))
             for i, r in enumerate(self.rows):
                 name_item = QTableWidgetItem(str(r.get("full_name", "")))
-                name_item.setIcon(get_icon("staff_accounts", 14, C("teal-600")))
+                name_item.setIcon(officer_icon)
                 self.table.setItem(i, 0, name_item)
                 self.table.setItem(i, 1, QTableWidgetItem(str(r.get("position") or "Officer")))
                 self.table.setItem(i, 2, QTableWidgetItem(str(r.get("id", ""))))
@@ -382,6 +385,7 @@ class StaffAccountsPage(QWidget):
                 self.table.setCurrentCell(-1, -1)
         finally:
             self.table.blockSignals(False)
+            self.table.setUpdatesEnabled(True)
         self.on_selection_changed()
 
     @staticmethod

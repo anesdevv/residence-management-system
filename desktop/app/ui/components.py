@@ -68,9 +68,14 @@ from PySide6.QtCore import (
     QTimer,
     Signal,
     Property,
+    QRect,
+    QRectF,
 )
 from PySide6.QtGui import (
     QBrush,
+    QColor,
+    QFont,
+    QIcon,
     QFontDatabase,
     QFontMetrics,
     QLinearGradient,
@@ -81,6 +86,11 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
+    QHeaderView,
+    QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QButtonGroup,
     QDialog,
     QFrame,
@@ -98,7 +108,7 @@ from PySide6.QtWidgets import (
 from . import theme
 from .icons import get_icon, get_pixmap
 from .stepper import NumberStepper
-from .theme import C, S, apply_button_style, apply_elevation, qcolor
+from .theme import C, S, apply_button_style, apply_elevation, font, qcolor
 
 # status kind -> (default label, icon) for pills and banners
 _STATUS_ICONS = {
@@ -1530,6 +1540,212 @@ class LiveDot(QLabel):
         super().hideEvent(event)
 
 
+
+class StatusPillDelegate(QStyledItemDelegate):
+    """Delegate that paints status capsules (colour, icon, text) without per-cell widgets.
+
+    Reads text from index.data(Qt.ItemDataRole.DisplayRole) and kind / icon overrides
+    from index.data(Qt.ItemDataRole.UserRole). When UserRole is absent, the kind is derived
+    from the status text.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._font = None
+        self._pixmap_cache: dict[tuple[str, str], QPixmap] = {}
+
+    def _get_pill_font(self) -> QFont:
+        if self._font is None:
+            self._font = font("small")
+            self._font.setWeight(QFont.Weight.DemiBold)
+        return self._font
+
+    def _get_icon_pixmap(self, icon_name: str, color_hex: str) -> QPixmap:
+        key = (icon_name, color_hex)
+        pix = self._pixmap_cache.get(key)
+        if pix is None:
+            pix = get_pixmap(icon_name, 12, color_hex)
+            self._pixmap_cache[key] = pix
+        return pix
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index):
+        painter.save()
+
+        # Let the style paint the row selection / background
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        opt.text = ""  # We paint our own pill text
+        opt.icon = QIcon()  # We paint our own icon
+        style = opt.widget.style() if opt.widget else QApplication.style()
+        style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+
+        # Extract data
+        text = index.data(Qt.ItemDataRole.DisplayRole) or ""
+        user_data = index.data(Qt.ItemDataRole.UserRole)
+
+        if not text and not user_data:
+            painter.restore()
+            return
+
+        icon_name = None
+        if isinstance(user_data, dict):
+            kind = user_data.get("kind")
+            icon_name = user_data.get("icon")
+            if not text:
+                text = user_data.get("label", "")
+        elif isinstance(user_data, (tuple, list)):
+            kind = user_data[0] if len(user_data) > 0 else None
+            icon_name = user_data[1] if len(user_data) > 1 else None
+            if not text and len(user_data) > 2:
+                text = user_data[2]
+        elif isinstance(user_data, str) and user_data:
+            kind = user_data
+        else:
+            kind = text.lower()
+
+        status = theme.status_kind(kind or text.lower())
+        if not icon_name:
+            if text == "Not in roster":
+                icon_name = "x-circle"
+            else:
+                icon_name = _STATUS_ICONS.get(status, "info")
+
+        tokens = _kind_tokens(status)
+        pill_font = self._get_pill_font()
+        fm = QFontMetrics(pill_font)
+        text_w = fm.horizontalAdvance(text) if text else 0
+
+        pad_x = S("pill-pad-x")
+        pill_h = 24
+        icon_size = 12
+        spacing = 6
+        pill_w = pad_x * 2 + (icon_size + spacing if icon_name else 0) + text_w
+
+        inset_x = option.rect.x() + S("space-3")
+        avail_w = max(0, option.rect.width() - S("space-3") * 2)
+        draw_w = min(pill_w, avail_w)
+        pill_y = option.rect.y() + (option.rect.height() - pill_h) // 2
+        pill_rect = QRect(inset_x, pill_y, draw_w, pill_h)
+
+        if draw_w > 0:
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            radius = pill_h / 2
+            painter.setPen(QPen(QColor(tokens["border"]), 1))
+            painter.setBrush(QBrush(QColor(tokens["bg"])))
+            painter.drawRoundedRect(pill_rect, radius, radius)
+
+            cur_x = inset_x + pad_x
+            if icon_name and cur_x + icon_size <= pill_rect.right() - pad_x + 6:
+                pix = self._get_icon_pixmap(icon_name, tokens["ink"])
+                icon_y = pill_rect.y() + (pill_h - icon_size) // 2
+                painter.drawPixmap(cur_x, icon_y, pix)
+                cur_x += icon_size + spacing
+
+            if text and cur_x < pill_rect.right():
+                painter.setFont(pill_font)
+                painter.setPen(QPen(QColor(tokens["ink"])))
+                text_rect = QRect(cur_x, pill_rect.y(), max(0, pill_rect.right() - cur_x - pad_x), pill_h)
+                painter.drawText(text_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, text)
+
+        painter.restore()
+
+    def sizeHint(self, option: QStyleOptionViewItem, index) -> QSize:
+        text = index.data(Qt.ItemDataRole.DisplayRole) or ""
+        fm = QFontMetrics(self._get_pill_font())
+        w = S("pill-pad-x") * 2 + 12 + 6 + fm.horizontalAdvance(text) + S("space-3") * 2
+        return QSize(w, 44)
+
+
+class RoomOccupancyDelegate(QStyledItemDelegate):
+    """Delegate that paints room occupancy text and progress bar without per-cell widgets."""
+
+    _STATE_TOKENS = {
+        "ok": "teal-500",
+        "near": "gold-500",
+        "full": "status-danger-ink",
+    }
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._font = None
+        self._full_font = None
+
+    def _get_fonts(self):
+        if self._font is None:
+            self._font = font("small")
+            theme.enable_tabular(self._font)
+            self._full_font = font("small")
+            self._full_font.setWeight(QFont.Weight.DemiBold)
+        return self._font, self._full_font
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index):
+        painter.save()
+
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        opt.text = ""
+        opt.icon = QIcon()
+        style = opt.widget.style() if opt.widget else QApplication.style()
+        style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+
+        data = index.data(Qt.ItemDataRole.UserRole)
+        occupied = 0
+        capacity = 1
+        if isinstance(data, (tuple, list)) and len(data) >= 2:
+            occupied = max(0, int(data[0]))
+            capacity = max(1, int(data[1] or 1))
+        elif isinstance(data, (int, float)):
+            occupied = max(0, int(data))
+
+        ratio = occupied / capacity
+        full = occupied >= capacity
+        state = "full" if full else ("near" if ratio >= 0.8 else "ok")
+
+        f_normal, f_full = self._get_fonts()
+        pad_x = S("space-3")
+        content_w = max(10, option.rect.width() - pad_x * 2)
+        content_x = option.rect.x() + pad_x
+        top_y = option.rect.y() + 6
+        text_h = 16
+
+        # Draw occupancy text
+        painter.setFont(f_normal)
+        painter.setPen(QPen(qcolor("text-secondary")))
+        text_val = f"{occupied} / {capacity}"
+        painter.drawText(QRect(content_x, top_y, content_w, text_h),
+                         Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                         text_val)
+
+        # Draw "Full" label if full
+        if full:
+            painter.setFont(f_full)
+            painter.setPen(QPen(qcolor("status-danger-ink")))
+            painter.drawText(QRect(content_x, top_y, content_w, text_h),
+                             Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight,
+                             "Full")
+
+        # Draw bar
+        bar_h = 6
+        bar_y = top_y + text_h + 3
+        bar_rect = QRect(content_x, bar_y, content_w, bar_h)
+
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(qcolor("surface-subtle"))
+        radius = bar_h / 2
+        painter.drawRoundedRect(bar_rect, radius, radius)
+
+        if ratio > 0:
+            fill_w = max(bar_h, min(content_w, int(content_w * ratio)))
+            fill_rect = QRect(content_x, bar_y, fill_w, bar_h)
+            painter.setBrush(qcolor(self._STATE_TOKENS[state]))
+            painter.drawRoundedRect(fill_rect, radius, radius)
+
+        painter.restore()
+
+    def sizeHint(self, option: QStyleOptionViewItem, index) -> QSize:
+        return QSize(140, 44)
+
 # ---------------------------------------------------------------------------
 # Table helpers (DESIGN.md §6 — DataTable contract)
 # ---------------------------------------------------------------------------
@@ -1559,6 +1775,7 @@ def style_table(table: QTableView) -> QTableView:
     vertical = table.verticalHeader()
     if vertical is not None:
         vertical.setVisible(False)
+        vertical.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
     set_row_height(table)
     enable_tabular_numerics(table)
     return table

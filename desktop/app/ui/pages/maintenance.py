@@ -58,6 +58,7 @@ from ...client import official_lookup
 from ...timeouts import execute_network_call
 from .. import theme
 from ..components import (
+    StatusPillDelegate,
     Avatar,
     Button,
     ConfirmDialog,
@@ -391,15 +392,19 @@ class MaintenancePage(QWidget):
         self.stack = QStackedWidget()
         self.table = QTableWidget(0, len(_COLUMNS))
         configure_table(self.table, _COLUMNS)
+        self.table.setItemDelegateForColumn(2, StatusPillDelegate(self.table))
         _fit_columns(
             self.table,
             [
-                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.Interactive,
                 QHeaderView.ResizeMode.Stretch,
-                QHeaderView.ResizeMode.ResizeToContents,
-                QHeaderView.ResizeMode.ResizeToContents,
+                QHeaderView.ResizeMode.Interactive,
+                QHeaderView.ResizeMode.Interactive,
             ],
         )
+        self.table.setColumnWidth(0, 140)
+        self.table.setColumnWidth(2, 130)
+        self.table.setColumnWidth(3, 110)
         self.table.itemSelectionChanged.connect(self.show_detail)
         self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
         self.stack.addWidget(self.table)
@@ -607,23 +612,32 @@ class MaintenancePage(QWidget):
     def apply_filter(self):
         needle = self.search.text().lower().strip()
         selected_cat = self.category_filter.currentData() if hasattr(self, "category_filter") else "all"
-        for r in range(self.table.rowCount()):
-            row_data = self.rows[r] if r < len(self.rows) else {}
-            st = _normalise_student(row_data)
-            status = str(row_data.get("status", ""))
-            if status == "under_review":
-                status = "pending"
-            raw_cat = str(row_data.get("category", "")).lower()
-            cat_norm = _normalize_category(raw_cat)
-            cat_label = _category_label(raw_cat).lower()
-            desc = str(row_data.get("description", "")).lower()
-            name = f"{st.get('first_name', '')} {st.get('last_name', '')}".lower()
+        visible = 0
+        self.table.setUpdatesEnabled(False)
+        try:
+            for r in range(self.table.rowCount()):
+                row_data = self.rows[r] if r < len(self.rows) else {}
+                st = _normalise_student(row_data)
+                status = str(row_data.get("status", ""))
+                if status == "under_review":
+                    status = "pending"
+                raw_cat = str(row_data.get("category", "")).lower()
+                cat_norm = _normalize_category(raw_cat)
+                cat_label = _category_label(raw_cat).lower()
+                desc = str(row_data.get("description", "")).lower()
+                name = f"{st.get('first_name', '')} {st.get('last_name', '')}".lower()
 
-            status_matches = self.filter_mode == "all" or status == self.filter_mode
-            cat_matches = (selected_cat in (None, "all")) or (cat_norm == selected_cat)
-            text_matches = needle in f"{cat_norm} {cat_label} {desc} {name}"
-            self.table.setRowHidden(r, not (status_matches and cat_matches and text_matches))
-        self._update_view_state()
+                status_matches = self.filter_mode == "all" or status == self.filter_mode
+                cat_matches = (selected_cat in (None, "all")) or (cat_norm == selected_cat)
+                text_matches = needle in f"{cat_norm} {cat_label} {desc} {name}"
+                hidden = not (status_matches and cat_matches and text_matches)
+                self.table.setRowHidden(r, hidden)
+                if not hidden:
+                    visible += 1
+        finally:
+            self.table.setUpdatesEnabled(True)
+        self.stack.setCurrentIndex(0 if visible else 1)
+        self._update_segment_counts()
 
     def _update_view_state(self):
         """Table/empty-state swap + segment counts (never rebuilds the table)."""
@@ -769,30 +783,39 @@ class MaintenancePage(QWidget):
 
         selected_id = self.selected().get("id") if self.selected() else None
         self.rows = rows
-        self.table.setRowCount(len(self.rows))
-        restore_row = -1
+        self.table.setUpdatesEnabled(False)
+        self.table.blockSignals(True)
+        try:
+            self.table.setRowCount(len(self.rows))
+            restore_row = -1
+            icon_cache = {}
 
-        for i, r in enumerate(self.rows):
-            if r.get("id") == selected_id:
-                restore_row = i
-            st = _normalise_student(r)
-            status = r.get("status", "pending")
-            status_kind, status_text = _status_meta(status)
-            category = str(r.get("category") or "other")
+            for i, r in enumerate(self.rows):
+                if r.get("id") == selected_id:
+                    restore_row = i
+                st = _normalise_student(r)
+                status = r.get("status", "pending")
+                status_kind, status_text = _status_meta(status)
+                category = str(r.get("category") or "other")
 
-            cat_label = _category_label(r.get("category"))
-            cat_item = QTableWidgetItem(cat_label)
-            cat_item.setIcon(get_icon(_category_icon(r.get("category")), 14, C("text-secondary")))
-            student_item = QTableWidgetItem(f"{st.get('first_name', '')} {st.get('last_name', '')}".strip())
-            status_holder = _cell_widget(StatusPill(status_kind, status_text))
-            status_item = _pill_item(status_text, status_holder)
-            date_item = QTableWidgetItem(_fmt_date(r.get("created_at")))
+                cat_label = _category_label(r.get("category"))
+                cat_item = QTableWidgetItem(cat_label)
+                if category not in icon_cache:
+                    icon_cache[category] = get_icon(_category_icon(r.get("category")), 14, C("text-secondary"))
+                cat_item.setIcon(icon_cache[category])
 
-            self.table.setItem(i, 0, cat_item)
-            self.table.setItem(i, 1, student_item)
-            self.table.setItem(i, 2, status_item)
-            self.table.setItem(i, 3, date_item)
-            self.table.setCellWidget(i, 2, status_holder)
+                student_item = QTableWidgetItem(f"{st.get('first_name', '')} {st.get('last_name', '')}".strip())
+                status_item = QTableWidgetItem(status_text)
+                status_item.setData(Qt.ItemDataRole.UserRole, (status_kind, None, status_text))
+                date_item = QTableWidgetItem(_fmt_date(r.get("created_at")))
+
+                self.table.setItem(i, 0, cat_item)
+                self.table.setItem(i, 1, student_item)
+                self.table.setItem(i, 2, status_item)
+                self.table.setItem(i, 3, date_item)
+        finally:
+            self.table.blockSignals(False)
+            self.table.setUpdatesEnabled(True)
 
         if restore_row >= 0:
             self.table.selectRow(restore_row)
