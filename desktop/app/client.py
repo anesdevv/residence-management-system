@@ -5,7 +5,24 @@ import re
 import threading
 
 from supabase import create_client, Client
+from supabase.lib.client_options import ClientOptions
 from .config import SUPABASE_URL, SUPABASE_ANON_KEY
+from .timeouts import (
+    AUTH_TIMEOUT,
+    CONNECT_TIMEOUT_S,
+    EDGE_FUNCTION_TIMEOUT_S,
+    FUNCTION_TIMEOUT,
+    POSTGREST_TIMEOUT,
+    READ_TIMEOUT_S,
+    STORAGE_DOWNLOAD_TIMEOUT_S,
+    STORAGE_TIMEOUT,
+    STORAGE_UPLOAD_TIMEOUT_S,
+    WRITE_TIMEOUT_S,
+    NetworkError,
+    NetworkTimeoutError,
+    execute_network_call,
+    is_timeout_exception,
+)
 
 # Supabase's synchronous client keeps lazily-created sub-clients and an auth
 # session on one object.  The live-sync thread and action workers share it, so
@@ -37,11 +54,22 @@ _CREDENTIAL_RE = re.compile(
 
 
 def make_client() -> Client:
-    return create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+    opts = ClientOptions(
+        postgrest_client_timeout=POSTGREST_TIMEOUT,
+        storage_client_timeout=STORAGE_TIMEOUT,
+        function_client_timeout=FUNCTION_TIMEOUT,
+    )
+    client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY, options=opts)
+    if hasattr(client, "auth") and hasattr(client.auth, "_http_client") and client.auth._http_client is not None:
+        client.auth._http_client.timeout = AUTH_TIMEOUT
+    return client
 
 
 def sign_in(client: Client, email: str, password: str):
-    return client.auth.sign_in_with_password({"email": email, "password": password})
+    return execute_network_call(
+        lambda: client.auth.sign_in_with_password({"email": email, "password": password}),
+        is_write=False,
+    )
 
 
 def clear_local_session(client: Client) -> None:
@@ -246,7 +274,7 @@ def resolve_role(client: Client) -> str:
         if cached is not None:
             return cached
         try:
-            response = client.auth.get_user()
+            response = execute_network_call(lambda: client.auth.get_user(), is_write=False)
             user = (
                 response.get("user")
                 if isinstance(response, dict)
@@ -258,12 +286,15 @@ def resolve_role(client: Client) -> str:
             user_id = user.get("id") if isinstance(user, dict) else user.id
             if not isinstance(user_id, str) or not user_id.strip():
                 raise RoleLookupError("The signed-in account has no user id.")
-            profile = (
-                client.table("profiles")
-                .select("role")
-                .eq("id", user_id)
-                .single()
-                .execute()
+            profile = execute_network_call(
+                lambda: (
+                    client.table("profiles")
+                    .select("role")
+                    .eq("id", user_id)
+                    .single()
+                    .execute()
+                ),
+                is_write=False,
             )
             data = (
                 profile.get("data")
@@ -280,7 +311,10 @@ def resolve_role(client: Client) -> str:
             _log.warning("Role lookup failed: %s", exc)
             raise
         except Exception as exc:  # noqa: BLE001 - translated to a safe error
-            reason = _safe_reason(exc)
+            if isinstance(exc, NetworkTimeoutError):
+                reason = str(exc)
+            else:
+                reason = _safe_reason(exc)
             _log.warning("Role lookup failed: %s", reason)
             raise RoleLookupError(reason) from exc
 
@@ -310,13 +344,16 @@ PAGE_SIZE = 1000
 def _fetch_all_rows(query) -> list[dict]:
     """Fetch all rows from a PostgREST query, paginating if supported."""
     if not hasattr(query, "range") or not callable(getattr(query, "range", None)):
-        resp = query.execute()
+        resp = execute_network_call(lambda: query.execute(), is_write=False)
         return list(resp.data or [])
 
     all_rows: list[dict] = []
     offset = 0
     while True:
-        resp = query.range(offset, offset + PAGE_SIZE - 1).execute()
+        resp = execute_network_call(
+            lambda: query.range(offset, offset + PAGE_SIZE - 1).execute(),
+            is_write=False,
+        )
         rows = list(resp.data or [])
         all_rows.extend(rows)
         if len(rows) < PAGE_SIZE:
@@ -341,7 +378,10 @@ def room_occupancy(client: Client, *, strict: bool = False) -> dict[str, int]:
             # 1. Fast path: server-side Postgres aggregation via RPC
             if hasattr(client, "rpc") and callable(getattr(client, "rpc", None)):
                 try:
-                    rpc_resp = client.rpc("get_room_occupancy", {}).execute()
+                    rpc_resp = execute_network_call(
+                        lambda: client.rpc("get_room_occupancy", {}).execute(),
+                        is_write=False,
+                    )
                     data = getattr(rpc_resp, "data", None)
                     if isinstance(data, list):
                         return {

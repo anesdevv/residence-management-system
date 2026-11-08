@@ -48,6 +48,15 @@ _FALLBACK_KEY = (
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "") or _FALLBACK_URL
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "") or _FALLBACK_KEY
 
+from .timeouts import (
+    CONNECT_TIMEOUT_S,
+    READ_TIMEOUT_S,
+    WRITE_TIMEOUT_S,
+    STORAGE_DOWNLOAD_TIMEOUT_S,
+    STORAGE_UPLOAD_TIMEOUT_S,
+    EDGE_FUNCTION_TIMEOUT_S,
+)
+
 
 def config_error() -> str | None:
     """Return a safe, user-facing configuration error, or ``None`` if valid.

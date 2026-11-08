@@ -15,18 +15,28 @@ export const prerender = false;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const uid = Astro.locals.user!.id;
 
-const [{ data: reports }, { data: student }] = await Promise.all([
-  supabase
-    .from('maintenance_reports')
-    .select('id, category, description, status, staff_note, photo_path, created_at')
-    .eq('student_id', uid)
-    .order('created_at', { ascending: false }),
-  supabase
-    .from('students')
-    .select('status, room_id, rooms(block, number)')
-    .eq('id', uid)
-    .single(),
-]);
+let reports: any[] = [];
+let student: any = null;
+let queryError: string | null = null;
+
+try {
+  const [repRes, stuRes] = await Promise.all([
+    supabase
+      .from('maintenance_reports')
+      .select('id, category, description, status, staff_note, photo_path, created_at')
+      .eq('student_id', uid)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('students')
+      .select('status, room_id, rooms(block, number)')
+      .eq('id', uid)
+      .single(),
+  ]);
+  reports = repRes.data ?? [];
+  student = stuRes.data;
+} catch (err: any) {
+  queryError = err?.message || 'The server is taking too long to respond. Check your connection and try again.';
+}
 
 const isActive = student?.status === 'active';
 
@@ -87,6 +97,12 @@ const STAGES = [...MAINTENANCE_STAGES];
   {created && (
     <InlineBanner kind="success" title="Maintenance ticket dispatched!" class="mb-6">
       Your report has been queued for housing facility technicians. You can follow progress in your ticket history below.
+    </InlineBanner>
+  )}
+
+  {queryError && (
+    <InlineBanner kind="error" title="Connection error" class="mb-6">
+      {queryError}
     </InlineBanner>
   )}
 

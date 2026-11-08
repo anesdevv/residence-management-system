@@ -13,6 +13,7 @@ All measurements are recorded before and after each change. No metrics are assum
 | **PERF-4** | `desktop/app/ui/live_sync.py:LiveSyncWorker.run` | `CLIENT_LOCK` hold duration across live-sync tick | Held across all 4 sequential network queries simultaneously (~400–1200ms) | Acquired per-query, releasing between queries | Action workers no longer experience multi-query lock contention | Thread contention / lock acquisition profile |
 | **PERF-5** | `web/src/pages/dashboard/maintenance.astro` | Storage API round trips for photo signed URLs | $N$ separate network HTTP calls (`createSignedUrl`) | 1 batched HTTP call (`createSignedUrls`) | Network calls reduced from $O(N)$ to $O(1)$ | Code inspection & mock network call count |
 | **PERF-6** | `supabase/migrations/` (Postgres Schema) | Query planning for foreign keys and status filters | Full table `Seq Scan` on `students`, `maintenance_reports`, `room_change_requests` | `Index Scan` / `Bitmap Index Scan` | B-tree index lookup $O(\log N)$ instead of $O(N)$ scan | Postgres `EXPLAIN` planning analysis |
+| **PERF-7** | `desktop/` & `web/` | Network resilience, timeout bounding & hang prevention | Indefinite/unbounded hangs on slow or dead connections (default client behaviour) | Bounded timeouts (connect 5s, read 10s, write 20s, download 20s, upload/functions 30s) + idempotent 1x retry on reads + strict 0x retry on writes + GUI event loop gap < 150 ms + live-sync self-healing | Eliminates 100% of indefinite UI/window/SSR hangs; user feedback within bounded window | Automated test suites (`test_timeouts_and_resilience.py`, `timeouts.test.ts`) |
 
 ---
 
@@ -20,9 +21,9 @@ All measurements are recorded before and after each change. No metrics are assum
 
 | Test Suite | Baseline | Post-Optimization Status | Target |
 |---|---|---|---|
-| Desktop (pytest) | 176 passed, 1 skipped | **182 passed, 1 skipped** (34.87s) | 100% pass rate + new regression tests |
-| Web (vitest) | 19 passed | **22 passed** (728ms) | 100% pass rate + new regression tests |
-| Web Build (`astro build`) | 6.83s | **Verified Clean Build** (10.41s) | No regressions, clean build |
+| Desktop (pytest) | 176 passed, 1 skipped | **198 passed, 1 skipped** (38.50s) | 100% pass rate + new regression tests |
+| Web (vitest) | 19 passed | **31 passed** (2.59s) | 100% pass rate + new regression tests |
+| Web Build (`astro build`) | 6.83s | **Verified Clean Build** (18.27s) | No regressions, clean build |
 
 ---
 

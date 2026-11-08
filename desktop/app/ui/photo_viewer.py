@@ -26,6 +26,7 @@ thread with a 15 s timeout and the ``loaded`` / ``failed`` / ``stop()`` /
 from __future__ import annotations
 
 import urllib.request
+from ..timeouts import STORAGE_DOWNLOAD_TIMEOUT_S, NetworkTimeoutError, is_timeout_exception
 
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QPixmap
@@ -108,7 +109,7 @@ class PhotoFetchWorker(QThread):
 
         try:
             req = urllib.request.Request(self.url, headers={"User-Agent": "Mozilla/5.0 (RÉSIVO Staff Console)"})
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=STORAGE_DOWNLOAD_TIMEOUT_S) as resp:
                 chunks = []
                 while not self._stopped:
                     chunk = resp.read(65536)
@@ -119,7 +120,10 @@ class PhotoFetchWorker(QThread):
                     self.loaded.emit(b"".join(chunks))
         except Exception as exc:  # noqa: BLE001
             if not self._stopped:
-                self.failed.emit(str(exc))
+                if is_timeout_exception(exc):
+                    self.failed.emit(NetworkTimeoutError.READ_MESSAGE)
+                else:
+                    self.failed.emit(str(exc))
 
 
 # Alpha of the modal scrim over the console behind the viewer (navy-900 ~92 %).

@@ -64,6 +64,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...client import official_lookup, room_occupancy
+from ...timeouts import execute_network_call
 from .. import theme
 from ..tasks import TaskRunner, human_error
 from ..components import (
@@ -930,8 +931,13 @@ class RoomChangesPage(QWidget):
 
     def _on_action_failed(self, message: str):
         self.action_banner.set_kind("error")
-        self.action_banner.set_title("Action failed")
-        self.action_banner.set_message(f"The request could not be completed: {message}")
+        if "result is unknown" in message.lower():
+            self.action_banner.set_title("Request timed out")
+            self.action_banner.set_message(message)
+            self.reload()
+        else:
+            self.action_banner.set_title("Action failed")
+            self.action_banner.set_message(f"The request could not be completed: {message}")
         self.action_banner.setVisible(True)
         self._end_working()
 
@@ -956,18 +962,24 @@ class RoomChangesPage(QWidget):
 
     def _approve_rpc(self, request_id, room_id):
         """Run the approval RPC; return its row plus the follow-up snapshot."""
-        response = self.client.rpc(
-            "approve_room_change", {"p_request": request_id, "p_room": room_id}
-        ).execute()
+        response = execute_network_call(
+            lambda: self.client.rpc(
+                "approve_room_change", {"p_request": request_id, "p_room": room_id}
+            ).execute(),
+            is_write=True,
+        )
         decision_row = _rpc_row(response)
         rows, refresh_error = self._fetch_after_decision()
         return decision_row, rows, refresh_error
 
     def _reject_rpc(self, request_id, reason):
         """Run the rejection RPC; return its row plus the follow-up snapshot."""
-        response = self.client.rpc(
-            "reject_room_change", {"p_request": request_id, "p_reason": reason}
-        ).execute()
+        response = execute_network_call(
+            lambda: self.client.rpc(
+                "reject_room_change", {"p_request": request_id, "p_reason": reason}
+            ).execute(),
+            is_write=True,
+        )
         decision_row = _rpc_row(response)
         rows, refresh_error = self._fetch_after_decision()
         return decision_row, rows, refresh_error

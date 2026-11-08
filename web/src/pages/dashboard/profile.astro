@@ -13,11 +13,19 @@ export const prerender = false;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const uid = Astro.locals.user!.id;
 
-const { data: s } = await supabase
-  .from('students')
-  .select('card_id, first_name, last_name, birth_date, gender, phone, email, university, faculty, study_level, wilaya, status')
-  .eq('id', uid)
-  .single();
+let s: any = null;
+let queryError: string | null = null;
+
+try {
+  const { data } = await supabase
+    .from('students')
+    .select('card_id, first_name, last_name, birth_date, gender, phone, email, university, faculty, study_level, wilaya, status')
+    .eq('id', uid)
+    .single();
+  s = data;
+} catch (err: any) {
+  queryError = err?.message || 'The server is taking too long to respond. Check your connection and try again.';
+}
 
 const error = Astro.url.searchParams.get('error');
 const updated = Astro.url.searchParams.get('updated');
@@ -43,6 +51,12 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
   {updated && (
     <InlineBanner kind="success" title="Contact details updated!" class="mb-6">
       Your mobile phone number and email address have been saved successfully to the residence registry.
+    </InlineBanner>
+  )}
+
+  {queryError && (
+    <InlineBanner kind="error" title="Connection error" class="mb-6">
+      {queryError}
     </InlineBanner>
   )}
 

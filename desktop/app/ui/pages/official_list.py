@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...importers.official_list import read_official_file
+from ...timeouts import execute_network_call
 from .. import theme
 from ..components import (
     Button,
@@ -269,7 +270,7 @@ class OfficialResidentDialog(QDialog):
         if not self.isVisible():
             if self.client:
                 try:
-                    resp = self.client.rpc(rpc_name, params).execute()
+                    resp = execute_network_call(lambda: self.client.rpc(rpc_name, params).execute(), is_write=True)
                     self.result_data = getattr(resp, "data", None)
                 except Exception as exc:
                     self._on_save_failed(human_error(exc))
@@ -280,7 +281,7 @@ class OfficialResidentDialog(QDialog):
         self._set_busy(True)
         started = self.tasks.run(
             "official-save",
-            lambda: self.client.rpc(rpc_name, params).execute() if self.client else None,
+            lambda: execute_network_call(lambda: self.client.rpc(rpc_name, params).execute(), is_write=True) if self.client else None,
             on_success=self._on_save_success,
             on_failed=self._on_save_failed,
             on_finished=lambda: self._set_busy(False),
@@ -902,7 +903,7 @@ class OfficialListPage(QWidget):
             self._on_action_finished()
 
     def _delete_entries_worker(self, card_ids: list[str]) -> int:
-        resp = self.client.rpc("delete_official_residents", {"p_card_ids": card_ids}).execute()
+        resp = execute_network_call(lambda: self.client.rpc("delete_official_residents", {"p_card_ids": card_ids}).execute(), is_write=True)
         count = getattr(resp, "data", len(card_ids))
         return int(count) if isinstance(count, (int, float)) else len(card_ids)
 
@@ -942,7 +943,7 @@ class OfficialListPage(QWidget):
             self._on_action_finished()
 
     def _clear_all_worker(self) -> int:
-        resp = self.client.rpc("clear_official_residents", {}).execute()
+        resp = execute_network_call(lambda: self.client.rpc("clear_official_residents", {}).execute(), is_write=True)
         count = getattr(resp, "data", len(self.rows))
         return int(count) if isinstance(count, (int, float)) else len(self.rows)
 
@@ -965,10 +966,17 @@ class OfficialListPage(QWidget):
         self.table.setEnabled(False)
 
     def _on_action_failed(self, message: str) -> None:
-        self.result_banner.set_kind("error")
-        self.result_banner.set_title("Action failed")
-        self.result_banner.set_message(message)
-        self.result_banner.setVisible(True)
+        if "result is unknown" in message.lower():
+            self.result_banner.set_kind("error")
+            self.result_banner.set_title("Request timed out")
+            self.result_banner.set_message(message)
+            self.result_banner.setVisible(True)
+            self.reload()
+        else:
+            self.result_banner.set_kind("error")
+            self.result_banner.set_title("Action failed")
+            self.result_banner.set_message(message)
+            self.result_banner.setVisible(True)
 
     def _on_action_finished(self) -> None:
         self._action_busy = False
@@ -1029,7 +1037,7 @@ class OfficialListPage(QWidget):
         except Exception as exc:  # noqa: BLE001 - reported in the result banner
             return {"ok": False, "path": path, "rows": 0, "error": human_error(exc)}
         try:
-            resp = self.client.rpc("import_official_residents", {"p_rows": rows}).execute()
+            resp = execute_network_call(lambda: self.client.rpc("import_official_residents", {"p_rows": rows}).execute(), is_write=True)
         except Exception as exc:  # noqa: BLE001 - reported in the result banner
             return {"ok": False, "path": path, "rows": len(rows), "error": human_error(exc)}
         return {

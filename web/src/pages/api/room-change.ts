@@ -1,6 +1,7 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
+import { TIMEOUT_MESSAGES } from '../../lib/timeouts';
 
 export const POST: APIRoute = async (context) => {
   const user = context.locals.user;
@@ -15,83 +16,88 @@ export const POST: APIRoute = async (context) => {
     return context.redirect('/dashboard/room-change?error=Please+describe+your+reason');
   }
 
-  const supabase = createSupabaseServerClient(context.request, context.cookies);
-  const { data: student } = await supabase
-    .from('students')
-    .select('room_id, status, gender')
-    .eq('id', user.id)
-    .single();
+  try {
+    const supabase = createSupabaseServerClient(context.request, context.cookies);
+    const { data: student } = await supabase
+      .from('students')
+      .select('room_id, status, gender')
+      .eq('id', user.id)
+      .single();
 
-  if (student?.status !== 'active' || !student?.room_id) {
-    return context.redirect(
-      `/dashboard/room-change?error=${encodeURIComponent(
-        'Your account is pending review. Only active residents with an assigned room can request a room change.',
-      )}`,
-    );
-  }
-
-  const { data: existingPending } = await supabase
-    .from('room_change_requests')
-    .select('id')
-    .eq('student_id', user.id)
-    .eq('status', 'pending')
-    .maybeSingle();
-
-  if (existingPending) {
-    return context.redirect(
-      `/dashboard/room-change?error=${encodeURIComponent(
-        'You already have a pending room transfer request undergoing administrative review.',
-      )}`,
-    );
-  }
-
-  if (preferred) {
-    if (preferred === student.room_id) {
+    if (student?.status !== 'active' || !student?.room_id) {
       return context.redirect(
         `/dashboard/room-change?error=${encodeURIComponent(
-          'Preferred room cannot be your current room.',
+          'Your account is pending review. Only active residents with an assigned room can request a room change.',
         )}`,
       );
     }
-    const { data: targetRoom } = await supabase
-      .from('rooms')
-      .select('gender')
-      .eq('id', preferred)
+
+    const { data: existingPending } = await supabase
+      .from('room_change_requests')
+      .select('id')
+      .eq('student_id', user.id)
+      .eq('status', 'pending')
       .maybeSingle();
 
-    if (!targetRoom) {
-      return context.redirect(
-        `/dashboard/room-change?error=${encodeURIComponent('The selected room does not exist.')}`,
-      );
-    }
-    if (targetRoom.gender !== student.gender) {
-      return context.redirect(
-        `/dashboard/room-change?error=${encodeURIComponent(
-          'Selected room is not designated for your gender block.',
-        )}`,
-      );
-    }
-  }
-
-  const { error } = await supabase.from('room_change_requests').insert({
-    student_id: user.id,
-    current_room_id: student.room_id,
-    preferred_room_id: preferred || null,
-    reason,
-  });
-  if (error) {
-    const isDuplicate =
-      error.code === '23505' ||
-      error.message?.toLowerCase().includes('duplicate') ||
-      error.message?.toLowerCase().includes('idx_one_pending_room_change');
-    if (isDuplicate) {
+    if (existingPending) {
       return context.redirect(
         `/dashboard/room-change?error=${encodeURIComponent(
           'You already have a pending room transfer request undergoing administrative review.',
         )}`,
       );
     }
-    return context.redirect(`/dashboard/room-change?error=${encodeURIComponent(error.message)}`);
+
+    if (preferred) {
+      if (preferred === student.room_id) {
+        return context.redirect(
+          `/dashboard/room-change?error=${encodeURIComponent(
+            'Preferred room cannot be your current room.',
+          )}`,
+        );
+      }
+      const { data: targetRoom } = await supabase
+        .from('rooms')
+        .select('gender')
+        .eq('id', preferred)
+        .maybeSingle();
+
+      if (!targetRoom) {
+        return context.redirect(
+          `/dashboard/room-change?error=${encodeURIComponent('The selected room does not exist.')}`,
+        );
+      }
+      if (targetRoom.gender !== student.gender) {
+        return context.redirect(
+          `/dashboard/room-change?error=${encodeURIComponent(
+            'Selected room is not designated for your gender block.',
+          )}`,
+        );
+      }
+    }
+
+    const { error } = await supabase.from('room_change_requests').insert({
+      student_id: user.id,
+      current_room_id: student.room_id,
+      preferred_room_id: preferred || null,
+      reason,
+    });
+    if (error) {
+      const isDuplicate =
+        error.code === '23505' ||
+        error.message?.toLowerCase().includes('duplicate') ||
+        error.message?.toLowerCase().includes('idx_one_pending_room_change');
+      if (isDuplicate) {
+        return context.redirect(
+          `/dashboard/room-change?error=${encodeURIComponent(
+            'You already have a pending room transfer request undergoing administrative review.',
+          )}`,
+        );
+      }
+      return context.redirect(`/dashboard/room-change?error=${encodeURIComponent(error.message)}`);
+    }
+    return context.redirect('/dashboard/room-change?created=1');
+  } catch (err: any) {
+    const message = err?.message || TIMEOUT_MESSAGES.WRITE;
+    return context.redirect(`/dashboard/room-change?error=${encodeURIComponent(message)}`);
   }
-  return context.redirect('/dashboard/room-change?created=1');
 };

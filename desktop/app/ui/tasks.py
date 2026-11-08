@@ -15,6 +15,12 @@ from typing import Callable
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot
 
 from ..client import CLIENT_LOCK, redact_sensitive
+from ..timeouts import (
+    NetworkError,
+    NetworkTimeoutError,
+    is_connection_error,
+    is_timeout_exception,
+)
 
 _log = logging.getLogger("resivo.tasks")
 
@@ -43,6 +49,12 @@ def _task_finished() -> None:
 
 def human_error(exc: BaseException) -> str:
     """Return a short, redacted, user-readable error rather than a traceback."""
+    if isinstance(exc, (NetworkTimeoutError, NetworkError)):
+        return str(exc)
+    if is_timeout_exception(exc):
+        return NetworkTimeoutError.READ_MESSAGE
+    if is_connection_error(exc):
+        return NetworkError.DEFAULT_MESSAGE
     message = str(exc).strip()
     if not message:
         message = exc.__class__.__name__

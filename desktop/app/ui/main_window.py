@@ -530,6 +530,7 @@ class MainWindow(QMainWindow):
         self.sync_worker = LiveSyncWorker(client, interval_ms=2000)
         self.sync_worker.sync_tick.connect(self.on_live_sync_tick)
         self.sync_worker.alert_event.connect(self.on_live_alert)
+        self.sync_worker.sync_error.connect(self.on_live_sync_error)
         self.sync_worker.start()
 
     # ------------------------------------------------------------------ shell
@@ -913,6 +914,10 @@ class MainWindow(QMainWindow):
         components.show_toast(self, msg, kind="info", icon="bell")
         if hasattr(self, "notification_manager"):
             self.notification_manager.process_alert(msg, window=self)
+
+    def on_live_sync_error(self, _err_msg: str):
+        """Worker timed out or lost connection: show reconnecting in amber."""
+        self._set_live_state("reconnecting")
 
     def on_live_sync_tick(self, data: dict):
         pending_students = data.get("pending_students", [])

@@ -279,6 +279,38 @@ const sectionTitles: Record<DashboardNav, string> = {
         if (button) button.addEventListener('click', dismiss);
         setTimeout(dismiss, 4000);
       });
+
+      /* Form submission timeout watchdog: re-enables buttons and shows friendly error if server stalls */
+      document.addEventListener('submit', function (e) {
+        var form = e.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        var submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+        var isMultipart = form.enctype === 'multipart/form-data' || Boolean(form.querySelector('input[type="file"]'));
+        var timeoutMs = isMultipart ? 30000 : 20000;
+
+        var originalText = submitBtn ? submitBtn.innerHTML : '';
+        var timer = setTimeout(function () {
+          if (submitBtn) {
+            submitBtn.removeAttribute('disabled');
+            submitBtn.innerHTML = originalText;
+          }
+          var existingBanner = form.querySelector('.timeout-banner');
+          if (!existingBanner) {
+            var banner = document.createElement('div');
+            banner.className = 'timeout-banner mt-3 p-3 rounded-md bg-red-50 border border-red-200 text-red-800 text-sm font-medium';
+            banner.textContent = 'The server is taking too long to respond. Check your connection and try again.';
+            form.prepend(banner);
+          }
+        }, timeoutMs + 1000);
+
+        window.addEventListener('pageshow', function () {
+          clearTimeout(timer);
+          if (submitBtn) {
+            submitBtn.removeAttribute('disabled');
+            submitBtn.innerHTML = originalText;
+          }
+        });
+      });
     </script>
   </body>
 </html>

@@ -12,30 +12,42 @@ export const prerender = false;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const uid = Astro.locals.user!.id;
 
-const [{ data: student }, { data: requests }] = await Promise.all([
-  supabase
-    .from('students')
-    .select('gender, status, room_id, rooms(block, floor, number)')
-    .eq('id', uid)
-    .single(),
-  supabase
-    .from('room_change_requests')
-    .select('id, reason, status, decision_note, preferred_room_id, created_at, rooms:preferred_room_id(block, floor, number)')
-    .eq('student_id', uid)
-    .order('created_at', { ascending: false }),
-]);
+let student: any = null;
+let requests: any[] = [];
+let rawRooms: any[] = [];
+let queryError: string | null = null;
 
-const isActive = student?.status === 'active' && !!student?.room_id;
-const hasPendingRequest = (requests ?? []).some((r: any) => r.status === 'pending');
+try {
+  const [stuRes, reqRes] = await Promise.all([
+    supabase
+      .from('students')
+      .select('gender, status, room_id, rooms(block, floor, number)')
+      .eq('id', uid)
+      .single(),
+    supabase
+      .from('room_change_requests')
+      .select('id, reason, status, decision_note, preferred_room_id, created_at, rooms:preferred_room_id(block, floor, number)')
+      .eq('student_id', uid)
+      .order('created_at', { ascending: false }),
+  ]);
+  student = stuRes.data;
+  requests = reqRes.data ?? [];
 
-const { data: rawRooms } = isActive
-  ? await supabase
+  if (student?.status === 'active' && Boolean(student?.room_id)) {
+    const { data: roomsData } = await supabase
       .from('rooms')
       .select('id, block, floor, number, capacity, gender')
       .eq('gender', student?.gender ?? 'male')
       .order('block')
-      .order('number')
-  : { data: [] };
+      .order('number');
+    rawRooms = roomsData ?? [];
+  }
+} catch (err: any) {
+  queryError = err?.message || 'The server is taking too long to respond. Check your connection and try again.';
+}
+
+const isActive = student?.status === 'active' && !!student?.room_id;
+const hasPendingRequest = (requests ?? []).some((r: any) => r.status === 'pending');
 
 const rooms = (rawRooms ?? []).filter((r: any) => r.id !== student?.room_id);
 
@@ -84,6 +96,12 @@ const motives = [
   {created && (
     <InlineBanner kind="success" title="Transfer request submitted!" class="mb-6">
       Your transfer application has been filed in the administrative docket. Housing officers will review bed availability and update your petition here.
+    </InlineBanner>
+  )}
+
+  {queryError && (
+    <InlineBanner kind="error" title="Connection error" class="mb-6">
+      {queryError}
     </InlineBanner>
   )}
 

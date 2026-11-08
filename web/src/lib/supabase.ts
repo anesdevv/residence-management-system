@@ -1,5 +1,6 @@
 import { createServerClient, createBrowserClient, parseCookieHeader } from '@supabase/ssr';
 import type { AstroCookies } from 'astro';
+import { createTimeoutFetch } from './timeouts';
 
 const URL = import.meta.env.PUBLIC_SUPABASE_URL;
 const ANON = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -19,11 +20,18 @@ export function createSupabaseServerClient(
         );
       },
     },
+    global: {
+      fetch: createTimeoutFetch(),
+    },
   });
 }
 
 export function createSupabaseBrowserClient() {
-  return createBrowserClient(URL, ANON);
+  return createBrowserClient(URL, ANON, {
+    global: {
+      fetch: createTimeoutFetch(),
+    },
+  });
 }
 
 export function cardIdToEmail(cardId: string) {

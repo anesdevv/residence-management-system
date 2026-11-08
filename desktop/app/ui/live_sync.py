@@ -5,6 +5,7 @@ from datetime import datetime
 from PySide6.QtCore import QThread, Signal
 
 from ..client import CLIENT_LOCK
+from ..timeouts import execute_network_call
 
 _log = logging.getLogger(__name__)
 
@@ -15,6 +16,7 @@ _ERROR_LOG_INTERVAL_S = 60.0
 class LiveSyncWorker(QThread):
     sync_tick = Signal(dict)
     alert_event = Signal(str)
+    sync_error = Signal(str)
 
     def __init__(self, client, interval_ms: int = 2500):
         super().__init__()
@@ -36,123 +38,139 @@ class LiveSyncWorker(QThread):
     def is_paused(self) -> bool:
         return self._paused
 
+    def _step(self):
+        try:
+            # 1. Fetch pending students
+            with CLIENT_LOCK:
+                s_resp = execute_network_call(
+                    lambda: (
+                        self.client.table("students")
+                        .select("*")
+                        .eq("status", "pending")
+                        .order("created_at", desc=True)
+                        .execute()
+                    ),
+                    is_write=False,
+                )
+                pending_students = s_resp.data or []
+
+            # 2. Fetch maintenance reports
+            with CLIENT_LOCK:
+                m_resp = execute_network_call(
+                    lambda: (
+                        self.client.table("maintenance_reports")
+                        .select("*, students(first_name, last_name, card_id)")
+                        .order("created_at", desc=True)
+                        .execute()
+                    ),
+                    is_write=False,
+                )
+                reports = m_resp.data or []
+                open_reports_count = sum(1 for r in reports if r.get("status") != "resolved")
+
+            # 3. Fetch ALL room change requests so processed rows stay
+            # visible in the status views; the badge stays pending-only.
+            with CLIENT_LOCK:
+                r_resp = execute_network_call(
+                    lambda: (
+                        self.client.table("room_change_requests")
+                        .select(
+                            "*, students(first_name, last_name, gender, card_id),"
+                            " staff(full_name)"
+                        )
+                        .order("created_at", desc=True)
+                        .execute()
+                    ),
+                    is_write=False,
+                )
+                requests = r_resp.data or []
+
+            # 4. Fetch active residents count for live KPI updates
+            with CLIENT_LOCK:
+                a_resp = execute_network_call(
+                    lambda: (
+                        self.client.table("students")
+                        .select("id", count="exact")
+                        .eq("status", "active")
+                        .execute()
+                    ),
+                    is_write=False,
+                )
+                active_count = a_resp.count if a_resp.count is not None else 0
+
+            # Detect new arrivals for live notifications
+            cur_s_ids = {s["id"] for s in pending_students}
+            cur_m_ids = {m["id"] for m in reports}
+            cur_r_ids = {r["id"] for r in requests}
+
+            if self._last_student_ids is not None:
+                new_students = cur_s_ids - self._last_student_ids
+                for s in pending_students:
+                    if s["id"] in new_students:
+                        self.alert_event.emit(
+                            f"New registration: {s.get('first_name', '')} {s.get('last_name', '')} (Card: {s.get('card_id', '')})"
+                        )
+
+            if self._last_report_ids is not None:
+                new_reports = cur_m_ids - self._last_report_ids
+                for r in reports:
+                    if r["id"] in new_reports and r.get("status") == "pending":
+                        st = r.get("students") or {}
+                        if isinstance(st, list) and st:
+                            st = st[0]
+                        elif not isinstance(st, dict):
+                            st = {}
+                        name = f"{st.get('first_name','')} {st.get('last_name','')}".strip()
+                        self.alert_event.emit(
+                            f"New maintenance report: {str(r.get('category','')).capitalize()} ({name or 'Student'})"
+                        )
+
+            if self._last_request_ids is not None:
+                new_reqs = cur_r_ids - self._last_request_ids
+                for req in requests:
+                    if req["id"] in new_reqs and req.get("status") == "pending":
+                        st = req.get("students") or {}
+                        if isinstance(st, list) and st:
+                            st = st[0]
+                        elif not isinstance(st, dict):
+                            st = {}
+                        name = f"{st.get('first_name','')} {st.get('last_name','')}".strip()
+                        self.alert_event.emit(
+                            f"New room-change request from {name or 'Student'}"
+                        )
+
+            self._last_student_ids = cur_s_ids
+            self._last_report_ids = cur_m_ids
+            self._last_request_ids = cur_r_ids
+
+            now_str = datetime.now().strftime("%H:%M:%S")
+
+            payload = {
+                "pending_students": pending_students,
+                "reports": reports,
+                "open_reports_count": open_reports_count,
+                # Legacy payload key kept for the shell; it now carries
+                # every status (pending / approved / rejected).
+                "pending_requests": requests,
+                "room_change_requests": requests,
+                "active_residents_count": active_count,
+                "timestamp": now_str,
+            }
+            self.sync_tick.emit(payload)
+        except Exception as exc:
+            self.sync_error.emit(str(exc))
+            # Keep the thread running through transient network
+            # timeouts, but record them at a bounded rate instead of
+            # swallowing every failure silently.
+            now = time.monotonic()
+            if now - self._last_error_logged_at >= _ERROR_LOG_INTERVAL_S:
+                self._last_error_logged_at = now
+                _log.warning("Live sync tick failed", exc_info=True)
+
     def run(self):
         while self._running:
             if not self._paused:
-                try:
-                    # 1. Fetch pending students
-                    with CLIENT_LOCK:
-                        s_resp = (
-                            self.client.table("students")
-                            .select("*")
-                            .eq("status", "pending")
-                            .order("created_at", desc=True)
-                            .execute()
-                        )
-                        pending_students = s_resp.data or []
-
-                    # 2. Fetch maintenance reports
-                    with CLIENT_LOCK:
-                        m_resp = (
-                            self.client.table("maintenance_reports")
-                            .select("*, students(first_name, last_name, card_id)")
-                            .order("created_at", desc=True)
-                            .execute()
-                        )
-                        reports = m_resp.data or []
-                        open_reports_count = sum(1 for r in reports if r.get("status") != "resolved")
-
-                    # 3. Fetch ALL room change requests so processed rows stay
-                    # visible in the status views; the badge stays pending-only.
-                    with CLIENT_LOCK:
-                        r_resp = (
-                            self.client.table("room_change_requests")
-                            .select(
-                                "*, students(first_name, last_name, gender, card_id),"
-                                " staff(full_name)"
-                            )
-                            .order("created_at", desc=True)
-                            .execute()
-                        )
-                        requests = r_resp.data or []
-
-                    # 4. Fetch active residents count for live KPI updates
-                    with CLIENT_LOCK:
-                        a_resp = (
-                            self.client.table("students")
-                            .select("id", count="exact")
-                            .eq("status", "active")
-                            .execute()
-                        )
-                        active_count = a_resp.count if a_resp.count is not None else 0
-
-                    # Detect new arrivals for live notifications
-                    cur_s_ids = {s["id"] for s in pending_students}
-                    cur_m_ids = {m["id"] for m in reports}
-                    cur_r_ids = {r["id"] for r in requests}
-
-                    if self._last_student_ids is not None:
-                        new_students = cur_s_ids - self._last_student_ids
-                        for s in pending_students:
-                            if s["id"] in new_students:
-                                self.alert_event.emit(
-                                    f"New registration: {s.get('first_name', '')} {s.get('last_name', '')} (Card: {s.get('card_id', '')})"
-                                )
-
-                    if self._last_report_ids is not None:
-                        new_reports = cur_m_ids - self._last_report_ids
-                        for r in reports:
-                            if r["id"] in new_reports and r.get("status") == "pending":
-                                st = r.get("students") or {}
-                                if isinstance(st, list) and st:
-                                    st = st[0]
-                                elif not isinstance(st, dict):
-                                    st = {}
-                                name = f"{st.get('first_name','')} {st.get('last_name','')}".strip()
-                                self.alert_event.emit(
-                                    f"New maintenance report: {str(r.get('category','')).capitalize()} ({name or 'Student'})"
-                                )
-
-                    if self._last_request_ids is not None:
-                        new_reqs = cur_r_ids - self._last_request_ids
-                        for req in requests:
-                            if req["id"] in new_reqs and req.get("status") == "pending":
-                                st = req.get("students") or {}
-                                if isinstance(st, list) and st:
-                                    st = st[0]
-                                elif not isinstance(st, dict):
-                                    st = {}
-                                name = f"{st.get('first_name','')} {st.get('last_name','')}".strip()
-                                self.alert_event.emit(
-                                    f"New room-change request from {name or 'Student'}"
-                                )
-
-                    self._last_student_ids = cur_s_ids
-                    self._last_report_ids = cur_m_ids
-                    self._last_request_ids = cur_r_ids
-
-                    now_str = datetime.now().strftime("%H:%M:%S")
-
-                    payload = {
-                        "pending_students": pending_students,
-                        "reports": reports,
-                        "open_reports_count": open_reports_count,
-                        # Legacy payload key kept for the shell; it now carries
-                        # every status (pending / approved / rejected).
-                        "pending_requests": requests,
-                        "room_change_requests": requests,
-                        "active_residents_count": active_count,
-                        "timestamp": now_str,
-                    }
-                    self.sync_tick.emit(payload)
-                except Exception:
-                    # Keep the thread running through transient network
-                    # timeouts, but record them at a bounded rate instead of
-                    # swallowing every failure silently.
-                    now = time.monotonic()
-                    if now - self._last_error_logged_at >= _ERROR_LOG_INTERVAL_S:
-                        self._last_error_logged_at = now
-                        _log.warning("Live sync tick failed", exc_info=True)
+                self._step()
 
             # Responsive sleep so thread exits cleanly without hanging
             sleep_elapsed = 0

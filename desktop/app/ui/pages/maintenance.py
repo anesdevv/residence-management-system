@@ -55,6 +55,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...client import official_lookup
+from ...timeouts import execute_network_call
 from .. import theme
 from ..components import (
     Avatar,
@@ -1131,8 +1132,11 @@ class MaintenancePage(QWidget):
         if user:
             update_data["handled_by"] = user.id
         try:
-            self.client.table("maintenance_reports").update(update_data) \
-                .eq("id", ticket_id).execute()
+            execute_network_call(
+                lambda: self.client.table("maintenance_reports").update(update_data)
+                .eq("id", ticket_id).execute(),
+                is_write=True,
+            )
         except Exception as exc:  # noqa: BLE001 - re-raised with context
             raise RuntimeError(f"Network error updating ticket: {exc}") from exc
         return update_data
@@ -1140,8 +1144,11 @@ class MaintenancePage(QWidget):
     def _delete_ticket_worker(self, ticket_id):
         """Worker: delete the ticket."""
         try:
-            self.client.table("maintenance_reports").delete() \
-                .eq("id", ticket_id).execute()
+            execute_network_call(
+                lambda: self.client.table("maintenance_reports").delete()
+                .eq("id", ticket_id).execute(),
+                is_write=True,
+            )
         except Exception as exc:  # noqa: BLE001 - re-raised with context
             raise RuntimeError(f"Failed to delete ticket: {exc}") from exc
         return True
@@ -1163,12 +1170,21 @@ class MaintenancePage(QWidget):
         self._reload_after_action = True
 
     def _on_status_failed(self, message: str) -> None:
-        self._show_banner(
-            "error",
-            "Ticket could not be updated",
-            f"The maintenance ticket was not changed. {message}",
-            mode="action",
-        )
+        if "result is unknown" in message.lower():
+            self._show_banner(
+                "error",
+                "Request timed out",
+                message,
+                mode="action",
+            )
+            self.reload()
+        else:
+            self._show_banner(
+                "error",
+                "Ticket could not be updated",
+                f"The maintenance ticket was not changed. {message}",
+                mode="action",
+            )
 
     def _on_delete_success(self, deleted, ticket_id) -> None:
         self._data_generation += 1

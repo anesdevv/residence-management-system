@@ -1,6 +1,7 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
+import { TIMEOUT_MESSAGES } from '../../lib/timeouts';
 
 export const POST: APIRoute = async (context) => {
   const user = context.locals.user;
@@ -18,10 +19,15 @@ export const POST: APIRoute = async (context) => {
     return context.redirect('/dashboard/profile?error=Invalid+email');
   }
 
-  const supabase = createSupabaseServerClient(context.request, context.cookies);
-  const { error } = await supabase.rpc('update_my_contact', { p_phone: phone, p_email: email });
-  if (error) {
-    return context.redirect(`/dashboard/profile?error=${encodeURIComponent(error.message)}`);
+  try {
+    const supabase = createSupabaseServerClient(context.request, context.cookies);
+    const { error } = await supabase.rpc('update_my_contact', { p_phone: phone, p_email: email });
+    if (error) {
+      return context.redirect(`/dashboard/profile?error=${encodeURIComponent(error.message)}`);
+    }
+    return context.redirect('/dashboard/profile?updated=1');
+  } catch (err: any) {
+    const message = err?.message || TIMEOUT_MESSAGES.WRITE;
+    return context.redirect(`/dashboard/profile?error=${encodeURIComponent(message)}`);
   }
-  return context.redirect('/dashboard/profile?updated=1');
 };

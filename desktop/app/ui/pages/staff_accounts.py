@@ -44,6 +44,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...client import CLIENT_LOCK, stored_user_id
+from ...timeouts import execute_network_call
 from ..components import (
     Button,
     Card,
@@ -400,9 +401,13 @@ class StaffAccountsPage(QWidget):
 
     def _invoke_admin_users(self, body: dict):
         """Call the admin-users Edge Function (worker thread in async paths)."""
-        resp = self.client.functions.invoke(
-            "admin-users",
-            invoke_options={"body": body, "responseType": "json"},
+        is_write = body.get("action") not in ("list_staff", "get_staff")
+        resp = execute_network_call(
+            lambda: self.client.functions.invoke(
+                "admin-users",
+                invoke_options={"body": body, "responseType": "json"},
+            ),
+            is_write=is_write,
         )
         return self._decode_payload(resp)
 

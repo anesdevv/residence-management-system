@@ -21,29 +21,37 @@ export const prerender = false;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const uid = Astro.locals.user!.id;
 
-const [
-  { data: student },
-  { data: recentReports },
-  { data: recentRoomChanges },
-] = await Promise.all([
-  supabase
-    .from('students')
-    .select('first_name, last_name, card_id, status, rejection_reason, room_id, university, faculty, study_level, rooms(block, floor, number)')
-    .eq('id', uid)
-    .single(),
-  supabase
-    .from('maintenance_reports')
-    .select('id, category, description, status, created_at')
-    .eq('student_id', uid)
-    .order('created_at', { ascending: false })
-    .limit(3),
-  supabase
-    .from('room_change_requests')
-    .select('id, reason, status, created_at')
-    .eq('student_id', uid)
-    .order('created_at', { ascending: false })
-    .limit(2),
-]);
+let student: any = null;
+let recentReports: any[] = [];
+let recentRoomChanges: any[] = [];
+let queryError: string | null = null;
+
+try {
+  const [sRes, repRes, rcRes] = await Promise.all([
+    supabase
+      .from('students')
+      .select('first_name, last_name, card_id, status, rejection_reason, room_id, university, faculty, study_level, rooms(block, floor, number)')
+      .eq('id', uid)
+      .single(),
+    supabase
+      .from('maintenance_reports')
+      .select('id, category, description, status, created_at')
+      .eq('student_id', uid)
+      .order('created_at', { ascending: false })
+      .limit(3),
+    supabase
+      .from('room_change_requests')
+      .select('id, reason, status, created_at')
+      .eq('student_id', uid)
+      .order('created_at', { ascending: false })
+      .limit(2),
+  ]);
+  student = sRes.data;
+  recentReports = repRes.data ?? [];
+  recentRoomChanges = rcRes.data ?? [];
+} catch (err: any) {
+  queryError = err?.message || 'The server is taking too long to respond. Check your connection and try again.';
+}
 
 const rawRoom = student?.rooms;
 const room = (Array.isArray(rawRoom) ? rawRoom[0] : rawRoom) as { block: string; floor: string | number; number: string } | null | undefined;
@@ -67,6 +75,14 @@ import { getCategoryMeta } from '../../lib/maintenance';
 ---
 
 <Layout title="Dashboard — RÉSIVO" activeNav="dashboard">
+  {
+    queryError && (
+      <InlineBanner kind="error" title="Connection error" class="mb-6">
+        {queryError}
+      </InlineBanner>
+    )
+  }
+
   <PageHeader title={`Welcome, ${fullName}`} overline="Cité Universitaire Tlemcen" subtitle={subtitle}>
     {
       statusPill && (

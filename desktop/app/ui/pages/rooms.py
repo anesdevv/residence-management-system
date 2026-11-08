@@ -46,6 +46,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...client import room_occupancy
+from ...timeouts import execute_network_call
 from .. import theme
 from ..components import (
     Button,
@@ -233,7 +234,10 @@ class BlockSetupDialog(QDialog):
         if not self.isVisible():
             if self.client:
                 try:
-                    self.client.table("blocks").insert(payload).execute()
+                    execute_network_call(
+                        lambda: self.client.table("blocks").insert(payload).execute(),
+                        is_write=True,
+                    )
                 except Exception as exc:  # noqa: BLE001
                     QMessageBox.critical(self, "Error Creating Block", human_error(exc))
                     return
@@ -247,7 +251,10 @@ class BlockSetupDialog(QDialog):
 
         def work():
             if self.client:
-                self.client.table("blocks").insert(payload).execute()
+                execute_network_call(
+                    lambda: self.client.table("blocks").insert(payload).execute(),
+                    is_write=True,
+                )
             return payload
 
         started = self.tasks.run(
@@ -519,7 +526,10 @@ class ManageBlocksDialog(QDialog):
             self._deleting_block_name = block_name
 
             def work():
-                self.client.table("blocks").delete().eq("id", block_id).execute()
+                execute_network_call(
+                    lambda: self.client.table("blocks").delete().eq("id", block_id).execute(),
+                    is_write=True,
+                )
                 return self._fetch_blocks()
 
             self._set_busy(True, f"Deleting Block {block_name}…")
@@ -1339,11 +1349,15 @@ class RoomsPage(QWidget):
         self._reload_after_action = True
 
     def _on_create_failed(self, message: str) -> None:
-        self._show_banner(
-            "error",
-            "Room could not be created",
-            f"The room was not created. {message}",
-        )
+        if "result is unknown" in message.lower():
+            self._show_banner("error", "Request timed out", message)
+            self.reload()
+        else:
+            self._show_banner(
+                "error",
+                "Room could not be created",
+                f"The room was not created. {message}",
+            )
 
     def _on_updated(self, data, room_id, message: str) -> None:
         self._data_generation += 1
@@ -1356,11 +1370,15 @@ class RoomsPage(QWidget):
         self._reload_after_action = True
 
     def _on_update_failed(self, message: str) -> None:
-        self._show_banner(
-            "error",
-            "Room could not be updated",
-            f"The room was not updated. {message}",
-        )
+        if "result is unknown" in message.lower():
+            self._show_banner("error", "Request timed out", message)
+            self.reload()
+        else:
+            self._show_banner(
+                "error",
+                "Room could not be updated",
+                f"The room was not updated. {message}",
+            )
 
     def _on_deleted(self, room_id, message: str) -> None:
         self._data_generation += 1
@@ -1374,11 +1392,15 @@ class RoomsPage(QWidget):
         self._reload_after_action = True
 
     def _on_delete_failed(self, message: str) -> None:
-        self._show_banner(
-            "error",
-            "Room could not be deleted",
-            f"The room was not removed. {message}",
-        )
+        if "result is unknown" in message.lower():
+            self._show_banner("error", "Request timed out", message)
+            self.reload()
+        else:
+            self._show_banner(
+                "error",
+                "Room could not be deleted",
+                f"The room was not removed. {message}",
+            )
 
     def on_add(self):
         if self._actions_busy or self._info_busy or self.tasks.is_busy(_ACTION_KEY):
@@ -1417,7 +1439,10 @@ class RoomsPage(QWidget):
         )
 
         def work():
-            self.client.table("rooms").insert(data).execute()
+            execute_network_call(
+                lambda: self.client.table("rooms").insert(data).execute(),
+                is_write=True,
+            )
             return data
 
         self._start_action(
@@ -1452,7 +1477,10 @@ class RoomsPage(QWidget):
         )
 
         def work():
-            self.client.table("rooms").update(data).eq("id", room_id).execute()
+            execute_network_call(
+                lambda: self.client.table("rooms").update(data).eq("id", room_id).execute(),
+                is_write=True,
+            )
             return data
 
         self._start_action(
@@ -1490,7 +1518,10 @@ class RoomsPage(QWidget):
         message = f"Room {room['block']}-{room['number']} has been removed."
 
         def work():
-            self.client.table("rooms").delete().eq("id", room_id).execute()
+            execute_network_call(
+                lambda: self.client.table("rooms").delete().eq("id", room_id).execute(),
+                is_write=True,
+            )
             return room_id
 
         self._start_action(
