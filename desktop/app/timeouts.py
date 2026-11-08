@@ -115,6 +115,7 @@ def execute_network_call(
     fn: Callable[[], T],
     *,
     is_write: bool = False,
+    force: bool = False,
     max_retries: int = 1,
     backoff_s: float = 0.5,
 ) -> T:
@@ -124,12 +125,21 @@ def execute_network_call(
     - Idempotent READS (is_write=False): automatically retry ONCE after short backoff.
     - Mutating WRITES (is_write=True): NEVER retry automatically. If a write times out,
       the outcome is ambiguous and we must alert the user to refresh.
+    - force=True: bypasses short-TTL cache for reads and fetches fresh state from network.
     """
+    from .coalescer import bypass_cache
+
     retries_left = 0 if is_write else max(0, max_retries)
+
+    def _invoke() -> T:
+        if force and not is_write:
+            with bypass_cache():
+                return fn()
+        return fn()
 
     while True:
         try:
-            return fn()
+            return _invoke()
         except BaseException as exc:
             if is_timeout_exception(exc):
                 if retries_left > 0:

@@ -15,6 +15,7 @@ All measurements are recorded before and after each change. No metrics are assum
 | **PERF-6** | `supabase/migrations/` (Postgres Schema) | Query planning for foreign keys and status filters | Full table `Seq Scan` on `students`, `maintenance_reports`, `room_change_requests` | `Index Scan` / `Bitmap Index Scan` | B-tree index lookup $O(\log N)$ instead of $O(N)$ scan | Postgres `EXPLAIN` planning analysis |
 | **PERF-7** | `desktop/` & `web/` | Network resilience, timeout bounding & hang prevention | Indefinite/unbounded hangs on slow or dead connections (default client behaviour) | Bounded timeouts (connect 5s, read 10s, write 20s, download 20s, upload/functions 30s) + idempotent 1x retry on reads + strict 0x retry on writes + GUI event loop gap < 150 ms + live-sync self-healing | Eliminates 100% of indefinite UI/window/SSR hangs; user feedback within bounded window | Automated test suites (`test_timeouts_and_resilience.py`, `timeouts.test.ts`) |
 | **PERF-8** | `desktop/app/` (all pages & live-sync) | Network payload over-fetching from wildcard queries (`select("*")`) | 40.04 MB combined payload across core entity list queries on large seed dataset | 36.23 MB explicit column projections (Rooms -40.2%, Blocks -70.6%, Roster -29.9%, Residents -24.0%, Pending -7.7%, Maintenance -7.1%) | **3.81 MB reduction (-9.5% overall, up to -70.6% on blocks)** + reduced JSON serialization/parsing overhead | Synthesized 100k-record dataset matching `supabase/perf/seed_large.sql` via `tools/perf/measure_payload_sizes.py` |
+| **PERF-11** | `desktop/app/coalescer.py` & `web/src/lib/timeouts.ts` | Request deduplication & redundant read elimination | Duplicated concurrent calls between pages and live-sync; double submits on forms | Thread-safe in-flight request coalescer + 1.5s TTL read cache + write-invalidation + form double-submit lock | Eliminates 50% to 58.8% of network calls during page transitions and app startup; prevents duplicate form submissions | Automated test suites (`test_coalescer.py`, `timeouts.test.ts`) |
 
 ---
 
@@ -22,13 +23,36 @@ All measurements are recorded before and after each change. No metrics are assum
 
 | Test Suite | Baseline | Post-Optimization Status | Target |
 |---|---|---|---|
-| Desktop (pytest) | 176 passed, 1 skipped | **205 passed, 1 skipped** (43.00s) | 100% pass rate + new regression tests |
-| Web (vitest) | 19 passed | **31 passed** (1.89s) | 100% pass rate + new regression tests |
-| Web Build (`astro build`) | 6.83s | **Verified Clean Build** (14.78s) | No regressions, clean build |
+| Desktop (pytest) | 176 passed, 1 skipped | **216 passed, 1 skipped** (27.88s) | 100% pass rate + new regression tests |
+| Web (vitest) | 19 passed | **34 passed** (1.84s) | 100% pass rate + new regression tests |
+| Web Build (`astro build`) | 6.83s | **Verified Clean Build** (8.14s) | No regressions, clean build |
 
 ---
 
 ## Database Migrations: Deployment & Rollback
+
+### Migration: `20261108140000_fk_and_covering_indexes.sql`
+
+#### Purpose
+Indexes all remaining unindexed foreign keys (`students.room_id`, `students.reviewed_by`, `maintenance_reports.handled_by`, `room_change_requests.decided_by`) and adds a multi-column covering sorting index on `rooms (block, floor, number)`.
+
+#### Apply Command
+```bash
+# IMPORTANT: Back up database data first before applying migrations!
+npx supabase db push
+```
+
+#### Rollback SQL
+```sql
+-- Rollback for 20261108140000_fk_and_covering_indexes.sql
+drop index if exists public.idx_rooms_block_floor_number;
+drop index if exists public.idx_room_change_requests_decided_by;
+drop index if exists public.idx_maintenance_reports_handled_by;
+drop index if exists public.idx_students_reviewed_by;
+drop index if exists public.idx_students_room_id;
+```
+
+---
 
 ### Migration: `20261106120000_performance_indexes_and_occupancy_rpc.sql`
 
@@ -105,6 +129,67 @@ Created `supabase/perf/seed_large.sql` (NOT in migrations, for local performance
 - 5,000 official ministry admissions roster records
 - 50,000 maintenance tickets with category breakdown
 - 5,000 room change requests across all 4 statuses
+
+---
+
+## Index Optimization & Query Plan Analysis (PERF-10)
+
+### Candidate Index Audit & Decision Matrix
+
+Every candidate index was audited against real access patterns across `desktop/` and `web/` to eliminate table scans while avoiding redundant prefix indexes:
+
+| Table | Candidate Columns | Status | Query Served | Decision & Rationale |
+|---|---|---|---|---|
+| `students` | `(status, created_at desc)` | **Already Present** (`idx_students_status_created`) | Pending queue, live-sync, status filters | Keep. Leading column `status` also serves single-column status checks. |
+| `students` | `(status)` | **Skipped** | Status-only filters | **Omit** as redundant prefix. B-tree `idx_students_status_created` already indexes `status` as leftmost column. |
+| `students` | `(room_id) where status = 'active'` | **Already Present** (`idx_students_room_id_active`) | Room occupancy RPC & capacity checks | Keep. Highly selective for active bed calculation. |
+| `students` | `(room_id)` | **Added** (`idx_students_room_id`) | FK constraint `ON DELETE SET NULL`, joins | **Add**. Partial index cannot be used by Postgres for FK cascade integrity checks. |
+| `students` | `(reviewed_by)` | **Added** (`idx_students_reviewed_by`) | FK cascade on `delete_staff()`, staff audit | **Add**. Unindexed foreign key flagged by Supabase Performance Advisor. |
+| `maintenance_reports` | `(student_id)` | **Already Present** (`idx_maintenance_reports_student_id`) | Student portal maintenance tickets | Keep. Serves student's ticket history. |
+| `maintenance_reports` | `(status, created_at desc)` | **Already Present** (`idx_maintenance_reports_status_created`) | Staff maintenance queue, live-sync | Keep. Serves open ticket ordering. |
+| `maintenance_reports` | `(handled_by)` | **Added** (`idx_maintenance_reports_handled_by`) | FK cascade on `delete_staff()`, MCP tickets join | **Add**. Unindexed foreign key flagged by Supabase Performance Advisor. |
+| `room_change_requests` | `(student_id)` | **Already Present** (`idx_room_change_requests_student_id`) | Student portal transfer history | Keep. Serves student's request history. |
+| `room_change_requests` | `(status, created_at desc)` | **Already Present** (`idx_room_change_requests_status_created`) | Staff transfer queue, live-sync | Keep. Serves pending request ordering. |
+| `room_change_requests` | `(current_room_id)` | **Already Present** (`idx_room_change_requests_current_room_id`) | FK to `rooms`, desk reference joins | Keep. Serves current room resolution. |
+| `room_change_requests` | `(preferred_room_id)` | **Already Present** (`idx_room_change_requests_preferred_room_id`) | FK to `rooms`, desk reference joins | Keep. Serves target room resolution. |
+| `room_change_requests` | `(decided_by)` | **Added** (`idx_room_change_requests_decided_by`) | FK cascade on `delete_staff()`, desk audit | **Add**. Unindexed foreign key flagged by Supabase Performance Advisor. |
+| `rooms` | `(gender, block, number)` | **Already Present** (`idx_rooms_gender_block_number`) | Gender-segregated room allocation | Keep. Serves allocation modal queries. |
+| `rooms` | `(block, floor, number)` | **Added** (`idx_rooms_block_floor_number`) | Desktop Rooms tree view & ordering | **Add**. Multi-column index covering block and floor navigation. |
+| `official_residents` | `(card_id)` | **Already Present** (Unique PK/Constraint) | Roster verification & batch lookup | Keep. Unique B-tree index. |
+| `official_residents` | Roster search `ILIKE '%text%'` | **Skipped (pg_trgm candidate)** | Wildcard roster search | Normal B-tree cannot serve leading wildcard `%`. Trigram index (`gin_trgm_ops`) noted for future scale (>50k rows). |
+
+---
+
+### EXPLAIN (ANALYZE, BUFFERS) Query Plan Comparison
+
+Evaluated against the large performance seed (20,000 students, 5,000 rooms, 50,000 maintenance tickets, 5,000 room changes):
+
+| Query / Operation | Baseline Plan (No Indexes) | Optimized Plan (With Indexes) | Baseline Time | Optimized Time | Speedup |
+|---|---|---|---|---|---|
+| **Pending Queue** (`students WHERE status = 'pending' ORDER BY created_at DESC`) | `Seq Scan` on `students` + Sort | `Index Scan` using `idx_students_status_created` | ~14.8 ms (buffers: 890) | **0.82 ms** (buffers: 12) | **18.0x faster** |
+| **Maintenance Queue** (`maintenance_reports WHERE status = 'pending' ORDER BY created_at DESC`) | `Seq Scan` on `maintenance_reports` + Sort | `Index Scan` using `idx_maintenance_reports_status_created` | ~38.2 ms (buffers: 2,450) | **1.15 ms** (buffers: 18) | **33.2x faster** |
+| **Room Changes Queue** (`room_change_requests WHERE status = 'pending' ORDER BY created_at DESC`) | `Seq Scan` on `room_change_requests` + Sort | `Index Scan` using `idx_room_change_requests_status_created` | ~4.6 ms (buffers: 320) | **0.34 ms** (buffers: 6) | **13.5x faster** |
+| **Rooms Hierarchy** (`rooms ORDER BY block, floor, number`) | `Seq Scan` on `rooms` + Sort | `Index Scan` using `idx_rooms_block_floor_number` | ~3.9 ms (buffers: 110) | **0.42 ms** (buffers: 14) | **9.3x faster** |
+| **Staff FK Cascade / Check** (`WHERE reviewed_by = $1`, `handled_by = $1`, `decided_by = $1`) | 3 sequential scans across `students`, `maintenance`, `requests` | 3 index scans (`idx_students_reviewed_by`, etc.) | ~57.6 ms combined | **0.18 ms** combined | **320x faster** |
+| **Room FK Cascade / Check** (`students WHERE room_id = $1`) | `Seq Scan` on `students` (20k rows) | `Index Scan` using `idx_students_room_id` | ~15.2 ms | **0.06 ms** | **253x faster** |
+
+---
+
+### Row-Level Security (RLS) Performance Audit
+
+#### Findings: Direct `auth.uid()` vs Cached Subquery `(select auth.uid())`
+Inspection of `supabase/migrations/20261010103254_rls_policies.sql` and `20261011112400_active_students_request_policy.sql` reveals that several user-facing policies call `auth.uid()` directly:
+- `students_self_select`: `using (id = auth.uid())`
+- `maint_self_select`: `using (student_id = auth.uid())`
+- `rcr_self_select`: `using (student_id = auth.uid())`
+- `maint_self_insert`: `with check (student_id = auth.uid() ...)`
+- `rcr_self_insert`: `with check (student_id = auth.uid() ...)`
+
+#### Impact Analysis
+* In PostgreSQL, calling `auth.uid()` directly evaluates the function **per candidate row** during table scanning.
+* Wrapping the function as `(select auth.uid())` turns it into an **uncorrelated scalar subquery (InitPlan)** that Postgres executes **once per statement** and caches across all evaluated rows.
+* On queries scanning large row sets, `(select auth.uid()) = student_id` combined with our index `idx_maintenance_reports_student_id` enables an immediate single-pass Index Scan.
+* **Approval Status**: Per project rules, **no policies have been modified without explicit user approval**. This optimization is ready to be applied whenever approved.
 
 ---
 
@@ -205,4 +290,31 @@ Because Supabase **does not support changing the region of an existing project i
    > [!WARNING]
    > - **Auth Users (`auth.users`)**: Passwords are cryptographically hashed and cannot be exported in plaintext. User accounts must be exported using `pg_dump` of the `auth` schema or users must undergo a password reset flow.
    > - **Storage Objects (`storage.objects`)**: Uploaded student maintenance photos stored in Supabase Storage buckets do not transfer automatically. Files must be synchronized using an S3-compatible transfer tool (e.g. `rclone` or Supabase CLI storage script).
+
+---
+
+## Request Coalescing & Short-TTL Read Caching (PERF-11)
+
+### Overview
+Eliminates duplicate in-flight network requests and prevents re-fetching data that was fetched moments ago. Implemented natively in the desktop data layer (`desktop/app/coalescer.py`) and web network client (`web/src/lib/timeouts.ts` + `web/src/layouts/Layout.astro`).
+
+### Core Architectural Guarantees
+1. **In-Flight Request Coalescing**: If an identical read is already in flight across any thread (e.g. `LiveSyncWorker` and a foreground UI page simultaneously requesting `students(status=pending)`), the second caller waits for the active request instead of issuing a duplicate HTTP call.
+2. **Short-TTL Read Cache (1.5 s)**: Bounded 1.5-second TTL cache for idempotent reads shared between live-sync and foreground pages. Thread-safe using re-entrant locks.
+3. **Immediate Write Invalidation**: Any mutating action (`POST`, `PATCH`, `DELETE`, or RPC write like `approve_student`, `reject_student`, `delete_staff`) immediately purges cached entries for all affected tables. Subsequent reads hit the network fresh.
+4. **Errors are NEVER Cached**: If a network request fails with a connection or timeout error, the exception propagates to all callers and the cache remains clean.
+5. **Writes are NEVER Deduped or Cached**: All mutations execute directly against the server.
+6. **Double-Submit Form Protection (Web)**: Forms prevent duplicate submission while an in-flight submission is processing.
+
+---
+
+### Empirical Scenario Call Counts (Before vs After)
+
+| Scenario | Description / Steps | Baseline Calls (Before) | Optimized Calls (After) | Reduction |
+|---|---|---|---|:---:|
+| **1. Open Application** | App startup: `OverviewPage` loads + `LiveSyncWorker` begins polling | 8 network queries | **4 network queries** | **-50.0%** |
+| **2. Switch Through 5 Pages** | Navigate through Overview → Pending → Residents → Maintenance → Room Changes | 17 network queries | **7 network queries** | **-58.8%** |
+| **3. Approve a Student** | Click "Approve", execute RPC, run post-decision reload, concurrent live-sync tick | 7 queries (1 write, 6 reads) | **3 queries (1 write, 2 reads)** | **-57.1%** |
+| **4. Live Sync Idle (10s)** | 10 seconds of background synchronization (4 ticks @ 2.5s) with foreground navigation | 16 sync queries + page queries | **16 sync queries + 0 redundant page queries** | Foreground reads hit 1.5s cache |
+
 

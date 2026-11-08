@@ -7,6 +7,7 @@ import threading
 from supabase import create_client, Client
 from supabase.lib.client_options import ClientOptions
 from .config import SUPABASE_URL, SUPABASE_ANON_KEY
+from .coalescer import install_query_coalescer
 from .timeouts import (
     AUTH_TIMEOUT,
     CONNECT_TIMEOUT_S,
@@ -54,6 +55,7 @@ _CREDENTIAL_RE = re.compile(
 
 
 def make_client() -> Client:
+    install_query_coalescer()
     opts = ClientOptions(
         postgrest_client_timeout=POSTGREST_TIMEOUT,
         storage_client_timeout=STORAGE_TIMEOUT,

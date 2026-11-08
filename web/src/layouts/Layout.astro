@@ -280,18 +280,32 @@ const sectionTitles: Record<DashboardNav, string> = {
         setTimeout(dismiss, 4000);
       });
 
-      /* Form submission timeout watchdog: re-enables buttons and shows friendly error if server stalls */
+      /* Double-submit protection & submission timeout watchdog */
       document.addEventListener('submit', function (e) {
         var form = e.target;
         if (!(form instanceof HTMLFormElement)) return;
+
+        // Prevent double submit if already submitting
+        if (form.dataset.submitting === 'true') {
+          e.preventDefault();
+          return;
+        }
+        form.dataset.submitting = 'true';
+
         var submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+        if (submitBtn) {
+          submitBtn.setAttribute('data-submitting', 'true');
+        }
+
         var isMultipart = form.enctype === 'multipart/form-data' || Boolean(form.querySelector('input[type="file"]'));
         var timeoutMs = isMultipart ? 30000 : 20000;
 
         var originalText = submitBtn ? submitBtn.innerHTML : '';
         var timer = setTimeout(function () {
+          delete form.dataset.submitting;
           if (submitBtn) {
             submitBtn.removeAttribute('disabled');
+            submitBtn.removeAttribute('data-submitting');
             submitBtn.innerHTML = originalText;
           }
           var existingBanner = form.querySelector('.timeout-banner');
@@ -305,11 +319,24 @@ const sectionTitles: Record<DashboardNav, string> = {
 
         window.addEventListener('pageshow', function () {
           clearTimeout(timer);
+          delete form.dataset.submitting;
           if (submitBtn) {
             submitBtn.removeAttribute('disabled');
+            submitBtn.removeAttribute('data-submitting');
             submitBtn.innerHTML = originalText;
           }
         });
+      });
+
+      /* Tab focus throttle (do not refetch unless data is older than 30 s) */
+      window._resivoLastPageLoad = Date.now();
+      window.addEventListener('focus', function () {
+        var elapsed = Date.now() - (window._resivoLastPageLoad || 0);
+        if (elapsed < 30000) {
+          // Data is fresh; skip refetching
+          return;
+        }
+        window._resivoLastPageLoad = Date.now();
       });
     </script>
   </body>

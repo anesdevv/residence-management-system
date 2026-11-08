@@ -63,10 +63,30 @@ export function getTimeoutForRequest(input: RequestInfo | URL, init?: RequestIni
 }
 
 /**
- * Creates a custom fetch wrapper that applies AbortSignal.timeout based on request type.
+ * In-flight map for identical concurrent GET requests.
+ * Coalesces simultaneous identical GETs into a single outbound network request.
+ */
+const inFlightGets = new Map<string, Promise<Response>>();
+
+export function getInFlightGetsCount(): number {
+  return inFlightGets.size;
+}
+
+export function clearInFlightGets(): void {
+  inFlightGets.clear();
+}
+
+/**
+ * Creates a custom fetch wrapper that applies AbortSignal.timeout based on request type
+ * and coalesces simultaneous identical GET requests.
  */
 export function createTimeoutFetch(customFetch: typeof fetch = fetch): typeof fetch {
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const method = (
+      init?.method ||
+      (typeof input === 'object' && 'method' in input ? (input as Request).method : 'GET')
+    ).toUpperCase();
+
     const timeoutMs = getTimeoutForRequest(input, init);
     const timeoutSignal = AbortSignal.timeout(timeoutMs);
 
@@ -77,6 +97,43 @@ export function createTimeoutFetch(customFetch: typeof fetch = fetch): typeof fe
         : timeoutSignal;
     } else {
       signal = timeoutSignal;
+    }
+
+    // In-flight coalescing for concurrent GET reads (writes are never deduped)
+    if (method === 'GET') {
+      const urlStr =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : (input as Request).url;
+      const headersStr = init?.headers ? JSON.stringify(init.headers) : '';
+      const key = `${urlStr}::${headersStr}`;
+
+      const existingPromise = inFlightGets.get(key);
+      if (existingPromise) {
+        const response = await existingPromise;
+        return response.clone();
+      }
+
+      const fetchPromise = (async () => {
+        try {
+          return await customFetch(input, { ...init, signal });
+        } finally {
+          inFlightGets.delete(key);
+        }
+      })();
+
+      inFlightGets.set(key, fetchPromise);
+      try {
+        const response = await fetchPromise;
+        return response;
+      } catch (err: any) {
+        if (err?.name === 'TimeoutError' || (err?.name === 'AbortError' && timeoutSignal.aborted)) {
+          throw new NetworkTimeoutError(undefined, false);
+        }
+        throw err;
+      }
     }
 
     try {
