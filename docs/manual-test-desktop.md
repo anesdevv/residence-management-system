@@ -54,3 +54,36 @@ Execute each step directly in `dist\RESIVO\RESIVO.exe` to verify full operationa
 - [ ] **Add/Edit Dormitory Room dialog & NumberStepper (C6)**: On the **Rooms** page, click **Add room**. Confirm the dialog layout is cleanly aligned: labels have a consistent column width (~160px), inputs are 40px high with a 16px row gap. Confirm "Floor Level" and "Bed Capacity" use the custom `NumberStepper` with styled 32x32 ghost minus (`-`) and plus (`+`) buttons, tabular numbers, and mouse wheel protection unless focused. Confirm the "+ Block" button displays a single plus icon followed by text "Add block" (not "+ + Block"). Confirm comboboxes render SVG chevrons. In the toolbar, confirm Add room (primary teal), Edit (secondary), and Delete (danger) have equal 36px height, and Edit/Delete remain disabled with explanatory tooltips when no room is selected.
 - [ ] **Close confirmation dialog (C7)**: Attempt to close the main window via the top-right X button, Alt+F4, or tray menu "Quit". Confirm a confirmation dialog appears with Cancel (focused by default) and "Close app". Check "Don't ask me again" and click "Close app"; restart the app and confirm it closes immediately without prompt. Go to **Settings** -> **General preferences** and re-enable "Confirm before closing the app". Trigger a long-running action or busy state and attempt to close; confirm the dialog warns that an action is currently in progress with "Close anyway" (danger button).
 - [ ] **Windows notifications & System tray (C8)**: Look in the Windows taskbar notification area (system tray) and confirm the RÉSIVO tray icon is present. Right-click it and verify the context menu provides "Open RÉSIVO" and "Quit". Go to **Settings** -> **Notifications**, click **Send test notification**, and confirm a Windows toast / tray balloon appears with title "RÉSIVO Notifications". In Settings, toggle individual category notifications (applications, room changes, urgent maintenance, resolved maintenance), test quiet hours time range, and test privacy masking ("Mask student names"). Confirm clicking an alert toast brings RÉSIVO to the foreground and deep-links directly to the corresponding page.
+
+
+## Slow Network, Offline & Flapping Connection Checklist (Rebuilt EXE)
+
+Execute directly with `dist\RESIVO\RESIVO.exe`:
+
+- [ ] **Wi-Fi disconnect during student application approval**:
+  1. On the **Pending** page, select a pending student application and click **Approve**.
+  2. Select an available room in the allocation dialog.
+  3. Immediately upon clicking **Confirm approval** (while the button shows "Approving application..." / "Working..."), disconnect Wi-Fi (or unplug Ethernet).
+  4. Confirm the window remains fully interactive and responsive (never shows "Not Responding").
+  5. Confirm that after the write timeout (20s), an error banner appears stating: *"The result is unknown. Refresh to check before trying again."*
+  6. Confirm buttons re-enable and no crash occurs.
+  7. Reconnect Wi-Fi. Click **Refresh** (or wait for the next LiveSync tick) to confirm the true backend state.
+- [ ] **Wi-Fi disconnect during student rejection**:
+  1. Select a pending application, click **Reject**, enter a rejection reason.
+  2. Disconnect Wi-Fi right after clicking confirm.
+  3. Verify error banner appears, GUI never freezes, and the rejection can be safely retried once connection is restored.
+- [ ] **Live-sync connection loss and automatic recovery**:
+  1. Observe the live sync status in the bottom-left sidebar / status bar (green dot, *"Connected"*).
+  2. Disconnect Wi-Fi. Within 2-5 seconds (next tick), verify the indicator turns amber (*"Reconnecting..."*).
+  3. Keep Wi-Fi disconnected for 15 seconds. Confirm no error dialog pops up to interrupt the operator, and CPU usage stays near 0%.
+  4. Reconnect Wi-Fi. Within 2-5 seconds, verify the indicator automatically transitions back to green (*"Connected"*).
+  5. Verify that previously received notifications and badges are NOT duplicated or re-fired after reconnection.
+- [ ] **Closing the app during a slow / stalled network operation**:
+  1. Start an operation on a slow connection (or with Wi-Fi disabled).
+  2. Attempt to close the app via the window close button (`X`).
+  3. Confirm the app prompts with the close confirmation dialog warning that background operations are in progress.
+  4. Confirm clicking **Close anyway** safely stops workers within the bounded shutdown timeout (under 10s) and terminates without a hang or crash dialog.
+- [ ] **Network Throttling Tool (Optional - Clumsy / NetLimiter / Chrome DevTools MCP)**:
+  1. Configure throttling to **150 ms latency, 1.6 Mbps download, 750 kbps upload** (simulated 3G/Slow 4G).
+  2. Navigate across Pending, Residents, Rooms, Maintenance, Room changes, and Official list pages.
+  3. Verify table contents populate cleanly, search filtering remains instantaneous (debounced locally), and photos display loading spinners followed by smooth off-thread thumbnail decoding.
