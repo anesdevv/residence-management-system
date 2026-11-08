@@ -28,8 +28,11 @@ from __future__ import annotations
 import urllib.request
 from ..timeouts import STORAGE_DOWNLOAD_TIMEOUT_S, NetworkTimeoutError, is_timeout_exception
 
+from collections import OrderedDict
+from dataclasses import dataclass
+import threading
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QDialog,
     QFrame,
@@ -78,16 +81,146 @@ def stop_photo_fetchers() -> None:
         worker.stop()
 
 
+@dataclass
+class PhotoCacheEntry:
+    storage_path: str
+    data: bytes
+    image: QImage
+    thumbnail: QImage
+    byte_size: int
+
+
+class PhotoCache:
+    """Thread-safe LRU cache for decoded maintenance photos and thumbnails.
+
+    Retains up to 40 images or 50 MB total byte size.
+    Keyed by storage path (e.g. 'user_id/uuid.jpg').
+    """
+
+    def __init__(self, max_items: int = 40, max_bytes: int = 50 * 1024 * 1024):
+        self._max_items = max_items
+        self._max_bytes = max_bytes
+        self._lock = threading.Lock()
+        self._cache: OrderedDict[str, PhotoCacheEntry] = OrderedDict()
+        self._total_bytes: int = 0
+
+    @property
+    def max_items(self) -> int:
+        return self._max_items
+
+    @property
+    def max_bytes(self) -> int:
+        return self._max_bytes
+
+    @property
+    def total_bytes(self) -> int:
+        with self._lock:
+            return self._total_bytes
+
+    def get(self, storage_path: str | None) -> PhotoCacheEntry | None:
+        if not storage_path:
+            return None
+        with self._lock:
+            entry = self._cache.get(storage_path)
+            if entry is not None:
+                self._cache.move_to_end(storage_path)
+                return entry
+            return None
+
+    def put(
+        self,
+        storage_path: str,
+        data: bytes,
+        image: QImage,
+        thumbnail: QImage,
+    ) -> PhotoCacheEntry:
+        if not storage_path:
+            raise ValueError("storage_path must be a non-empty string")
+
+        img_bytes = (
+            image.sizeInBytes()
+            if hasattr(image, "sizeInBytes")
+            else (image.width() * image.height() * 4)
+        )
+        thumb_bytes = (
+            thumbnail.sizeInBytes()
+            if hasattr(thumbnail, "sizeInBytes")
+            else (thumbnail.width() * thumbnail.height() * 4)
+        )
+        entry_size = len(data) + img_bytes + thumb_bytes
+
+        entry = PhotoCacheEntry(
+            storage_path=storage_path,
+            data=data,
+            image=image,
+            thumbnail=thumbnail,
+            byte_size=entry_size,
+        )
+
+        with self._lock:
+            if storage_path in self._cache:
+                old = self._cache.pop(storage_path)
+                self._total_bytes -= old.byte_size
+
+            self._cache[storage_path] = entry
+            self._total_bytes += entry.byte_size
+
+            while (
+                len(self._cache) > self._max_items
+                or self._total_bytes > self._max_bytes
+            ) and self._cache:
+                _oldest_key, oldest_entry = self._cache.popitem(last=False)
+                self._total_bytes -= oldest_entry.byte_size
+
+        return entry
+
+    def clear(self) -> None:
+        with self._lock:
+            self._cache.clear()
+            self._total_bytes = 0
+
+    def __bool__(self) -> bool:
+        return True
+
+    def __len__(self) -> int:
+        with self._lock:
+            return len(self._cache)
+
+    def __contains__(self, storage_path: str) -> bool:
+        with self._lock:
+            return storage_path in self._cache
+
+
+GLOBAL_PHOTO_CACHE = PhotoCache()
+
+
+def get_photo_cache() -> PhotoCache:
+    return GLOBAL_PHOTO_CACHE
+
+
 class PhotoFetchWorker(QThread):
-    """Fetches image bytes in a background thread to prevent UI freezing."""
+    """Fetches and decodes image bytes off the GUI thread with LRU caching."""
 
     loaded = Signal(bytes)
+    decoded = Signal(object, object, bytes)  # (full_image: QImage, thumbnail: QImage, data: bytes)
     failed = Signal(str)
 
-    def __init__(self, url: str, parent=None):
+    def __init__(
+        self,
+        url: str,
+        parent=None,
+        *,
+        storage_path: str | None = None,
+        thumb_size: tuple[int, int] = (384, 144),
+        cache: PhotoCache | None = None,
+    ):
         super().__init__(parent)
         self.url = url
+        self.storage_path = storage_path or url
+        self.thumb_size = thumb_size
+        self._cache = GLOBAL_PHOTO_CACHE if cache is None else cache
         self._stopped = False
+        self.entry: PhotoCacheEntry | None = None
         # Keep the wrapper alive until the thread really finishes.  Callers
         # disconnect signals and drop their own reference when a preview is
         # replaced or a dialog closes; without this registry Python could
@@ -102,11 +235,23 @@ class PhotoFetchWorker(QThread):
         self._stopped = True
 
     def run(self):
+        # 1. Return immediately from LRU cache if already decoded
+        if self.storage_path:
+            cached = self._cache.get(self.storage_path)
+            if cached is not None:
+                self.entry = cached
+                if not self._stopped:
+                    self.decoded.emit(cached.image, cached.thumbnail, cached.data)
+                    self.loaded.emit(cached.data)
+                return
+
+        # 2. Validate URL
         if not self.url or not isinstance(self.url, str) or not self.url.startswith(("http://", "https://")):
             if not self._stopped:
                 self.failed.emit("Invalid image URL")
             return
 
+        # 3. Download bytes
         try:
             req = urllib.request.Request(self.url, headers={"User-Agent": "Mozilla/5.0 (RÉSIVO Staff Console)"})
             with urllib.request.urlopen(req, timeout=STORAGE_DOWNLOAD_TIMEOUT_S) as resp:
@@ -116,14 +261,44 @@ class PhotoFetchWorker(QThread):
                     if not chunk:
                         break
                     chunks.append(chunk)
-                if not self._stopped:
-                    self.loaded.emit(b"".join(chunks))
+                if self._stopped:
+                    return
+                data = b"".join(chunks)
         except Exception as exc:  # noqa: BLE001
             if not self._stopped:
                 if is_timeout_exception(exc):
                     self.failed.emit(NetworkTimeoutError.READ_MESSAGE)
                 else:
                     self.failed.emit(str(exc))
+            return
+
+        if self._stopped:
+            return
+
+        # 4. Decode off GUI thread
+        image = QImage()
+        if not image.loadFromData(data) or image.isNull() or image.width() <= 0 or image.height() <= 0:
+            if not self._stopped:
+                self.failed.emit("Photo preview unavailable (invalid image data)")
+            return
+
+        # 5. Smooth thumbnail off GUI thread
+        target_w, target_h = self.thumb_size
+        thumbnail = image.scaled(
+            target_w,
+            target_h,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+
+        # 6. Store in LRU cache
+        entry = self._cache.put(self.storage_path, data, image, thumbnail)
+        self.entry = entry
+
+        # 7. Deliver to GUI thread
+        if not self._stopped:
+            self.decoded.emit(entry.image, entry.thumbnail, entry.data)
+            self.loaded.emit(entry.data)
 
 
 # Alpha of the modal scrim over the console behind the viewer (navy-900 ~92 %).
@@ -188,6 +363,7 @@ class PhotoViewerDialog(QDialog):
         parent=None,
         initial_pixmap: QPixmap | None = None,
         image_url: str | None = None,
+        storage_path: str | None = None,
     ):
         super().__init__(parent)
         self.setObjectName("photoViewerDialog")
@@ -198,8 +374,13 @@ class PhotoViewerDialog(QDialog):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setStyleSheet(PHOTO_VIEWER_QSS)
 
-        self.full_pixmap: QPixmap | None = initial_pixmap
+        self.storage_path: str | None = storage_path
         self.image_url: str | None = image_url
+        self.full_pixmap: QPixmap | None = initial_pixmap
+
+        cached = GLOBAL_PHOTO_CACHE.get(storage_path or image_url)
+        if cached is not None and (self.full_pixmap is None or self.full_pixmap.width() < cached.image.width()):
+            self.full_pixmap = QPixmap.fromImage(cached.image)
         self.scale_factor: float = 1.0
         self.is_fit_mode: bool = True
         self.worker: PhotoFetchWorker | None = None
@@ -307,10 +488,12 @@ class PhotoViewerDialog(QDialog):
             self.image_label.setText("No photo preview available")
             self.status_label.setText("No preview image")
 
-        # Async fetch full-res if URL is provided
-        if self.image_url:
+        # Async fetch full-res if URL is provided and not already in cache
+        if self.full_pixmap and not self.full_pixmap.isNull():
+            self.status_label.setText(f"{self.full_pixmap.width()} × {self.full_pixmap.height()} px")
+        elif self.image_url:
             self.status_label.setText("Fetching full-resolution photo…")
-            self.worker = PhotoFetchWorker(self.image_url, parent=None)
+            self.worker = PhotoFetchWorker(self.image_url, parent=None, storage_path=self.storage_path)
             self.worker.finished.connect(self.worker.deleteLater)
             self.worker.loaded.connect(self._on_full_loaded)
             self.worker.failed.connect(self._on_full_failed)

@@ -64,17 +64,10 @@ try {
 
 const isActive = student?.status === 'active';
 
-const photoPaths = (reports ?? []).map((r: any) => r.photo_path).filter((p: any): p is string => Boolean(p));
-const urlMap = await batchResolveSignedUrls(supabase.storage, 'maintenance-photos', photoPaths, 300);
-const withUrls = (reports ?? []).map((r: any) => ({
-  ...r,
-  url: r.photo_path ? (urlMap.get(r.photo_path) ?? null) : null,
-}));
-
-const totalCount = withUrls.length;
-const pendingCount = withUrls.filter(r => r.status === 'pending' || r.status === 'under_review').length;
-const inProgressCount = withUrls.filter(r => r.status === 'in_progress').length;
-const resolvedCount = withUrls.filter(r => r.status === 'resolved').length;
+const totalCount = (reports ?? []).length;
+const pendingCount = (reports ?? []).filter((r: any) => r.status === 'pending' || r.status === 'under_review').length;
+const inProgressCount = (reports ?? []).filter((r: any) => r.status === 'in_progress').length;
+const resolvedCount = (reports ?? []).filter((r: any) => r.status === 'resolved').length;
 
 const error = Astro.url.searchParams.get('error');
 const created = Astro.url.searchParams.get('created');
@@ -213,8 +206,14 @@ const STAGES = [...MAINTENANCE_STAGES];
               class="block w-full text-small text-muted file:mr-4 file:py-2 file:px-4 file:rounded-input file:border-0 file:text-small file:font-semibold file:bg-navy-800 file:text-surface hover:file:bg-navy-700 cursor-pointer min-h-[44px]"
             />
             <p class="field-hint text-center">Clear photos help technicians bring the correct tools and replacement parts. PNG or JPEG up to 4MB.</p>
-            <div id="photoPreview" class="hidden mt-2">
+            <div id="photoStatus" class="hidden flex items-center gap-2 text-small text-teal-600 font-medium py-1">
+              <span class="inline-block animate-spin font-bold">&#8635;</span>
+              <span>Optimizing photo...</span>
+            </div>
+            <div id="photoError" class="hidden text-small text-danger font-medium py-1"></div>
+            <div id="photoPreview" class="hidden mt-2 flex flex-col items-center gap-1.5">
               <img id="previewImg" src="" alt="Photo preview" class="max-h-48 rounded-card border border-line object-cover" />
+              <span id="photoSizeBadge" class="text-caption text-muted bg-canvas border border-line px-2.5 py-0.5 rounded-full font-mono"></span>
             </div>
           </div>
         </div>
@@ -275,7 +274,7 @@ const STAGES = [...MAINTENANCE_STAGES];
       </div>
     </div>
 
-    {withUrls.length === 0 ? (
+    {(reports ?? []).length === 0 ? (
       <EmptyState
         icon="wrench"
         title="No maintenance reports filed"
@@ -283,7 +282,7 @@ const STAGES = [...MAINTENANCE_STAGES];
       />
     ) : (
       <div class="flex flex-col gap-4" id="ticketList">
-        {withUrls.map((r) => {
+        {(reports ?? []).map((r: any) => {
           const catSpec = getCategoryMeta(r.category);
           const stageIdx = getStageIndex(r.status);
           const normStatus = r.status === 'under_review' ? 'pending' : r.status;
@@ -329,21 +328,29 @@ const STAGES = [...MAINTENANCE_STAGES];
                 </div>
               )}
 
-              <!-- Attached Inspection Photo -->
-              {r.url && (
+              <!-- Attached Inspection Photo (Lazy Loaded with Fixed Aspect Ratio for CLS = 0) -->
+              {r.photo_path && (
                 <div class="mt-4 pt-3 border-t border-line">
                   <span class="overline block text-muted mb-2">Attached Fault Inspection Photo</span>
-                  <a href={r.url} target="_blank" rel="noopener noreferrer" class="inline-block group">
-                    <img
-                      src={r.url}
-                      alt="Fault inspection documentation"
-                      width="384"
-                      height="160"
-                      class="h-32 sm:h-40 w-auto max-w-sm aspect-[16/10] rounded-card border border-line object-cover group-hover:opacity-90 transition"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </a>
+                  <div
+                    class="photo-lazy-container relative w-full max-w-sm aspect-[16/10] rounded-card border border-line bg-subtle overflow-hidden"
+                    data-photo-path={r.photo_path}
+                  >
+                    <div class="photo-skeleton absolute inset-0 flex items-center justify-center text-muted">
+                      <Icon name="image" size={24} class="opacity-40 animate-pulse" />
+                    </div>
+                    <a href="#" target="_blank" rel="noopener noreferrer" class="photo-link hidden group block w-full h-full">
+                      <img
+                        src=""
+                        alt="Fault inspection documentation"
+                        width="384"
+                        height="160"
+                        class="h-full w-full object-cover group-hover:opacity-90 transition"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </a>
+                  </div>
                 </div>
               )}
             </article>
@@ -355,26 +362,179 @@ const STAGES = [...MAINTENANCE_STAGES];
 
   <!-- Interactive Scripts -->
   <script>
+    import { optimizePhotoFile, formatFileSize } from '../../lib/photo-optimizer';
+
+    // 1. Photo optimization & client-side preview
     const fileInput = document.getElementById('photo') as HTMLInputElement | null;
     const previewDiv = document.getElementById('photoPreview');
     const previewImg = document.getElementById('previewImg') as HTMLImageElement | null;
+    const photoStatus = document.getElementById('photoStatus');
+    const photoError = document.getElementById('photoError');
+    const photoSizeBadge = document.getElementById('photoSizeBadge');
+    const submitBtn = document.querySelector('button[type="submit"]') as HTMLButtonElement | null;
 
-    if (fileInput && previewDiv && previewImg) {
-      fileInput.addEventListener('change', () => {
+    let currentObjectUrl: string | null = null;
+
+    if (fileInput) {
+      fileInput.addEventListener('change', async () => {
         const file = fileInput.files?.[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            previewImg.src = e.target?.result as string;
+        if (photoError) photoError.classList.add('hidden');
+
+        if (!file) {
+          if (previewDiv) previewDiv.classList.add('hidden');
+          if (photoStatus) photoStatus.classList.add('hidden');
+          if (currentObjectUrl) {
+            URL.revokeObjectURL(currentObjectUrl);
+            currentObjectUrl = null;
+          }
+          return;
+        }
+
+        // Show optimizing indicator & disable submit button
+        if (photoStatus) photoStatus.classList.remove('hidden');
+        if (previewDiv) previewDiv.classList.add('hidden');
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+          const result = await optimizePhotoFile(file, {
+            maxDimension: 1600,
+            maxBytes: 500 * 1024,
+            initialQuality: 0.82,
+            minQuality: 0.60,
+          });
+
+          // Replace input file with optimized file using DataTransfer
+          try {
+            const dt = new DataTransfer();
+            dt.items.add(result.file);
+            fileInput.files = dt.files;
+          } catch {
+            // DataTransfer fallback
+          }
+
+          if (currentObjectUrl) {
+            URL.revokeObjectURL(currentObjectUrl);
+          }
+          currentObjectUrl = URL.createObjectURL(result.file);
+
+          if (previewImg && previewDiv) {
+            previewImg.src = currentObjectUrl;
             previewDiv.classList.remove('hidden');
-          };
-          reader.readAsDataURL(file);
-        } else {
-          previewDiv.classList.add('hidden');
+          }
+
+          if (photoSizeBadge) {
+            if (result.wasOptimized) {
+              const pct = Math.round((1 - result.optimizedSize / result.originalSize) * 100);
+              photoSizeBadge.textContent = `${formatFileSize(result.originalSize)} → ${formatFileSize(result.optimizedSize)} (${pct}% smaller)`;
+            } else {
+              photoSizeBadge.textContent = formatFileSize(result.optimizedSize);
+            }
+          }
+        } catch (err: any) {
+          if (file.size <= 4 * 1024 * 1024) {
+            // Fall back to original file if within 4MB limit
+            if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+            currentObjectUrl = URL.createObjectURL(file);
+            if (previewImg && previewDiv) {
+              previewImg.src = currentObjectUrl;
+              previewDiv.classList.remove('hidden');
+            }
+            if (photoSizeBadge) {
+              photoSizeBadge.textContent = formatFileSize(file.size);
+            }
+          } else {
+            fileInput.value = '';
+            if (photoError) {
+              photoError.textContent = err?.message || 'Could not process photo and file exceeds 4MB limit.';
+              photoError.classList.remove('hidden');
+            }
+          }
+        } finally {
+          if (photoStatus) photoStatus.classList.add('hidden');
+          if (submitBtn) submitBtn.disabled = false;
         }
       });
     }
 
+    // 2. Client-side signed URL cache & IntersectionObserver for photos
+    const SIGNED_URL_CACHE = new Map<string, { url: string; expiresAt: number }>();
+
+    async function getPhotoUrl(path: string): Promise<string | null> {
+      const cached = SIGNED_URL_CACHE.get(path);
+      if (cached && Date.now() < cached.expiresAt - 60_000) {
+        return cached.url;
+      }
+      try {
+        const res = await fetch(`/api/photo-url?path=${encodeURIComponent(path)}`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (data.url) {
+          SIGNED_URL_CACHE.set(path, {
+            url: data.url,
+            expiresAt: data.expiresAt || Date.now() + 3600_000,
+          });
+          return data.url;
+        }
+      } catch {
+        // Network or JSON parse error
+      }
+      return null;
+    }
+
+    const photoContainers = document.querySelectorAll<HTMLElement>('.photo-lazy-container');
+    if (photoContainers.length > 0) {
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries, obs) => {
+          entries.forEach(async (entry) => {
+            if (entry.isIntersecting) {
+              const container = entry.target as HTMLElement;
+              obs.unobserve(container);
+              const path = container.getAttribute('data-photo-path');
+              if (!path) return;
+              const url = await getPhotoUrl(path);
+              const link = container.querySelector<HTMLAnchorElement>('.photo-link');
+              const img = container.querySelector<HTMLImageElement>('img');
+              const skeleton = container.querySelector<HTMLElement>('.photo-skeleton');
+              if (url && link && img) {
+                link.href = url;
+                img.src = url;
+                img.onload = () => {
+                  link.classList.remove('hidden');
+                  if (skeleton) skeleton.classList.add('hidden');
+                };
+                img.onerror = () => {
+                  if (skeleton) {
+                    skeleton.innerHTML = '<span class="text-caption text-muted">Failed to load photo</span>';
+                  }
+                };
+              } else if (skeleton) {
+                skeleton.innerHTML = '<span class="text-caption text-muted">Photo unavailable</span>';
+              }
+            }
+          });
+        }, { rootMargin: '200px 0px' });
+
+        photoContainers.forEach((el) => observer.observe(el));
+      } else {
+        // Fallback for browsers without IntersectionObserver
+        photoContainers.forEach(async (container) => {
+          const path = container.getAttribute('data-photo-path');
+          if (!path) return;
+          const url = await getPhotoUrl(path);
+          const link = container.querySelector<HTMLAnchorElement>('.photo-link');
+          const img = container.querySelector<HTMLImageElement>('img');
+          const skeleton = container.querySelector<HTMLElement>('.photo-skeleton');
+          if (url && link && img) {
+            link.href = url;
+            img.src = url;
+            link.classList.remove('hidden');
+            if (skeleton) skeleton.classList.add('hidden');
+          }
+        });
+      }
+    }
+
+    // 3. Filter chips handling
     const filterContainer = document.getElementById('filterChips');
     const ticketCards = document.querySelectorAll('.ticket-card');
 

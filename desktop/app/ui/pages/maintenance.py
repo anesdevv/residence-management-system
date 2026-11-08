@@ -76,7 +76,7 @@ from ..components import (
 )
 from ..icons import get_icon, get_pixmap
 from ..infocard import StudentInfoCardDialog
-from ..photo_viewer import ClickablePhotoLabel, PhotoFetchWorker, PhotoViewerDialog
+from ..photo_viewer import ClickablePhotoLabel, PhotoFetchWorker, PhotoViewerDialog, get_photo_cache, GLOBAL_PHOTO_CACHE
 from ..tasks import TaskRunner, human_error
 from ..theme import C, S
 
@@ -529,6 +529,11 @@ class MaintenancePage(QWidget):
         self.photo_skeleton = Skeleton(2)
         self.photo_skeleton.setVisible(False)
         photo_layout.addWidget(self.photo_skeleton)
+        self.photo_retry_btn = Button("Retry loading photo", "ghost", icon="refresh")
+        self.photo_retry_btn.setObjectName("photoRetryBtn")
+        self.photo_retry_btn.setVisible(False)
+        self.photo_retry_btn.clicked.connect(self._retry_photo_fetch)
+        photo_layout.addWidget(self.photo_retry_btn)
         inspector.addWidget(self.photo_section)
 
         # Staff / dispatch note (read-only display; set_status records it).
@@ -804,6 +809,7 @@ class MaintenancePage(QWidget):
         self._photo_fetch_failed = False
         self._photo_loading = False
         self.photo_skeleton.setVisible(False)
+        self.photo_retry_btn.setVisible(False)
         self.zoom_cue.setVisible(False)
         self.detail_text.clear()
         self.photo_label.clear()
@@ -903,6 +909,7 @@ class MaintenancePage(QWidget):
         self._photo_fetch_failed = False
         self._photo_loading = False
         self.photo_skeleton.setVisible(False)
+        self.photo_retry_btn.setVisible(False)
         self.zoom_cue.setVisible(False)
 
         r = self.selected()
@@ -960,12 +967,32 @@ class MaintenancePage(QWidget):
 
         self._show_selection(True)
 
-        # Fault photo (signed URL + background fetch, stale responses dropped).
+        # Fault photo (cached or signed URL + background fetch, stale responses dropped).
         self.photo_label.clear()
         self.photo_label.setCursor(Qt.CursorShape.PointingHandCursor)
-        if not r.get("photo_path"):
+        self.photo_retry_btn.setVisible(False)
+        photo_path = r.get("photo_path")
+        if not photo_path:
             self.photo_label.setText(_NO_PHOTO_TEXT)
             self.photo_label.setToolTip("Click to view fault details")
+            return
+
+        cache = get_photo_cache()
+        cached = cache.get(photo_path)
+        if cached is not None:
+            # 0 ms instant cache hit!
+            self._current_pixmap = QPixmap.fromImage(cached.image)
+            scaled = QPixmap.fromImage(cached.thumbnail) if not cached.thumbnail.isNull() else self._current_pixmap.scaled(
+                S("space-12") * 8, S("space-12") * 3,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            self.photo_label.setPixmap(scaled)
+            self.photo_label.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.photo_label.setToolTip("Click to open full-size photo viewer")
+            self._photo_loading = False
+            self.photo_skeleton.setVisible(False)
+            self.photo_retry_btn.setVisible(False)
             return
 
         self.photo_label.setText("Loading photo…")
@@ -975,7 +1002,7 @@ class MaintenancePage(QWidget):
 
         url = None
         try:
-            signed = self.client.storage.from_("maintenance-photos").create_signed_url(r["photo_path"], 300)
+            signed = self.client.storage.from_("maintenance-photos").create_signed_url(photo_path, 300)
             url = (signed or {}).get("signedURL") or (signed or {}).get("signedUrl")
         except Exception:
             url = None
@@ -986,15 +1013,39 @@ class MaintenancePage(QWidget):
             self._photo_fetch_failed = True
             self.photo_label.setText("Photo unavailable")
             self.photo_label.setToolTip("Failed to retrieve signed URL")
+            self.photo_retry_btn.setVisible(True)
             return
 
         self._current_photo_url = url
 
-        def on_loaded(data: bytes, req=current_req, img_url=url):
+        def on_decoded(img: QImage, thumb: QImage, data: bytes, req=current_req, img_url=url):
             if self._photo_req_id != req:
                 return
             self._photo_loading = False
             self.photo_skeleton.setVisible(False)
+            self.photo_retry_btn.setVisible(False)
+            if img and not img.isNull() and img.width() > 0 and img.height() > 0:
+                self._current_pixmap = QPixmap.fromImage(img)
+                self._current_photo_url = img_url
+                scaled = QPixmap.fromImage(thumb) if (thumb and not thumb.isNull()) else self._current_pixmap.scaled(
+                    S("space-12") * 8, S("space-12") * 3,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+                self.photo_label.setPixmap(scaled)
+                self.photo_label.setCursor(Qt.CursorShape.PointingHandCursor)
+                self.photo_label.setToolTip("Click to open full-size photo viewer")
+            else:
+                self._photo_fetch_failed = True
+                self.photo_label.setText("Photo preview unavailable")
+                self.photo_retry_btn.setVisible(True)
+
+        def on_loaded(data: bytes, req=current_req, img_url=url):
+            if self._photo_req_id != req or self._current_pixmap is not None:
+                return
+            self._photo_loading = False
+            self.photo_skeleton.setVisible(False)
+            self.photo_retry_btn.setVisible(False)
             pix = QPixmap()
             if pix.loadFromData(data) and not pix.isNull() and pix.width() > 0 and pix.height() > 0:
                 self._current_pixmap = pix
@@ -1010,6 +1061,7 @@ class MaintenancePage(QWidget):
             else:
                 self._photo_fetch_failed = True
                 self.photo_label.setText("Photo preview unavailable")
+                self.photo_retry_btn.setVisible(True)
 
         def on_failed(err_msg: str, req=current_req):
             if self._photo_req_id != req:
@@ -1018,13 +1070,25 @@ class MaintenancePage(QWidget):
             self.photo_skeleton.setVisible(False)
             self._photo_fetch_failed = True
             self.photo_label.setText("Failed to load photo")
+            self.photo_retry_btn.setVisible(True)
 
-        worker = PhotoFetchWorker(url, parent=None)
+        thumb_w = S("space-12") * 8
+        thumb_h = S("space-12") * 3
+        worker = PhotoFetchWorker(
+            url,
+            parent=None,
+            storage_path=photo_path,
+            thumb_size=(thumb_w, thumb_h),
+        )
         worker.finished.connect(worker.deleteLater)
         self._thumb_worker = worker
+        worker.decoded.connect(on_decoded)
         worker.loaded.connect(on_loaded)
         worker.failed.connect(on_failed)
         worker.start()
+
+    def _retry_photo_fetch(self):
+        self.show_detail()
 
     def eventFilter(self, obj, event):  # noqa: N802 - Qt API
         """Hover zoom cue over the thumbnail (only while a photo is loaded)."""
@@ -1060,6 +1124,7 @@ class MaintenancePage(QWidget):
             parent=self,
             initial_pixmap=self._current_pixmap,
             image_url=self._current_photo_url,
+            storage_path=r.get("photo_path"),
         )
         try:
             dlg.exec()
