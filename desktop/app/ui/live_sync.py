@@ -45,7 +45,11 @@ class LiveSyncWorker(QThread):
                 s_resp = execute_network_call(
                     lambda: (
                         self.client.table("students")
-                        .select("*")
+                        .select(
+                            "id, card_id, first_name, last_name, birth_date, gender, phone, email, "
+                            "university, faculty, study_level, wilaya, status, rejection_reason, "
+                            "room_id, reviewed_by, reviewed_at, created_at"
+                        )
                         .eq("status", "pending")
                         .order("created_at", desc=True)
                         .execute()
@@ -59,7 +63,10 @@ class LiveSyncWorker(QThread):
                 m_resp = execute_network_call(
                     lambda: (
                         self.client.table("maintenance_reports")
-                        .select("*, students(first_name, last_name, card_id)")
+                        .select(
+                            "id, student_id, category, description, photo_path, status, "
+                            "staff_note, created_at, updated_at, students(first_name, last_name, card_id)"
+                        )
                         .order("created_at", desc=True)
                         .execute()
                     ),
@@ -75,8 +82,9 @@ class LiveSyncWorker(QThread):
                     lambda: (
                         self.client.table("room_change_requests")
                         .select(
-                            "*, students(first_name, last_name, gender, card_id),"
-                            " staff(full_name)"
+                            "id, student_id, current_room_id, preferred_room_id, reason, status, "
+                            "decision_note, decided_by, decided_at, created_at, updated_at, "
+                            "students(first_name, last_name, gender, card_id), staff(full_name)"
                         )
                         .order("created_at", desc=True)
                         .execute()

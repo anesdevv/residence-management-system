@@ -817,8 +817,9 @@ class RoomChangesPage(QWidget):
         """Network-only all-status request snapshot (worker thread)."""
         resp = self.client.table("room_change_requests") \
             .select(
-                "*, students(first_name, last_name, gender, card_id),"
-                " staff(full_name)"
+                "id, student_id, current_room_id, preferred_room_id, reason, status, "
+                "decision_note, decided_by, decided_at, created_at, updated_at, "
+                "students(first_name, last_name, gender, card_id), staff(full_name)"
             ) \
             .order("created_at", desc=True).execute()
         return list(resp.data or [])

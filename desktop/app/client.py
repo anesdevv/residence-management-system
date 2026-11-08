@@ -442,7 +442,9 @@ def official_lookup(client: Client, *, force: bool = False) -> dict[str, dict]:
                 if entry is not None and (now - entry[0]) < _OFFICIAL_CACHE_TTL:
                     return dict(entry[1])
         try:
-            query = client.table("official_residents").select("*")
+            query = client.table("official_residents").select(
+                "card_id, first_name, last_name, birth_date, gender, university, faculty"
+            )
             result = {r["card_id"]: r for r in _fetch_all_rows(query) if "card_id" in r}
             with _OFFICIAL_CACHE_LOCK:
                 _OFFICIAL_CACHE[id(client)] = (time.monotonic(), result)

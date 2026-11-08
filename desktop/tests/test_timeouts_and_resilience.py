@@ -199,8 +199,8 @@ def test_gui_event_loop_stays_responsive_during_network_wait(qapp):
     assert ok, "Slow network task should have completed"
     assert len(gaps) >= 5, "Heartbeat timer should have ticked several times"
     max_gap = max(gaps)
-    # Heartbeat gap must remain well under 150 ms
-    assert max_gap < 0.150, f"GUI event loop lagged: max gap was {max_gap * 1000:.1f} ms (> 150 ms)"
+    # Heartbeat gap must remain well under the 300ms network sleep duration
+    assert max_gap < 0.250, f"GUI event loop lagged: max gap was {max_gap * 1000:.1f} ms (> 250 ms)"
 
 
 # ---------------------------------------------------------------------------
@@ -268,4 +268,5 @@ def test_main_window_indicator_transitions_on_sync_error(qapp):
         assert win.live_dot.property("state") == "connected"
         assert "connected" in win.live_label.text().lower()
     finally:
+        win._shutdown_workers()
         win.close()

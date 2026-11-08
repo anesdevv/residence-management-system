@@ -821,7 +821,10 @@ class MaintenancePage(QWidget):
     def _fetch_rows(self) -> list[dict]:
         """Network read: the maintenance queue (call from a worker thread)."""
         resp = self.client.table("maintenance_reports") \
-            .select("*, students(first_name, last_name, card_id)") \
+            .select(
+            "id, student_id, category, description, photo_path, status, "
+            "staff_note, created_at, updated_at, students(first_name, last_name, card_id)"
+        ) \
             .order("created_at", desc=True).execute()
         data = getattr(resp, "data", None)
         return [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []

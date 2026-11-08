@@ -714,7 +714,7 @@ class OfficialListPage(QWidget):
 
     def _fetch_roster(self) -> list[dict]:
         """Network read of the official roster (never call from the GUI thread)."""
-        resp = self.client.table("official_residents").select("*").order("card_id").execute()
+        resp = self.client.table("official_residents").select("card_id, first_name, last_name, birth_date, gender, university, faculty").order("card_id").execute()
         data = getattr(resp, "data", None)
         return [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
 

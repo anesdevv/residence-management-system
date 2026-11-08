@@ -210,7 +210,11 @@ class ResidentsPage(QWidget):
         with CLIENT_LOCK:
             resp = (
                 self.client.table("students")
-                .select("*, rooms(block, number, floor)")
+                .select(
+                "id, card_id, first_name, last_name, birth_date, gender, phone, email, "
+                "university, faculty, study_level, wilaya, status, room_id, created_at, "
+                "rooms(block, number, floor)"
+            )
                 .eq("status", "active")
                 .order("last_name")
                 .execute()

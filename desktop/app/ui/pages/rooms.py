@@ -362,7 +362,7 @@ class ManageBlocksDialog(QDialog):
             self._show_banner("info", _WORKING_TEXT, message)
 
     def _fetch_blocks(self) -> list[dict]:
-        resp = self.client.table("blocks").select("*").order("name").execute()
+        resp = self.client.table("blocks").select("id, name, gender").order("name").execute()
         data = getattr(resp, "data", None)
         return [b for b in data if isinstance(b, dict)] if isinstance(data, list) else []
 
@@ -1050,7 +1050,7 @@ class RoomsPage(QWidget):
 
     def _fetch_snapshot(self) -> dict:
         """Worker read: rooms + occupancy + blocks, all under CLIENT_LOCK."""
-        resp = self.client.table("rooms").select("*").order("block").order("number").execute()
+        resp = self.client.table("rooms").select("id, block, floor, number, capacity, gender").order("block").order("number").execute()
         data = getattr(resp, "data", None)
         rows = [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
         occupancy = room_occupancy(self.client)
@@ -1058,7 +1058,7 @@ class RoomsPage(QWidget):
             occupancy = {}
 
         try:
-            resp_b = self.client.table("blocks").select("*").order("name").execute()
+            resp_b = self.client.table("blocks").select("id, name, gender").order("name").execute()
             data_b = getattr(resp_b, "data", None)
             blocks = [b for b in data_b if isinstance(b, dict)] if isinstance(data_b, list) else []
         except Exception:  # noqa: BLE001 - blocks are a best-effort addition

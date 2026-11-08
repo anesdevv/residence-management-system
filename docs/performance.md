@@ -14,6 +14,7 @@ All measurements are recorded before and after each change. No metrics are assum
 | **PERF-5** | `web/src/pages/dashboard/maintenance.astro` | Storage API round trips for photo signed URLs | $N$ separate network HTTP calls (`createSignedUrl`) | 1 batched HTTP call (`createSignedUrls`) | Network calls reduced from $O(N)$ to $O(1)$ | Code inspection & mock network call count |
 | **PERF-6** | `supabase/migrations/` (Postgres Schema) | Query planning for foreign keys and status filters | Full table `Seq Scan` on `students`, `maintenance_reports`, `room_change_requests` | `Index Scan` / `Bitmap Index Scan` | B-tree index lookup $O(\log N)$ instead of $O(N)$ scan | Postgres `EXPLAIN` planning analysis |
 | **PERF-7** | `desktop/` & `web/` | Network resilience, timeout bounding & hang prevention | Indefinite/unbounded hangs on slow or dead connections (default client behaviour) | Bounded timeouts (connect 5s, read 10s, write 20s, download 20s, upload/functions 30s) + idempotent 1x retry on reads + strict 0x retry on writes + GUI event loop gap < 150 ms + live-sync self-healing | Eliminates 100% of indefinite UI/window/SSR hangs; user feedback within bounded window | Automated test suites (`test_timeouts_and_resilience.py`, `timeouts.test.ts`) |
+| **PERF-8** | `desktop/app/` (all pages & live-sync) | Network payload over-fetching from wildcard queries (`select("*")`) | 40.04 MB combined payload across core entity list queries on large seed dataset | 36.23 MB explicit column projections (Rooms -40.2%, Blocks -70.6%, Roster -29.9%, Residents -24.0%, Pending -7.7%, Maintenance -7.1%) | **3.81 MB reduction (-9.5% overall, up to -70.6% on blocks)** + reduced JSON serialization/parsing overhead | Synthesized 100k-record dataset matching `supabase/perf/seed_large.sql` via `tools/perf/measure_payload_sizes.py` |
 
 ---
 
@@ -21,9 +22,9 @@ All measurements are recorded before and after each change. No metrics are assum
 
 | Test Suite | Baseline | Post-Optimization Status | Target |
 |---|---|---|---|
-| Desktop (pytest) | 176 passed, 1 skipped | **198 passed, 1 skipped** (38.50s) | 100% pass rate + new regression tests |
-| Web (vitest) | 19 passed | **31 passed** (2.59s) | 100% pass rate + new regression tests |
-| Web Build (`astro build`) | 6.83s | **Verified Clean Build** (18.27s) | No regressions, clean build |
+| Desktop (pytest) | 176 passed, 1 skipped | **205 passed, 1 skipped** (43.00s) | 100% pass rate + new regression tests |
+| Web (vitest) | 19 passed | **31 passed** (1.89s) | 100% pass rate + new regression tests |
+| Web Build (`astro build`) | 6.83s | **Verified Clean Build** (14.78s) | No regressions, clean build |
 
 ---
 
@@ -50,6 +51,60 @@ drop index if exists public.idx_maintenance_reports_student_id;
 drop index if exists public.idx_students_room_id_active;
 drop index if exists public.idx_students_status_created;
 ```
+
+---
+
+## Query Projection Optimization (PERF-8)
+
+### Problem Statement
+Wildcard queries (`select("*")`) download all columns from tables regardless of whether the UI view, live-sync worker, or action handler requires them. Over time, as tables accumulate heavy text fields, metadata, or timestamps (`description`, `staff_note`, `rejection_reason`, `decision_note`, `photo_path`, `created_at`, `updated_at`), wildcard queries waste bandwidth, increase latency, and degrade client deserialization throughput.
+
+### Step 0 Audit: Discovered Wildcards & Screen Usage
+
+| Location | Query Target | Columns Consumed by Screen | Unused / Heavy Columns Pruned |
+|---|---|---|---|
+| `desktop/app/client.py:445` (`official_lookup`) | `official_residents` | `card_id, first_name, last_name, birth_date, gender, university, faculty` | `id, created_at` |
+| `desktop/app/ui/pages/official_list.py:717` (`_fetch_roster`) | `official_residents` | `card_id, first_name, last_name, birth_date, gender, university, faculty` | `id, created_at` |
+| `desktop/app/ui/pages/pending.py:743` (`_fetch_snapshot`) | `students` | `id, card_id, first_name, last_name, birth_date, gender, phone, email, university, faculty, study_level, wilaya, status, rejection_reason, room_id, reviewed_by, reviewed_at, created_at` | `updated_at` |
+| `desktop/app/ui/live_sync.py:48` (`LiveSyncWorker._step`) | `students` (pending) | Same as PendingPage | `updated_at` |
+| `desktop/app/ui/pages/residents.py:213` (`_fetch_residents`) | `students` (active) | `id, card_id, first_name, last_name, birth_date, gender, phone, email, university, faculty, study_level, wilaya, status, room_id, created_at, rooms(...)` | `rejection_reason, reviewed_by, reviewed_at, updated_at` |
+| `desktop/app/ui/pages/maintenance.py:824` (`_fetch_rows`) | `maintenance_reports` | `id, student_id, category, description, photo_path, status, staff_note, created_at, updated_at, students(...)` | `handled_by` |
+| `desktop/app/ui/live_sync.py:62` (`LiveSyncWorker._step`) | `maintenance_reports` | Same as MaintenancePage | `handled_by` |
+| `desktop/app/ui/pages/room_changes.py:819` (`_fetch_requests`) | `room_change_requests` | `id, student_id, current_room_id, preferred_room_id, reason, status, decision_note, decided_by, decided_at, created_at, updated_at, students(...), staff(...)` | None (all required for 4-view filtering & desk inquiry reference) |
+| `desktop/app/ui/live_sync.py:84` (`LiveSyncWorker._step`) | `room_change_requests` | Same as RoomChangesPage | None (all required for desk inquiry reference & differential diff) |
+| `desktop/app/ui/pages/rooms.py:1053` (`RoomsPage._fetch_snapshot`) | `rooms` | `id, block, floor, number, capacity, gender` | `created_at, updated_at` |
+| `desktop/app/ui/pages/rooms.py:365` & `:1061` | `blocks` | `id, name, gender` | `description, created_at, updated_at` |
+| `web/src/pages/` & `web/src/pages/api/` | All web routes | Already use explicit minimal projections | Zero wildcards in web code |
+
+### RPCs Returning `jsonb` (Audit Report Only)
+The following database functions return `jsonb` payloads directly for MCP administration and were audited but preserved without changes:
+- `mcp_get_overview()`, `mcp_list_pending()`, `mcp_list_maintenance()`, `mcp_list_rooms()`, `mcp_list_residents()` in `supabase/migrations/20261015120000_mcp_admin_readonly_functions.sql`
+- `mcp_audit_read()` in `20261015221500_mcp_audit_read.sql`
+- `mcp_list_available_rooms()` in `20261015233500_mcp_room_ids.sql`
+- `mcp_approve_application()`, `mcp_reject_application()` in `20261015234000_mcp_write_functions.sql`
+
+### Empirical Payload Measurements (Large Seed Dataset)
+Evaluated using `tools/perf/measure_payload_sizes.py` against synthesized dataset matching `supabase/perf/seed_large.sql` (20k students, 5k rooms, 50k maintenance tickets, 5k roster entries):
+
+| Query / Endpoint | Row Count | Baseline Payload (`*`) | Explicit Projection Payload | Reduction | % Saved |
+|---|---|---|---|---|---|
+| **Rooms Table** | 5,000 | 1,020.5 KB | 610.4 KB | 410.2 KB | **-40.2%** |
+| **Residential Blocks** | 20 | 5.3 KB | 1.6 KB | 3.8 KB | **-70.6%** |
+| **Official Admissions Roster** | 5,000 | 1.40 MB | 1,008.6 KB | 429.7 KB | **-29.9%** |
+| **Active Residents List** | 5,000 | 3.29 MB | 2.50 MB | 810.5 KB | **-24.0%** |
+| **Pending Applications & Live-Sync** | 4,000 | 2.08 MB | 1.92 MB | 164.1 KB | **-7.7%** |
+| **Maintenance Reports & Live-Sync** | 50,000 | 28.70 MB | 26.66 MB | 2.03 MB | **-7.1%** |
+| **Room Changes & Live-Sync** | 5,000 | 3.56 MB | 3.56 MB | 0.0 KB | 0.0% (schema locked) |
+| **TOTAL** | — | **40.04 MB** | **36.23 MB** | **3.81 MB** | **-9.5%** |
+
+### Local Performance Seed Script
+Created `supabase/perf/seed_large.sql` (NOT in migrations, for local performance benchmarking only) generating:
+- 20 residential blocks
+- 5,000 residence rooms across blocks and floors
+- 20,000 student applications with realistic Algerian student identities
+- 5,000 official ministry admissions roster records
+- 50,000 maintenance tickets with category breakdown
+- 5,000 room change requests across all 4 statuses
 
 ---
 

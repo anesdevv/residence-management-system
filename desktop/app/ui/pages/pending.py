@@ -740,7 +740,11 @@ class PendingPage(QWidget):
     # ------------------------------------------------------- background data
     def _fetch_snapshot(self):
         """Network-only snapshot (students + official roster), for a worker."""
-        resp = self.client.table("students").select("*").order("created_at", desc=True).execute()
+        resp = self.client.table("students").select(
+            "id, card_id, first_name, last_name, birth_date, gender, phone, email, "
+            "university, faculty, study_level, wilaya, status, rejection_reason, "
+            "room_id, reviewed_by, reviewed_at, created_at"
+        ).order("created_at", desc=True).execute()
         return list(resp.data or []), official_lookup(self.client)
 
     def _apply_snapshot(self, snapshot):
