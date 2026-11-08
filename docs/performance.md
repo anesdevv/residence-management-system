@@ -592,8 +592,6 @@ px depcheck & Route Inspection)**:
      - Unused assets in public/:
        - web/public/brand/resivo_logo_transparent.png: 970 KB (unused).
        - web/public/resivo-logo.svg: 170 KB (unused).
-       - web/public/brand/resivo_logo_white.png: 20 KB (unused).
-       - web/public/brand/resivo_mark_white.png: 10 KB (unused).
        - Font markdown and OFL licenses: 12 KB in public distribution directory.
 2. **Desktop Audit (deptry & Spec Inspection)**:
    - desktop/requirements.txt contains 5 curated packages: PySide6, supabase, python-dotenv, openpyxl, pytest (dev).
