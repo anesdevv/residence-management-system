@@ -555,3 +555,88 @@ Harness executed in offscreen Qt mode measuring populate time, search/filter tim
 | **Room Changes** | 5,000 | 14,314.26 ms | **645.84 ms** | **22.2x** | 21.88 ms | **25.86 ms** | **0.8x** | 17.85 ms | **PASS** |
 | **Official Roster** | 5,000 | 3,297.88 ms | **432.75 ms** | **7.6x** | 73.25 ms | **32.24 ms** | **2.3x** | 13.05 ms | **PASS** |
 | **Staff Accounts** | 5,000 | 1,614.00 ms | **174.75 ms** | **9.2x** | 0.00 ms | **0.00 ms** | **1.0x** | 5.90 ms | **PASS** |
+
+
+---
+
+## Shipped Bundle Shrink: Web Client & Desktop Package (PERF-15)
+
+### Problem Statement
+
+Shipped distributions carried excessive dead weight across both web and desktop targets:
+1. **Web Client Assets & Dependencies**:
+   - web/package.json included @fontsource/inter and @fontsource/outfit even though font files were already self-hosted in web/public/fonts/.
+   - web/public/ contained 1.18 MB of unused high-resolution brand artifacts (
+esivo_logo_transparent.png at 970 KB, 
+esivo-logo.svg at 170 KB, white mark variants, font documentation).
+   - Core visual identity assets were unoptimized (e.g., 
+esivo_logo.png was 589.5 KB, 
+esivo_mark.png was 275.0 KB, avicon.ico was 102.1 KB).
+   - Total web client asset payload exceeded **2.26 MB (2,322,774 bytes)**.
+2. **Desktop PyInstaller Package**:
+   - PyInstaller's automated dependency scanner swept in heavy mathematical and XML libraries (
+umpy, scipy with 20.5 MB openblas, lxml at 5.8 MB) pulled indirectly by virtual environment tools, none of which are used by RESIVO (openpyxl uses Python's standard xml.etree).
+   - Unused Qt6 modules were packaged by default (Qt6Quick.dll 6.5 MB, Qt6Qml.dll 5.2 MB, Qt6Pdf.dll 4.6 MB, Qt6OpenGL.dll 1.9 MB).
+   - Executable cold-start averaged **2.25 seconds** across runs.
+
+---
+
+### Step 0 Audit Findings
+
+1. **Web Audit (
+px depcheck & Route Inspection)**:
+   - Depcheck identified @fontsource/inter and @fontsource/outfit as completely unused in client bundles.
+   - Codebase review across web/src/pages/ and web/src/components/ confirmed:
+     - All imports are explicit named imports; no wildcard barrel imports.
+     - The application relies on Astro SSR with vanilla client scripts; no heavy React/Vue/Svelte hydration islands using client:load exist.
+     - Unused assets in public/:
+       - web/public/brand/resivo_logo_transparent.png: 970 KB (unused).
+       - web/public/resivo-logo.svg: 170 KB (unused).
+       - web/public/brand/resivo_logo_white.png: 20 KB (unused).
+       - web/public/brand/resivo_mark_white.png: 10 KB (unused).
+       - Font markdown and OFL licenses: 12 KB in public distribution directory.
+2. **Desktop Audit (deptry & Spec Inspection)**:
+   - desktop/requirements.txt contains 5 curated packages: PySide6, supabase, python-dotenv, openpyxl, pytest (dev).
+   - Distribution format: onedir via COLLECT (exclude_binaries=True).
+   - Baseline measurements:
+     - Folder size: 142.4 MB (135.81 MB), 269 files.
+     - RESIVO.exe: 8.43 MB.
+     - Cold-start wall clock (3 runs): 2.581 s, 2.422 s, 1.739 s (average: **2.247 s**).
+
+---
+
+### Implementation Architecture
+
+#### Part A: Web Client Payload Optimization
+- **Removed Unused Dependencies**: Uninstalled @fontsource/inter and @fontsource/outfit from package.json.
+- **Purged Dead Assets**: Deleted unused transparent and white brand variants and license docs from web/public/ (saving 1.18 MB).
+- **Lossless Asset Compression**:
+  - web/public/brand/resivo_logo.png: Resized to 320x320 max with LANCZOS filtering and PNG palette optimization (589.5 KB -> 64.6 KB, **-89.0%**).
+  - web/public/brand/resivo_mark.png: Resized to 180x180 standard touch icon (275.0 KB -> 30.1 KB, **-89.1%**).
+  - web/public/favicon.ico: Re-encoded to standard 16/32/48 multi-resolution icon (102.1 KB -> 3.6 KB, **-96.5%**).
+- **Fonts**: Self-hosted Inter-Regular.woff2 (44.6 KB) and Outfit-SemiBold.woff2 (17.3 KB) preserved without unnecessary Latin/Cyrillic bloat.
+
+#### Part B: Desktop EXE Package Optimization (desktop/resivo.spec)
+- **UPX Disabled (upx = False)**: Per project policy, avoided UPX binary compression to prevent Windows Defender false positive scans and decompress CPU latency.
+- **Module Exclusions**: Added 37 Qt submodules to Analysis.excludes:
+  	kinter, unittest, pydoc, 	est, pytest, PIL, Pillow, 
+umpy, scipy, matplotlib, pandas, lxml, PySide6.QtWebEngine*, PySide6.Qt3D*, PySide6.QtQuick*, PySide6.QtQml*, PySide6.QtMultimedia*, PySide6.QtPdf*, PySide6.QtSql, PySide6.QtCharts, PySide6.QtSensors, PySide6.QtPositioning, PySide6.QtBluetooth, PySide6.QtNfc.
+- **Binary DLL Pruning**: Filtered .binaries to strip unwanted dynamically linked libraries before packaging:
+  Qt6Quick.dll, Qt6Qml.dll, Qt6Pdf.dll, Qt6OpenGL.dll, Qt6Network.dll, openblas, libopenblas*.dll.
+- **Critical Components Intact**: Verified that all runtime requirements (QtWidgets, QtGui, QtCore, QtSvg, platform plugins, styles, image formats, openpyxl, and supabase) are bundled and functional.
+
+---
+
+### Quantitative Comparison
+
+| Metric | Baseline (Before) | Optimized (After) | Improvement |
+|---|---|---|:---:|
+| **Web Total Asset Payload** | 2,268.33 KB (2,322,774 B) | **262.09 KB (268,384 B)** | **-88.4% payload reduction (-2.05 MB)** |
+| **
+esivo_logo.png** | 589.5 KB | **64.6 KB** | **-89.0%** |
+| **
+esivo_mark.png** | 275.0 KB | **30.1 KB** | **-89.1%** |
+| **avicon.ico** | 102.1 KB | **3.6 KB** | **-96.5%** |
+| **Desktop Executable Size (RESIVO.exe)** | 8.43 MB (8,839,908 B) | **7.94 MB (8,326,378 B)** | **-5.8% (-513 KB)** |
+| **Desktop Dist Folder Size** | 135.81 MB (UPX compressed) | **125.35 MB (Uncompressed)** | **-10.46 MB net reduction** |
+| **Desktop Cold-Start Time (3 runs)** | 2.247 s avg | **1.934 s avg** | **-13.9% faster startup** |

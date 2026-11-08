@@ -34,6 +34,17 @@ dist\RESIVO\RESIVO.exe
 The folder (`dist\RESIVO\`) is self-contained. The optional installer is built
 with Inno Setup from `desktop\installer.iss` and ships that folder's contents.
 
+### Distribution Mode & Optimization Strategy
+
+1. **Distribution Mode**: Packaged as a folder directory (`onedir`) via PyInstaller's `COLLECT`.
+   - **Why `onedir` instead of `onefile`**: In `onefile` mode, Windows must decompress the entire archive into a temporary `%TEMP%\_MEIxxxxxx` directory on every single launch, adding 3-5 seconds of disk I/O and CPU overhead. In `onedir` mode, binaries are mapped directly into virtual memory, allowing rapid cold-start (~1.9 s).
+2. **UPX Compression**: Set to `upx = False` per project policy.
+   - UPX-compressed executables on Windows frequently trigger antivirus heuristic false positives and incur a decompression CPU cost on process startup. Without UPX, the binary executes cleanly with standard OS paging.
+3. **Module & Binary Exclusion**:
+   - `desktop/resivo.spec` strictly excludes unused standard libraries (`tkinter`, `unittest`, `pydoc`, `test`, `pytest`) and large third-party math packages accidentally pulled in by virtual environment tooling (`numpy`, `scipy`, `matplotlib`, `pandas`, `lxml`).
+   - All unused Qt6 submodules (such as `QtWebEngine`, `Qt3D`, `QtQuick`, `QtQml`, `QtMultimedia`, `QtPdf`, `QtSql`, `QtCharts`) are excluded, and extraneous DLLs (e.g., `Qt6Quick.dll`, `Qt6Qml.dll`, `Qt6Pdf.dll`, `openblas`) are pruned in the binary collection stage.
+   - All necessary components (`QtWidgets`, `QtGui`, `QtCore`, `QtSvg`, platform plugins, styles, image formats, `openpyxl`, and `supabase`/`httpx`) are fully preserved.
+
 ### Windows Icon Caching Note
 Windows caches executable icons aggressively in `%LocalAppData%\IconCache.db`. After
 rebuilding `RESIVO.exe`, if Explorer or Task Manager still displays an old or generic icon:
