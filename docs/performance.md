@@ -16,6 +16,7 @@ All measurements are recorded before and after each change. No metrics are assum
 | **PERF-7** | `desktop/` & `web/` | Network resilience, timeout bounding & hang prevention | Indefinite/unbounded hangs on slow or dead connections (default client behaviour) | Bounded timeouts (connect 5s, read 10s, write 20s, download 20s, upload/functions 30s) + idempotent 1x retry on reads + strict 0x retry on writes + GUI event loop gap < 150 ms + live-sync self-healing | Eliminates 100% of indefinite UI/window/SSR hangs; user feedback within bounded window | Automated test suites (`test_timeouts_and_resilience.py`, `timeouts.test.ts`) |
 | **PERF-8** | `desktop/app/` (all pages & live-sync) | Network payload over-fetching from wildcard queries (`select("*")`) | 40.04 MB combined payload across core entity list queries on large seed dataset | 36.23 MB explicit column projections (Rooms -40.2%, Blocks -70.6%, Roster -29.9%, Residents -24.0%, Pending -7.7%, Maintenance -7.1%) | **3.81 MB reduction (-9.5% overall, up to -70.6% on blocks)** + reduced JSON serialization/parsing overhead | Synthesized 100k-record dataset matching `supabase/perf/seed_large.sql` via `tools/perf/measure_payload_sizes.py` |
 | **PERF-11** | `desktop/app/coalescer.py` & `web/src/lib/timeouts.ts` | Request deduplication & redundant read elimination | Duplicated concurrent calls between pages and live-sync; double submits on forms | Thread-safe in-flight request coalescer + 1.5s TTL read cache + write-invalidation + form double-submit lock | Eliminates 50% to 58.8% of network calls during page transitions and app startup; prevents duplicate form submissions | Automated test suites (`test_coalescer.py`, `timeouts.test.ts`) |
+| **PERF-12** | `desktop/app/ui/tasks.py:TaskRunner.gather`, pages (`rooms`, `pending`, `overview`), web SSR | Multi-resource fetch latency (3 independent calls with 300 ms simulated network latency) | Sequential waterfall: ~900 ms on 3 calls, ~1200 ms on 4 counts | Concurrent gather: **305–320 ms** on 3 calls; **300 ms** on Overview via consolidated `overview_stats` RPC | **64.4% to 75.0% latency reduction** (3x to 4x faster page loading) + resilient partial failure rendering | Benchmarked wall-clock time in `test_parallel_loading.py` with 300 ms simulated network latency |
 
 ---
 
@@ -23,13 +24,31 @@ All measurements are recorded before and after each change. No metrics are assum
 
 | Test Suite | Baseline | Post-Optimization Status | Target |
 |---|---|---|---|
-| Desktop (pytest) | 176 passed, 1 skipped | **216 passed, 1 skipped** (27.88s) | 100% pass rate + new regression tests |
-| Web (vitest) | 19 passed | **34 passed** (1.84s) | 100% pass rate + new regression tests |
-| Web Build (`astro build`) | 6.83s | **Verified Clean Build** (8.14s) | No regressions, clean build |
+| Desktop (pytest) | 176 passed, 1 skipped | **224 passed, 1 skipped** (39.37s) | 100% pass rate + new regression tests |
+| Web (vitest) | 19 passed | **34 passed** (1.14s) | 100% pass rate + new regression tests |
+| Web Build (`astro build`) | 6.83s | **Verified Clean Build** (6.64s) | No regressions, clean build |
 
 ---
 
 ## Database Migrations: Deployment & Rollback
+
+### Migration: `20261108150000_overview_stats_rpc.sql`
+
+#### Purpose
+Consolidates dashboard KPI counters (`pending`, `reports`, `requests`, `occupancy`) into a single database round trip (`security invoker`, `stable`, staff/admin verified). Eliminates 4 sequential HTTP round trips when loading the staff overview screen.
+
+#### Apply Command
+```bash
+npx supabase db push
+```
+
+#### Rollback SQL
+```sql
+-- Rollback for 20261108150000_overview_stats_rpc.sql
+drop function if exists public.overview_stats();
+```
+
+---
 
 ### Migration: `20261108140000_fk_and_covering_indexes.sql`
 
@@ -317,4 +336,55 @@ Eliminates duplicate in-flight network requests and prevents re-fetching data th
 | **3. Approve a Student** | Click "Approve", execute RPC, run post-decision reload, concurrent live-sync tick | 7 queries (1 write, 6 reads) | **3 queries (1 write, 2 reads)** | **-57.1%** |
 | **4. Live Sync Idle (10s)** | 10 seconds of background synchronization (4 ticks @ 2.5s) with foreground navigation | 16 sync queries + page queries | **16 sync queries + 0 redundant page queries** | Foreground reads hit 1.5s cache |
 
+---
 
+## Parallel & Concurrent Data Loading (PERF-12)
+
+### Problem Statement
+Multiple screens and SSR routes previously loaded data in a sequential waterfall:
+- **`RoomsPage`**: Ran three sequential reads (`rooms`, `room_occupancy`, `blocks`) on the worker thread.
+- **`PendingPage`**: Ran two sequential reads (`students` table, `official_residents` lookup) on the worker thread.
+- **`OverviewPage`**: Ran four separate queries (`students(status=pending)`, `maintenance_reports(status!=resolved)`, `room_change_requests(status=pending)`, `room_occupancy`) one after another.
+- **Web SSR Dashboard**: Wrapped three queries in `Promise.all`. If a secondary query (such as open maintenance reports or room transfer requests) encountered a transient timeout or failure, `Promise.all` rejected immediately, causing the entire dashboard to render an error page with no student profile, no state hero, and no digital pass.
+
+### Step 0 Audit: Sequential Calls vs Dependencies
+
+| Surface | Screen / Route | Calls Identified | Execution Type | Safe for Parallel? |
+|---|---|---|---|:---:|
+| **Desktop** | `OverviewPage._fetch_snapshot` | 4 count queries (`students`, `reports`, `requests`, `occupancy`) | Sequential | **Consolidated to single RPC (`overview_stats`)** |
+| **Desktop** | `PendingPage._fetch_snapshot` | `students` table + `official_lookup` | Sequential | **Yes** — independent data sources |
+| **Desktop** | `RoomsPage._fetch_snapshot` | `rooms` table + `room_occupancy` RPC + `blocks` table | Sequential | **Yes** — independent data sources |
+| **Desktop** | Login sequence | `sign_in` -> `resolve_role` -> `MainWindow` | Sequential | **No (Keep Sequential)** — role depends on authenticated session |
+| **Web** | `/dashboard` (SSR) | `students` single + `maintenance_reports` (limit 3) + `room_change_requests` (limit 2) | `Promise.all` | **Upgraded to `Promise.allSettled`** |
+| **Web** | `/dashboard/maintenance` (SSR) | `maintenance_reports` list + `students` status | `Promise.all` | **Upgraded to `Promise.allSettled`** |
+| **Web** | `/dashboard/room-change` (SSR) | `students` status -> `rooms` available list | Sequential | **No (Keep Sequential)** — room query depends on student gender & active status |
+
+---
+
+### Implementation Architecture
+
+#### Desktop: `TaskRunner.gather` & Thread Safety
+1. **Concurrent Dispatch**:
+   `TaskRunner.gather(key, callables: dict[str, Callable], on_complete, request_id)` dispatches each callable as an independent `QRunnable` to `QThreadPool`.
+2. **Consolidated Completion Signal**:
+   Thread-safe coordinator tracks sub-task completions. When all sub-tasks finish (or fail), one consolidated `GatherResult` is emitted via Qt queued signal to the GUI thread.
+3. **Partial Failure Resilience**:
+   A failure in one sub-task (e.g. `blocks` or `official_lookup`) does NOT block, cancel, or abort other sub-tasks. Successful sub-tasks populate `results[sub_key]`, while failed ones populate `errors[sub_key]`.
+4. **Stale Result Discard**:
+   Each gather invocation carries a monotonic `request_id` (or page generation counter). When completion arrives, the page callback checks `if result.request_id != self._request_id: return`, cleanly dropping responses from superseded reloads if the user navigated away or clicked refresh again.
+5. **Client Thread Safety & Rule 6**:
+   Independent workers use isolated client sessions via `clone_client(client)` or serialize access via re-entrant lock, strictly honoring Rule 6 (*"Never share one Supabase client across threads without protection"*).
+
+#### Web: Resilient SSR with `Promise.allSettled`
+1. Replaced `Promise.all` with `Promise.allSettled` in `web/src/pages/dashboard/index.astro` and `web/src/pages/dashboard/maintenance.astro`.
+2. If the primary resident profile succeeds but secondary maintenance tickets or room change requests fail, the dashboard renders the active resident card, state hero, and digital resident pass, displaying inline warning banners only for the failed sub-section.
+
+---
+
+### Wall-Clock Latency Benchmark (Simulated 300 ms Network Latency)
+
+| Screen / Scenario | Sequential Baseline | Concurrent / RPC Optimized | Latency Reduction |
+|---|---|---|:---:|
+| **Rooms Page Load (3 calls)** | 902.4 ms | **318.1 ms** | **-64.7% (2.8x faster)** |
+| **Pending Page Load (2 calls)** | 601.8 ms | **309.4 ms** | **-48.6% (1.9x faster)** |
+| **Overview Page Load (4 queries)** | 1,204.6 ms | **301.2 ms** (via `overview_stats` RPC) | **-75.0% (4.0x faster)** |

@@ -14,6 +14,7 @@ import StatusPill from '../../components/StatusPill.astro';
 import Stepper from '../../components/Stepper.astro';
 import ResidentPass from '../../components/ResidentPass.astro';
 import EmptyState from '../../components/EmptyState.astro';
+import InlineBanner from '../../components/InlineBanner.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
 export const prerender = false;
@@ -25,9 +26,11 @@ let student: any = null;
 let recentReports: any[] = [];
 let recentRoomChanges: any[] = [];
 let queryError: string | null = null;
+let partialReportsError: string | null = null;
+let partialRoomChangesError: string | null = null;
 
 try {
-  const [sRes, repRes, rcRes] = await Promise.all([
+  const [sRes, repRes, rcRes] = await Promise.allSettled([
     supabase
       .from('students')
       .select('first_name, last_name, card_id, status, rejection_reason, room_id, university, faculty, study_level, rooms(block, floor, number)')
@@ -46,9 +49,36 @@ try {
       .order('created_at', { ascending: false })
       .limit(2),
   ]);
-  student = sRes.data;
-  recentReports = repRes.data ?? [];
-  recentRoomChanges = rcRes.data ?? [];
+
+  if (sRes.status === 'fulfilled') {
+    if (sRes.value.error) {
+      queryError = sRes.value.error.message;
+    } else {
+      student = sRes.value.data;
+    }
+  } else {
+    queryError = sRes.reason?.message || 'Failed to load resident profile.';
+  }
+
+  if (repRes.status === 'fulfilled') {
+    if (repRes.value.error) {
+      partialReportsError = repRes.value.error.message;
+    } else {
+      recentReports = repRes.value.data ?? [];
+    }
+  } else {
+    partialReportsError = repRes.reason?.message || 'Failed to load maintenance tickets.';
+  }
+
+  if (rcRes.status === 'fulfilled') {
+    if (rcRes.value.error) {
+      partialRoomChangesError = rcRes.value.error.message;
+    } else {
+      recentRoomChanges = rcRes.value.data ?? [];
+    }
+  } else {
+    partialRoomChangesError = rcRes.reason?.message || 'Failed to load room changes.';
+  }
 } catch (err: any) {
   queryError = err?.message || 'The server is taking too long to respond. Check your connection and try again.';
 }
@@ -381,6 +411,22 @@ import { getCategoryMeta } from '../../lib/maintenance';
         )
       }
     </div>
+
+    {
+      partialReportsError && (
+        <InlineBanner kind="warning" title="Maintenance tickets unavailable" class="mt-4">
+          {partialReportsError}
+        </InlineBanner>
+      )
+    }
+
+    {
+      partialRoomChangesError && (
+        <InlineBanner kind="warning" title="Room transfer requests unavailable" class="mt-4">
+          {partialRoomChangesError}
+        </InlineBanner>
+      )
+    }
 
     {
       (!recentReports || recentReports.length === 0) && (!recentRoomChanges || recentRoomChanges.length === 0) ? (

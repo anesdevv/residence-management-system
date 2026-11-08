@@ -152,6 +152,25 @@ def _stored_session(client: Client):
     return None
 
 
+def clone_client(client: Client) -> Client:
+    """Create an independent client instance sharing the current auth session.
+
+    Safe for concurrent workers running on separate threads without sharing
+    sub-client HTTP sessions or racing on the main client's auth state.
+    """
+    new_client = make_client()
+    session = _stored_session(client)
+    if session is not None:
+        if hasattr(new_client, "auth"):
+            new_client.auth._in_memory_session = session
+        token = getattr(session, "access_token", None) or (
+            session.get("access_token") if isinstance(session, dict) else None
+        )
+        if token and hasattr(new_client, "postgrest") and hasattr(new_client.postgrest, "auth"):
+            new_client.postgrest.auth(token)
+    return new_client
+
+
 def stored_user(client: Client):
     """The signed-in user from the local session (never a network call).
 

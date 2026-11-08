@@ -291,7 +291,20 @@ class OverviewPage(QWidget):
         return q.execute().count or 0
 
     def _fetch_snapshot(self):
-        """Network-only counters for a worker thread."""
+        """Fetch dashboard counters via overview_stats RPC, with query fallback."""
+        try:
+            resp = self.client.rpc("overview_stats", {}).execute()
+            data = getattr(resp, "data", None)
+            if isinstance(data, dict):
+                return (
+                    int(data.get("pending", 0)),
+                    int(data.get("reports", 0)),
+                    int(data.get("requests", 0)),
+                    int(data.get("occupancy", 0)),
+                )
+        except Exception:  # noqa: BLE001 - fallback to individual queries if unmigrated
+            pass
+
         pending = self._count("students", status="pending")
         reports = (
             self.client.table("maintenance_reports")

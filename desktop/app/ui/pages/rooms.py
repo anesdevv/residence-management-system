@@ -64,7 +64,7 @@ from ..components import (
 )
 from ..icons import get_icon
 from ..infocard import RoomInfoCardDialog
-from ..tasks import TaskRunner, human_error
+from ..tasks import GatherResult, TaskRunner, human_error
 from ..theme import C, S, DESKTOP_STYLESHEET
 
 # Table language: overline headers are uppercased by ``configure_table``.
@@ -1048,6 +1048,23 @@ class RoomsPage(QWidget):
             return self.rows[row].get("id")
         return None
 
+    def _fetch_rooms(self) -> list[dict]:
+        resp = self.client.table("rooms").select("id, block, floor, number, capacity, gender").order("block").order("number").execute()
+        data = getattr(resp, "data", None)
+        return [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
+
+    def _fetch_occupancy(self) -> dict:
+        occ = room_occupancy(self.client)
+        return occ if isinstance(occ, dict) else {}
+
+    def _fetch_blocks(self) -> list[dict]:
+        try:
+            resp_b = self.client.table("blocks").select("id, name, gender").order("name").execute()
+            data_b = getattr(resp_b, "data", None)
+            return [b for b in data_b if isinstance(b, dict)] if isinstance(data_b, list) else []
+        except Exception:  # noqa: BLE001 - blocks are a best-effort addition
+            return []
+
     def _fetch_snapshot(self) -> dict:
         """Worker read: rooms + occupancy + blocks, all under CLIENT_LOCK."""
         resp = self.client.table("rooms").select("id, block, floor, number, capacity, gender").order("block").order("number").execute()
@@ -1130,16 +1147,44 @@ class RoomsPage(QWidget):
         self._set_actions_busy(True)
         self._show_banner("info", _WORKING_TEXT, "Refreshing the room list…")
         self._set_loading(True)
-        started = self.tasks.run(
+        callables = {
+            "rooms": self._fetch_rooms,
+            "occupancy": self._fetch_occupancy,
+            "blocks": self._fetch_blocks,
+        }
+        started = self.tasks.gather(
             _RELOAD_KEY,
-            self._fetch_snapshot,
-            on_success=lambda snapshot: self._on_reload_success(snapshot, generation),
-            on_failed=self._on_reload_failed,
+            callables,
+            on_complete=lambda res: self._on_gather_success(res, generation),
             on_finished=self._on_reload_finished,
+            request_id=generation,
         )
         if not started:
             self._set_actions_busy(False)
             self._set_loading(False)
+
+    def _on_gather_success(self, result: GatherResult, generation: int) -> None:
+        if generation != self._data_generation or self._closing:
+            return
+        if "rooms" in result.errors:
+            self._on_reload_failed(result.errors["rooms"])
+            return
+
+        rows = result.get("rooms", [])
+        occupancy = result.get("occupancy", {})
+        blocks = result.get("blocks", [])
+
+        if not blocks and rows:
+            seen = {}
+            for r in rows:
+                b_name = str(r.get("block", "")).strip().upper()
+                if b_name and b_name not in seen:
+                    seen[b_name] = {"name": b_name, "gender": str(r.get("gender", "male")).lower()}
+            blocks = list(seen.values())
+
+        snapshot = {"rows": rows, "occupancy": occupancy, "blocks": blocks}
+        self.error_banner.setVisible(False)
+        self._apply_snapshot(snapshot)
 
     def reload(self):
         """Refresh rooms; the first (constructor) call stays synchronous."""

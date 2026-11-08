@@ -63,7 +63,7 @@ from PySide6.QtWidgets import (
 from ...client import official_lookup, room_occupancy
 from ...timeouts import execute_network_call
 from .. import theme
-from ..tasks import TaskRunner, human_error
+from ..tasks import GatherResult, TaskRunner, human_error
 from ..components import (
     Avatar,
     Button,
@@ -355,6 +355,7 @@ class PendingPage(QWidget):
         # entry points (Refresh, approve, reject, delete) use this runner.
         self._initializing = True
         self._working = False
+        self._request_id = 0
         self._approve_student: dict | None = None
         self.tasks = TaskRunner(self)
 
@@ -738,6 +739,17 @@ class PendingPage(QWidget):
             self.segments.set_count(key, value)
 
     # ------------------------------------------------------- background data
+    def _fetch_students(self):
+        resp = self.client.table("students").select(
+            "id, card_id, first_name, last_name, birth_date, gender, phone, email, "
+            "university, faculty, study_level, wilaya, status, rejection_reason, "
+            "room_id, reviewed_by, reviewed_at, created_at"
+        ).order("created_at", desc=True).execute()
+        return list(resp.data or [])
+
+    def _fetch_official(self):
+        return official_lookup(self.client)
+
     def _fetch_snapshot(self):
         """Network-only snapshot (students + official roster), for a worker."""
         resp = self.client.table("students").select(
@@ -815,16 +827,38 @@ class PendingPage(QWidget):
     def _reload_async(self):
         if self._working:
             return
+        self._request_id += 1
+        req_id = self._request_id
         self._begin_working("Refreshing applications…")
-        started = self.tasks.run(
+        callables = {
+            "students": self._fetch_students,
+            "official": self._fetch_official,
+        }
+        started = self.tasks.gather(
             "reload",
-            self._fetch_snapshot,
-            on_success=self._on_reload_success,
-            on_failed=self._on_reload_failed,
+            callables,
+            on_complete=self._on_gather_success,
             on_finished=self._end_working,
+            request_id=req_id,
         )
         if not started:
             self._end_working()
+
+    def _on_gather_success(self, result: GatherResult) -> None:
+        if result.request_id != self._request_id or getattr(self, "_closing", False):
+            return  # Discard stale result
+
+        if "students" in result.errors:
+            self._on_reload_failed(result.errors["students"])
+            return
+
+        students = result.get("students", [])
+        official = result.get("official")
+        if official is None and "official" in result.errors:
+            _log.warning("Official roster lookup failed during reload: %s", result.errors["official"])
+            official = getattr(self, "official", {})
+
+        self._apply_snapshot((students, official))
 
     def _on_reload_success(self, snapshot):
         self._apply_snapshot(snapshot)

@@ -18,9 +18,11 @@ const uid = Astro.locals.user!.id;
 let reports: any[] = [];
 let student: any = null;
 let queryError: string | null = null;
+let partialReportsError: string | null = null;
+let partialStudentError: string | null = null;
 
 try {
-  const [repRes, stuRes] = await Promise.all([
+  const [repRes, stuRes] = await Promise.allSettled([
     supabase
       .from('maintenance_reports')
       .select('id, category, description, status, staff_note, photo_path, created_at')
@@ -32,8 +34,30 @@ try {
       .eq('id', uid)
       .single(),
   ]);
-  reports = repRes.data ?? [];
-  student = stuRes.data;
+
+  if (repRes.status === 'fulfilled') {
+    if (repRes.value.error) {
+      partialReportsError = repRes.value.error.message;
+    } else {
+      reports = repRes.value.data ?? [];
+    }
+  } else {
+    partialReportsError = repRes.reason?.message || 'Failed to load maintenance tickets.';
+  }
+
+  if (stuRes.status === 'fulfilled') {
+    if (stuRes.value.error) {
+      partialStudentError = stuRes.value.error.message;
+    } else {
+      student = stuRes.value.data;
+    }
+  } else {
+    partialStudentError = stuRes.reason?.message || 'Failed to verify residency status.';
+  }
+
+  if (partialReportsError && partialStudentError) {
+    queryError = partialReportsError;
+  }
 } catch (err: any) {
   queryError = err?.message || 'The server is taking too long to respond. Check your connection and try again.';
 }
@@ -103,6 +127,18 @@ const STAGES = [...MAINTENANCE_STAGES];
   {queryError && (
     <InlineBanner kind="error" title="Connection error" class="mb-6">
       {queryError}
+    </InlineBanner>
+  )}
+
+  {partialReportsError && !queryError && (
+    <InlineBanner kind="warning" title="Ticket history unavailable" class="mb-6">
+      {partialReportsError}
+    </InlineBanner>
+  )}
+
+  {partialStudentError && !queryError && (
+    <InlineBanner kind="warning" title="Residency verification unavailable" class="mb-6">
+      {partialStudentError}
     </InlineBanner>
   )}
 
