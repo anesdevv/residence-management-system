@@ -50,7 +50,7 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
   <!-- Feedback Alerts -->
   {updated && (
     <InlineBanner kind="success" title="Contact details updated!" class="mb-6">
-      Your mobile phone number and email address have been saved successfully to the residence registry.
+      Your mobile phone number has been saved successfully to the residence registry.
     </InlineBanner>
   )}
 
@@ -139,26 +139,34 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
           </div>
 
           <div class="flex flex-col gap-2">
-            <label class="label" for="email">
-              Contact email address <span class="text-danger" aria-hidden="true">*</span>
-            </label>
+            <div class="flex items-center justify-between">
+              <label class="label" for="email">
+                Contact email address
+              </label>
+              <span class="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 rounded px-2 py-0.5">
+                <Icon name="check-circle" size={12} />
+                <span>Verified</span>
+              </span>
+            </div>
             <input
-              class="input"
+              class="input bg-subtle text-ink-2 cursor-not-allowed"
               type="email"
               name="email"
               id="email"
-              required
-              autocomplete="email"
+              readonly
               value={s?.email ?? ''}
               placeholder="e.g. resident@univ-tlemcen.dz"
             />
-            <p class="field-hint">Housing allocations and maintenance triage updates will be delivered here.</p>
+            <div class="flex items-center justify-between pt-1">
+              <p class="field-hint">Housing allocations and maintenance updates are delivered here.</p>
+              <a href="/account/add-email" class="link text-small font-medium shrink-0 ml-2">Change email →</a>
+            </div>
           </div>
 
           <div class="pt-2">
             <button class="btn btn-primary w-full min-h-[44px]" type="submit">
               <Icon name="check-circle" size={18} />
-              <span>Update contact details</span>
+              <span>Update phone number</span>
             </button>
           </div>
         </form>
@@ -173,7 +181,7 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
           <div class="flex flex-col gap-1">
             <h2 class="card-title">Account security</h2>
             <p class="text-small font-normal text-muted">
-              Your account is authenticated via your matriculation card ID. If you suspect unauthorized access, contact the Cité Universitaire IT desk immediately.
+              Your account is authenticated via your matriculation card ID or verified email. If you suspect unauthorized access, contact the Cité Universitaire IT desk immediately.
             </p>
           </div>
         </div>

@@ -1,8 +1,8 @@
 ---
 /**
- * RÉSIVO — login (docs/DESIGN.md §8, plan Phase 4).
- * Centred card on the canvas: brand mark, PageHeader-style title, the existing
- * card_id/password form (same action, same fields) and the query-param banners.
+ * RÉSIVO — resident sign in (docs/DESIGN.md §8, Phase 4).
+ * Supports card ID or verified email, show/hide password toggle, forgot password flow,
+ * and secondary one-time sign-in code/link.
  */
 import Layout from '../layouts/Layout.astro';
 import Icon from '../components/Icon.astro';
@@ -13,6 +13,9 @@ import PageHeader from '../components/PageHeader.astro';
 export const prerender = false;
 const error = Astro.url.searchParams.get('error');
 const registered = Astro.url.searchParams.get('registered');
+const verified = Astro.url.searchParams.get('verified');
+const reset = Astro.url.searchParams.get('reset');
+const linkSent = Astro.url.searchParams.get('link_sent');
 ---
 
 <Layout title="Resident Sign In — RÉSIVO" activeNav="login">
@@ -25,13 +28,37 @@ const registered = Astro.url.searchParams.get('registered');
       <PageHeader
         title="Resident sign in"
         overline="Resident authentication"
-        subtitle="Enter your official student card ID and portal password to access your dormitory account."
+        subtitle="Enter your student card ID or verified email and password to access your dormitory account."
       />
 
       {
         registered && (
           <InlineBanner kind="success" title="Application received!" class="mb-4">
-            Your registration dossier has been submitted. Sign in below to track your housing approval progress.
+            Your registration dossier has been submitted. Check your inbox to verify your email, then sign in below.
+          </InlineBanner>
+        )
+      }
+
+      {
+        verified && (
+          <InlineBanner kind="success" title="Email verified!" class="mb-4">
+            Your email address has been confirmed. You may now sign in to your student portal.
+          </InlineBanner>
+        )
+      }
+
+      {
+        reset && (
+          <InlineBanner kind="success" title="Password reset complete" class="mb-4">
+            Your password has been updated. Please sign in with your new password.
+          </InlineBanner>
+        )
+      }
+
+      {
+        linkSent && (
+          <InlineBanner kind="info" title="Sign-in code dispatched" class="mb-4">
+            If an account matches that identifier, we sent a one-time sign-in code and magic link to the verified email on file. Check your inbox and spam folder.
           </InlineBanner>
         )
       }
@@ -44,39 +71,86 @@ const registered = Astro.url.searchParams.get('registered');
         )
       }
 
-      <form method="POST" action="/api/login" class="flex flex-col gap-4">
+      <!-- Primary password sign-in form -->
+      <form method="POST" action="/api/login" class="flex flex-col gap-4" id="login-form">
         <div class="flex flex-col gap-2">
-          <label class="label" for="card_id">Student card ID (Carte d'étudiant)</label>
+          <label class="label" for="identifier">Student card ID or email</label>
           <input
             class="input tnum"
             type="text"
-            name="card_id"
-            id="card_id"
+            name="identifier"
+            id="identifier"
             required
             autocomplete="username"
-            placeholder="e.g. 202338012345"
+            placeholder="e.g. 202338012345 or student@univ-tlemcen.dz"
           />
-          <p class="field-hint">The matriculation number found on your university student card.</p>
+          <p class="field-hint">Use your student card matriculation number or your verified email address.</p>
         </div>
 
         <div class="flex flex-col gap-2">
-          <label class="label" for="password">Password</label>
-          <input
-            class="input"
-            type="password"
-            name="password"
-            id="password"
-            required
-            autocomplete="current-password"
-            placeholder="••••••••"
-          />
+          <div class="flex items-center justify-between">
+            <label class="label" for="password">Password</label>
+            <a class="link text-small" href="/forgot-password">Forgot password?</a>
+          </div>
+          <div class="relative">
+            <input
+              class="input pr-12"
+              type="password"
+              name="password"
+              id="password"
+              required
+              autocomplete="current-password"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              id="toggle-password"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition-colors p-1"
+              aria-label="Show password"
+              title="Show password"
+            >
+              <Icon name="eye" size={18} id="toggle-eye-icon" />
+            </button>
+          </div>
         </div>
 
-        <button class="btn btn-primary w-full" type="submit">
+        <button class="btn btn-primary w-full mt-2" type="submit">
           <Icon name="log-in" size={18} />
           <span>Sign in</span>
         </button>
       </form>
+
+      <!-- Secondary passwordless option -->
+      <div class="mt-6 border-t border-line pt-6">
+        <details class="group" id="magic-link-details">
+          <summary class="flex cursor-pointer items-center justify-between text-small font-medium text-teal-700 hover:text-teal-800 focus:outline-none">
+            <span>Email me a sign-in code or link</span>
+            <span class="transition-transform group-open:rotate-180">
+              <Icon name="chevron-down" size={16} />
+            </span>
+          </summary>
+          <form method="POST" action="/api/auth/request-login-link" class="mt-4 flex flex-col gap-3">
+            <p class="text-small text-muted">
+              We will send a 6-digit one-time sign-in code and a magic link to your registered email address.
+            </p>
+            <div class="flex flex-col gap-1.5">
+              <label class="label" for="magic-identifier">Student card ID or email</label>
+              <input
+                class="input text-small"
+                type="text"
+                name="identifier"
+                id="magic-identifier"
+                required
+                placeholder="e.g. 202338012345 or student@univ-tlemcen.dz"
+              />
+            </div>
+            <button class="btn btn-secondary w-full text-small py-2" type="submit">
+              <Icon name="mail" size={16} />
+              <span>Send sign-in code &amp; link</span>
+            </button>
+          </form>
+        </details>
+      </div>
 
       <div class="mt-6 flex flex-col gap-2 border-t border-line pt-6 text-center">
         <p class="text-small font-normal text-muted">
@@ -93,4 +167,33 @@ const registered = Astro.url.searchParams.get('registered');
       Student portal · Cité Universitaire Tlemcen — Direction des Œuvres Universitaires.
     </p>
   </div>
+
+  <script is:inline>
+    (function () {
+      var toggleBtn = document.getElementById('toggle-password');
+      var pwInput = document.getElementById('password');
+      if (!toggleBtn || !pwInput) return;
+
+      toggleBtn.addEventListener('click', function () {
+        var isPassword = pwInput.type === 'password';
+        pwInput.type = isPassword ? 'text' : 'password';
+        toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+        toggleBtn.setAttribute('title', isPassword ? 'Hide password' : 'Show password');
+      });
+
+      // Synchronize identifier to magic-link identifier input if filled
+      var mainId = document.getElementById('identifier');
+      var magicId = document.getElementById('magic-identifier');
+      if (mainId && magicId) {
+        mainId.addEventListener('input', function () {
+          if (!magicId.value || magicId.dataset.userEdited !== 'true') {
+            magicId.value = mainId.value;
+          }
+        });
+        magicId.addEventListener('input', function () {
+          magicId.dataset.userEdited = 'true';
+        });
+      }
+    })();
+  </script>
 </Layout>

@@ -1,0 +1,110 @@
+---
+// web/src/components/OtpInput.astro
+interface Props {
+  name?: string;
+  id?: string;
+  length?: number;
+  required?: boolean;
+  class?: string;
+}
+
+const {
+  name = 'token',
+  id = 'otp-input',
+  length = 6,
+  required = true,
+  class: className = '',
+} = Astro.props;
+
+const indices = Array.from({ length }, (_, i) => i);
+---
+
+<div class={`otp-container flex flex-col gap-2 ${className}`} data-otp-root>
+  <input type="hidden" name={name} id={id} required={required} data-otp-master />
+  
+  <div class="flex items-center justify-center gap-2 sm:gap-3" role="group" aria-label="6-digit verification code">
+    {indices.map((idx) => (
+      <input
+        type="text"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        maxlength="1"
+        autocomplete={idx === 0 ? 'one-time-code' : 'off'}
+        aria-label={`Digit ${idx + 1} of ${length}`}
+        data-otp-slot={idx}
+        class="input h-13 w-11 sm:h-14 sm:w-13 text-center text-xl sm:text-2xl font-bold font-mono tracking-widest text-navy border-line rounded-input focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
+      />
+    ))}
+  </div>
+</div>
+
+<script>
+  function setupOtpInputs() {
+    const containers = document.querySelectorAll<HTMLElement>('[data-otp-root]');
+
+    containers.forEach((container) => {
+      if ((container as any).__otpInitialized) return;
+      (container as any).__otpInitialized = true;
+
+      const master = container.querySelector<HTMLInputElement>('[data-otp-master]');
+      const slots = Array.from(container.querySelectorAll<HTMLInputElement>('[data-otp-slot]'));
+
+      function syncMaster() {
+        if (!master) return;
+        master.value = slots.map((s) => s.value).join('');
+      }
+
+      slots.forEach((slot, idx) => {
+        // Auto-advance on input
+        slot.addEventListener('input', (e: Event) => {
+          const inputEl = e.target as HTMLInputElement;
+          const val = inputEl.value.replace(/\D/g, '');
+          inputEl.value = val.slice(0, 1);
+
+          if (val && idx < slots.length - 1) {
+            slots[idx + 1].focus();
+            slots[idx + 1].select();
+          }
+          syncMaster();
+        });
+
+        // Backspace and navigation
+        slot.addEventListener('keydown', (e: KeyboardEvent) => {
+          if (e.key === 'Backspace') {
+            if (!slot.value && idx > 0) {
+              e.preventDefault();
+              slots[idx - 1].focus();
+              slots[idx - 1].value = '';
+              syncMaster();
+            }
+          } else if (e.key === 'ArrowLeft' && idx > 0) {
+            e.preventDefault();
+            slots[idx - 1].focus();
+          } else if (e.key === 'ArrowRight' && idx < slots.length - 1) {
+            e.preventDefault();
+            slots[idx + 1].focus();
+          }
+        });
+
+        // Paste support
+        slot.addEventListener('paste', (e: ClipboardEvent) => {
+          e.preventDefault();
+          const pasted = (e.clipboardData?.getData('text') ?? '').replace(/\D/g, '');
+          if (!pasted) return;
+
+          for (let i = 0; i < slots.length; i++) {
+            slots[i].value = pasted[i] ?? '';
+          }
+          syncMaster();
+
+          const targetIdx = Math.min(pasted.length, slots.length - 1);
+          slots[targetIdx]?.focus();
+        });
+      });
+    });
+  }
+
+  // Setup on page load and client-side navigations
+  setupOtpInputs();
+  document.addEventListener('astro:page-load', setupOtpInputs);
+</script>
