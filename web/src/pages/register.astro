@@ -12,6 +12,7 @@ import InlineBanner from '../components/InlineBanner.astro';
 import PageHeader from '../components/PageHeader.astro';
 
 export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
 const error = Astro.url.searchParams.get('error');
 const levels = ['L1', 'L2', 'L3', 'M1', 'M2', 'Doctorat'];
 

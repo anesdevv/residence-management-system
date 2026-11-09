@@ -11,6 +11,7 @@ import InlineBanner from '../components/InlineBanner.astro';
 import PageHeader from '../components/PageHeader.astro';
 
 export const prerender = false;
+Astro.response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
 const error = Astro.url.searchParams.get('error');
 const registered = Astro.url.searchParams.get('registered');
 const verified = Astro.url.searchParams.get('verified');
