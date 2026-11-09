@@ -342,6 +342,18 @@ def launch_application(
 
         bridge.restore_done.emit(success, reason, role_result)
 
+        auth_log = logging.getLogger("resivo.auth")
+        if success:
+            auth_log.info("session restored")
+        elif reason == "network":
+            auth_log.warning("network error during restore")
+        elif reason in ("reboot", "rebooted"):
+            auth_log.info("session discarded: reboot detected")
+        elif reason == "logon_changed":
+            auth_log.info("session discarded: logon session changed")
+        elif reason == "expired":
+            auth_log.info("session discarded: expired")
+
     bridge = _StartupBridge(_on_restore_done)
     app._startup_bridge = bridge
     app._restore_timer = restore_timer

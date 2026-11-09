@@ -161,7 +161,7 @@ class LoginWindow(QWidget):
 
         if banner_message:
             self._show_error(banner_message)
-        elif reason == "reboot":
+        elif reason in ("reboot", "logon_changed", "rebooted"):
             self.error_banner.set_kind("info")
             self._show_error(t("login.session_rebooted"))
         elif reason == "expired":

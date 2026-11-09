@@ -141,3 +141,95 @@ Execute directly with `dist\RESIVO\RESIVO.exe` (and `python desktop/main.py` for
   1. Run the app from source code with `python desktop/main.py`.
   2. Open **Settings → General**.
   3. Confirm the "Start RÉSIVO when Windows starts" switch is disabled with the helper text: *"Available in the installed app (EXE) only."*
+
+
+---
+
+## 5. Session Persistence ("Stay signed in until Windows restarts") Checklist
+
+Execute with the rebuilt standalone executable (`dist\RESIVO\RESIVO.exe`):
+
+- [ ] **1. Normal App Restart (Close with X / Alt+F4)**:
+  1. On Login window, check **"Stay signed in until this PC restarts"** and sign in.
+  2. Verify main window opens and `%LOCALAPPDATA%\RESIVO\session\session.bin` exists.
+  3. Close the application via window close button (**X** or `Alt+F4`).
+  4. Reopen `RESIVO.exe`.
+  5. **Pass criteria**: Bypasses the login window directly into `MainWindow` within ~400ms without prompting for credentials.
+
+- [ ] **2. Process Termination in Task Manager**:
+  1. With session stored, open Windows Task Manager (`Ctrl+Shift+Esc`).
+  2. End process `RESIVO.exe`.
+  3. Reopen `RESIVO.exe`.
+  4. **Pass criteria**: Still signed in; opens directly into `MainWindow`.
+
+- [ ] **3. Explicit Sign Out**:
+  1. From `MainWindow`, click **Sign out** (via sidebar footer or **Settings → Security & Sign-in**).
+  2. Verify app transitions back to the Login window.
+  3. Inspect `%LOCALAPPDATA%\RESIVO\session\`.
+  4. **Pass criteria**: `session.bin` is securely deleted; next launch requires full credentials.
+
+- [ ] **4. Windows PC Restart**:
+  1. Sign in with "Stay signed in until this PC restarts" checked.
+  2. Restart Windows (`Start → Power → Restart`).
+  3. After reboot, launch `RESIVO.exe`.
+  4. **Pass criteria**: Login window opens displaying an info banner: *"You were signed out because Windows restarted."* Stored session file is cleaned up.
+
+- [ ] **5. Windows Shut Down and Start (Fast Startup Active)**:
+  1. Sign in with session persistence enabled.
+  2. Shut down Windows (`Start → Power → Shut down`).
+  3. Turn on PC and log in to Windows.
+  4. Launch `RESIVO.exe`.
+  5. **Pass criteria**: Boot epoch detection catches system restart despite Fast Startup hibernation; displays restart notice and prompts for login.
+
+- [ ] **6. Windows User Sign-out / Account Switch**:
+  1. Sign in with session persistence enabled.
+  2. Sign out of Windows (`Ctrl+Alt+Del → Sign out`).
+  3. Log back into Windows with the same Windows user account.
+  4. Launch `RESIVO.exe`.
+  5. **Pass criteria**: Windows logon session LUID mismatch detected; shows restart notice and prompts for login.
+
+- [ ] **7. Lock Screen / Sleep and Wake**:
+  1. Sign in with session persistence enabled.
+  2. Lock Windows (`Win + L`) or put the PC to Sleep.
+  3. Unlock / wake the PC.
+  4. Open or restore `RESIVO.exe`.
+  5. **Pass criteria**: Still signed in; live sync resumes without interruption.
+
+- [ ] **8. Box Unchecked (Ephemeral Session)**:
+  1. Uncheck "Stay signed in until this PC restarts" and sign in.
+  2. Check `%LOCALAPPDATA%\RESIVO\session\`: verify no `session.bin` file exists.
+  3. Close and reopen `RESIVO.exe`.
+  4. **Pass criteria**: Login window is displayed immediately with blank fields.
+
+- [ ] **9. Role Verification on Restore**:
+  1. Sign in with an `admin` account (box checked), close and reopen: confirm **Staff accounts** navigation item is visible.
+  2. Sign in with a `staff` account (box checked), close and reopen: confirm **Staff accounts** navigation item is hidden.
+
+- [ ] **10. Wi-Fi Off / Offline at Launch with Stored Session**:
+  1. Sign in with session persistence enabled, then close RÉSIVO.
+  2. Turn off Wi-Fi or disconnect Ethernet cable.
+  3. Launch `RESIVO.exe`.
+  4. **Pass criteria**: Opens `MainWindow` with amber connection warning banner; `session.bin` is NOT deleted. Reconnect Wi-Fi and click "Retry": connects smoothly without re-login.
+
+- [ ] **11. Remote Password Invalidation / Expiry**:
+  1. Change staff password on another machine or invalidate user session in Supabase Dashboard.
+  2. Launch `RESIVO.exe` with stored session.
+  3. **Pass criteria**: Auth refresh fails; `session.bin` is wiped; app returns to Login window with warning banner: *"Your session has expired. Please sign in again."*
+
+- [ ] **12. Single Instance Protection**:
+  1. Launch `RESIVO.exe`.
+  2. Attempt to launch `RESIVO.exe` a second time.
+  3. **Pass criteria**: Single window enforced; second launch brings existing window to front.
+
+- [ ] **13. Autostart Interaction**:
+  1. Enable both "Start RÉSIVO when Windows starts" and "Stay signed in until this PC restarts".
+  2. Restart PC: upon Windows sign-in, RÉSIVO autostarts directly at the Login window (reboot detected).
+  3. Sign in, close RÉSIVO, and reopen manually: enters `MainWindow` directly.
+
+- [ ] **14. Settings Page Security Switch & Actions**:
+  1. Open **Settings → Security & Sign-in**.
+  2. Verify "Stay signed in until this PC restarts" checkbox reflects the saved setting.
+  3. Toggle switch **OFF**: verify `session.bin` is deleted immediately from disk.
+  4. Toggle switch **ON**: verify active session is persisted to `session.bin` immediately.
+  5. Verify account information line correctly shows `Signed in as <email> (<role>)`.
+  6. Click "Sign out" button in the security card: verify full sign-out flow executes and lands on Login window.

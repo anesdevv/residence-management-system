@@ -314,7 +314,7 @@ def get_remember_session_setting() -> bool:
     if QSettings is None:
         return _MEMORY_SETTINGS.get("security/remember_session", True)
     settings = QSettings("RESIVO", "StaffConsole")
-    val = settings.value("security/remember_session", True, type=bool)
+    val = settings.value("security/remember_session", True)
     if isinstance(val, bool):
         return val
     if isinstance(val, str):
@@ -574,6 +574,7 @@ class SessionStore:
             if current_logon is not None:
                 stored_logon = payload.get("logon_session_id")
                 if stored_logon != current_logon:
+                    _log.info("session discarded: logon session changed")
                     self.clear()
                     return None, "logon_changed"
             else:
@@ -586,6 +587,7 @@ class SessionStore:
                         self.clear()
                         return None, "corrupt"
                     if diff > 300:
+                        _log.info("session discarded: reboot detected")
                         self.clear()
                         return None, "rebooted"
                 else:
@@ -604,6 +606,7 @@ class SessionStore:
                 return None, "corrupt"
 
             if age > SESSION_MAX_AGE_SECONDS:
+                _log.info("session discarded: expired")
                 self.clear()
                 return None, "expired"
 
@@ -706,14 +709,14 @@ class SessionManager:
         try:
             client.auth.set_session(access_token, refresh_token)
             self.attach_client(client)
-            _log.info("Staff session restored successfully.")
+            _log.info("session restored")
             return True, None
         except Exception as exc:
             if is_timeout_exception(exc) or is_connection_error(exc) or isinstance(exc, (NetworkError, NetworkTimeoutError, OSError)):
-                _log.warning("Session restoration paused due to network transport error: %s", exc.__class__.__name__)
+                _log.warning("network error during restore: %s", exc.__class__.__name__)
                 return False, "network"
 
-            _log.info("Session restoration rejected by authentication server: %s", exc.__class__.__name__)
+            _log.info("session discarded: refresh rejected: %s", exc.__class__.__name__)
             self.store.clear()
             return False, "expired"
 

@@ -519,6 +519,8 @@ class MainWindow(QMainWindow):
             self._add_nav_item(t("nav.staff_accounts"), "staff_accounts", self.staff_accounts_page, canonical_name="Staff accounts")
 
         self.settings_page = SettingsPage(client)
+        if hasattr(self.settings_page, "sign_out_requested"):
+            self.settings_page.sign_out_requested.connect(self.on_sign_out_clicked)
         self.pages[t("nav.settings")] = self.settings_page
         self.pages["Settings"] = self.settings_page
         self.stack.addWidget(self.settings_page)

@@ -40,8 +40,19 @@ try:
 except ImportError:
     from desktop.i18n import current_language, get_saved_language, set_saved_language, t, tn
 
-from ...client import current_role
-from desktop.auth.session_store import get_remember_session_setting
+from ...client import current_role, stored_user_email
+try:
+    from desktop.auth.session_store import (
+        get_remember_session_setting,
+        set_remember_session_setting,
+        session_manager,
+    )
+except ImportError:
+    from auth.session_store import (
+        get_remember_session_setting,
+        set_remember_session_setting,
+        session_manager,
+    )
 from .. import theme
 from ..close_policy import (
     get_confirm_close_setting,
@@ -236,7 +247,21 @@ class McpHealthWorker(QThread):
                 sleep_elapsed += 100
 
 
+def _role_label(role: str | None) -> str:
+    """Human label for user role."""
+    normalized = _normalize_role(role)
+    if not normalized:
+        return t("roles.unverified")
+    if normalized == "admin":
+        return t("roles.admin")
+    if normalized == "staff":
+        return t("roles.staff")
+    return normalized.title()
+
+
 class SettingsPage(QWidget):
+    sign_out_requested = Signal()
+
     def __init__(self, client):
         super().__init__()
         self.client = client
@@ -393,6 +418,47 @@ class SettingsPage(QWidget):
         self._update_autostart_ui()
 
         layout.addWidget(self.general_card)
+
+        # Security & Sign-in settings card
+        self.security_card = Card(
+            t("settings.security_title"),
+            t("settings.security_subtitle"),
+            icon="shield",
+        )
+
+        self.remember_session_checkbox = QCheckBox(t("settings.remember_session_label"))
+        self.remember_session_checkbox.setObjectName("rememberSessionCheckbox")
+        self.remember_session_checkbox.setStyleSheet(_checkbox_qss())
+        self.remember_session_checkbox.setChecked(get_remember_session_setting())
+        self.remember_session_checkbox.toggled.connect(self._on_remember_session_toggled)
+        self.security_card.add_widget(self.remember_session_checkbox)
+
+        self.remember_session_helper = QLabel(t("settings.remember_session_helper"))
+        _apply_small(self.remember_session_helper)
+        self.security_card.add_widget(self.remember_session_helper)
+
+        # Account info and Sign out row
+        account_row = QHBoxLayout()
+        account_row.setContentsMargins(0, S("space-3"), 0, 0)
+        account_row.setSpacing(S("space-4"))
+
+        self.signed_in_label = QLabel()
+        theme.apply_role(self.signed_in_label, "body")
+        self._update_signed_in_label()
+        account_row.addWidget(self.signed_in_label)
+        account_row.addStretch(1)
+
+        self.security_sign_out_btn = Button.secondary(
+            t("settings.security_sign_out"),
+            icon="logout",
+        )
+        self.security_sign_out_btn.setObjectName("securitySignOutButton")
+        self.security_sign_out_btn.clicked.connect(self.sign_out_requested.emit)
+        account_row.addWidget(self.security_sign_out_btn)
+
+        self.security_card.add_layout(account_row)
+
+        layout.addWidget(self.security_card)
 
         # Notifications settings card
         self.notif_card = Card(
@@ -633,6 +699,21 @@ class SettingsPage(QWidget):
             if self._health_started:
                 self.health_worker.stop()
                 self._health_started = False
+
+        self._update_signed_in_label()
+
+    def _update_signed_in_label(self) -> None:
+        if hasattr(self, "signed_in_label"):
+            email = stored_user_email(self.client) or "—"
+            role_text = _role_label(self.role)
+            self.signed_in_label.setText(t("settings.signed_in_as", email=email, role=role_text))
+
+    def _on_remember_session_toggled(self, checked: bool) -> None:
+        set_remember_session_setting(checked)
+        if checked:
+            session_manager.save_current_session(self.client, remember=True)
+        else:
+            session_manager.clear()
 
     def _on_confirm_close_toggled(self, checked: bool) -> None:
         set_confirm_close_setting(checked)

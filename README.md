@@ -91,6 +91,7 @@ flowchart TD
 - Room and resident directories: live room occupancy tracking, block capacity visualization, and student profile inspection.
 - Photo viewer: multi-threaded dialog (`PhotoViewerDialog`) with asynchronous image fetching and 25% to 400% zoom controls.
 - Staff access controls: multi-tier account management preventing self-deletion across UI, Edge Functions, and database functions.
+- Session persistence: opt-in "Stay signed in until this PC restarts" backed by Windows DPAPI encryption, Windows logon session LUID binding, and zero password storage (see [docs/security-session.md](docs/security-session.md)).
 - Adaptive layout: interface scales from minimum desktop resolutions (980x640) up to 4K displays.
 
 ### AI Assistant (Model Context Protocol)
@@ -199,6 +200,7 @@ Connect the deployed worker URL (`https://<your-worker-subdomain>.workers.dev/mc
 | Client UI | Multi-tier self-deletion guard | Prevents staff members from deleting their own active accounts across UI, Edge Function, and database tiers. |
 | Audit trails | Rejection documentation | Enforces mandatory recorded explanations when applications are rejected. |
 | Credentials | Environment variables | Configuration uses `.env.example` templates; secrets are not committed to source control. |
+| Desktop Client | Windows DPAPI & Logon LUID | Scopes token persistence to active Windows logon session; zero password storage; automated zero-wipe on reboot or sign-out. See [Session Security Architecture](docs/security-session.md). |
 
 ---
 
