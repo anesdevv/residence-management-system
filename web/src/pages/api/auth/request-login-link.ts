@@ -1,5 +1,7 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
+import { createSupabaseServerClient } from '../../../lib/supabase';
+import { formatProviderRateLimitError } from '../../../lib/resend-cooldown';
 
 export const POST: APIRoute = async (context) => {
   const isJson = context.request.headers.get('content-type')?.includes('application/json');
@@ -13,16 +15,28 @@ export const POST: APIRoute = async (context) => {
     identifier = String(form.get('identifier') ?? '').trim();
   }
 
+  const cookieLocale = context.cookies.get('resivo_locale')?.value?.toLowerCase();
+  const referer = context.request.headers.get('referer') || '';
+  const isFrench = cookieLocale === 'fr' || referer.includes('/fr/');
+  const basePath = isFrench ? '/fr/login' : '/login';
+
   const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
   const anonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
-  const genericSuccess = 'If an account exists for this card ID or email, a sign-in code or link has been sent to the verified email address on file.';
+  const genericSuccess = isFrench
+    ? 'Si un compte existe pour cet identifiant ou e-mail, un code de connexion ou un lien a été envoyé à l’adresse vérifiée.'
+    : 'If an account exists for this card ID or email, a sign-in code or link has been sent to the verified email address on file.';
 
   if (!identifier) {
     if (isJson) return new Response(JSON.stringify({ success: true, message: genericSuccess }), { status: 200 });
-    return context.redirect(`/login?link_sent=1`);
+    return context.redirect(`${basePath}?link_sent=1`);
   }
 
+  let success = false;
+  let rateLimited = false;
+  let errorMessage = '';
+
+  // 1. Try calling the deployed Edge Function
   try {
     const response = await fetch(`${supabaseUrl}/functions/v1/request-login-link`, {
       method: 'POST',
@@ -36,28 +50,58 @@ export const POST: APIRoute = async (context) => {
     const data = await response.json().catch(() => ({}));
 
     if (response.status === 429) {
-      if (isJson) {
-        return new Response(JSON.stringify({ error: 'rate_limit_exceeded', message: data.message }), { status: 429 });
-      }
-      return context.redirect(`/login?error=${encodeURIComponent(data.message || 'Too many attempts.')}`);
+      rateLimited = true;
+      errorMessage = data.message || 'Too many attempts.';
+    } else if (response.ok) {
+      success = true;
     }
-
-    if (identifier.includes('@')) {
-      context.cookies.set('resivo_pending_email', identifier.toLowerCase(), {
-        path: '/',
-        maxAge: 3600,
-        sameSite: 'lax',
-      });
-    }
-
-    if (isJson) {
-      return new Response(JSON.stringify({ success: true, message: genericSuccess }), { status: 200 });
-    }
-    return context.redirect(`/login?link_sent=1`);
   } catch {
-    if (isJson) {
-      return new Response(JSON.stringify({ success: true, message: genericSuccess }), { status: 200 });
-    }
-    return context.redirect(`/login?link_sent=1`);
+    // Edge function unreachable or network error, will fall back below
   }
+
+  // 2. Direct Supabase Auth client fallback if Edge Function was not successful and identifier is an email
+  if (!success && !rateLimited && identifier.includes('@')) {
+    try {
+      const supabase = createSupabaseServerClient(context.request, context.cookies);
+      const origin = new URL(context.request.url).origin;
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: identifier.toLowerCase(),
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: `${origin}/auth/confirm?type=magiclink&next=/dashboard`,
+        },
+      });
+
+      if (otpError) {
+        if (otpError.status === 429 || otpError.message?.toLowerCase().includes('rate limit')) {
+          rateLimited = true;
+          errorMessage = formatProviderRateLimitError(otpError);
+        }
+      } else {
+        success = true;
+      }
+    } catch (fallbackErr) {
+      errorMessage = formatProviderRateLimitError(fallbackErr);
+    }
+  }
+
+  if (rateLimited) {
+    if (isJson) {
+      return new Response(JSON.stringify({ error: 'rate_limit_exceeded', message: errorMessage }), { status: 429 });
+    }
+    return context.redirect(`${basePath}?error=${encodeURIComponent(errorMessage || 'Too many attempts.')}`);
+  }
+
+  if (identifier.includes('@')) {
+    context.cookies.set('resivo_pending_email', identifier.toLowerCase(), {
+      path: '/',
+      maxAge: 3600,
+      sameSite: 'lax',
+    });
+  }
+
+  if (isJson) {
+    return new Response(JSON.stringify({ success: true, message: genericSuccess }), { status: 200 });
+  }
+  return context.redirect(`${basePath}?link_sent=1`);
 };
