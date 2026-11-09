@@ -167,3 +167,10 @@ WHERE p.role = 'admin';
 | **Phase 7** | **QA Review Kit, Documentation & Validation** | **DONE** | `tools/i18n_export.py`, `tools/i18n_import.py`, `docs/i18n-review.csv`, `docs/i18n.md`, `docs/manual-test-desktop.md`, `docs/manual-test-web.md` | Built `i18n_export.py` exporting 1,161 entries to `docs/i18n-review.csv` and `i18n_import.py` with placeholder and schema validation. Authored `docs/i18n.md` comprehensive architecture guide. Updated desktop and web manual testing checklists with bilingual verification scenarios. Verified full test suites: desktop (265 passed, 1 skipped) and web (96 passed). |
 
 
+---
+
+## 10. Staff Stay Signed In Until Windows Restarts Progress
+
+| Phase | Title | Status | Files Changed | Description / Details |
+|---|---|---|---|---|
+| **Phase 1** | **Session Store, Windows DPAPI & SessionManager** | **DONE** | `desktop/app/config.py`, `desktop/auth/__init__.py`, `desktop/auth/session_store.py`, `desktop/tests/test_session_store.py`, `desktop/tests/test_session_manager.py` | Added `SESSION_MAX_AGE_HOURS = 168` (7 days), `SESSION_MAX_AGE_SECONDS`, and `SESSION_ENTROPY` constants in `config.py`. Built `WindowsBackend` (ctypes `CryptProtectData`/`CryptUnprotectData` with `CRYPTPROTECT_UI_FORBIDDEN` and `LocalFree`, 64-bit safe `GetCurrentProcess`/`OpenProcessToken`/`GetTokenInformation` for LUID logon session ID, and `GetTickCount64` boot epoch fallback) and pure Python `FakeBackend` with HMAC-SHA256 integrity. Built thread-safe `SessionStore` with atomic writes, secure zero-wiping, fail-closed validation, and 7-day max-age expiration. Built `SessionManager` with `on_auth_state_change` token refresh listener and `try_restore` handling network vs auth errors. Added 25 unit tests. Full pytest suite passes (290 passed, 1 skipped). |

@@ -48,6 +48,13 @@ _FALLBACK_KEY = (
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "") or _FALLBACK_URL
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "") or _FALLBACK_KEY
 
+# ---------------------------------------------------------------------------
+# Session persistence constants (Staff Stay Signed In)
+# ---------------------------------------------------------------------------
+SESSION_MAX_AGE_HOURS: int = 168  # 7 days
+SESSION_MAX_AGE_SECONDS: int = SESSION_MAX_AGE_HOURS * 3600
+SESSION_ENTROPY: bytes = b"RESIVO_STAFF_SESSION_ENTROPY_V1"
+
 from .timeouts import (
     CONNECT_TIMEOUT_S,
     READ_TIMEOUT_S,
