@@ -35,7 +35,12 @@ from PySide6.QtWidgets import (
 
 from ...client import current_role
 from .. import theme
-from ..close_policy import get_confirm_close_setting, set_confirm_close_setting
+from ..close_policy import (
+    get_confirm_close_setting,
+    set_confirm_close_setting,
+    get_minimize_to_tray_setting,
+    set_minimize_to_tray_setting,
+)
 from ..components import Button, Card, InlineBanner, PageHeader, StatusPill
 from ..notifications import NotificationManager
 from ..tasks import TaskRunner, human_error
@@ -282,6 +287,19 @@ class SettingsPage(QWidget):
         )
         _apply_small(self.confirm_close_note)
         self.general_card.add_widget(self.confirm_close_note)
+
+        self.minimize_tray_checkbox = QCheckBox("Minimize to system tray")
+        self.minimize_tray_checkbox.setStyleSheet(_checkbox_qss())
+        self.minimize_tray_checkbox.setChecked(get_minimize_to_tray_setting())
+        self.minimize_tray_checkbox.setToolTip("When minimizing, hide the window to the system tray instead of the taskbar")
+        self.minimize_tray_checkbox.toggled.connect(self._on_minimize_tray_toggled)
+        self.general_card.add_widget(self.minimize_tray_checkbox)
+
+        self.minimize_tray_note = QLabel(
+            "When enabled, minimizing RÉSIVO hides it to the system tray so live sync and notifications stay active in the background."
+        )
+        _apply_small(self.minimize_tray_note)
+        self.general_card.add_widget(self.minimize_tray_note)
 
         # Autostart settings (Windows only)
         self.autostart_container = QWidget()
@@ -570,6 +588,9 @@ class SettingsPage(QWidget):
 
     def _on_confirm_close_toggled(self, checked: bool) -> None:
         set_confirm_close_setting(checked)
+
+    def _on_minimize_tray_toggled(self, checked: bool) -> None:
+        set_minimize_to_tray_setting(checked)
 
     def _update_autostart_ui(self) -> None:
         """Update autostart switch and sub-option according to OS and registry."""

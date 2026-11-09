@@ -22,14 +22,16 @@ import time
 
 from PySide6.QtCore import (
     QEasingCurve,
+    QEvent,
     QPropertyAnimation,
+    QSettings,
     QSize,
     Qt,
     QThreadPool,
     QTimer,
     Signal,
 )
-from PySide6.QtGui import QFont, QGuiApplication
+from PySide6.QtGui import QFont, QGuiApplication, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QButtonGroup,
     QDialog,
@@ -61,7 +63,12 @@ from ..client import (
     stored_user_id,
 )
 from . import components, theme
-from .close_policy import CloseConfirmDialog, ClosePolicy, get_confirm_close_setting
+from .close_policy import (
+    CloseConfirmDialog,
+    ClosePolicy,
+    get_confirm_close_setting,
+    get_minimize_to_tray_setting,
+)
 from .components import Avatar, BrandMark, Button, InlineBanner, LiveDot
 from .notifications import NotificationManager
 from .icons import get_icon, get_pixmap
@@ -456,6 +463,10 @@ class MainWindow(QMainWindow):
         if qapp is not None:
             qapp.commitDataRequest.connect(self._on_commit_data_request)
         self._sidebar_minimized = False
+        self._in_tray = False
+        self._prev_window_state = self.windowState()
+        self._minimize_shortcut = QShortcut(QKeySequence("Ctrl+M"), self)
+        self._minimize_shortcut.activated.connect(self._on_minimize_shortcut)
         self.setWindowTitle("RÉSIVO — Staff Console")
         self.setMinimumSize(980, 640)
         self.resize(1180, 760)
@@ -888,6 +899,8 @@ class MainWindow(QMainWindow):
         tray_menu = QMenu()
         open_action = tray_menu.addAction("Open RÉSIVO")
         open_action.triggered.connect(self._restore_from_tray)
+        min_action = tray_menu.addAction("Minimize to tray")
+        min_action.triggered.connect(self.minimize_to_tray)
         tray_menu.addSeparator()
         quit_action = tray_menu.addAction("Quit")
         quit_action.triggered.connect(self.request_quit)
@@ -897,17 +910,62 @@ class MainWindow(QMainWindow):
         tray.show()
         self.tray_icon = tray
 
+    def minimize_to_tray(self) -> None:
+        """Hide the window to system tray, keeping live sync and notifications running."""
+        if not getattr(self, "tray_icon", None) or not self.tray_icon.isVisible():
+            self.showMinimized()
+            return
+        self._in_tray = True
+        self.hide()
+        settings = QSettings("RESIVO", "StaffConsole")
+        if not settings.value("general/tray_notice_shown", False, type=bool):
+            settings.setValue("general/tray_notice_shown", True)
+            self.tray_icon.showMessage(
+                "RÉSIVO",
+                "RÉSIVO is running in the background. Click the tray icon to restore.",
+                QSystemTrayIcon.MessageIcon.Information,
+                3000,
+            )
+
     def _restore_from_tray(self) -> None:
-        self.showNormal()
+        """Restore window from system tray back to foreground with original state."""
+        self._in_tray = False
+        prev = getattr(self, "_prev_window_state", None)
+        if prev is not None and bool(prev & Qt.WindowState.WindowMaximized):
+            self.setWindowState(Qt.WindowState.WindowMaximized)
+            self.show()
+        else:
+            self.showNormal()
         self.activateWindow()
         self.raise_()
+
+    def _on_minimize_shortcut(self) -> None:
+        if get_minimize_to_tray_setting():
+            self.minimize_to_tray()
+        else:
+            self.showMinimized()
 
     def _on_tray_activated(self, reason) -> None:
         if reason in (
             QSystemTrayIcon.ActivationReason.Trigger,
             QSystemTrayIcon.ActivationReason.DoubleClick,
         ):
-            self._restore_from_tray()
+            if self.isVisible() and not self.isMinimized() and self.isActiveWindow():
+                if get_minimize_to_tray_setting():
+                    self.minimize_to_tray()
+                else:
+                    self.showMinimized()
+            else:
+                self._restore_from_tray()
+
+    def changeEvent(self, event):  # noqa: N802 - Qt event override
+        if event.type() == QEvent.Type.WindowStateChange:
+            if not self.isMinimized():
+                self._prev_window_state = self.windowState()
+            elif get_minimize_to_tray_setting():
+                if getattr(self, "tray_icon", None) and self.tray_icon.isVisible():
+                    QTimer.singleShot(0, self.minimize_to_tray)
+        super().changeEvent(event)
 
     def on_live_alert(self, msg: str):
         """Live event → In-app Toast + Desktop Notification."""
@@ -1207,7 +1265,12 @@ class MainWindow(QMainWindow):
 
                 if ClosePolicy.should_confirm(confirm_setting, is_busy, is_session_ending):
                     dlg = CloseConfirmDialog(self, is_busy=is_busy)
-                    if dlg.exec() != QDialog.DialogCode.Accepted:
+                    code = dlg.exec()
+                    if getattr(dlg, "was_minimized_to_tray", False):
+                        event.ignore()
+                        self.minimize_to_tray()
+                        return
+                    if code != QDialog.DialogCode.Accepted:
                         event.ignore()
                         return
 

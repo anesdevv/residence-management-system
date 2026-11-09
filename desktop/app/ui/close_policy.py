@@ -58,6 +58,23 @@ def set_confirm_close_setting(enabled: bool) -> None:
     settings.setValue("general/confirm_close", bool(enabled))
 
 
+def get_minimize_to_tray_setting() -> bool:
+    """Read the minimize-to-system-tray setting from QSettings (default: True)."""
+    settings = QSettings("RESIVO", "StaffConsole")
+    val = settings.value("general/minimize_to_tray", True)
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, str):
+        return val.lower() not in ("false", "0", "no")
+    return bool(val)
+
+
+def set_minimize_to_tray_setting(enabled: bool) -> None:
+    """Persist the minimize-to-system-tray setting to QSettings."""
+    settings = QSettings("RESIVO", "StaffConsole")
+    settings.setValue("general/minimize_to_tray", bool(enabled))
+
+
 class CloseConfirmDialog(QDialog):
     """Custom confirmation dialog displayed before closing the application."""
 
@@ -113,6 +130,8 @@ class CloseConfirmDialog(QDialog):
         btn_row.setSpacing(S("space-3"))
         btn_row.addStretch(1)
 
+        self.was_minimized_to_tray = False
+
         # Cancel is secondary and default (Esc / Enter on Cancel safe)
         self.cancel_btn = Button.secondary("Cancel")
         self.cancel_btn.setDefault(True)
@@ -120,13 +139,21 @@ class CloseConfirmDialog(QDialog):
         btn_row.addWidget(self.cancel_btn)
 
         if is_busy:
+            self.minimize_btn = None
             self.confirm_btn = Button.danger("Close anyway", icon="alert-triangle")
         else:
+            self.minimize_btn = Button.secondary("Minimize to tray")
+            self.minimize_btn.clicked.connect(self._on_minimize_clicked)
+            btn_row.addWidget(self.minimize_btn)
             self.confirm_btn = Button.primary("Close app")
         self.confirm_btn.clicked.connect(self._on_confirm_clicked)
         btn_row.addWidget(self.confirm_btn)
 
         layout.addLayout(btn_row)
+
+    def _on_minimize_clicked(self) -> None:
+        self.was_minimized_to_tray = True
+        self.reject()
 
     def _on_confirm_clicked(self) -> None:
         if self.dont_ask_checkbox and self.dont_ask_checkbox.isChecked():
