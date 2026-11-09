@@ -145,8 +145,12 @@
     "missing_credentials": "Please enter both email and password.",
     "password_label": "Password",
     "password_placeholder": "••••••••",
+    "remember_session": "Stay signed in until this PC restarts",
+    "restoring_session": "Restoring your session…",
     "retry_role_check": "Retry role check",
     "role_error": "Could not verify your role. Check your connection or configuration.",
+    "session_expired": "Your session has expired. Please sign in again.",
+    "session_rebooted": "You were signed out because Windows restarted.",
     "show_password": "Show password",
     "sign_in": "Sign in",
     "sign_out_error": "Could not sign out of the current session. Check your connection and try again: {reason}",
@@ -822,6 +826,7 @@
     "quiet_hours_from": "From:",
     "quiet_hours_to": "to:",
     "restart_banner_message": "Language changed. Restart RÉSIVO to apply changes.",
+    "restart_banner_message_need_login": "Language changed. Restart RÉSIVO to apply changes. You will need to sign in again.",
     "restart_later": "Later",
     "restart_now": "Restart now",
     "start_minimized_label": "Start minimized to the taskbar",
@@ -923,4 +928,4 @@
     "quit": "Quit",
     "tooltip": "RÉSIVO — University Residence Management"
   }
-}
+}

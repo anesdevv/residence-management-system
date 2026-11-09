@@ -10,6 +10,7 @@ from __future__ import annotations
 import ctypes
 import hashlib
 import hmac
+import inspect
 import json
 import logging
 import os
@@ -18,7 +19,17 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+
+try:
+    from PySide6.QtCore import QCoreApplication, QObject, QSettings, QTimer, Signal, Slot
+except ImportError:
+    QCoreApplication = None  # type: ignore[assignment]
+    QObject = None  # type: ignore[assignment,misc]
+    QSettings = None  # type: ignore[assignment,misc]
+    QTimer = None  # type: ignore[assignment]
+    Signal = None  # type: ignore[assignment]
+    Slot = None  # type: ignore[assignment]
 
 from desktop.app.config import SESSION_ENTROPY, SESSION_MAX_AGE_SECONDS
 from desktop.app.timeouts import (
@@ -290,6 +301,93 @@ class FakeBackend:
 
     def get_boot_epoch(self) -> int | None:
         return self.boot_epoch
+
+
+# ---------------------------------------------------------------------------
+# QSettings Helpers for Session Persistence
+# ---------------------------------------------------------------------------
+_MEMORY_SETTINGS: dict[str, Any] = {}
+
+
+def get_remember_session_setting() -> bool:
+    """Read the remember-session setting from QSettings (default: True)."""
+    if QSettings is None:
+        return _MEMORY_SETTINGS.get("security/remember_session", True)
+    settings = QSettings("RESIVO", "StaffConsole")
+    val = settings.value("security/remember_session", True, type=bool)
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, str):
+        return val.lower() not in ("false", "0", "no")
+    return bool(val)
+
+
+def set_remember_session_setting(enabled: bool) -> None:
+    """Write the remember-session setting to QSettings."""
+    val = bool(enabled)
+    if QSettings is None:
+        _MEMORY_SETTINGS["security/remember_session"] = val
+        return
+    settings = QSettings("RESIVO", "StaffConsole")
+    settings.setValue("security/remember_session", val)
+
+
+def _invoke_on_main_thread(fn: Callable) -> None:
+    try:
+        if QCoreApplication is not None and QTimer is not None:
+            app = QCoreApplication.instance()
+            if app is not None and threading.current_thread() is not threading.main_thread():
+                QTimer.singleShot(0, fn)
+                return
+    except Exception:
+        pass
+    fn()
+
+
+def _dispatch_on_done(callback: Callable, success: bool, reason: str) -> None:
+    try:
+        sig = inspect.signature(callback)
+        params = [
+            p
+            for p in sig.parameters.values()
+            if p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        ]
+        has_varargs = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in sig.parameters.values())
+        if has_varargs or len(params) >= 2:
+            callback(success, reason)
+        elif len(params) == 1:
+            callback(reason if not success else "success")
+        else:
+            callback()
+    except Exception:
+        try:
+            callback(success, reason)
+        except TypeError:
+            callback(reason if not success else "success")
+
+
+if QObject is not None and Signal is not None:
+
+    class _RestoreBridge(QObject):
+        done = Signal(bool, str)
+
+        def __init__(self, callback: Callable):
+            super().__init__()
+            self._callback = callback
+            self.done.connect(self._handle_done)
+
+        @Slot(bool, str)
+        def _handle_done(self, success: bool, reason: str):
+            _dispatch_on_done(self._callback, success, reason)
+
+else:
+
+    class _RestoreBridge:  # type: ignore[no-redef]
+        def __init__(self, callback: Callable):
+            self._callback = callback
+
+        def emit(self, success: bool, reason: str):
+            _dispatch_on_done(self._callback, success, reason)
 
 
 # ---------------------------------------------------------------------------
@@ -594,10 +692,12 @@ class SessionManager:
 
         Returns ``(True, None)`` on success, ``(False, "network")`` on transient
         network error (preserving store), or ``(False, discard_reason)`` on
-        terminal auth failure (clearing store).
+        terminal auth failure or reboot (clearing store).
         """
         payload, discard_reason = self.store.load()
         if not payload:
+            if discard_reason in ("logon_changed", "rebooted"):
+                discard_reason = "reboot"
             return False, discard_reason
 
         access_token = payload.get("access_token")
@@ -617,8 +717,65 @@ class SessionManager:
             self.store.clear()
             return False, "expired"
 
+    def restore_session_async(
+        self,
+        client: Any,
+        on_done: Callable,
+        timeout_s: float = 10.0,
+    ) -> threading.Thread:
+        """Restore session off the Qt GUI thread without freezing the Qt event loop.
+
+        Distinguishes reasons:
+        - "success": restored and client attached
+        - "reboot": Windows restarted or logon changed (store cleared)
+        - "expired": Auth error (store cleared)
+        - "network": Connection or timeout error (store preserved)
+        - discard_reason or "no_session": any other case
+        """
+        completed = threading.Event()
+        bridge = _RestoreBridge(on_done)
+
+        def _worker():
+            try:
+                success, reason = self.try_restore(client)
+            except Exception as exc:
+                if is_timeout_exception(exc) or is_connection_error(exc) or isinstance(exc, (NetworkError, NetworkTimeoutError, OSError)):
+                    success, reason = False, "network"
+                else:
+                    self.store.clear()
+                    success, reason = False, "expired"
+
+            if completed.is_set():
+                return
+            completed.set()
+
+            final_reason = "success" if success else (reason or "no_session")
+            if hasattr(bridge, "done"):
+                bridge.done.emit(success, final_reason)
+            else:
+                bridge.emit(success, final_reason)
+
+        def _watchdog():
+            if not completed.wait(timeout=timeout_s):
+                if not completed.is_set():
+                    completed.set()
+                    if hasattr(bridge, "done"):
+                        bridge.done.emit(False, "network")
+                    else:
+                        bridge.emit(False, "network")
+
+        worker_thread = threading.Thread(target=_worker, name="SessionRestoreWorker", daemon=True)
+        watchdog_thread = threading.Thread(target=_watchdog, name="SessionRestoreWatchdog", daemon=True)
+        worker_thread.start()
+        watchdog_thread.start()
+        return worker_thread
+
     def clear(self) -> None:
         """Wipe store and drop client references."""
         self._remember = False
         self.store.clear()
         self._client = None
+
+
+# Module-level default SessionManager instance
+session_manager = SessionManager()

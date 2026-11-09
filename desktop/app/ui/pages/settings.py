@@ -41,6 +41,7 @@ except ImportError:
     from desktop.i18n import current_language, get_saved_language, set_saved_language, t, tn
 
 from ...client import current_role
+from desktop.auth.session_store import get_remember_session_setting
 from .. import theme
 from ..close_policy import (
     get_confirm_close_setting,
@@ -574,7 +575,10 @@ class SettingsPage(QWidget):
         current = get_saved_language() or current_language()
         if lang_code != current:
             set_saved_language(lang_code)
-            self.lang_restart_banner.set_message(t("settings.restart_banner_message"))
+            if get_remember_session_setting():
+                self.lang_restart_banner.set_message(t("settings.restart_banner_message"))
+            else:
+                self.lang_restart_banner.set_message(t("settings.restart_banner_message_need_login"))
             self.lang_restart_banner.setVisible(True)
 
     def _restart_app(self) -> None:

@@ -5,6 +5,9 @@ from .session_store import (
     SessionManager,
     SessionStore,
     WindowsBackend,
+    get_remember_session_setting,
+    session_manager,
+    set_remember_session_setting,
 )
 
 __all__ = [
@@ -12,4 +15,7 @@ __all__ = [
     "SessionManager",
     "SessionStore",
     "WindowsBackend",
+    "get_remember_session_setting",
+    "session_manager",
+    "set_remember_session_setting",
 ]

@@ -145,8 +145,12 @@
     "missing_credentials": "Veuillez saisir votre e-mail et votre mot de passe.",
     "password_label": "Mot de passe",
     "password_placeholder": "••••••••",
+    "remember_session": "Rester connecté jusqu'au redémarrage de ce PC",
+    "restoring_session": "Restauration de votre session…",
     "retry_role_check": "Réessayer la vérification du rôle",
     "role_error": "Impossible de vérifier votre rôle. Vérifiez votre connexion ou votre configuration.",
+    "session_expired": "Votre session a expiré. Veuillez vous reconnecter.",
+    "session_rebooted": "Vous avez été déconnecté car Windows a redémarré.",
     "show_password": "Afficher le mot de passe",
     "sign_in": "Se connecter",
     "sign_out_error": "Impossible de se déconnecter de la session active. Vérifiez votre connexion et réessayez : {reason}",
@@ -822,6 +826,7 @@
     "quiet_hours_from": "De :",
     "quiet_hours_to": "à :",
     "restart_banner_message": "Langue modifiée. Redémarrez RÉSIVO pour appliquer les modifications.",
+    "restart_banner_message_need_login": "Langue modifiée. Redémarrez RÉSIVO pour appliquer les modifications. Vous devrez vous reconnecter.",
     "restart_later": "Plus tard",
     "restart_now": "Redémarrer maintenant",
     "start_minimized_label": "Démarrer réduit dans la barre des tâches",
@@ -923,4 +928,4 @@
     "quit": "Quitter",
     "tooltip": "RÉSIVO — Gestion de Résidence Universitaire"
   }
-}
+}

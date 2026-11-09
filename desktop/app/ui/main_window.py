@@ -56,6 +56,8 @@ try:
 except ImportError:
     from desktop.i18n import current_language, t, tn
 
+from desktop.auth.session_store import session_manager
+
 from ..client import (
     invalidate_official_lookup_cache,
     clear_local_session,
@@ -1178,6 +1180,10 @@ class MainWindow(QMainWindow):
         self._stop_live_timer()
         self._sign_out_show_login = show_login
         self._sign_out_error = None
+        try:
+            session_manager.clear()
+        except Exception as exc:
+            _log.warning("Could not clear stored session file during sign-out: %s", exc)
         if self.tasks.is_busy("sign-out"):
             self._signing_out = True
             return
@@ -1206,6 +1212,10 @@ class MainWindow(QMainWindow):
             )
 
     def _on_sign_out_succeeded(self, _result) -> None:
+        try:
+            session_manager.clear()
+        except Exception:
+            pass
         self._forget_cached_role()
 
     def _on_sign_out_failed(self, message: str) -> None:
@@ -1213,6 +1223,10 @@ class MainWindow(QMainWindow):
         # a failed server call cannot leave refresh credentials behind, then
         # surface the failure on the login window.
         self._sign_out_error = message
+        try:
+            session_manager.clear()
+        except Exception:
+            pass
         try:
             clear_local_session(self.client)
         except Exception as exc:  # noqa: BLE001 - reported on the login window

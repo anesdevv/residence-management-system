@@ -21,12 +21,27 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QPushButton, QToolButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 try:
     from i18n import current_language, set_saved_language, t, tn
 except ImportError:
     from desktop.i18n import current_language, set_saved_language, t, tn
+
+from desktop.auth.session_store import (
+    get_remember_session_setting,
+    session_manager as default_session_manager,
+    set_remember_session_setting,
+)
 
 from ..client import (
     RoleLookupError,
@@ -112,13 +127,21 @@ class PasswordField(QLineEdit):
 
 
 class LoginWindow(QWidget):
-    def __init__(self, client=None, start_minimized: bool = False):
+    def __init__(
+        self,
+        client=None,
+        start_minimized: bool = False,
+        session_manager: Any = None,
+        banner_message: str | None = None,
+        reason: str | None = None,
+    ):
         super().__init__()
         self.setWindowTitle(t("login.title"))
         self.setMinimumSize(380, 480)
         self.resize(940, 580)
         self.setStyleSheet(DESKTOP_STYLESHEET)
         self.client = client if client is not None else make_client()
+        self.session_manager = session_manager or default_session_manager
         self._start_minimized = bool(start_minimized)
         self._role_retry_pending = False
         # (email, password digest) for the signed-in session, so an edited
@@ -135,6 +158,17 @@ class LoginWindow(QWidget):
         self.form_host, self.form_column = self._build_form()
         root.addWidget(self.hero, 1)
         root.addWidget(self.form_host, 1)
+
+        if banner_message:
+            self._show_error(banner_message)
+        elif reason == "reboot":
+            self.error_banner.set_kind("info")
+            self._show_error(t("login.session_rebooted"))
+        elif reason == "expired":
+            self.error_banner.set_kind("warning")
+            self._show_error(t("login.session_expired"))
+        elif reason:
+            self._show_error(reason)
 
         self._retranslate_ui()
         self._apply_responsive_layout()
@@ -212,6 +246,15 @@ class LoginWindow(QWidget):
         col.addWidget(self.password_label)
         col.addWidget(self.password)
 
+        self.remember_checkbox = QCheckBox(t("login.remember_session"))
+        self.remember_checkbox.setObjectName("rememberSessionCheckbox")
+        self.remember_checkbox.setChecked(get_remember_session_setting())
+        self.remember_checkbox.toggled.connect(set_remember_session_setting)
+        self.remember_checkbox.setStyleSheet(
+            f"QCheckBox {{ color: {C('text-primary')}; font-size: {C('fs-small')}; margin-top: 4px; margin-bottom: 4px; }}"
+        )
+        col.addWidget(self.remember_checkbox)
+
         # Failure banner — hidden until needed; ``self.status`` is its message
         # label so legacy ``self.status.setText(...)`` code keeps working.
         self.error_banner = InlineBanner(kind="error", message="")
@@ -276,6 +319,8 @@ class LoginWindow(QWidget):
             self.password.setPlaceholderText(t("login.password_placeholder"))
             if hasattr(self.password, "retranslate_ui"):
                 self.password.retranslate_ui()
+        if hasattr(self, "remember_checkbox"):
+            self.remember_checkbox.setText(t("login.remember_session"))
         if hasattr(self, "button"):
             if self._role_retry_pending:
                 self.button.setText(t("login.retry_role_check"))
@@ -322,6 +367,9 @@ class LoginWindow(QWidget):
         credentials = _credential_key(email_txt, pwd_txt)
 
         if self._role_retry_pending:
+            if not pwd_txt and self._pending_credentials and email_txt.lower() == self._pending_credentials[0]:
+                self._verify_role()
+                return
             if credentials == self._pending_credentials:
                 self._verify_role()
                 return
@@ -346,6 +394,8 @@ class LoginWindow(QWidget):
             self.button.setText(t("login.sign_in"))
             self.button.setEnabled(True)
             return
+        finally:
+            self.password.clear()
 
         self._pending_credentials = credentials
         self._role_retry_pending = False
@@ -413,12 +463,22 @@ class LoginWindow(QWidget):
                 self.client.auth.sign_out()
             except Exception:
                 pass
+            try:
+                self.session_manager.clear()
+            except Exception:
+                pass
             self._show_error(t("login.access_denied"))
             self.button.setText(t("login.sign_in"))
             self.button.setEnabled(True)
             return
 
         remember_role(self.client, role)
+        remember = self.remember_checkbox.isChecked() if hasattr(self, "remember_checkbox") else True
+        try:
+            self.session_manager.save_current_session(self.client, remember=remember)
+        except Exception as exc:
+            _log.warning("Could not persist session: %s", exc)
+
         self._role_retry_pending = False
         self._pending_credentials = None
         self.switch_account_btn.setVisible(False)
