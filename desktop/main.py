@@ -73,6 +73,14 @@ def main() -> int:
     # Store lock_file on app instance so it remains locked until process termination
     app._instance_lock = lock_file
     install_exception_hooks()
+
+    # Initialize localization (QSettings -> system locale -> English default)
+    try:
+        from i18n import init as init_i18n
+        init_i18n(app=app)
+    except Exception as e:
+        logging.getLogger("resivo").warning("Could not initialize i18n: %s", e)
+
     app.setApplicationName("RÉSIVO")
     app.setApplicationDisplayName("RÉSIVO")
     app.setDesktopFileName("dz.dou.resivo.desktop")
