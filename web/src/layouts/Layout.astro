@@ -3,6 +3,7 @@ import '../styles/global.css';
 import Icon from '../components/Icon.astro';
 import BrandMark from '../components/BrandMark.astro';
 import DashboardShell from '../components/DashboardShell.astro';
+import { localizePath, t, type SupportedLocale } from '../lib/i18n';
 
 interface Props {
   title?: string;
@@ -15,17 +16,20 @@ const {
   description = 'Official student housing portal of Cité Universitaire Tlemcen — Direction des Œuvres Universitaires (DOU).',
   activeNav,
 } = Astro.props;
+
 const user = Astro.locals.user;
+const locale: SupportedLocale = Astro.locals.locale || 'en';
 const pathname = Astro.url.pathname;
+const cleanPathname = pathname === '/fr' ? '/' : pathname.startsWith('/fr/') ? pathname.slice(3) : pathname;
 
 const currentNav = activeNav || (
-  pathname === '/' ? 'home' :
-  pathname.startsWith('/dashboard/maintenance') ? 'maintenance' :
-  pathname.startsWith('/dashboard/room-change') ? 'room-change' :
-  pathname.startsWith('/dashboard/profile') ? 'profile' :
-  pathname.startsWith('/dashboard') ? 'dashboard' :
-  pathname.startsWith('/login') ? 'login' :
-  pathname.startsWith('/register') ? 'register' : 'home'
+  cleanPathname === '/' ? 'home' :
+  cleanPathname.startsWith('/dashboard/maintenance') ? 'maintenance' :
+  cleanPathname.startsWith('/dashboard/room-change') ? 'room-change' :
+  cleanPathname.startsWith('/dashboard/profile') ? 'profile' :
+  cleanPathname.startsWith('/dashboard') ? 'dashboard' :
+  cleanPathname.startsWith('/login') ? 'login' :
+  cleanPathname.startsWith('/register') ? 'register' : 'home'
 );
 
 type DashboardNav = 'dashboard' | 'maintenance' | 'room-change' | 'profile';
@@ -38,15 +42,21 @@ const isLogin = currentNav === 'login';
 const isHome = currentNav === 'home';
 
 const sectionTitles: Record<DashboardNav, string> = {
-  dashboard: 'Dashboard',
-  maintenance: 'Maintenance',
-  'room-change': 'Room change',
-  profile: 'Profile',
+  dashboard: t(locale, 'nav.dashboard'),
+  maintenance: t(locale, 'nav.maintenance'),
+  'room-change': t(locale, 'terms.room_change_request'),
+  profile: t(locale, 'nav.profile'),
 };
+
+const currentPathWithSearch = pathname + Astro.url.search;
+const targetEnPath = localizePath('en', currentPathWithSearch);
+const targetFrPath = localizePath('fr', currentPathWithSearch);
+const canonicalEn = new URL(targetEnPath, Astro.url).href;
+const canonicalFr = new URL(targetFrPath, Astro.url).href;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={locale}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -56,6 +66,9 @@ const sectionTitles: Record<DashboardNav, string> = {
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/brand/resivo_mark.png" />
+    <link rel="alternate" hreflang="en" href={canonicalEn} />
+    <link rel="alternate" hreflang="fr" href={canonicalFr} />
+    <link rel="alternate" hreflang="x-default" href={canonicalEn} />
     <!-- Self-hosted fonts only: preload the two faces used above the fold. -->
     <link rel="preload" as="font" type="font/woff2" href="/fonts/inter-400.woff2" crossorigin />
     <link rel="preload" as="font" type="font/woff2" href="/fonts/outfit-600.woff2" crossorigin />
@@ -71,17 +84,44 @@ const sectionTitles: Record<DashboardNav, string> = {
         <!-- Minimal auth chrome -->
         <header class="border-b border-line bg-surface">
           <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-            <a href="/" class="flex items-center gap-3">
+            <a href={localizePath(locale, '/')} class="flex items-center gap-3">
               <BrandMark variant="mark" size={36} />
               <span class="flex flex-col">
                 <span class="font-display text-h2 text-ink">RÉSIVO</span>
-                <span class="text-small font-normal text-muted">Cité Universitaire • Student Portal</span>
+                <span class="text-small font-normal text-muted">Cité Universitaire • {t(locale, 'nav.student_portal')}</span>
               </span>
             </a>
-            <span class="hidden items-center gap-2 text-small text-muted sm:flex">
-              <span class="live-dot live-dot--connected"></span>
-              <span>Student Portal</span>
-            </span>
+
+            <div class="flex items-center gap-3">
+              <span class="hidden items-center gap-2 text-small text-muted sm:flex">
+                <span class="live-dot live-dot--connected"></span>
+                <span>{t(locale, 'nav.student_portal')}</span>
+              </span>
+
+              <!-- Language switcher -->
+              <nav aria-label={t(locale, 'nav.language')} class="flex items-center rounded-pill border border-line bg-subtle p-0.5 text-xs font-semibold">
+                <a
+                  href={targetFrPath}
+                  data-locale-switch="fr"
+                  class={`rounded-pill px-2.5 py-1 transition-colors ${
+                    locale === 'fr' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+                  }`}
+                  aria-current={locale === 'fr' ? 'true' : undefined}
+                >
+                  FR
+                </a>
+                <a
+                  href={targetEnPath}
+                  data-locale-switch="en"
+                  class={`rounded-pill px-2.5 py-1 transition-colors ${
+                    locale === 'en' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+                  }`}
+                  aria-current={locale === 'en' ? 'true' : undefined}
+                >
+                  EN
+                </a>
+              </nav>
+            </div>
           </div>
         </header>
 
@@ -107,9 +147,9 @@ const sectionTitles: Record<DashboardNav, string> = {
               <span>DOU Tlemcen • Direction des Œuvres Universitaires</span>
             </div>
             <div class="flex items-center gap-4">
-              <span>Desk: Sun–Thu 08:30–16:30</span>
+              <span>{t(locale, 'landing.desk_hours')}</span>
               <span aria-hidden="true">•</span>
-              <span class="font-medium text-on-dark">24/7 Security Hotline: +213 (0) 43 21 00 00</span>
+              <span class="font-medium text-on-dark">{t(locale, 'landing.hotline')}</span>
             </div>
           </div>
         </div>
@@ -117,75 +157,123 @@ const sectionTitles: Record<DashboardNav, string> = {
         <!-- Public header -->
         <header class="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-md">
           <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-            <a href={user ? '/dashboard' : '/'} class="flex items-center gap-3">
+            <a href={user ? localizePath(locale, '/dashboard') : localizePath(locale, '/')} class="flex items-center gap-3">
               <BrandMark variant="mark" size={40} />
               <span class="flex flex-col">
                 <span class="font-display text-h2 text-ink">RÉSIVO</span>
-                <span class="text-small font-normal text-muted">Cité Universitaire • Student Portal</span>
+                <span class="text-small font-normal text-muted">Cité Universitaire • {t(locale, 'nav.student_portal')}</span>
               </span>
             </a>
 
             <!-- Desktop navigation -->
-            <nav class="hidden items-center gap-1 md:flex" aria-label="Main">
+            <nav class="hidden items-center gap-2 md:flex" aria-label="Main">
               {user ? (
                 <>
                   <a
-                    href="/dashboard"
+                    href={localizePath(locale, '/dashboard')}
                     class="inline-flex min-h-11 items-center gap-2 rounded-input px-3 text-body font-semibold text-ink-2 transition-colors hover:bg-subtle hover:text-ink"
                   >
                     <Icon name="dashboard" size={17} />
-                    <span>Dashboard</span>
+                    <span>{t(locale, 'nav.dashboard')}</span>
                   </a>
                   <a href="/logout" class="btn btn-secondary">
                     <Icon name="log-out" size={16} />
-                    <span>Sign out</span>
+                    <span>{t(locale, 'nav.sign_out')}</span>
                   </a>
                 </>
               ) : (
                 <>
                   <a
-                    href="/"
+                    href={localizePath(locale, '/')}
                     class={`inline-flex min-h-11 items-center rounded-input px-3 text-body transition-colors ${
                       isHome ? 'font-semibold text-teal-600' : 'font-semibold text-ink-2 hover:bg-subtle hover:text-ink'
                     }`}
                   >
-                    Home
+                    {t(locale, 'nav.home')}
                   </a>
                   <a
-                    href="/login"
+                    href={localizePath(locale, '/login')}
                     class={`inline-flex min-h-11 items-center gap-2 rounded-input px-3 text-body transition-colors ${
                       isLogin ? 'font-semibold text-teal-600' : 'font-semibold text-ink-2 hover:bg-subtle hover:text-ink'
                     }`}
                   >
                     <Icon name="log-in" size={16} />
-                    <span>Sign in</span>
+                    <span>{t(locale, 'nav.sign_in')}</span>
                   </a>
-                  <a href="/register" class="btn btn-primary">
+                  <a href={localizePath(locale, '/register')} class="btn btn-primary">
                     <Icon name="user" size={16} />
-                    <span>Register as Resident</span>
+                    <span>{t(locale, 'nav.register_resident')}</span>
                   </a>
                 </>
               )}
+
+              <!-- Language switcher -->
+              <div class="ml-2 flex items-center rounded-pill border border-line bg-subtle p-0.5 text-xs font-semibold" role="group" aria-label={t(locale, 'nav.language')}>
+                <a
+                  href={targetFrPath}
+                  data-locale-switch="fr"
+                  class={`rounded-pill px-2.5 py-1 transition-colors ${
+                    locale === 'fr' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+                  }`}
+                  aria-current={locale === 'fr' ? 'true' : undefined}
+                >
+                  FR
+                </a>
+                <a
+                  href={targetEnPath}
+                  data-locale-switch="en"
+                  class={`rounded-pill px-2.5 py-1 transition-colors ${
+                    locale === 'en' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+                  }`}
+                  aria-current={locale === 'en' ? 'true' : undefined}
+                >
+                  EN
+                </a>
+              </div>
             </nav>
 
             <!-- Mobile quick controls -->
             <div class="flex items-center gap-2 md:hidden">
+              <!-- Mobile language switcher -->
+              <div class="flex items-center rounded-pill border border-line bg-subtle p-0.5 text-xs font-semibold" role="group" aria-label={t(locale, 'nav.language')}>
+                <a
+                  href={targetFrPath}
+                  data-locale-switch="fr"
+                  class={`rounded-pill px-2 py-1 transition-colors ${
+                    locale === 'fr' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+                  }`}
+                  aria-current={locale === 'fr' ? 'true' : undefined}
+                >
+                  FR
+                </a>
+                <a
+                  href={targetEnPath}
+                  data-locale-switch="en"
+                  class={`rounded-pill px-2 py-1 transition-colors ${
+                    locale === 'en' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+                  }`}
+                  aria-current={locale === 'en' ? 'true' : undefined}
+                >
+                  EN
+                </a>
+              </div>
+
               {user ? (
                 <>
-                  <a href="/dashboard" class="btn btn-secondary">
-                    <span>Dashboard</span>
+                  <a href={localizePath(locale, '/dashboard')} class="btn btn-secondary">
+                    <span>{t(locale, 'nav.dashboard')}</span>
                   </a>
-                  <a href="/logout" class="btn btn-ghost btn-icon" aria-label="Sign out" title="Sign out">
+                  <a href="/logout" class="btn btn-ghost btn-icon" aria-label={t(locale, 'nav.sign_out')} title={t(locale, 'nav.sign_out')}>
                     <Icon name="log-out" size={18} />
                   </a>
                 </>
               ) : (
                 <>
-                  <a href="/login" class="btn btn-secondary">
-                    <span>Sign in</span>
+                  <a href={localizePath(locale, '/login')} class="btn btn-secondary">
+                    <span>{t(locale, 'nav.sign_in')}</span>
                   </a>
-                  <a href="/register" class="btn btn-primary">
-                    <span>Register</span>
+                  <a href={localizePath(locale, '/register')} class="btn btn-primary">
+                    <span>{t(locale, 'common.add')}</span>
                   </a>
                 </>
               )}
@@ -205,7 +293,6 @@ const sectionTitles: Record<DashboardNav, string> = {
           <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6">
             <div class="grid grid-cols-1 gap-8 md:grid-cols-4">
               <div class="space-y-3 md:col-span-2">
-                <!-- Below the fold: explicit box + lazy loading, no layout shift. -->
                 <img
                   src="/brand/resivo_logo.png"
                   alt="RÉSIVO"
@@ -215,31 +302,29 @@ const sectionTitles: Record<DashboardNav, string> = {
                   decoding="async"
                 />
                 <p class="measure font-normal leading-relaxed">
-                  Official university accommodation system for enrolled students. Providing secure housing,
-                  streamlined room allocations, and 24/7 facility maintenance services in Tlemcen.
+                  {t(locale, 'landing.footer_desc')}
                 </p>
                 <div class="font-normal">
-                  Direction des Œuvres Universitaires (DOU) • Ministère de l'Enseignement Supérieur et de la
-                  Recherche Scientifique
+                  {t(locale, 'landing.footer_institution')}
                 </div>
               </div>
 
               <div>
-                <h2 class="overline mb-3 text-ink">Resident Services</h2>
+                <h2 class="overline mb-3 text-ink">{t(locale, 'landing.footer_services_title')}</h2>
                 <ul class="flex flex-col gap-1">
-                  <li><a href="/register" class="link py-1 inline-block">Online Registration</a></li>
-                  <li><a href="/login" class="link py-1 inline-block">Application Status Check</a></li>
-                  <li><a href="/dashboard/maintenance" class="link py-1 inline-block">Maintenance &amp; Repairs</a></li>
-                  <li><a href="/dashboard/room-change" class="link py-1 inline-block">Room Transfer Requests</a></li>
+                  <li><a href={localizePath(locale, '/register')} class="link py-1 inline-block">{t(locale, 'landing.step_1_title')}</a></li>
+                  <li><a href={localizePath(locale, '/login')} class="link py-1 inline-block">{t(locale, 'landing.service_status_title')}</a></li>
+                  <li><a href={localizePath(locale, '/dashboard/maintenance')} class="link py-1 inline-block">{t(locale, 'nav.maintenance')}</a></li>
+                  <li><a href={localizePath(locale, '/dashboard/room-change')} class="link py-1 inline-block">{t(locale, 'terms.room_change_request')}</a></li>
                 </ul>
               </div>
 
               <div>
-                <h2 class="overline mb-3 text-ink">Department Contact</h2>
+                <h2 class="overline mb-3 text-ink">{t(locale, 'landing.footer_contact_title')}</h2>
                 <ul class="flex flex-col gap-2">
                   <li class="flex items-center gap-2">
                     <Icon name="building" size={14} class="shrink-0 text-muted" />
-                    <span>Housing Bureau, Administration Bloc A</span>
+                    <span>{t(locale, 'landing.footer_housing_bureau')}</span>
                   </li>
                   <li class="flex items-center gap-2">
                     <Icon name="phone" size={14} class="shrink-0 text-muted" />
@@ -251,7 +336,7 @@ const sectionTitles: Record<DashboardNav, string> = {
                   </li>
                   <li class="flex items-center gap-2">
                     <Icon name="clock" size={14} class="shrink-0 text-muted" />
-                    <span>Emergency Desk: Open 24/7</span>
+                    <span>{t(locale, 'landing.footer_emergency')}</span>
                   </li>
                 </ul>
               </div>
@@ -260,8 +345,8 @@ const sectionTitles: Record<DashboardNav, string> = {
             <div
               class="mt-8 flex flex-col items-center justify-between gap-3 border-t border-line pt-6 font-normal sm:flex-row"
             >
-              <p>© {new Date().getFullYear()} Cité Universitaire Tlemcen. All rights reserved.</p>
-              <p>RÉSIVO — Student Residence Management Platform</p>
+              <p>{t(locale, 'landing.footer_rights', { year: new Date().getFullYear() })}</p>
+              <p>{t(locale, 'landing.footer_tagline')}</p>
             </div>
           </div>
         </footer>
@@ -278,6 +363,16 @@ const sectionTitles: Record<DashboardNav, string> = {
         var button = toast.querySelector('[data-toast-dismiss]');
         if (button) button.addEventListener('click', dismiss);
         setTimeout(dismiss, 4000);
+      });
+
+      /* Language switcher persistent cookie handler */
+      document.querySelectorAll('[data-locale-switch]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var targetLocale = btn.getAttribute('data-locale-switch');
+          if (targetLocale) {
+            document.cookie = 'resivo_locale=' + targetLocale + '; path=/; max-age=31536000; SameSite=Lax';
+          }
+        });
       });
 
       /* Double-submit protection & submission timeout watchdog */

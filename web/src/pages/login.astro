@@ -9,9 +9,12 @@ import Icon from '../components/Icon.astro';
 import BrandMark from '../components/BrandMark.astro';
 import InlineBanner from '../components/InlineBanner.astro';
 import PageHeader from '../components/PageHeader.astro';
+import { localizePath, t, type SupportedLocale } from '../lib/i18n';
 
 export const prerender = false;
 Astro.response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+const locale: SupportedLocale = Astro.locals.locale || 'en';
+
 const error = Astro.url.searchParams.get('error');
 const registered = Astro.url.searchParams.get('registered');
 const verified = Astro.url.searchParams.get('verified');
@@ -19,7 +22,7 @@ const reset = Astro.url.searchParams.get('reset');
 const linkSent = Astro.url.searchParams.get('link_sent');
 ---
 
-<Layout title="Resident Sign In — RÉSIVO" activeNav="login">
+<Layout title={locale === 'fr' ? 'Connexion Résident — RÉSIVO' : 'Resident Sign In — RÉSIVO'} activeNav="login">
   <div class="mx-auto flex w-full max-w-md flex-col gap-6 py-6 sm:py-8">
     <div class="card p-6 sm:p-8">
       <div class="mb-6 flex justify-center">
@@ -27,46 +30,46 @@ const linkSent = Astro.url.searchParams.get('link_sent');
       </div>
 
       <PageHeader
-        title="Resident sign in"
-        overline="Resident authentication"
-        subtitle="Enter your student card ID or verified email and password to access your dormitory account."
+        title={t(locale, 'auth.login_title')}
+        overline={t(locale, 'auth.login_overline')}
+        subtitle={t(locale, 'auth.login_subtitle')}
       />
 
       {
         registered && (
-          <InlineBanner kind="success" title="Application received!" class="mb-4">
-            Your registration dossier has been submitted. Check your inbox to verify your email, then sign in below.
+          <InlineBanner kind="success" title={t(locale, 'auth.login_application_received')} class="mb-4">
+            {t(locale, 'auth.login_application_received_desc')}
           </InlineBanner>
         )
       }
 
       {
         verified && (
-          <InlineBanner kind="success" title="Email verified!" class="mb-4">
-            Your email address has been confirmed. You may now sign in to your student portal.
+          <InlineBanner kind="success" title={t(locale, 'auth.login_email_verified')} class="mb-4">
+            {t(locale, 'auth.login_email_verified_desc')}
           </InlineBanner>
         )
       }
 
       {
         reset && (
-          <InlineBanner kind="success" title="Password reset complete" class="mb-4">
-            Your password has been updated. Please sign in with your new password.
+          <InlineBanner kind="success" title={t(locale, 'auth.login_password_reset_complete')} class="mb-4">
+            {t(locale, 'auth.login_password_reset_complete_desc')}
           </InlineBanner>
         )
       }
 
       {
         linkSent && (
-          <InlineBanner kind="info" title="Sign-in code dispatched" class="mb-4">
-            If an account matches that identifier, we sent a one-time sign-in code and magic link to the verified email on file. Check your inbox and spam folder.
+          <InlineBanner kind="info" title={t(locale, 'auth.login_link_sent')} class="mb-4">
+            {t(locale, 'auth.login_link_sent_desc')}
           </InlineBanner>
         )
       }
 
       {
         error && (
-          <InlineBanner kind="error" title="Authentication failed" class="mb-4">
+          <InlineBanner kind="error" title={t(locale, 'common.error')} class="mb-4">
             {error}
           </InlineBanner>
         )
@@ -75,7 +78,7 @@ const linkSent = Astro.url.searchParams.get('link_sent');
       <!-- Primary password sign-in form -->
       <form method="POST" action="/api/login" class="flex flex-col gap-4" id="login-form">
         <div class="flex flex-col gap-2">
-          <label class="label" for="identifier">Student card ID or email</label>
+          <label class="label" for="identifier">{t(locale, 'auth.login_card_or_email')}</label>
           <input
             class="input tnum"
             type="text"
@@ -83,15 +86,19 @@ const linkSent = Astro.url.searchParams.get('link_sent');
             id="identifier"
             required
             autocomplete="username"
-            placeholder="e.g. 202338012345 or student@univ-tlemcen.dz"
+            placeholder={t(locale, 'auth.login_card_or_email_placeholder')}
           />
-          <p class="field-hint">Use your student card matriculation number or your verified email address.</p>
+          <p class="field-hint">
+            {locale === 'fr'
+              ? 'Utilisez votre N° de carte étudiant ou votre adresse e-mail vérifiée.'
+              : 'Use your student card matriculation number or your verified email address.'}
+          </p>
         </div>
 
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
-            <label class="label" for="password">Password</label>
-            <a class="link text-small" href="/forgot-password">Forgot password?</a>
+            <label class="label" for="password">{t(locale, 'fields.password')}</label>
+            <a class="link text-small" href={localizePath(locale, '/forgot-password')}>{t(locale, 'auth.forgot_password')}</a>
           </div>
           <div class="relative">
             <input
@@ -107,8 +114,8 @@ const linkSent = Astro.url.searchParams.get('link_sent');
               type="button"
               id="toggle-password"
               class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition-colors p-1"
-              aria-label="Show password"
-              title="Show password"
+              aria-label={locale === 'fr' ? 'Afficher le mot de passe' : 'Show password'}
+              title={locale === 'fr' ? 'Afficher le mot de passe' : 'Show password'}
             >
               <Icon name="eye" size={18} id="toggle-eye-icon" />
             </button>
@@ -117,7 +124,7 @@ const linkSent = Astro.url.searchParams.get('link_sent');
 
         <button class="btn btn-primary w-full mt-2" type="submit">
           <Icon name="log-in" size={18} />
-          <span>Sign in</span>
+          <span>{t(locale, 'auth.login_btn')}</span>
         </button>
       </form>
 
@@ -125,29 +132,31 @@ const linkSent = Astro.url.searchParams.get('link_sent');
       <div class="mt-6 border-t border-line pt-6">
         <details class="group" id="magic-link-details">
           <summary class="flex cursor-pointer items-center justify-between text-small font-medium text-teal-700 hover:text-teal-800 focus:outline-none">
-            <span>Email me a sign-in code or link</span>
+            <span>{t(locale, 'auth.login_magic_link')}</span>
             <span class="transition-transform group-open:rotate-180">
               <Icon name="chevron-down" size={16} />
             </span>
           </summary>
           <form method="POST" action="/api/auth/request-login-link" class="mt-4 flex flex-col gap-3">
             <p class="text-small text-muted">
-              We will send a 6-digit one-time sign-in code and a magic link to your registered email address.
+              {locale === 'fr'
+                ? 'Nous enverrons un code de connexion à 6 chiffres et un lien d’accès à votre adresse e-mail.'
+                : 'We will send a 6-digit one-time sign-in code and a magic link to your registered email address.'}
             </p>
             <div class="flex flex-col gap-1.5">
-              <label class="label" for="magic-identifier">Student card ID or email</label>
+              <label class="label" for="magic-identifier">{t(locale, 'auth.login_card_or_email')}</label>
               <input
                 class="input text-small"
                 type="text"
                 name="identifier"
                 id="magic-identifier"
                 required
-                placeholder="e.g. 202338012345 or student@univ-tlemcen.dz"
+                placeholder={t(locale, 'auth.login_card_or_email_placeholder')}
               />
             </div>
             <button class="btn btn-secondary w-full text-small py-2" type="submit">
               <Icon name="mail" size={16} />
-              <span>Send sign-in code &amp; link</span>
+              <span>{t(locale, 'common.send')}</span>
             </button>
           </form>
         </details>
@@ -155,46 +164,37 @@ const linkSent = Astro.url.searchParams.get('link_sent');
 
       <div class="mt-6 flex flex-col gap-2 border-t border-line pt-6 text-center">
         <p class="text-small font-normal text-muted">
-          First time applying for dormitory accommodation?{' '}
-          <a class="link font-semibold" href="/register">Register as resident</a>
+          {t(locale, 'auth.login_no_account')}{' '}
+          <a class="link font-semibold" href={localizePath(locale, '/register')}>{t(locale, 'auth.login_register_link')}</a>
         </p>
         <p class="text-small font-normal text-muted">
-          Administrative staff &amp; technicians should sign in via the desktop operations console.
+          {locale === 'fr'
+            ? 'Le personnel administratif et technique se connecte via la console de bureau.'
+            : 'Administrative staff & technicians should sign in via the desktop operations console.'}
         </p>
       </div>
     </div>
 
     <p class="text-center text-small font-normal text-muted">
-      Student portal · Cité Universitaire Tlemcen — Direction des Œuvres Universitaires.
+      Direction des Œuvres Universitaires (DOU) · Cité Universitaire · Tlemcen
     </p>
   </div>
-
-  <script is:inline>
-    (function () {
-      var toggleBtn = document.getElementById('toggle-password');
-      var pwInput = document.getElementById('password');
-      if (!toggleBtn || !pwInput) return;
-
-      toggleBtn.addEventListener('click', function () {
-        var isPassword = pwInput.type === 'password';
-        pwInput.type = isPassword ? 'text' : 'password';
-        toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
-        toggleBtn.setAttribute('title', isPassword ? 'Hide password' : 'Show password');
-      });
-
-      // Synchronize identifier to magic-link identifier input if filled
-      var mainId = document.getElementById('identifier');
-      var magicId = document.getElementById('magic-identifier');
-      if (mainId && magicId) {
-        mainId.addEventListener('input', function () {
-          if (!magicId.value || magicId.dataset.userEdited !== 'true') {
-            magicId.value = mainId.value;
-          }
-        });
-        magicId.addEventListener('input', function () {
-          magicId.dataset.userEdited = 'true';
-        });
-      }
-    })();
-  </script>
 </Layout>
+
+<script is:inline>
+  const toggleBtn = document.getElementById('toggle-password');
+  const pwdInput = document.getElementById('password');
+  const eyeIcon = document.getElementById('toggle-eye-icon');
+
+  if (toggleBtn && pwdInput) {
+    toggleBtn.addEventListener('click', () => {
+      const isPassword = pwdInput.getAttribute('type') === 'password';
+      pwdInput.setAttribute('type', isPassword ? 'text' : 'password');
+      toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+      toggleBtn.setAttribute('title', isPassword ? 'Hide password' : 'Show password');
+      if (eyeIcon) {
+        eyeIcon.style.opacity = isPassword ? '0.5' : '1';
+      }
+    });
+  }
+</script>

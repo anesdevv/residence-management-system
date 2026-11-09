@@ -17,7 +17,10 @@ import EmptyState from '../../components/EmptyState.astro';
 import InlineBanner from '../../components/InlineBanner.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
+import { localizePath, t, type SupportedLocale } from '../../lib/i18n';
+
 export const prerender = false;
+const locale: SupportedLocale = Astro.locals.locale || 'en';
 
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const uid = Astro.locals.user!.id;
@@ -104,7 +107,7 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
 import { getCategoryMeta } from '../../lib/maintenance';
 ---
 
-<Layout title="Dashboard — RÉSIVO" activeNav="dashboard">
+<Layout title={locale === 'fr' ? 'Tableau de bord — RÉSIVO' : 'Dashboard — RÉSIVO'} activeNav="dashboard">
   {
     queryError && (
       <InlineBanner kind="error" title="Connection error" class="mb-6">
@@ -113,7 +116,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
     )
   }
 
-  <PageHeader title={`Welcome, ${fullName}`} overline="Cité Universitaire Tlemcen" subtitle={subtitle}>
+  <PageHeader title={t(locale, 'dashboard.welcome', { name: fullName })} overline="Cité Universitaire Tlemcen" subtitle={subtitle}>
     {
       statusPill && (
         <Fragment slot="actions">
@@ -286,7 +289,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
       {
         isActive ? (
           <a
-            href="/dashboard/maintenance"
+            href={localizePath(locale, '/dashboard/maintenance')}
             class="card group flex flex-col justify-between gap-4 p-4 transition-colors hover:border-teal-600 sm:p-6"
           >
             <div>
@@ -329,7 +332,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
       {
         isActive ? (
           <a
-            href="/dashboard/room-change"
+            href={localizePath(locale, '/dashboard/room-change')}
             class="card group flex flex-col justify-between gap-4 p-4 transition-colors hover:border-teal-600 sm:p-6"
           >
             <div>
@@ -370,7 +373,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
 
       {/* Resident profile — always available */}
       <a
-        href="/dashboard/profile"
+        href={localizePath(locale, '/dashboard/profile')}
         class="card group flex flex-col justify-between gap-4 p-4 transition-colors hover:border-teal-600 sm:p-6"
       >
         <div>
@@ -402,7 +405,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
       {
         isActive && (
           <a
-            href="/dashboard/maintenance"
+            href={localizePath(locale, '/dashboard/maintenance')}
             class="inline-flex min-h-11 items-center gap-1 text-small font-semibold text-teal-600 hover:underline"
           >
             <span>View all tickets</span>

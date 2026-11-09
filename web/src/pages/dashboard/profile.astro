@@ -8,7 +8,10 @@ import InlineBanner from '../../components/InlineBanner.astro';
 import BrandMark from '../../components/BrandMark.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
+import { localizePath, t, type SupportedLocale } from '../../lib/i18n';
+
 export const prerender = false;
+const locale: SupportedLocale = Astro.locals.locale || 'en';
 
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const uid = Astro.locals.user!.id;
@@ -33,14 +36,14 @@ const updated = Astro.url.searchParams.get('updated');
 const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'danger' : 'pending';
 ---
 
-<Layout title="Resident Profile — RÉSIVO" activeNav="profile">
+<Layout title={locale === 'fr' ? 'Profil Résident — RÉSIVO' : 'Resident Profile — RÉSIVO'} activeNav="profile">
   <PageHeader
     title="Resident profile & credentials"
     overline="Cité Universitaire Tlemcen"
     subtitle="Review your official academic enrollment details and keep your contact info up to date."
   >
     <Fragment slot="actions">
-      <a href="/dashboard" class="btn btn-secondary">
+      <a href={localizePath(locale, '/dashboard')} class="btn btn-secondary">
         <Icon name="arrow-left" size={16} />
         <span>Back to dashboard</span>
       </a>

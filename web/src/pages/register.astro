@@ -11,7 +11,10 @@ import BrandMark from '../components/BrandMark.astro';
 import InlineBanner from '../components/InlineBanner.astro';
 import PageHeader from '../components/PageHeader.astro';
 
+import { localizePath, t, type SupportedLocale } from '../lib/i18n';
+
 export const prerender = false;
+const locale: SupportedLocale = Astro.locals.locale || 'en';
 Astro.response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
 const error = Astro.url.searchParams.get('error');
 const levels = ['L1', 'L2', 'L3', 'M1', 'M2', 'Doctorat'];
@@ -40,7 +43,7 @@ const panelItems = [
 ];
 ---
 
-<Layout title="Resident Registration — RÉSIVO" activeNav="register">
+<Layout title={locale === 'fr' ? 'Inscription Résident — RÉSIVO' : 'Resident Registration — RÉSIVO'} activeNav="register">
   <div class="flex flex-col gap-6">
     <PageHeader
       title="New resident registration"

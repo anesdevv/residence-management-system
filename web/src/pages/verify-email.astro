@@ -11,8 +11,10 @@ import PageHeader from '../components/PageHeader.astro';
 import OtpInput from '../components/OtpInput.astro';
 import ResendButton from '../components/ResendButton.astro';
 import { maskEmail } from '../lib/validation';
+import { localizePath, t, type SupportedLocale } from '../lib/i18n';
 
 export const prerender = false;
+const locale: SupportedLocale = Astro.locals.locale || 'en';
 
 const queryEmail = Astro.url.searchParams.get('email');
 const cookieEmail = Astro.cookies.get('resivo_pending_email')?.value;
@@ -23,7 +25,7 @@ const error = Astro.url.searchParams.get('error');
 const unverified = Astro.url.searchParams.get('unverified');
 ---
 
-<Layout title="Verify Email — RÉSIVO" activeNav="register">
+<Layout title={locale === 'fr' ? 'Vérification E-mail — RÉSIVO' : 'Verify Email — RÉSIVO'} activeNav="register">
   <div class="mx-auto flex w-full max-w-md flex-col gap-6 py-6 sm:py-8">
     <div class="card p-6 sm:p-8">
       <div class="mb-6 flex justify-center">
@@ -31,22 +33,22 @@ const unverified = Astro.url.searchParams.get('unverified');
       </div>
 
       <PageHeader
-        title="Verify your email"
-        overline="Account activation"
-        subtitle="Enter the 6-digit code sent to your email address to confirm your account and activate portal access."
+        title={t(locale, 'auth.verify_email_title')}
+        overline={t(locale, 'auth.verify_email_overline')}
+        subtitle={t(locale, 'auth.verify_email_subtitle')}
       />
 
       {
         unverified && (
-          <InlineBanner kind="info" title="Verification required" class="mb-4">
-            Your university housing dossier has been submitted, but your email address has not been verified yet. Please enter the code sent to your inbox.
+          <InlineBanner kind="info" title={t(locale, 'auth.verify_email_required_title')} class="mb-4">
+            {t(locale, 'auth.verify_email_required_desc')}
           </InlineBanner>
         )
       }
 
       {
         error && (
-          <InlineBanner kind="error" title="Verification failed" class="mb-4">
+          <InlineBanner kind="error" title={t(locale, 'common.error')} class="mb-4">
             {error}
           </InlineBanner>
         )
@@ -55,7 +57,7 @@ const unverified = Astro.url.searchParams.get('unverified');
       {
         masked && (
           <div class="mb-6 rounded-card border border-line bg-subtle p-3 text-center">
-            <span class="text-xs font-medium text-muted uppercase tracking-wider block">Code sent to</span>
+            <span class="text-xs font-medium text-muted uppercase tracking-wider block">{t(locale, 'auth.verify_code_sent_to')}</span>
             <span class="font-mono text-small font-bold text-navy-900">{masked}</span>
           </div>
         )
@@ -67,17 +69,20 @@ const unverified = Astro.url.searchParams.get('unverified');
 
         <div class="flex flex-col gap-2">
           <label class="label text-center" for="token">
-            6-digit verification code <span class="text-danger" aria-hidden="true">*</span>
+            {locale === 'fr' ? 'Code de confirmation à 6 chiffres' : '6-digit verification code'}{' '}
+            <span class="text-danger" aria-hidden="true">*</span>
           </label>
           <OtpInput length={6} name="token" id="token" required />
           <p class="field-hint text-center">
-            Cannot find the email? Check your spam or junk mail folder.
+            {locale === 'fr'
+              ? 'Vous ne trouvez pas l’e-mail\u00A0? Vérifiez vos dossiers de courriers indésirables ou spams.'
+              : 'Cannot find the email? Check your spam or junk mail folder.'}
           </p>
         </div>
 
         <button class="btn btn-primary w-full" type="submit">
           <Icon name="check-circle" size={18} />
-          <span>Verify and continue</span>
+          <span>{t(locale, 'auth.verify_btn')}</span>
         </button>
       </form>
 
@@ -92,12 +97,14 @@ const unverified = Astro.url.searchParams.get('unverified');
 
       <div class="mt-6 flex flex-col gap-2 border-t border-line pt-6 text-center">
         <p class="text-small font-normal text-muted">
-          Used the wrong email address?{' '}
-          <a class="link font-semibold" href="/register">Return to registration</a>
+          {locale === 'fr' ? 'Mauvaise adresse e-mail\u00A0?' : 'Used the wrong email address?'}{' '}
+          <a class="link font-semibold" href={localizePath(locale, '/register')}>
+            {locale === 'fr' ? 'Retour au formulaire d’inscription' : 'Return to registration'}
+          </a>
         </p>
         <p class="text-small font-normal text-muted">
-          Already verified your email?{' '}
-          <a class="link font-semibold" href="/login">Sign in</a>
+          {locale === 'fr' ? 'E-mail déjà confirmé\u00A0?' : 'Already verified your email?'}{' '}
+          <a class="link font-semibold" href={localizePath(locale, '/login')}>{t(locale, 'auth.sign_in')}</a>
         </p>
       </div>
     </div>

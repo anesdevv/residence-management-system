@@ -7,7 +7,10 @@ import InlineBanner from '../../components/InlineBanner.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
+import { localizePath, t, type SupportedLocale } from '../../lib/i18n';
+
 export const prerender = false;
+const locale: SupportedLocale = Astro.locals.locale || 'en';
 
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const uid = Astro.locals.user!.id;
@@ -78,14 +81,14 @@ const motives = [
 ];
 ---
 
-<Layout title="Room Transfer Portal — RÉSIVO" activeNav="room-change">
+<Layout title={locale === 'fr' ? 'Changement de Chambre — RÉSIVO' : 'Room Transfer Portal — RÉSIVO'} activeNav="room-change">
   <PageHeader
     title="Room transfer portal"
     overline="Cité Universitaire Tlemcen"
     subtitle="Apply for room reassignment or transfer within your designated dormitory block."
   >
     <Fragment slot="actions">
-      <a href="/dashboard" class="btn btn-secondary">
+      <a href={localizePath(locale, '/dashboard')} class="btn btn-secondary">
         <Icon name="arrow-left" size={16} />
         <span>Back to dashboard</span>
       </a>

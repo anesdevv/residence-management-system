@@ -10,6 +10,7 @@
 import Icon from './Icon.astro';
 import BrandMark from './BrandMark.astro';
 import Avatar from './Avatar.astro';
+import { localizePath, t, type SupportedLocale } from '../lib/i18n';
 
 interface Props {
   title: string;
@@ -18,12 +19,17 @@ interface Props {
 
 const { title, activeNav } = Astro.props;
 const email = Astro.locals.user?.email ?? '';
+const locale: SupportedLocale = Astro.locals.locale || 'en';
+
+const currentPathWithSearch = Astro.url.pathname + Astro.url.search;
+const targetEnPath = localizePath('en', currentPathWithSearch);
+const targetFrPath = localizePath('fr', currentPathWithSearch);
 
 const navItems = [
-  { key: 'dashboard', href: '/dashboard', label: 'Dashboard', short: 'Dashboard', icon: 'dashboard' },
-  { key: 'maintenance', href: '/dashboard/maintenance', label: 'Maintenance', short: 'Tickets', icon: 'wrench' },
-  { key: 'room-change', href: '/dashboard/room-change', label: 'Room change', short: 'Room swap', icon: 'arrow-left-right' },
-  { key: 'profile', href: '/dashboard/profile', label: 'Profile', short: 'Profile', icon: 'user' },
+  { key: 'dashboard', href: localizePath(locale, '/dashboard'), label: t(locale, 'nav.overview'), short: t(locale, 'nav.overview'), icon: 'dashboard' },
+  { key: 'maintenance', href: localizePath(locale, '/dashboard/maintenance'), label: t(locale, 'nav.maintenance'), short: t(locale, 'nav.maintenance'), icon: 'wrench' },
+  { key: 'room-change', href: localizePath(locale, '/dashboard/room-change'), label: t(locale, 'terms.room_change_request'), short: t(locale, 'nav.room_changes'), icon: 'arrow-left-right' },
+  { key: 'profile', href: localizePath(locale, '/dashboard/profile'), label: t(locale, 'nav.profile'), short: t(locale, 'nav.profile'), icon: 'user' },
 ] as const;
 ---
 
@@ -33,7 +39,7 @@ const navItems = [
 
   <header class="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-md">
     <div class="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
-      <a href="/dashboard" class="flex min-w-0 shrink-0 items-center gap-3" aria-label="RÉSIVO dashboard">
+      <a href={localizePath(locale, '/dashboard')} class="flex min-w-0 shrink-0 items-center gap-3" aria-label="RÉSIVO dashboard">
         <BrandMark variant="mark" size={36} />
         <span class="flex min-w-0 flex-col">
           <span class="font-display text-h2 text-ink">RÉSIVO</span>
@@ -62,21 +68,45 @@ const navItems = [
       </nav>
 
       <div class="ml-auto flex min-w-0 items-center gap-2 sm:gap-3 lg:ml-3">
+        <!-- Language switcher -->
+        <nav aria-label={t(locale, 'nav.language')} class="flex items-center rounded-pill border border-line bg-subtle p-0.5 text-xs font-semibold">
+          <a
+            href={targetFrPath}
+            data-locale-switch="fr"
+            class={`rounded-pill px-2.5 py-1 transition-colors ${
+              locale === 'fr' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+            }`}
+            aria-current={locale === 'fr' ? 'true' : undefined}
+          >
+            FR
+          </a>
+          <a
+            href={targetEnPath}
+            data-locale-switch="en"
+            class={`rounded-pill px-2.5 py-1 transition-colors ${
+              locale === 'en' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+            }`}
+            aria-current={locale === 'en' ? 'true' : undefined}
+          >
+            EN
+          </a>
+        </nav>
+
         <span class="hidden flex-col items-end xl:flex">
           <span class="text-small font-semibold text-ink-2">Cité Universitaire Tlemcen</span>
           <span class="text-small font-normal text-muted">Direction des Œuvres Universitaires (DOU)</span>
         </span>
         <span class="hidden max-w-[12rem] truncate text-small font-normal text-muted 2xl:block">{email}</span>
         <a
-          href="/dashboard/profile"
+          href={localizePath(locale, '/dashboard/profile')}
           class="shrink-0 rounded-input p-0.5"
           aria-label={`Signed in as ${email || 'resident'} — open profile`}
         >
           <Avatar name={email || 'Resident'} size={40} />
         </a>
-        <a href="/logout" class="btn btn-secondary shrink-0" aria-label="Sign out">
+        <a href="/logout" class="btn btn-secondary shrink-0" aria-label={t(locale, 'nav.sign_out')}>
           <Icon name="log-out" size={16} />
-          <span class="hidden sm:inline">Sign out</span>
+          <span class="hidden sm:inline">{t(locale, 'nav.sign_out')}</span>
         </a>
       </div>
     </div>

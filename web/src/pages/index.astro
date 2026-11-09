@@ -8,57 +8,60 @@
 import Layout from '../layouts/Layout.astro';
 import Icon from '../components/Icon.astro';
 import BrandMark from '../components/BrandMark.astro';
+import { localizePath, t, type SupportedLocale } from '../lib/i18n';
+
+const locale: SupportedLocale = Astro.locals.locale || 'en';
 
 /* The real lifecycle: Register › Verification › Room assigned › Living in residence. */
 const steps = [
   {
-    label: 'Register',
+    label: t(locale, 'landing.step_1_title'),
     icon: 'id-card',
-    copy: 'Submit your student card ID, academic faculty, and personal details via the online intake form.',
+    copy: t(locale, 'landing.step_1_desc'),
   },
   {
-    label: 'Verification',
+    label: t(locale, 'landing.step_2_title'),
     icon: 'user-check',
-    copy: 'Housing officers cross-reference your record with official admission lists and allocate an available room.',
+    copy: t(locale, 'landing.step_2_desc'),
   },
   {
-    label: 'Room assigned',
+    label: t(locale, 'landing.step_3_title'),
     icon: 'bed',
-    copy: 'View your allocated block and room number on the student portal, then collect your key at the housing bureau.',
+    copy: t(locale, 'landing.step_3_desc'),
   },
   {
-    label: 'Living in residence',
+    label: t(locale, 'landing.step_4_title'),
     icon: 'home',
-    copy: 'Once you have moved in, the portal stays with you: report a fault, request a room transfer, or update your contact details.',
+    copy: t(locale, 'landing.step_4_desc'),
   },
 ];
 
 /* What a resident actually does in the portal — application status, room, tickets, transfers. */
 const services = [
   {
-    title: 'Application status',
+    title: t(locale, 'landing.service_status_title'),
     icon: 'clock',
-    copy: 'Follow your dossier from submission to decision, and read the reason recorded by housing officers when an application is not approved.',
+    copy: t(locale, 'landing.service_status_desc'),
   },
   {
-    title: 'Room details',
+    title: t(locale, 'landing.service_room_title'),
     icon: 'bed',
-    copy: 'Allocations are automatically cross-referenced with official university admission rosters. Residential blocks are designated with strict capacity limits.',
+    copy: t(locale, 'landing.service_room_desc'),
   },
   {
-    title: 'Maintenance tickets with photos',
+    title: t(locale, 'landing.service_maintenance_title'),
     icon: 'wrench',
-    copy: 'Report plumbing, electricity, carpentry, or other issues directly through your dashboard with fault photos. Track triage and repair status in real-time.',
+    copy: t(locale, 'landing.service_maintenance_desc'),
   },
   {
-    title: 'Room transfer requests',
+    title: t(locale, 'landing.service_transfers_title'),
     icon: 'arrow-left-right',
-    copy: 'Active residents may apply for room transfers based on block preferences and academic justifications, reviewed directly by housing officers.',
+    copy: t(locale, 'landing.service_transfers_desc'),
   },
 ];
 ---
 
-<Layout title="RÉSIVO — Official Student Housing Portal" activeNav="home">
+<Layout title={locale === 'fr' ? 'RÉSIVO — Portail Officiel d’Hébergement Étudiant' : 'RÉSIVO — Official Student Housing Portal'} activeNav="home">
   <!-- Hero — the brand gradient is allowed here and nowhere else on this page. -->
   <section
     class="relative overflow-hidden rounded-hero px-6 py-10 sm:px-10 sm:py-12"
@@ -81,28 +84,26 @@ const services = [
       <BrandMark variant="logo" tone="white" size={112} alt="RÉSIVO" />
 
       <div class="flex flex-col gap-3">
-        <p class="overline text-on-dark">Official student housing portal</p>
+        <p class="overline text-on-dark">{t(locale, 'landing.hero_overline')}</p>
         <h1 class="measure font-display text-h1 text-surface sm:text-display">
-          Student residence management platform
+          {t(locale, 'landing.hero_title')}
         </h1>
         <p class="measure text-body text-on-dark">
-          Welcome to RÉSIVO, the official dormitory management system of Cité Universitaire Tlemcen. Register your
-          student card ID, verify admissions status in real time, view your assigned residential room, and submit
-          maintenance dispatches.
+          {t(locale, 'landing.hero_desc')}
         </p>
       </div>
 
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <a class="btn btn-gradient" href="/register">
+        <a class="btn btn-gradient" href={localizePath(locale, '/register')}>
           <Icon name="user" size={18} />
-          <span>Register as resident</span>
+          <span>{t(locale, 'landing.hero_register_cta')}</span>
         </a>
         <a
           class="btn border-on-dark/50 text-on-dark hover:border-on-dark hover:bg-surface/10"
-          href="/login"
+          href={localizePath(locale, '/login')}
         >
           <Icon name="log-in" size={18} />
-          <span>Log in</span>
+          <span>{t(locale, 'landing.hero_signin_cta')}</span>
         </a>
       </div>
 
@@ -118,9 +119,9 @@ const services = [
   <!-- How it works — the four real stages of the intake lifecycle -->
   <section class="mt-12">
     <div class="flex flex-col gap-1">
-      <h2 class="font-display text-h1 text-ink">How it works</h2>
+      <h2 class="font-display text-h1 text-ink">{t(locale, 'landing.steps_title')}</h2>
       <p class="measure text-small font-normal text-muted">
-        The four-step process from online registration to dormitory room key handover.
+        {t(locale, 'landing.steps_desc')}
       </p>
     </div>
 
@@ -131,7 +132,7 @@ const services = [
             <span class="flex h-10 w-10 items-center justify-center rounded-input bg-subtle text-teal-600">
               <Icon name={step.icon} size={20} />
             </span>
-            <span class="overline">Step {index + 1}</span>
+            <span class="overline">{locale === 'fr' ? `Étape ${index + 1}` : `Step ${index + 1}`}</span>
             <h3 class="text-h3 text-ink">{step.label}</h3>
             <p class="text-small font-normal text-muted">{step.copy}</p>
           </li>
@@ -143,9 +144,9 @@ const services = [
   <!-- What you can do — the services that exist in the portal today -->
   <section class="mt-12">
     <div class="flex flex-col gap-1">
-      <h2 class="font-display text-h1 text-ink">What you can do</h2>
+      <h2 class="font-display text-h1 text-ink">{t(locale, 'landing.services_title')}</h2>
       <p class="measure text-small font-normal text-muted">
-        Integrated facilities and residency operations for students
+        {t(locale, 'landing.services_desc')}
       </p>
     </div>
 
@@ -169,11 +170,13 @@ const services = [
     <span class="flex h-12 w-12 items-center justify-center rounded-card bg-navy-800 text-gold-300">
       <Icon name="shield-check" size={24} />
     </span>
-    <h2 class="font-display text-h2 text-surface">Intake policy &amp; identification requirement</h2>
+    <h2 class="font-display text-h2 text-surface">
+      {locale === 'fr' ? 'Règlement d’admission & justificatifs d’identité' : 'Intake policy & identification requirement'}
+    </h2>
     <p class="measure text-small font-normal text-on-dark">
-      Accommodation is strictly reserved for actively matriculated university students appearing on the official
-      university admission roster for the current academic year. Unmatched registrations remain pending until physical
-      verification by the administration of Direction des Œuvres Universitaires (DOU) Tlemcen.
+      {locale === 'fr'
+        ? 'L’hébergement est strictement réservé aux étudiants régulièrement inscrits figurant sur la liste officielle de l’université pour l’année académique en cours. Les dossiers non confirmés demeurent en attente jusqu’à validation par la Direction des Œuvres Universitaires (DOU) de Tlemcen.'
+        : 'Accommodation is strictly reserved for actively matriculated university students appearing on the official university admission roster for the current academic year. Unmatched registrations remain pending until physical verification by the administration of Direction des Œuvres Universitaires (DOU) Tlemcen.'}
     </p>
     <p class="flex flex-wrap items-center gap-2 border-t border-navy-700 pt-4 text-small text-on-dark">
       <Icon name="map-pin" size={16} class="text-gold-300" />
