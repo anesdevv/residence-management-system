@@ -21,7 +21,12 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QToolButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QPushButton, QToolButton, QVBoxLayout, QWidget
+
+try:
+    from i18n import current_language, set_saved_language, t, tn
+except ImportError:
+    from desktop.i18n import current_language, set_saved_language, t, tn
 
 from ..client import (
     RoleLookupError,
@@ -61,7 +66,7 @@ class PasswordField(QLineEdit):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setPlaceholderText("••••••••")
+        self.setPlaceholderText(t("login.password_placeholder"))
         self.setMinimumHeight(S("size-control"))
         self.setStyleSheet("QLineEdit { padding-right: 34px; }")
 
@@ -90,22 +95,26 @@ class PasswordField(QLineEdit):
         if self._is_visible:
             self.setEchoMode(QLineEdit.EchoMode.Normal)
             self.toggle_btn.setIcon(get_icon("eye-off", 16, C("text-muted")))
-            self.toggle_btn.setToolTip("Hide password")
-            self.toggle_btn.setAccessibleName("Hide password")
+            self.toggle_btn.setToolTip(t("login.hide_password"))
+            self.toggle_btn.setAccessibleName(t("login.hide_password"))
         else:
             self.setEchoMode(QLineEdit.EchoMode.Password)
             self.toggle_btn.setIcon(get_icon("eye", 16, C("text-muted")))
-            self.toggle_btn.setToolTip("Show password")
-            self.toggle_btn.setAccessibleName("Show password")
+            self.toggle_btn.setToolTip(t("login.show_password"))
+            self.toggle_btn.setAccessibleName(t("login.show_password"))
 
     def toggle_visibility(self):
         self.set_visible(not getattr(self, "_is_visible", False))
+
+    def retranslate_ui(self):
+        self.setPlaceholderText(t("login.password_placeholder"))
+        self.set_visible(getattr(self, "_is_visible", False))
 
 
 class LoginWindow(QWidget):
     def __init__(self, client=None, start_minimized: bool = False):
         super().__init__()
-        self.setWindowTitle("Staff Login — RÉSIVO")
+        self.setWindowTitle(t("login.title"))
         self.setMinimumSize(380, 480)
         self.resize(940, 580)
         self.setStyleSheet(DESKTOP_STYLESHEET)
@@ -127,6 +136,7 @@ class LoginWindow(QWidget):
         root.addWidget(self.hero, 1)
         root.addWidget(self.form_host, 1)
 
+        self._retranslate_ui()
         self._apply_responsive_layout()
 
     # ---------------------------------------------------------------- building
@@ -141,27 +151,27 @@ class LoginWindow(QWidget):
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         hero.body.addWidget(logo)
 
-        headline = QLabel("Staff Console")
-        apply_role(headline, "display")
-        headline.setStyleSheet(f"color: {C('surface')};")
-        headline.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hero.body.addWidget(headline)
+        self.hero_headline = QLabel(t("login.hero_title"))
+        apply_role(self.hero_headline, "display")
+        self.hero_headline.setStyleSheet(f"color: {C('surface')};")
+        self.hero_headline.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hero.body.addWidget(self.hero_headline)
 
-        value_line = QLabel("Applications, rooms and repairs in one live console.")
-        apply_role(value_line, "body")
-        value_line.setStyleSheet(f"color: {C('text-on-dark')};")
-        value_line.setWordWrap(True)
-        value_line.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hero.body.addWidget(value_line)
+        self.hero_value_line = QLabel(t("login.hero_desc"))
+        apply_role(self.hero_value_line, "body")
+        self.hero_value_line.setStyleSheet(f"color: {C('text-on-dark')};")
+        self.hero_value_line.setWordWrap(True)
+        self.hero_value_line.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hero.body.addWidget(self.hero_value_line)
 
         hero.body.addStretch(1)
 
-        caption = QLabel("Direction des Œuvres Universitaires · Cité Universitaire · Tlemcen")
-        apply_role(caption, "small")
-        caption.setStyleSheet(f"color: {C('text-on-dark-muted')};")
-        caption.setWordWrap(True)
-        caption.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hero.body.addWidget(caption)
+        self.hero_caption = QLabel(t("login.hero_caption"))
+        apply_role(self.hero_caption, "small")
+        self.hero_caption.setStyleSheet(f"color: {C('text-on-dark-muted')};")
+        self.hero_caption.setWordWrap(True)
+        self.hero_caption.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hero.body.addWidget(self.hero_caption)
         return hero
 
     def _build_form(self) -> tuple[QWidget, QWidget]:
@@ -180,26 +190,26 @@ class LoginWindow(QWidget):
 
         title = QLabel("RÉSIVO")
         apply_role(title, "h1")
-        subtitle = QLabel("Staff & Housing Operations Console")
-        apply_role(subtitle, "muted")
+        self.subtitle_label = QLabel(t("login.subtitle"))
+        apply_role(self.subtitle_label, "muted")
         col.addWidget(title)
-        col.addWidget(subtitle)
+        col.addWidget(self.subtitle_label)
         col.addSpacing(S("space-4"))
 
-        email_label = QLabel("Staff email")
-        apply_role(email_label, "small")
+        self.email_label = QLabel(t("login.email_label"))
+        apply_role(self.email_label, "small")
         self.email = QLineEdit()
-        self.email.setPlaceholderText("staff@univ-tlemcen.dz")
+        self.email.setPlaceholderText(t("login.email_placeholder"))
         self.email.setMinimumHeight(S("size-control"))
-        col.addWidget(email_label)
+        col.addWidget(self.email_label)
         col.addWidget(self.email)
 
-        password_label = QLabel("Password")
-        apply_role(password_label, "small")
+        self.password_label = QLabel(t("login.password_label"))
+        apply_role(self.password_label, "small")
         self.password = PasswordField()
         self.toggle_password_btn = self.password.toggle_btn
         self.password.returnPressed.connect(self.attempt)
-        col.addWidget(password_label)
+        col.addWidget(self.password_label)
         col.addWidget(self.password)
 
         # Failure banner — hidden until needed; ``self.status`` is its message
@@ -209,22 +219,74 @@ class LoginWindow(QWidget):
         self.status = self.error_banner._message
         col.addWidget(self.error_banner)
 
-        self.button = Button.primary(_SIGN_IN_TEXT, "log-in")
+        self.button = Button.primary(t("login.sign_in"), "log-in")
         self.button.setMinimumHeight(S("size-control"))
         self.button.clicked.connect(self.attempt)
         col.addWidget(self.button)
 
         # Only offered when the role check failed (the session exists but its
         # role could not be verified): sign out and enter another account.
-        self.switch_account_btn = Button.secondary("Use another account")
+        self.switch_account_btn = Button.secondary(t("login.switch_account"))
         self.switch_account_btn.setObjectName("switchAccountButton")
         self.switch_account_btn.setVisible(False)
         self.switch_account_btn.clicked.connect(self.switch_account)
         col.addWidget(self.switch_account_btn)
 
+        # Discreet language switch below the form
+        self.lang_btn = QPushButton("Français | English")
+        self.lang_btn.setObjectName("languageToggle")
+        self.lang_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.lang_btn.setFlat(True)
+        self.lang_btn.setStyleSheet(
+            f"QPushButton {{ background: transparent; border: none; color: {C('text-muted')}; "
+            f"font-size: {C('fs-small')}; font-weight: {C('fw-medium')}; padding: 4px 8px; border-radius: 4px; }} "
+            f"QPushButton:hover {{ color: {C('teal-600')}; background-color: {C('surface-subtle')}; }}"
+        )
+        self.lang_btn.setToolTip(t("terms.language"))
+        self.lang_btn.clicked.connect(self._toggle_language)
+        col.addSpacing(S("space-2"))
+        col.addWidget(self.lang_btn, 0, Qt.AlignmentFlag.AlignHCenter)
+
         host_layout.addWidget(column, 0, Qt.AlignmentFlag.AlignHCenter)
         host_layout.addStretch(1)
         return host, column
+
+    def _toggle_language(self):
+        new_lang = "fr" if current_language() == "en" else "en"
+        set_saved_language(new_lang)
+        self._retranslate_ui()
+
+    def _retranslate_ui(self):
+        self.setWindowTitle(t("login.title"))
+        if hasattr(self, "hero_headline"):
+            self.hero_headline.setText(t("login.hero_title"))
+        if hasattr(self, "hero_value_line"):
+            self.hero_value_line.setText(t("login.hero_desc"))
+        if hasattr(self, "hero_caption"):
+            self.hero_caption.setText(t("login.hero_caption"))
+        if hasattr(self, "subtitle_label"):
+            self.subtitle_label.setText(t("login.subtitle"))
+        if hasattr(self, "email_label"):
+            self.email_label.setText(t("login.email_label"))
+        if hasattr(self, "email"):
+            self.email.setPlaceholderText(t("login.email_placeholder"))
+        if hasattr(self, "password_label"):
+            self.password_label.setText(t("login.password_label"))
+        if hasattr(self, "password"):
+            self.password.setPlaceholderText(t("login.password_placeholder"))
+            if hasattr(self.password, "retranslate_ui"):
+                self.password.retranslate_ui()
+        if hasattr(self, "button"):
+            if self._role_retry_pending:
+                self.button.setText(t("login.retry_role_check"))
+            elif not self.button.isEnabled():
+                self.button.setText(t("login.checking_role"))
+            else:
+                self.button.setText(t("login.sign_in"))
+        if hasattr(self, "switch_account_btn"):
+            self.switch_account_btn.setText(t("login.switch_account"))
+        if hasattr(self, "lang_btn"):
+            self.lang_btn.setToolTip(t("terms.language"))
 
     # --------------------------------------------------------------- responsive
     def _apply_responsive_layout(self) -> None:
@@ -269,19 +331,19 @@ class LoginWindow(QWidget):
             self.error_banner.setVisible(False)
 
         if not email_txt or not pwd_txt:
-            self._show_error("Please enter both email and password.")
+            self._show_error(t("login.missing_credentials"))
             return
 
         self.switch_account_btn.setVisible(False)
-        self.button.setText("Signing in...")
+        self.button.setText(t("login.signing_in"))
         self.button.setEnabled(False)
 
         try:
             sign_in(self.client, email_txt, pwd_txt)
         except Exception as exc:  # noqa: BLE001 - authentication failure only
             # Never show a traceback: one concise line for the banner.
-            self._show_error(f"Login failed: {human_error(exc)}")
-            self.button.setText(_SIGN_IN_TEXT)
+            self._show_error(f"{t('login.login_failed')}: {human_error(exc)}")
+            self.button.setText(t("login.sign_in"))
             self.button.setEnabled(True)
             return
 
@@ -309,17 +371,14 @@ class LoginWindow(QWidget):
             self.client.auth.sign_out()
         except Exception as exc:  # noqa: BLE001 - reported, form stays usable
             _log.warning("Sign-out for account switch failed: %s", human_error(exc))
-            self._show_error(
-                "Could not sign out of the current session. "
-                f"Check your connection and try again: {human_error(exc)}"
-            )
+            self._show_error(t("login.sign_out_error", reason=human_error(exc)))
             return
 
         self._role_retry_pending = False
         self._pending_credentials = None
         self.password.clear()
         self.error_banner.setVisible(False)
-        self.button.setText(_SIGN_IN_TEXT)
+        self.button.setText(t("login.sign_in"))
         self.button.setEnabled(True)
         self.switch_account_btn.setVisible(False)
         self.email.setFocus()
@@ -327,7 +386,7 @@ class LoginWindow(QWidget):
 
     def _verify_role(self):
         """Resolve/cache the role, then open the console for staff and admins."""
-        self.button.setText("Checking role...")
+        self.button.setText(t("login.checking_role"))
         self.button.setEnabled(False)
 
         try:
@@ -354,8 +413,8 @@ class LoginWindow(QWidget):
                 self.client.auth.sign_out()
             except Exception:
                 pass
-            self._show_error("Access denied: Console restricted to staff and administrators.")
-            self.button.setText(_SIGN_IN_TEXT)
+            self._show_error(t("login.access_denied"))
+            self.button.setText(t("login.sign_in"))
             self.button.setEnabled(True)
             return
 
@@ -380,7 +439,7 @@ class LoginWindow(QWidget):
         # not an access-denied decision.  "Use another account" remains
         # available for an operator who signed in with the wrong address.
         self._role_retry_pending = True
-        self._show_error(_ROLE_ERROR_TEXT)
-        self.button.setText("Retry role check")
+        self._show_error(t("login.role_error"))
+        self.button.setText(t("login.retry_role_check"))
         self.button.setEnabled(True)
         self.switch_account_btn.setVisible(True)

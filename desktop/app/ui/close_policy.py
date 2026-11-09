@@ -16,6 +16,11 @@ from PySide6.QtWidgets import (
 from .components import Button, Card, InlineBanner
 from .theme import C, DESKTOP_STYLESHEET, S
 
+try:
+    from i18n import t
+except ImportError:
+    from desktop.i18n import t
+
 
 class ClosePolicy:
     """Pure logic deciding whether closing the application requires confirmation."""
@@ -80,7 +85,7 @@ class CloseConfirmDialog(QDialog):
 
     def __init__(self, parent: QWidget | None = None, is_busy: bool = False) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Close RÉSIVO?")
+        self.setWindowTitle(t("close_dialog.title"))
         self.setMinimumWidth(440)
         self.setStyleSheet(DESKTOP_STYLESHEET)
         self.is_busy = is_busy
@@ -91,33 +96,29 @@ class CloseConfirmDialog(QDialog):
 
         if is_busy:
             card = Card(
-                "Action in progress",
-                "An action is still running. Closing now may leave it unfinished.",
+                t("close_dialog.busy_title"),
+                t("close_dialog.busy_desc"),
                 icon="alert-triangle",
             )
             banner = InlineBanner(
                 "danger",
-                title="Warning",
-                message="Background database operations are currently active. "
-                "Forcing closure now may corrupt in-flight changes.",
+                title=t("close_dialog.warning"),
+                message=t("close_dialog.busy_warning"),
             )
             card.add_widget(banner)
             self.dont_ask_checkbox = None
         else:
             card = Card(
-                "Close RÉSIVO?",
-                "Background live sync and notifications will stop running.",
+                t("close_dialog.normal_title"),
+                t("close_dialog.normal_desc"),
                 icon="log-out",
             )
-            msg = QLabel(
-                "Are you sure you want to close RÉSIVO? Background live sync and "
-                "desktop notifications will stop running."
-            )
+            msg = QLabel(t("close_dialog.normal_body"))
             msg.setWordWrap(True)
             msg.setStyleSheet(f"color: {C('text-secondary')}; font-size: {C('fs-body')};")
             card.add_widget(msg)
 
-            self.dont_ask_checkbox = QCheckBox("Don't ask me again")
+            self.dont_ask_checkbox = QCheckBox(t("close_dialog.dont_ask"))
             self.dont_ask_checkbox.setStyleSheet(
                 f"QCheckBox {{ color: {C('text-secondary')}; font-size: {C('fs-small')}; margin-top: 8px; }}"
             )
@@ -133,19 +134,19 @@ class CloseConfirmDialog(QDialog):
         self.was_minimized_to_tray = False
 
         # Cancel is secondary and default (Esc / Enter on Cancel safe)
-        self.cancel_btn = Button.secondary("Cancel")
+        self.cancel_btn = Button.secondary(t("close_dialog.cancel"))
         self.cancel_btn.setDefault(True)
         self.cancel_btn.clicked.connect(self.reject)
         btn_row.addWidget(self.cancel_btn)
 
         if is_busy:
             self.minimize_btn = None
-            self.confirm_btn = Button.danger("Close anyway", icon="alert-triangle")
+            self.confirm_btn = Button.danger(t("close_dialog.close_anyway"), icon="alert-triangle")
         else:
-            self.minimize_btn = Button.secondary("Minimize to tray")
+            self.minimize_btn = Button.secondary(t("close_dialog.minimize_to_tray"))
             self.minimize_btn.clicked.connect(self._on_minimize_clicked)
             btn_row.addWidget(self.minimize_btn)
-            self.confirm_btn = Button.primary("Close app")
+            self.confirm_btn = Button.primary(t("close_dialog.close_app"))
         self.confirm_btn.clicked.connect(self._on_confirm_clicked)
         btn_row.addWidget(self.confirm_btn)
 

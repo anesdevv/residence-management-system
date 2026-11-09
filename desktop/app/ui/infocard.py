@@ -37,6 +37,11 @@ from PySide6.QtWidgets import (
 )
 
 try:
+    from i18n import t, tn
+except ImportError:
+    from desktop.i18n import t, tn
+
+try:
     from . import theme
     from .components import (
         Avatar,
@@ -82,6 +87,19 @@ _STATUS_PILLS = {
     "rejected": ("danger", "Rejected"),
     "cancelled": ("danger", "Cancelled"),
 }
+
+
+def _get_status_pill(status_raw: str, default_val: str) -> tuple[str, str]:
+    mapping = {
+        "active": ("ok", t("infocard.status_active_resident")),
+        "approved": ("ok", t("infocard.status_active_resident")),
+        "resident": ("ok", t("infocard.status_active_resident")),
+        "pending": ("pending", t("infocard.status_pending_verification")),
+        "pending_verification": ("pending", t("infocard.status_pending_verification")),
+        "rejected": ("danger", t("status.rejected")),
+        "cancelled": ("danger", t("infocard.status_cancelled")),
+    }
+    return mapping.get(status_raw, ("neutral", default_val.capitalize()))
 
 
 def section_header(text: str) -> QLabel:
@@ -132,9 +150,9 @@ class StudentInfoCardDialog(QDialog):
         # ------------------------------------------------------- window setup
         first_name = str(self.student_data.get("first_name", "")).strip()
         last_name = str(self.student_data.get("last_name", "")).strip()
-        full_name = f"{first_name} {last_name}".strip() or "Student resident"
+        full_name = f"{first_name} {last_name}".strip() or t("infocard.default_student_name")
         card_id = str(self.student_data.get("card_id", "—")).strip() or "—"
-        self.setWindowTitle(f"Student profile — {full_name}")
+        self.setWindowTitle(t("infocard.student_title", name=full_name))
         self.setModal(True)
         self.setMinimumWidth(580)
         self.setStyleSheet(DESKTOP_STYLESHEET)
@@ -147,8 +165,8 @@ class StudentInfoCardDialog(QDialog):
 
         # ------------------------------------------------------ profile card
         profile_card = Card(
-            "Student profile",
-            "Read-only record for desk inquiries.",
+            t("infocard.student_card_title"),
+            t("infocard.student_card_desc"),
             icon="id-card",
         )
         root.addWidget(profile_card)
@@ -166,10 +184,10 @@ class StudentInfoCardDialog(QDialog):
         name_label.setWordWrap(True)
         identity_column.addWidget(name_label)
 
-        meta_parts = [f"Card ID {card_id}"]
+        meta_parts = [t("infocard.card_id_prefix", card_id=card_id)]
         wilaya = self.student_data.get("wilaya")
         if wilaya:
-            meta_parts.append(f"Wilaya {wilaya}")
+            meta_parts.append(t("infocard.wilaya_prefix", wilaya=wilaya))
         study_level = self.student_data.get("study_level")
         if study_level:
             meta_parts.append(str(study_level))
@@ -182,15 +200,15 @@ class StudentInfoCardDialog(QDialog):
         profile_card.add_widget(identity)
 
         status_raw = str(self.student_data.get("status", "active")).lower().strip()
-        status_kind, status_label = _STATUS_PILLS.get(
-            status_raw, ("neutral", str(self.student_data.get("status", "Unknown")).capitalize())
+        status_kind, status_label = _get_status_pill(
+            status_raw, str(self.student_data.get("status", "Unknown"))
         )
         self.status_pill = StatusPill(status_kind, status_label)
         self.roster_badge = RosterMatchBadge(True if is_verified else False)
-        self.roster_badge.setToolTip("Cross-check of the card ID against the official university roster")
+        self.roster_badge.setToolTip(t("infocard.roster_tooltip"))
         profile_card.add_widget(_row(self.status_pill, self.roster_badge))
 
-        profile_card.add_widget(section_header("Academic & identity"))
+        profile_card.add_widget(section_header(t("infocard.section_academic")))
         gender_str = str(self.student_data.get("gender", "—")).strip().capitalize()
         univ_str = str(self.student_data.get("university", "—")).strip()
         fac_str = str(self.student_data.get("faculty", "—")).strip()
@@ -203,19 +221,19 @@ class StudentInfoCardDialog(QDialog):
 
         self.facts = KeyValueList()
         self.facts.set_rows([
-            ("Student card ID", card_id),
-            ("Gender", gender_str),
-            ("University", univ_str),
-            ("Faculty", fac_str),
-            ("Date of birth", dob_val),
-            ("Contact phone", phone_val),
+            (t("infocard.student_card_id"), card_id),
+            (t("fields.gender"), gender_str),
+            (t("fields.university"), univ_str),
+            (t("fields.faculty"), fac_str),
+            (t("infocard.birth_date"), dob_val),
+            (t("infocard.contact_phone"), phone_val),
         ])
         profile_card.add_widget(self.facts)
 
         # ------------------------------------------------------ housing card
         housing_card = Card(
-            "Housing & verification",
-            "Room assignment and official roster cross-check.",
+            t("infocard.housing_card_title"),
+            t("infocard.housing_card_desc"),
             icon="building",
         )
         root.addWidget(housing_card)
@@ -232,45 +250,39 @@ class StudentInfoCardDialog(QDialog):
 
         has_room = False
         if block and number:
-            floor_text = f" (Floor {floor})" if floor is not None and str(floor) != "" else ""
-            assigned_room_str = f"Block {block} — Room {number}{floor_text}"
+            floor_text = t("infocard.floor_suffix", floor=floor) if floor is not None and str(floor) != "" else ""
+            assigned_room_str = t("infocard.assigned_room_format", block=block, number=number, floor_text=floor_text)
             has_room = True
         elif self.student_data.get("room_str"):
             assigned_room_str = str(self.student_data["room_str"])
             has_room = True
         else:
-            assigned_room_str = "No room assigned yet"
+            assigned_room_str = t("infocard.no_room_assigned")
 
         housing_facts = KeyValueList()
-        housing_facts.add_row("Assigned room", assigned_room_str)
+        housing_facts.add_row(t("infocard.assigned_room_label"), assigned_room_str)
         housing_card.add_widget(housing_facts)
         if not has_room:
             housing_card.add_widget(
                 InlineBanner(
                     "info",
-                    title="No room assigned",
-                    message="The resident has no room allocation recorded yet.",
+                    title=t("infocard.no_room_title"),
+                    message=t("infocard.no_room_desc"),
                 )
             )
 
         if is_verified:
             roster_banner = InlineBanner(
                 "success",
-                title="Official roster match — verified",
-                message=(
-                    "Identity and academic records are confirmed against the official "
-                    "university register."
-                ),
+                title=t("infocard.roster_match_title"),
+                message=t("infocard.roster_match_desc"),
                 icon="shield-check",
             )
         else:
             roster_banner = InlineBanner(
                 "error",
-                title="Not found on the admissions roster",
-                message=(
-                    "Self-registered record. Audit the physical dossier before authorising "
-                    "a room allocation."
-                ),
+                title=t("infocard.roster_mismatch_title"),
+                message=t("infocard.roster_mismatch_desc"),
             )
         housing_card.add_widget(roster_banner)
 
@@ -278,7 +290,7 @@ class StudentInfoCardDialog(QDialog):
         footer = QHBoxLayout()
         footer.setSpacing(S("space-2"))
         footer.addStretch(1)
-        close_btn = Button.secondary("Close")
+        close_btn = Button.secondary(t("common.close"))
         close_btn.clicked.connect(self.accept)
         footer.addWidget(close_btn)
         root.addLayout(footer)
@@ -311,7 +323,7 @@ class RoomInfoCardDialog(QDialog):
         gender = str(self.room_data.get("gender", "male")).strip().capitalize()
         capacity = int(self.room_data.get("capacity") or 1)
 
-        self.setWindowTitle(f"Room details — Block {block} Room {number}")
+        self.setWindowTitle(t("infocard.room_title", block=block, number=number))
         self.setModal(True)
         self.setMinimumWidth(620)
         self.setStyleSheet(DESKTOP_STYLESHEET)
@@ -366,28 +378,28 @@ class RoomInfoCardDialog(QDialog):
 
         # ------------------------------------------------------ capacity card
         capacity_card = Card(
-            f"Block {block} — Room {number}",
-            f"Floor {floor} · Designated for {gender} students",
+            t("infocard.capacity_card_title", block=block, number=number),
+            t("infocard.capacity_card_desc", floor=floor, gender=gender),
             icon="building",
         )
         root.addWidget(capacity_card)
 
         if available <= 0:
-            self.capacity_pill = StatusPill("danger", "Room full")
-            self.capacity_pill.setToolTip("Every bed in this room is occupied.")
+            self.capacity_pill = StatusPill("danger", t("infocard.room_full"))
+            self.capacity_pill.setToolTip(t("infocard.room_full_tooltip"))
         else:
-            beds_text = f"{available} bed available" if available == 1 else f"{available} beds available"
+            beds_text = tn("infocard.bed_available", count=available)
             self.capacity_pill = StatusPill("ok", beds_text)
-            self.capacity_pill.setToolTip("Free beds available for allocation in this room.")
+            self.capacity_pill.setToolTip(t("infocard.bed_available_tooltip"))
         capacity_card.add_widget(_row(self.capacity_pill))
 
         stats = QHBoxLayout()
         stats.setSpacing(S("space-3"))
-        stats.addWidget(kpi_block("Total capacity", capacity, "navy"), 1)
-        stats.addWidget(kpi_block("Occupied beds", occupied, "teal", icon="user-check"), 1)
+        stats.addWidget(kpi_block(t("infocard.total_capacity"), capacity, "navy"), 1)
+        stats.addWidget(kpi_block(t("infocard.occupied_beds"), occupied, "teal", icon="user-check"), 1)
         stats.addWidget(
             kpi_block(
-                "Available beds",
+                t("infocard.available_beds"),
                 available,
                 "green" if available > 0 else "danger",
                 icon="bed",
@@ -401,17 +413,27 @@ class RoomInfoCardDialog(QDialog):
 
         # ----------------------------------------------------- occupants card
         occupants_card = Card(
-            "Current occupants",
-            f"{occupied} of {capacity} beds occupied.",
+            t("infocard.occupants_card_title"),
+            t("infocard.occupants_card_desc", occupied=occupied, capacity=capacity),
             icon="users",
         )
         root.addWidget(occupants_card)
 
         if occupants:
             table = QTableWidget(len(occupants), 3)
-            configure_table(table, ["Resident name", "Card ID", "Faculty"])
+            configure_table(
+                table,
+                [
+                    t("infocard.table_col_name"),
+                    t("infocard.table_col_card_id"),
+                    t("infocard.table_col_faculty"),
+                ],
+            )
             for index, occupant in enumerate(occupants):
-                occupant_name = f"{str(occupant.get('first_name', '')).strip()} {str(occupant.get('last_name', '')).strip()}".strip() or "Resident student"
+                occupant_name = (
+                    f"{str(occupant.get('first_name', '')).strip()} {str(occupant.get('last_name', '')).strip()}".strip()
+                    or t("infocard.default_occupant_name")
+                )
                 name_item = QTableWidgetItem(occupant_name)
                 name_item.setIcon(get_icon("user", 14, theme.C("text-muted")))
                 card_item = QTableWidgetItem(str(occupant.get("card_id", "—")))
@@ -428,8 +450,8 @@ class RoomInfoCardDialog(QDialog):
             occupants_card.add_widget(
                 EmptyState(
                     "bed",
-                    "No residents assigned",
-                    "All beds in this room are currently vacant and available for allocation.",
+                    t("infocard.no_residents_title"),
+                    t("infocard.no_residents_desc"),
                 )
             )
 
@@ -437,7 +459,7 @@ class RoomInfoCardDialog(QDialog):
         footer = QHBoxLayout()
         footer.setSpacing(S("space-2"))
         footer.addStretch(1)
-        close_btn = Button.secondary("Close")
+        close_btn = Button.secondary(t("common.close"))
         close_btn.clicked.connect(self.accept)
         footer.addWidget(close_btn)
         root.addLayout(footer)

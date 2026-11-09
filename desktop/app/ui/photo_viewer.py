@@ -44,6 +44,11 @@ from PySide6.QtWidgets import (
 )
 
 try:
+    from i18n import t
+except ImportError:
+    from desktop.i18n import t
+
+try:
     from . import theme
     from .components import Button, IconButton
     from .icons import get_pixmap
@@ -248,7 +253,7 @@ class PhotoFetchWorker(QThread):
         # 2. Validate URL
         if not self.url or not isinstance(self.url, str) or not self.url.startswith(("http://", "https://")):
             if not self._stopped:
-                self.failed.emit("Invalid image URL")
+                self.failed.emit(t("photo_viewer.invalid_url"))
             return
 
         # 3. Download bytes
@@ -279,7 +284,7 @@ class PhotoFetchWorker(QThread):
         image = QImage()
         if not image.loadFromData(data) or image.isNull() or image.width() <= 0 or image.height() <= 0:
             if not self._stopped:
-                self.failed.emit("Photo preview unavailable (invalid image data)")
+                self.failed.emit(t("photo_viewer.invalid_data"))
             return
 
         # 5. Smooth thumbnail off GUI thread
@@ -367,7 +372,7 @@ class PhotoViewerDialog(QDialog):
     ):
         super().__init__(parent)
         self.setObjectName("photoViewerDialog")
-        self.setWindowTitle("Maintenance fault photo — RÉSIVO")
+        self.setWindowTitle(t("photo_viewer.window_title"))
         self.setMinimumSize(640, 480)
         self.resize(880, 640)
         # Translucent top level so the 92 % navy scrim really dims the console.
@@ -398,10 +403,10 @@ class PhotoViewerDialog(QDialog):
 
         title_column = QVBoxLayout()
         title_column.setSpacing(2)
-        title_lbl = QLabel("Ticket fault evidence")
+        title_lbl = QLabel(t("photo_viewer.title"))
         theme.apply_role(title_lbl, "h3")
         title_lbl.setObjectName("viewerTitle")
-        self.status_label = QLabel("Loading photo…")
+        self.status_label = QLabel(t("photo_viewer.loading"))
         self.status_label.setObjectName("viewerStatus")
         theme.apply_role(self.status_label, "small")
         theme.enable_tabular(self.status_label)
@@ -443,14 +448,14 @@ class PhotoViewerDialog(QDialog):
         tools.setContentsMargins(S("space-3"), S("space-2"), S("space-3"), S("space-2"))
         tools.setSpacing(S("space-2"))
 
-        self.btn_fit = Button("Fit", "filter", icon="maximize", size="sm")
+        self.btn_fit = Button(t("photo_viewer.fit"), "filter", icon="maximize", size="sm")
         self.btn_fit.setCheckable(True)
         self.btn_fit.setChecked(True)
-        self.btn_fit.setToolTip("Fit to window (F)")
+        self.btn_fit.setToolTip(t("photo_viewer.fit_tooltip"))
         self.btn_fit.clicked.connect(self.set_fit_mode)
         tools.addWidget(self.btn_fit)
 
-        self.btn_zoom_out = IconButton("zoom-out", "Zoom out (−)")
+        self.btn_zoom_out = IconButton("zoom-out", t("photo_viewer.zoom_out"))
         self.btn_zoom_out.clicked.connect(self.zoom_out)
         tools.addWidget(self.btn_zoom_out)
 
@@ -458,23 +463,40 @@ class PhotoViewerDialog(QDialog):
         self.zoom_label.setObjectName("zoomLabel")
         self.zoom_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.zoom_label.setMinimumWidth(S("space-8") * 2)
-        self.zoom_label.setToolTip("Current zoom level — the arrow keys pan the photo when it is zoomed in")
+        self.zoom_label.setToolTip(t("photo_viewer.zoom_tooltip"))
         theme.enable_tabular(self.zoom_label)
         tools.addWidget(self.zoom_label)
 
-        self.btn_zoom_in = IconButton("zoom-in", "Zoom in (+)")
+        self.btn_zoom_in = IconButton("zoom-in", t("photo_viewer.zoom_in"))
         self.btn_zoom_in.clicked.connect(self.zoom_in)
         tools.addWidget(self.btn_zoom_in)
 
-        pan_hint = QLabel("Arrow keys pan")
+        # Rotate buttons
+        self.btn_rotate_left = IconButton("refresh", t("photo_viewer.rotate_left"))
+        self.btn_rotate_left.clicked.connect(self.rotate_counter_clockwise)
+        tools.addWidget(self.btn_rotate_left)
+
+        self.btn_rotate_right = IconButton("refresh", t("photo_viewer.rotate_right"))
+        self.btn_rotate_right.clicked.connect(self.rotate_clockwise)
+        tools.addWidget(self.btn_rotate_right)
+
+        pan_hint = QLabel(t("photo_viewer.pan_hint"))
         pan_hint.setObjectName("panHint")
         theme.apply_role(pan_hint, "small")
-        pan_hint.setToolTip("Use the arrow keys to pan the photo when it is zoomed in")
+        pan_hint.setToolTip(t("photo_viewer.pan_hint_tooltip"))
         tools.addWidget(pan_hint)
 
-        self.btn_close = IconButton("x", "Close (Esc)")
+        self.btn_close = IconButton("x", t("photo_viewer.close"))
         self.btn_close.clicked.connect(self.accept)
         tools.addWidget(self.btn_close)
+
+        # Retry button
+        self.btn_retry = Button(t("photo_viewer.retry"), "secondary", icon="refresh", size="sm")
+        self.btn_retry.setObjectName("photoViewerRetryBtn")
+        self.btn_retry.setToolTip(t("photo_viewer.retry"))
+        self.btn_retry.setVisible(False)
+        self.btn_retry.clicked.connect(self._retry_fetch)
+        tools.addWidget(self.btn_retry)
 
         toolbar_row.addWidget(toolbar, 0)
         toolbar_row.addStretch(1)
@@ -482,17 +504,17 @@ class PhotoViewerDialog(QDialog):
 
         # --------------------------------------------------- initial render
         if self.full_pixmap and not self.full_pixmap.isNull():
-            self.status_label.setText(f"{self.full_pixmap.width()} × {self.full_pixmap.height()} px (preview)")
+            self.status_label.setText(t("photo_viewer.preview_status", width=self.full_pixmap.width(), height=self.full_pixmap.height()))
             self._apply_fit()
         else:
-            self.image_label.setText("No photo preview available")
-            self.status_label.setText("No preview image")
+            self.image_label.setText(t("photo_viewer.no_preview"))
+            self.status_label.setText(t("photo_viewer.no_preview_status"))
 
         # Async fetch full-res if URL is provided and not already in cache
         if self.full_pixmap and not self.full_pixmap.isNull():
             self.status_label.setText(f"{self.full_pixmap.width()} × {self.full_pixmap.height()} px")
         elif self.image_url:
-            self.status_label.setText("Fetching full-resolution photo…")
+            self.status_label.setText(t("photo_viewer.fetching_full"))
             self.worker = PhotoFetchWorker(self.image_url, parent=None, storage_path=self.storage_path)
             self.worker.finished.connect(self.worker.deleteLater)
             self.worker.loaded.connect(self._on_full_loaded)
@@ -539,11 +561,11 @@ class PhotoViewerDialog(QDialog):
         self._render_pixmap()
 
         pct = int(round(self.scale_factor * 100))
-        self.zoom_label.setText(f"Fit · {pct}%")
+        self.zoom_label.setText(f"{t('photo_viewer.fit')} · {pct}%")
 
     def _render_pixmap(self):
         if not self.full_pixmap or self.full_pixmap.isNull():
-            self.image_label.setText("No photo preview available")
+            self.image_label.setText(t("photo_viewer.no_preview"))
             self.image_container.resize(200, 100)
             return
 
@@ -594,8 +616,43 @@ class PhotoViewerDialog(QDialog):
         vertical.setValue(vertical.value() + (-step if key == Qt.Key.Key_Up else step))
         return True
 
+    def rotate_clockwise(self):
+        if self.full_pixmap and not self.full_pixmap.isNull():
+            from PySide6.QtGui import QTransform
+            transform = QTransform().rotate(90)
+            self.full_pixmap = self.full_pixmap.transformed(transform, Qt.TransformationMode.SmoothTransformation)
+            if self.is_fit_mode:
+                self._apply_fit()
+            else:
+                self._render_pixmap()
+
+    def rotate_counter_clockwise(self):
+        if self.full_pixmap and not self.full_pixmap.isNull():
+            from PySide6.QtGui import QTransform
+            transform = QTransform().rotate(-90)
+            self.full_pixmap = self.full_pixmap.transformed(transform, Qt.TransformationMode.SmoothTransformation)
+            if self.is_fit_mode:
+                self._apply_fit()
+            else:
+                self._render_pixmap()
+
+    def _retry_fetch(self):
+        if not self.image_url:
+            return
+        if hasattr(self, "btn_retry"):
+            self.btn_retry.setVisible(False)
+        self.status_label.setText(t("photo_viewer.fetching_full"))
+        self._cleanup_worker()
+        self.worker = PhotoFetchWorker(self.image_url, parent=None, storage_path=self.storage_path)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.loaded.connect(self._on_full_loaded)
+        self.worker.failed.connect(self._on_full_failed)
+        self.worker.start()
+
     # --------------------------------------------------------- async fetch
     def _on_full_loaded(self, data: bytes):
+        if hasattr(self, "btn_retry"):
+            self.btn_retry.setVisible(False)
         pix = QPixmap()
         if pix.loadFromData(data) and not pix.isNull():
             self.full_pixmap = pix
@@ -606,15 +663,19 @@ class PhotoViewerDialog(QDialog):
                 self._render_pixmap()
         else:
             if not self.full_pixmap:
-                self.status_label.setText("Image format unsupported")
+                self.status_label.setText(t("photo_viewer.format_unsupported"))
             else:
-                self.status_label.setText("Showing preview (full-res format unsupported)")
+                self.status_label.setText(t("photo_viewer.preview_unsupported"))
+            if hasattr(self, "btn_retry") and self.image_url:
+                self.btn_retry.setVisible(True)
 
     def _on_full_failed(self, err_msg: str):
         if self.full_pixmap and not self.full_pixmap.isNull():
-            self.status_label.setText("Showing preview (full-res download unavailable)")
+            self.status_label.setText(t("photo_viewer.preview_download_unavailable"))
         else:
-            self.status_label.setText("Failed to load photo")
+            self.status_label.setText(t("photo_viewer.load_failed"))
+        if hasattr(self, "btn_retry") and self.image_url:
+            self.btn_retry.setVisible(True)
 
     def _cleanup_worker(self):
         if self.worker is not None:

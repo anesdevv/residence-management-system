@@ -51,6 +51,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+try:
+    from i18n import current_language, t, tn
+except ImportError:
+    from desktop.i18n import current_language, t, tn
+
 from ..client import (
     invalidate_official_lookup_cache,
     clear_local_session,
@@ -120,7 +125,11 @@ def _role_label(role) -> str:
     """Human label for the sidebar pill / diagnostics."""
     normalized = _normalize_role(role)
     if not normalized:
-        return _UNVERIFIED_LABEL
+        return t("roles.unverified")
+    if normalized == "admin":
+        return t("roles.admin")
+    if normalized == "staff":
+        return t("roles.staff")
     return _ROLE_LABELS.get(normalized, normalized.title())
 
 
@@ -495,19 +504,20 @@ class MainWindow(QMainWindow):
         if hasattr(self.official_list_page, "roster_changed"):
             self.official_list_page.roster_changed.connect(self._on_roster_changed)
 
-        self._add_nav_item("Overview", "overview", self.overview_page)
-        self._add_nav_item("Pending accounts", "pending", self.pending_page)
-        self._add_nav_item("Residents", "residents", self.residents_page)
-        self._add_nav_item("Rooms", "rooms", self.rooms_page)
-        self._add_nav_item("Maintenance", "maintenance", self.maintenance_page)
-        self._add_nav_item("Room changes", "room_changes", self.room_changes_page)
-        self._add_nav_item("Official list", "official_list", self.official_list_page)
+        self._add_nav_item(t("nav.overview"), "overview", self.overview_page, canonical_name="Overview")
+        self._add_nav_item(t("nav.pending"), "pending", self.pending_page, canonical_name="Pending accounts")
+        self._add_nav_item(t("nav.residents"), "residents", self.residents_page, canonical_name="Residents")
+        self._add_nav_item(t("nav.rooms"), "rooms", self.rooms_page, canonical_name="Rooms")
+        self._add_nav_item(t("nav.maintenance"), "maintenance", self.maintenance_page, canonical_name="Maintenance")
+        self._add_nav_item(t("nav.room_changes"), "room_changes", self.room_changes_page, canonical_name="Room changes")
+        self._add_nav_item(t("nav.official_list"), "official_list", self.official_list_page, canonical_name="Official list")
 
         if self.role == "admin":
             self.staff_accounts_page = StaffAccountsPage(client)
-            self._add_nav_item("Staff accounts", "staff_accounts", self.staff_accounts_page)
+            self._add_nav_item(t("nav.staff_accounts"), "staff_accounts", self.staff_accounts_page, canonical_name="Staff accounts")
 
         self.settings_page = SettingsPage(client)
+        self.pages[t("nav.settings")] = self.settings_page
         self.pages["Settings"] = self.settings_page
         self.stack.addWidget(self.settings_page)
 
@@ -521,7 +531,7 @@ class MainWindow(QMainWindow):
         # Status bar — the live-sync line only (events go to toasts).
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage(_IDLE_STATUS)
+        self.status_bar.showMessage(t("live_sync.active"))
 
         # Live-sync indicator state (driven by the existing tick/alert signals).
         self._started_at = time.monotonic()
@@ -620,30 +630,30 @@ class MainWindow(QMainWindow):
         self.sidebar_footer_layout.addWidget(self.user_row_widget)
 
         # Sign-out (ghost, icon + "Sign out"; objectName kept for the tests).
-        self.sign_out_btn = Button.ghost("Sign out")
+        self.sign_out_btn = Button.ghost(t("nav.sign_out"))
         self.sign_out_btn.setObjectName("signOutButton")
         self.sign_out_btn.setIcon(get_icon("log-out", size=18, color=C("text-on-dark")))
         self.sign_out_btn.setIconSize(QSize(18, 18))
         self.sign_out_btn.setStyleSheet(_ghost_on_navy_qss("signOutButton", centered=False))
         self.sign_out_btn.setFixedHeight(38)
-        self.sign_out_btn.setToolTip("Sign out")
+        self.sign_out_btn.setToolTip(t("nav.sign_out"))
         self.sign_out_btn.clicked.connect(self.on_sign_out_clicked)
         self.sidebar_footer_layout.addWidget(self.sign_out_btn)
 
         # Minimize / Expand menu button directly below Sign out
-        self.toggle_menu_btn = Button.ghost("Minimize menu")
+        self.toggle_menu_btn = Button.ghost(t("nav.collapse_menu"))
         self.toggle_menu_btn.setObjectName("toggleMenuButton")
         self.toggle_menu_btn.setIcon(get_icon("chevron-left", size=18, color=C("text-on-dark")))
         self.toggle_menu_btn.setIconSize(QSize(18, 18))
         self.toggle_menu_btn.setStyleSheet(_ghost_on_navy_qss("toggleMenuButton", centered=False))
         self.toggle_menu_btn.setFixedHeight(38)
-        self.toggle_menu_btn.setToolTip("Minimize sidebar menu")
-        self.toggle_menu_btn.setAccessibleName("Minimize menu")
+        self.toggle_menu_btn.setToolTip(t("nav.collapse_menu"))
+        self.toggle_menu_btn.setAccessibleName(t("nav.collapse_menu"))
         self.toggle_menu_btn.clicked.connect(self.toggle_sidebar)
         self.sidebar_footer_layout.addWidget(self.toggle_menu_btn)
 
         # Settings (ghost, same footer treatment as the buttons above).
-        self.settings_btn = Button.ghost("Settings")
+        self.settings_btn = Button.ghost(t("nav.settings"))
         self.settings_btn.setObjectName("settingsButton")
         self.settings_btn.setCheckable(True)
         self.settings_btn.setIcon(get_icon("settings", size=18, color=C("text-on-dark")))
@@ -652,8 +662,8 @@ class MainWindow(QMainWindow):
             _ghost_on_navy_qss("settingsButton", centered=False)
         )
         self.settings_btn.setFixedHeight(38)
-        self.settings_btn.setToolTip("Settings")
-        self.settings_btn.setAccessibleName("Settings")
+        self.settings_btn.setToolTip(t("nav.settings"))
+        self.settings_btn.setAccessibleName(t("nav.settings"))
         self.settings_btn.clicked.connect(self.on_settings_clicked)
         self.sidebar_footer_layout.addWidget(self.settings_btn)
 
@@ -663,7 +673,7 @@ class MainWindow(QMainWindow):
         self.live_row.setContentsMargins(0, 0, 0, 0)
         self.live_row.setSpacing(S("space-2"))
         self.live_dot = LiveDot()
-        self.live_label = QLabel("Live sync")
+        self.live_label = QLabel(t("nav.live_sync"))
         theme.apply_role(self.live_label, "small")
         self.live_label.setStyleSheet(f"color: {C('text-on-dark-muted')};")
         self.live_row.addWidget(self.live_dot, 0, Qt.AlignmentFlag.AlignVCenter)
@@ -686,17 +696,17 @@ class MainWindow(QMainWindow):
             self.sidebar_footer_layout.setContentsMargins(S("space-2"), S("space-3"), S("space-2"), S("space-4"))
 
             self.sign_out_btn.setText("")
-            self.sign_out_btn.setToolTip("Sign out")
+            self.sign_out_btn.setToolTip(t("nav.sign_out"))
             self.sign_out_btn.setStyleSheet(_ghost_on_navy_qss("signOutButton", centered=True))
 
             self.toggle_menu_btn.setText("")
-            self.toggle_menu_btn.setToolTip("Expand menu")
-            self.toggle_menu_btn.setAccessibleName("Expand menu")
+            self.toggle_menu_btn.setToolTip(t("nav.expand_menu"))
+            self.toggle_menu_btn.setAccessibleName(t("nav.expand_menu"))
             self.toggle_menu_btn.setIcon(get_icon("chevron-right", size=18, color=C("text-on-dark")))
             self.toggle_menu_btn.setStyleSheet(_ghost_on_navy_qss("toggleMenuButton", centered=True))
 
             self.settings_btn.setText("")
-            self.settings_btn.setToolTip("Settings")
+            self.settings_btn.setToolTip(t("nav.settings"))
             self.settings_btn.setStyleSheet(
                 _ghost_on_navy_qss("settingsButton", centered=True)
             )
@@ -714,18 +724,18 @@ class MainWindow(QMainWindow):
 
             self.sidebar_footer_layout.setContentsMargins(S("space-3"), S("space-3"), S("space-3"), S("space-4"))
 
-            self.sign_out_btn.setText("Sign out")
-            self.sign_out_btn.setToolTip("Sign out")
+            self.sign_out_btn.setText(t("nav.sign_out"))
+            self.sign_out_btn.setToolTip(t("nav.sign_out"))
             self.sign_out_btn.setStyleSheet(_ghost_on_navy_qss("signOutButton", centered=False))
 
-            self.toggle_menu_btn.setText("Minimize menu")
-            self.toggle_menu_btn.setToolTip("Minimize sidebar menu")
-            self.toggle_menu_btn.setAccessibleName("Minimize menu")
+            self.toggle_menu_btn.setText(t("nav.collapse_menu"))
+            self.toggle_menu_btn.setToolTip(t("nav.collapse_menu"))
+            self.toggle_menu_btn.setAccessibleName(t("nav.collapse_menu"))
             self.toggle_menu_btn.setIcon(get_icon("chevron-left", size=18, color=C("text-on-dark")))
             self.toggle_menu_btn.setStyleSheet(_ghost_on_navy_qss("toggleMenuButton", centered=False))
 
-            self.settings_btn.setText("Settings")
-            self.settings_btn.setToolTip("Settings")
+            self.settings_btn.setText(t("nav.settings"))
+            self.settings_btn.setToolTip(t("nav.settings"))
             self.settings_btn.setStyleSheet(
                 _ghost_on_navy_qss("settingsButton", centered=False)
             )
@@ -744,12 +754,12 @@ class MainWindow(QMainWindow):
         # Role gate: an unverified lookup is an error state, not a staff session.
         self.role_banner = InlineBanner(
             kind="error",
-            title="Role not verified",
-            message=_ROLE_ERROR_TEXT,
+            title=t("roles.unverified"),
+            message=t("login.role_error"),
         )
-        self.role_retry_btn = Button.secondary("Retry")
+        self.role_retry_btn = Button.secondary(t("common.retry"))
         self.role_retry_btn.setObjectName("retryRoleButton")
-        self.role_retry_btn.setToolTip("Check the signed-in account's role again")
+        self.role_retry_btn.setToolTip(t("roles.retry_tooltip"))
         self.role_retry_btn.clicked.connect(self._retry_role_check)
         self.role_banner.add_action(self.role_retry_btn)
         self.role_banner.setVisible(not bool(self.role))
@@ -769,7 +779,7 @@ class MainWindow(QMainWindow):
         if self.role:
             self.role_banner.setVisible(False)
         else:
-            self.role_banner.set_message(_ROLE_ERROR_TEXT)
+            self.role_banner.set_message(t("login.role_error"))
             self.role_banner.setVisible(True)
 
         if self.role == "admin" and "Staff accounts" not in self.pages:
@@ -781,7 +791,12 @@ class MainWindow(QMainWindow):
                 defer_initial_load=True,
                 current_uid=_session_user_id(self.client),
             )
-            self._add_nav_item("Staff accounts", "staff_accounts", self.staff_accounts_page)
+            self._add_nav_item(
+                t("nav.staff_accounts"),
+                "staff_accounts",
+                self.staff_accounts_page,
+                canonical_name="Staff accounts",
+            )
 
         # Pages exposing set_role() apply late verification without rebuilding
         # themselves or performing another synchronous lookup.
@@ -802,8 +817,8 @@ class MainWindow(QMainWindow):
             return
         self._role_retry_running = True
         self.role_retry_btn.setEnabled(False)
-        self.role_retry_btn.setText("Checking...")
-        self.role_banner.set_message(_ROLE_ERROR_TEXT)
+        self.role_retry_btn.setText(t("roles.checking"))
+        self.role_banner.set_message(t("login.role_error"))
         self.role_banner.setVisible(True)
 
         started = self.tasks.run(
@@ -820,7 +835,7 @@ class MainWindow(QMainWindow):
         normalized = _normalize_role(role)
         if normalized not in ("staff", "admin"):
             self._on_role_retry_failed(
-                "This account is not allowed to use the staff console."
+                t("roles.denied_console")
             )
             return
         self.role = normalized
@@ -833,17 +848,19 @@ class MainWindow(QMainWindow):
 
     def _on_role_retry_failed(self, message: str) -> None:
         _log.warning("Role retry failed: %s", message)
-        self.role_banner.set_message(f"{_ROLE_ERROR_TEXT} ({message})")
+        self.role_banner.set_message(f"{t('login.role_error')} ({message})")
         self.role_banner.setVisible(True)
 
     def _on_role_retry_finished(self) -> None:
         self._role_retry_running = False
-        self.role_retry_btn.setText("Retry")
+        self.role_retry_btn.setText(t("common.retry"))
         self.role_retry_btn.setEnabled(True)
 
     # -------------------------------------------------------------- navigation
-    def _add_nav_item(self, title: str, icon_name: str, widget: QWidget):
+    def _add_nav_item(self, title: str, icon_name: str, widget: QWidget, canonical_name: str | None = None):
         self.pages[title] = widget
+        if canonical_name and canonical_name != title:
+            self.pages[canonical_name] = widget
         self.stack.addWidget(widget)
         # Badge keys reuse the legacy icon keys (pending / maintenance / room_changes).
         self.nav.add_row(title, icon_name, key=icon_name)
@@ -868,10 +885,10 @@ class MainWindow(QMainWindow):
     def _set_live_state(self, state: str) -> None:
         """Live indicator: dot state + matching text label + tooltip."""
         text = {
-            "connected": "Live sync connected",
-            "reconnecting": "Live sync reconnecting",
-            "offline": "Live sync offline",
-        }.get(state, "Live sync offline")
+            "connected": t("live_sync.connected"),
+            "reconnecting": t("live_sync.reconnecting"),
+            "offline": t("live_sync.offline"),
+        }.get(state, t("live_sync.offline"))
         self.live_dot.set_state(state)
         self.live_dot.setToolTip(text)
         self.live_label.setText(text)
@@ -894,15 +911,15 @@ class MainWindow(QMainWindow):
         app_icon = self.windowIcon()
         if not app_icon.isNull():
             tray.setIcon(app_icon)
-        tray.setToolTip("RÉSIVO — University Residence Management")
+        tray.setToolTip(t("tray.tooltip"))
 
         tray_menu = QMenu()
-        open_action = tray_menu.addAction("Open RÉSIVO")
+        open_action = tray_menu.addAction(t("tray.open"))
         open_action.triggered.connect(self._restore_from_tray)
-        min_action = tray_menu.addAction("Minimize to tray")
+        min_action = tray_menu.addAction(t("tray.minimize"))
         min_action.triggered.connect(self.minimize_to_tray)
         tray_menu.addSeparator()
-        quit_action = tray_menu.addAction("Quit")
+        quit_action = tray_menu.addAction(t("tray.quit"))
         quit_action.triggered.connect(self.request_quit)
 
         tray.setContextMenu(tray_menu)
@@ -921,8 +938,8 @@ class MainWindow(QMainWindow):
         if not settings.value("general/tray_notice_shown", False, type=bool):
             settings.setValue("general/tray_notice_shown", True)
             self.tray_icon.showMessage(
-                "RÉSIVO",
-                "RÉSIVO is running in the background. Click the tray icon to restore.",
+                t("tray.balloon_title"),
+                t("tray.balloon_msg"),
                 QSystemTrayIcon.MessageIcon.Information,
                 3000,
             )
@@ -998,8 +1015,14 @@ class MainWindow(QMainWindow):
 
         # 1. Live-sync line: last update time + counts.
         self.status_bar.showMessage(
-            f"{_IDLE_STATUS} • Last update: {timestamp} • Pending: {p_count}"
-            f" • Open tickets: {m_count} • Transfers: {r_count}"
+            t(
+                "live_sync.status_bar",
+                status=t("live_sync.active"),
+                timestamp=timestamp,
+                pending=p_count,
+                open_tickets=m_count,
+                transfers=r_count,
+            )
         )
 
         # 2. Gold count pills on the sidebar rows.

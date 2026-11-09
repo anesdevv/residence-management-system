@@ -1532,11 +1532,21 @@ class LiveDot(QLabel):
 
     def showEvent(self, event):  # noqa: N802 - Qt API
         super().showEvent(event)
-        if self._state == "connected":
-            self._animation.start()
+        if getattr(self, "_state", None) == "connected":
+            anim = getattr(self, "_animation", None)
+            if anim is not None:
+                try:
+                    anim.start()
+                except RuntimeError:
+                    pass
 
     def hideEvent(self, event):  # noqa: N802 - Qt API
-        self._animation.stop()
+        anim = getattr(self, "_animation", None)
+        if anim is not None:
+            try:
+                anim.stop()
+            except RuntimeError:
+                pass
         super().hideEvent(event)
 
 

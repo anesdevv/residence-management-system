@@ -20,7 +20,12 @@ import logging
 import os
 from pathlib import Path
 import re
+import sys
 from typing import Any
+
+# Ensure both 'i18n' and 'desktop.i18n' resolve to the exact same module instance
+sys.modules.setdefault("i18n", sys.modules[__name__])
+sys.modules.setdefault("desktop.i18n", sys.modules[__name__])
 
 _log = logging.getLogger("resivo.i18n")
 
@@ -345,10 +350,13 @@ def get_saved_language() -> str | None:
 
 
 def set_saved_language(lang_code: str) -> None:
-    """Persist language preference to QSettings."""
+    """Persist language preference to QSettings and activate in memory."""
     code = lang_code.strip().lower()
     if code not in _REGISTRY:
         raise ValueError(f"Unsupported language code: {lang_code}")
+    global _CURRENT_LANG
+    _CURRENT_LANG = code
+    _load_catalog(code)
     try:
         from PySide6.QtCore import QSettings
         settings = QSettings("RESIVO", "StaffConsole")

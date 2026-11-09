@@ -5,8 +5,12 @@ import os
 from unittest.mock import MagicMock, patch
 import pytest
 
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
 from PySide6.QtCore import QSettings
+from PySide6.QtWidgets import QApplication
 from desktop import i18n
+from desktop.app.ui.login_window import LoginWindow
 
 
 @pytest.fixture(autouse=True)
@@ -162,3 +166,36 @@ def test_qsettings_persistence(monkeypatch):
     # Invalid language raises ValueError
     with pytest.raises(ValueError):
         i18n.set_saved_language("es")
+
+
+def test_login_window_language_toggle():
+    qapp = QApplication.instance()
+    if qapp is None:
+        qapp = QApplication([])
+
+    i18n.init("en")
+    win = LoginWindow()
+    try:
+        # Initial English strings
+        assert win.button.text() == "Sign in"
+        assert win.hero_headline.text() == "Staff Console"
+        assert win.lang_btn.text() == "Français | English"
+
+        # Toggle to French
+        win.lang_btn.click()
+        qapp.processEvents()
+
+        assert i18n.current_language() == "fr"
+        assert win.button.text() == "Se connecter"
+        assert win.hero_headline.text() == "Console du personnel"
+
+        # Toggle back to English
+        win.lang_btn.click()
+        qapp.processEvents()
+
+        assert i18n.current_language() == "en"
+        assert win.button.text() == "Sign in"
+        assert win.hero_headline.text() == "Staff Console"
+    finally:
+        win.close()
+        i18n.init("en")
