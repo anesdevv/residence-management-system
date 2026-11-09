@@ -197,12 +197,12 @@ const panelItems = [
             </span>
             <div class="min-w-0">
               <h2 class="card-title">Contact</h2>
-              <p class="mt-0.5 text-small font-normal text-muted">Used to notify you upon room assignment.</p>
+              <p class="mt-0.5 text-small font-normal text-muted">Used for urgent facility and security notices.</p>
             </div>
           </header>
 
-          <div class="grid grid-cols-1 gap-6 pt-4 sm:grid-cols-2">
-            <div class="flex flex-col gap-2 sm:col-span-2">
+          <div class="grid grid-cols-1 gap-6 pt-4">
+            <div class="flex flex-col gap-2">
               <label class="label" for="phone">Mobile phone <span class="text-danger" aria-hidden="true">*</span></label>
               <input
                 class="input tnum"
@@ -213,10 +213,26 @@ const panelItems = [
                 autocomplete="tel"
                 placeholder="05 / 06 / 07..."
               />
+              <p class="field-hint">Must be an active mobile line in Algeria.</p>
             </div>
+          </div>
+        </section>
 
+        <!-- 4 · Account security & credentials -->
+        <section class="card p-4 sm:p-6">
+          <header class="flex items-start gap-3 border-b border-line pb-4">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input bg-subtle text-teal-600">
+              <Icon name="lock" size={20} />
+            </span>
+            <div class="min-w-0">
+              <h2 class="card-title">Account security &amp; login credentials</h2>
+              <p class="mt-0.5 text-small font-normal text-muted">Your primary email and password for portal access and password recovery.</p>
+            </div>
+          </header>
+
+          <div class="grid grid-cols-1 gap-6 pt-4 sm:grid-cols-2">
             <div class="flex flex-col gap-2">
-              <label class="label" for="email">Email address <span class="text-danger" aria-hidden="true">*</span></label>
+              <label class="label" for="email">Primary email address <span class="text-danger" aria-hidden="true">*</span></label>
               <input
                 class="input"
                 type="email"
@@ -226,7 +242,7 @@ const panelItems = [
                 autocomplete="email"
                 placeholder="student@univ-tlemcen.dz"
               />
-              <p class="field-hint">A 6-digit verification code will be sent to this address.</p>
+              <p class="field-hint">Required. A 6-digit verification code will be sent to confirm this address. Used for password recovery.</p>
             </div>
 
             <div class="flex flex-col gap-2">
@@ -240,24 +256,10 @@ const panelItems = [
                 autocomplete="email"
                 placeholder="student@univ-tlemcen.dz"
               />
+              <p class="field-hint">Re-enter your email address to ensure accurate delivery.</p>
             </div>
-          </div>
-        </section>
 
-        <!-- 4 · Portal security -->
-        <section class="card p-4 sm:p-6">
-          <header class="flex items-start gap-3 border-b border-line pb-4">
-            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input bg-subtle text-teal-600">
-              <Icon name="lock" size={20} />
-            </span>
-            <div class="min-w-0">
-              <h2 class="card-title">Portal security</h2>
-              <p class="mt-0.5 text-small font-normal text-muted">Used to sign in to the student portal.</p>
-            </div>
-          </header>
-
-          <div class="flex flex-col gap-4 pt-4">
-            <div class="flex flex-col gap-2">
+            <div class="flex flex-col gap-2 sm:col-span-2">
               <label class="label" for="password">Portal password <span class="text-danger" aria-hidden="true">*</span></label>
               <input
                 class="input"
@@ -272,7 +274,7 @@ const panelItems = [
               <p class="field-hint">Must be at least 8 characters long. Keep this password safe.</p>
             </div>
 
-            <div class="flex flex-col gap-2" role="group" aria-labelledby="pw-meter-caption">
+            <div class="flex flex-col gap-2 sm:col-span-2" role="group" aria-labelledby="pw-meter-caption">
               <div class="flex items-center justify-between gap-3">
                 <span class="field-hint" id="pw-meter-caption">Password strength</span>
                 <span class="text-small font-semibold text-ink-2" id="pw-meter-label" aria-live="polite">Not set</span>
