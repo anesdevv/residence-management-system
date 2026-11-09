@@ -261,23 +261,23 @@ sender_name = "RÉSIVO - Cité Universitaire Tlemcen"
 
 # Branded Email Templates
 [auth.email.template.confirmation]
-subject = "Confirm your email address"
+subject = "Confirmez votre adresse email / Confirm your email address"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
-subject = "Reset your password"
+subject = "Réinitialisez votre mot de passe / Reset your password"
 content_path = "./supabase/templates/recovery.html"
 
 [auth.email.template.magic_link]
-subject = "Your one-time sign-in code"
+subject = "Votre code de connexion / Your one-time sign-in code"
 content_path = "./supabase/templates/magic_link.html"
 
 [auth.email.template.email_change]
-subject = "Confirm your new email address"
+subject = "Confirmez votre nouvel email / Confirm your new email address"
 content_path = "./supabase/templates/email_change.html"
 
 [auth.email.template.reauthentication]
-subject = "Your verification code"
+subject = "Votre code de vérification / Your verification code"
 content_path = "./supabase/templates/reauthentication.html"
 
 [auth.sms]
