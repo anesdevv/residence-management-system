@@ -52,8 +52,8 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
 
   <!-- Feedback Alerts -->
   {updated && (
-    <InlineBanner kind="success" title="Contact details updated!" class="mb-6">
-      Your mobile phone number has been saved successfully to the residence registry.
+    <InlineBanner kind="success" title={t(locale, 'profile.phone_updated')} class="mb-6">
+      {t(locale, 'profile.phone_updated')}
     </InlineBanner>
   )}
 
@@ -78,8 +78,8 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
           <div class="flex items-center gap-3.5">
             <BrandMark variant="mark" size={40} />
             <div>
-              <h2 class="card-title">Academic resident file</h2>
-              <p class="text-small font-normal text-muted">Direction des Œuvres Universitaires · DOU Tlemcen</p>
+              <h2 class="card-title">{t(locale, 'profile.academic_file_title')}</h2>
+              <p class="text-small font-normal text-muted">{t(locale, 'profile.academic_file_subtitle')}</p>
             </div>
           </div>
 
@@ -90,21 +90,21 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
         <KeyValue
           columns={2}
           rows={[
-            { label: 'Student card ID', value: s?.card_id || '—', tnum: true, mono: true },
-            { label: 'Full name', value: `${s?.first_name || ''} ${s?.last_name || ''}`.trim() || '—' },
-            { label: 'Date of birth', value: s?.birth_date || '—', tnum: true },
-            { label: 'Gender', value: s?.gender === 'female' ? 'Female' : 'Male' },
-            { label: 'Wilaya of origin', value: s?.wilaya || '—' },
-            { label: 'Study level', value: s?.study_level || '—' },
-            { label: 'University', value: s?.university || '—' },
-            { label: 'Faculty', value: s?.faculty || '—' },
+            { label: t(locale, 'fields.card_id'), value: s?.card_id || '—', tnum: true, mono: true },
+            { label: t(locale, 'fields.full_name'), value: `${s?.first_name || ''} ${s?.last_name || ''}`.trim() || '—' },
+            { label: t(locale, 'fields.birth_date'), value: s?.birth_date || '—', tnum: true },
+            { label: t(locale, 'fields.gender'), value: s?.gender === 'female' ? t(locale, 'gender.female') : t(locale, 'gender.male') },
+            { label: t(locale, 'fields.wilaya'), value: s?.wilaya || '—' },
+            { label: t(locale, 'fields.study_level'), value: s?.study_level || '—' },
+            { label: t(locale, 'fields.university'), value: s?.university || '—' },
+            { label: t(locale, 'fields.faculty'), value: s?.faculty || '—' },
           ]}
         />
       </section>
 
       <!-- Institutional Notice -->
-      <InlineBanner kind="info" title="Academic record changes" icon="info">
-        Matriculation number, faculty, birth date, and civil records are synchronized with university admission registers. To request formal corrections, present your official student card at the housing administration bureau.
+      <InlineBanner kind="info" title={t(locale, 'profile.academic_notice_title')} icon="info">
+        {t(locale, 'profile.academic_notice_desc')}
       </InlineBanner>
     </div>
 
@@ -117,8 +117,8 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
               <Icon name="mail" size={20} />
             </span>
             <div>
-              <h2 class="card-title">Contact coordinates</h2>
-              <p class="text-small font-normal text-muted mt-0.5">Editable residence communication channels</p>
+              <h2 class="card-title">{t(locale, 'profile.contact_coordinates_title')}</h2>
+              <p class="text-small font-normal text-muted mt-0.5">{t(locale, 'profile.contact_coordinates_subtitle')}</p>
             </div>
           </div>
         </header>
@@ -126,7 +126,7 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
         <form method="POST" action="/api/profile" class="flex flex-col gap-4">
           <div class="flex flex-col gap-2">
             <label class="label" for="phone">
-              Mobile phone number <span class="text-danger" aria-hidden="true">*</span>
+              {t(locale, 'fields.phone')} <span class="text-danger" aria-hidden="true">*</span>
             </label>
             <input
               class="input tnum"
@@ -138,17 +138,17 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
               value={s?.phone ?? ''}
               placeholder="e.g. 0555123456"
             />
-            <p class="field-hint">Used for urgent facility and security notices.</p>
+            <p class="field-hint">{t(locale, 'profile.phone_hint')}</p>
           </div>
 
           <div class="flex flex-col gap-2">
             <div class="flex items-center justify-between">
               <label class="label" for="email">
-                Contact email address
+                {t(locale, 'profile.contact_email_label')}
               </label>
               <span class="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 rounded px-2 py-0.5">
                 <Icon name="check-circle" size={12} />
-                <span>Verified</span>
+                <span>{t(locale, 'profile.verified_email_pill')}</span>
               </span>
             </div>
             <input
@@ -169,7 +169,7 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
           <div class="pt-2">
             <button class="btn btn-primary w-full min-h-[44px]" type="submit">
               <Icon name="check-circle" size={18} />
-              <span>Update phone number</span>
+              <span>{t(locale, 'profile.save_phone_btn')}</span>
             </button>
           </div>
         </form>

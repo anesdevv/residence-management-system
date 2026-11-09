@@ -21,9 +21,15 @@ const { title, activeNav } = Astro.props;
 const email = Astro.locals.user?.email ?? '';
 const locale: SupportedLocale = Astro.locals.locale || 'en';
 
-const currentPathWithSearch = Astro.url.pathname + Astro.url.search;
-const targetEnPath = localizePath('en', currentPathWithSearch);
-const targetFrPath = localizePath('fr', currentPathWithSearch);
+const pathname = Astro.url.pathname;
+const cleanQuery = new URLSearchParams(Astro.url.search);
+cleanQuery.delete('lang');
+const queryString = cleanQuery.toString() ? `?${cleanQuery.toString()}` : '';
+const targetEnBase = localizePath('en', pathname) + queryString;
+const targetFrBase = localizePath('fr', pathname) + queryString;
+
+const targetEnPath = targetEnBase + (targetEnBase.includes('?') ? '&lang=en' : '?lang=en');
+const targetFrPath = targetFrBase + (targetFrBase.includes('?') ? '&lang=fr' : '?lang=fr');
 
 const navItems = [
   { key: 'dashboard', href: localizePath(locale, '/dashboard'), label: t(locale, 'nav.overview'), short: t(locale, 'nav.overview'), icon: 'dashboard' },

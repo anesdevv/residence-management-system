@@ -14,6 +14,7 @@
  * the same card id always renders byte-identical SVG.
  */
 import BrandMark from './BrandMark.astro';
+import { t, type SupportedLocale } from '../lib/i18n';
 
 interface Props {
   fullName: string;
@@ -28,6 +29,7 @@ interface Props {
 }
 
 const { fullName, cardId, block, floor, room, studyLevel, university, issuedAt, class: className = '' } = Astro.props;
+const locale: SupportedLocale = Astro.locals.locale || 'en';
 
 /* --- deterministic QR-style grid ------------------------------------------ */
 const GRID = 21;
@@ -104,33 +106,33 @@ const meta = [studyLevel, university].filter(Boolean).join(' · ');
           <p class="text-small font-normal text-on-dark">Cité Universitaire · Tlemcen</p>
         </div>
       </div>
-      <p class="overline text-gold-300 text-right">Resident pass</p>
+      <p class="overline text-gold-300 text-right">{t(locale, 'dashboard.pass_title')}</p>
     </div>
 
     <div>
-      <p class="overline text-on-dark">Resident</p>
+      <p class="overline text-on-dark">{t(locale, 'terms.resident')}</p>
       <p class="font-display text-h1 text-surface">{fullName}</p>
       {meta && <p class="mt-0.5 text-small font-normal text-on-dark">{meta}</p>}
     </div>
 
     <dl class="grid grid-cols-3 gap-4 border-y border-surface/25 py-4">
       <div class="min-w-0">
-        <dt class="overline text-on-dark">Block</dt>
+        <dt class="overline text-on-dark">{t(locale, 'fields.block')}</dt>
         <dd class="font-display text-h1 tnum text-surface">{block}</dd>
       </div>
       <div class="min-w-0">
-        <dt class="overline text-on-dark">Floor</dt>
+        <dt class="overline text-on-dark">{t(locale, 'fields.floor')}</dt>
         <dd class="font-display text-h1 tnum text-surface">{floor}</dd>
       </div>
       <div class="min-w-0">
-        <dt class="overline text-on-dark">Room</dt>
+        <dt class="overline text-on-dark">{t(locale, 'fields.room')}</dt>
         <dd class="font-display text-h1 tnum text-surface">{room}</dd>
       </div>
     </dl>
 
     <div class="flex items-end justify-between gap-4">
       <div class="min-w-0">
-        <p class="overline text-on-dark">Card ID</p>
+        <p class="overline text-on-dark">{t(locale, 'fields.card_id')}</p>
         <p class="tnum font-display text-h2 text-surface">{cardId}</p>
         {issuedAt && <p class="mt-1 text-small font-normal text-on-dark">Issued {issuedAt}</p>}
       </div>

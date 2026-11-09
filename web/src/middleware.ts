@@ -3,31 +3,69 @@ import { createSupabaseServerClient } from './lib/supabase';
 import { DEFAULT_LOCALE, localizePath, type SupportedLocale } from './lib/i18n';
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  // Locale detection
   const path = context.url.pathname;
-  const originPath = context.originPathname || path;
+  const isFrenchPath = path === '/fr' || path.startsWith('/fr/');
+  const langQuery = context.url.searchParams.get('lang')?.toLowerCase();
+  const cookieLocale = context.cookies.get('resivo_locale')?.value?.toLowerCase();
+
   let locale: SupportedLocale = DEFAULT_LOCALE;
 
-  // 1. URL path prefix (/fr or /fr/...)
-  if (path === '/fr' || path.startsWith('/fr/') || originPath === '/fr' || originPath.startsWith('/fr/')) {
+  if (isFrenchPath) {
     locale = 'fr';
+    if (cookieLocale !== 'fr') {
+      context.cookies.set('resivo_locale', 'fr', {
+        path: '/',
+        maxAge: 31536000,
+        httpOnly: false,
+        sameSite: 'lax',
+      });
+    }
+  } else if (langQuery === 'fr') {
+    locale = 'fr';
+    context.cookies.set('resivo_locale', 'fr', {
+      path: '/',
+      maxAge: 31536000,
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+    if (context.request.method === 'GET' && !path.startsWith('/api/') && !path.startsWith('/_astro/')) {
+      return context.redirect(localizePath('fr', path + context.url.search));
+    }
+  } else if (langQuery === 'en') {
+    locale = 'en';
+    context.cookies.set('resivo_locale', 'en', {
+      path: '/',
+      maxAge: 31536000,
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+  } else if (cookieLocale === 'fr') {
+    locale = 'fr';
+    if (
+      context.request.method === 'GET' &&
+      !path.startsWith('/api/') &&
+      !path.startsWith('/_astro/') &&
+      !path.startsWith('/auth/') &&
+      path !== '/logout'
+    ) {
+      return context.redirect(localizePath('fr', path + context.url.search));
+    }
+  } else if (cookieLocale === 'en') {
+    locale = 'en';
   } else {
-    // 2. Cookie resivo_locale ('fr' or 'en')
-    const cookieLocale = context.cookies.get('resivo_locale')?.value?.toLowerCase();
-    if (cookieLocale === 'fr') {
-      locale = 'fr';
-    } else if (cookieLocale === 'en') {
-      locale = 'en';
-    } else {
-      // 3. Request Accept-Language header (if starts with fr -> fr)
-      const acceptLang = context.request.headers.get('accept-language')?.toLowerCase() || '';
-      if (acceptLang.startsWith('fr') || acceptLang.includes(',fr')) {
-        locale = 'fr';
-      } else {
-        // 4. Default: en
-        locale = 'en';
+    const acceptLang = context.request.headers.get('accept-language')?.toLowerCase() || '';
+    if (acceptLang.startsWith('fr') || acceptLang.includes(',fr')) {
+      if (path === '/' && context.request.method === 'GET') {
+        context.cookies.set('resivo_locale', 'fr', {
+          path: '/',
+          maxAge: 31536000,
+          httpOnly: false,
+          sameSite: 'lax',
+        });
+        return context.redirect('/fr');
       }
     }
+    locale = 'en';
   }
 
   context.locals.locale = locale;
@@ -68,7 +106,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Legacy synthetic email gating for resident accounts
   if (user && user.email && user.email.toLowerCase().endsWith('@students.residence.local')) {
-    // If accessing dashboard, redirect to link a verified real email
     if (normalizedPath === '/dashboard' || normalizedPath.startsWith('/dashboard/')) {
       return context.redirect(localizePath(locale, '/account/add-email'));
     }
@@ -85,15 +122,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
         }
       );
     }
-  }
-
-  // Rewrite /fr/... paths internally to standard page paths
-  if (
-    !path.startsWith('/api/') &&
-    !path.startsWith('/_astro/') &&
-    (path === '/fr' || path.startsWith('/fr/'))
-  ) {
-    return context.rewrite(new URL(normalizedPath + context.url.search, context.url));
   }
 
   return next();

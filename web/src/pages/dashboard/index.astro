@@ -208,21 +208,21 @@ import { getCategoryMeta } from '../../lib/maintenance';
               <Icon name="building" size={24} />
             </span>
             <div class="min-w-0">
-              <p class="overline text-ok">Officially assigned quarters</p>
+              <p class="overline text-ok">{t(locale, 'dashboard.assigned_quarters_overline')}</p>
               <h2 class="font-display text-h2 text-ink">
-                Block {room.block} — Room {room.number}
+                {t(locale, 'dashboard.block_room', { block: room.block, room: room.number })}
               </h2>
-              <p class="mt-0.5 text-small font-normal text-ink-2">Floor {room.floor} · Cité Universitaire Tlemcen</p>
+              <p class="mt-0.5 text-small font-normal text-ink-2">{t(locale, 'dashboard.floor_residence', { floor: room.floor })}</p>
             </div>
           </div>
 
           <dl class="grid shrink-0 grid-cols-2 gap-4 rounded-input border border-ok-line bg-surface p-3 sm:px-4">
             <div class="min-w-0">
-              <dt class="overline">Card ID</dt>
+              <dt class="overline">{t(locale, 'fields.card_id')}</dt>
               <dd class="tnum font-display text-h2 text-ink">{student?.card_id}</dd>
             </div>
             <div class="min-w-0">
-              <dt class="overline">Study level</dt>
+              <dt class="overline">{t(locale, 'fields.study_level')}</dt>
               <dd class="font-display text-h2 text-ink">{student?.study_level || 'L1'}</dd>
             </div>
           </dl>
@@ -240,11 +240,11 @@ import { getCategoryMeta } from '../../lib/maintenance';
             <Icon name="clock" size={24} />
           </span>
           <div class="min-w-0">
-            <p class="overline text-pending">Room assignment</p>
-            <h2 class="font-display text-h2 text-ink">Allocation being finalized</h2>
+            <p class="overline text-pending">{t(locale, 'dashboard.room_assignment')}</p>
+            <h2 class="font-display text-h2 text-ink">{t(locale, 'dashboard.allocation_finalizing_title')}</h2>
             <p class="measure mt-1 text-body text-ink-2">
-              Your resident status is active. Specific dormitory room allocation records are being finalized
-              by the Housing Bureau.
+              {t(locale, 'dashboard.allocation_finalizing_desc')}
+
             </p>
           </div>
         </div>
@@ -258,10 +258,10 @@ import { getCategoryMeta } from '../../lib/maintenance';
   {
     isActive && room && (
       <section class="mt-8 sm:mt-12" aria-labelledby="pass-heading">
-        <p class="overline">Resident pass</p>
-        <h2 id="pass-heading" class="font-display text-h2 text-ink">Digital resident pass</h2>
+        <p class="overline">{t(locale, 'dashboard.pass_section_overline')}</p>
+        <h2 id="pass-heading" class="font-display text-h2 text-ink">{t(locale, 'dashboard.pass_section_title')}</h2>
         <p class="measure mt-1 text-small font-normal text-muted">
-          Present this pass at the residence desk for key collection and residency checks.
+          {t(locale, 'dashboard.pass_section_desc')}
         </p>
         <ResidentPass
           class="mt-4"
@@ -281,8 +281,8 @@ import { getCategoryMeta } from '../../lib/maintenance';
        Resident services
        ====================================================================== -->
   <section class="mt-8 sm:mt-12" aria-labelledby="services-heading">
-    <p class="overline">Services</p>
-    <h2 id="services-heading" class="font-display text-h2 text-ink">Resident services</h2>
+    <p class="overline">{t(locale, 'dashboard.services_section_overline')}</p>
+    <h2 id="services-heading" class="font-display text-h2 text-ink">{t(locale, 'dashboard.services_section_title')}</h2>
 
     <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {/* Maintenance requests */}
@@ -296,13 +296,13 @@ import { getCategoryMeta } from '../../lib/maintenance';
               <span class="flex h-11 w-11 items-center justify-center rounded-input bg-teal-600/10 text-teal-600">
                 <Icon name="wrench" size={22} />
               </span>
-              <h3 class="mt-4 text-h3 text-ink transition-colors group-hover:text-teal-600">Maintenance requests</h3>
+              <h3 class="mt-4 text-h3 text-ink transition-colors group-hover:text-teal-600">{t(locale, 'dashboard.service_maintenance_title')}</h3>
               <p class="mt-1 text-small font-normal text-muted">
-                Report plumbing, electricity, carpentry, or other issues with attached photos.
+                {t(locale, 'dashboard.service_maintenance_desc')}
               </p>
             </div>
             <span class="flex items-center gap-1 text-small font-semibold text-teal-600">
-              <span>Manage tickets</span>
+              <span>{t(locale, 'dashboard.service_maintenance_cta')}</span>
               <Icon name="chevron-right" size={16} />
             </span>
           </a>
@@ -313,16 +313,16 @@ import { getCategoryMeta } from '../../lib/maintenance';
                 <Icon name="wrench" size={22} />
               </span>
               <div class="mt-4 flex flex-wrap items-center gap-2">
-                <h3 class="text-h3 text-muted">Maintenance requests</h3>
-                <StatusPill kind="neutral" icon="lock" label="Locked" size="sm" />
+                <h3 class="text-h3 text-muted">{t(locale, 'dashboard.service_maintenance_title')}</h3>
+                <StatusPill kind="neutral" icon="lock" label={t(locale, 'dashboard.service_locked_badge')} size="sm" />
               </div>
               <p class="mt-1 text-small font-normal text-muted">
-                Report plumbing, electricity, carpentry, or other issues with attached photos.
+                {t(locale, 'dashboard.service_maintenance_desc')}
               </p>
             </div>
             <span class="flex items-start gap-2 text-small font-normal text-muted">
               <Icon name="lock" size={16} class="mt-0.5 shrink-0" />
-              <span>Locked until your registration is approved and a room is assigned.</span>
+              <span>{t(locale, 'dashboard.service_maintenance_locked')}</span>
             </span>
           </div>
         )
@@ -339,13 +339,13 @@ import { getCategoryMeta } from '../../lib/maintenance';
               <span class="flex h-11 w-11 items-center justify-center rounded-input bg-navy-800/10 text-navy-800">
                 <Icon name="arrow-left-right" size={22} />
               </span>
-              <h3 class="mt-4 text-h3 text-ink transition-colors group-hover:text-teal-600">Room transfer</h3>
+              <h3 class="mt-4 text-h3 text-ink transition-colors group-hover:text-teal-600">{t(locale, 'dashboard.service_transfer_title')}</h3>
               <p class="mt-1 text-small font-normal text-muted">
-                Submit a formal request to transfer to a different room or floor within your residential block.
+                {t(locale, 'dashboard.service_transfer_desc')}
               </p>
             </div>
             <span class="flex items-center gap-1 text-small font-semibold text-teal-600">
-              <span>Request transfer</span>
+              <span>{t(locale, 'dashboard.service_transfer_cta')}</span>
               <Icon name="chevron-right" size={16} />
             </span>
           </a>
@@ -356,16 +356,16 @@ import { getCategoryMeta } from '../../lib/maintenance';
                 <Icon name="arrow-left-right" size={22} />
               </span>
               <div class="mt-4 flex flex-wrap items-center gap-2">
-                <h3 class="text-h3 text-muted">Room transfer</h3>
-                <StatusPill kind="neutral" icon="lock" label="Locked" size="sm" />
+                <h3 class="text-h3 text-muted">{t(locale, 'dashboard.service_transfer_title')}</h3>
+                <StatusPill kind="neutral" icon="lock" label={t(locale, 'dashboard.service_locked_badge')} size="sm" />
               </div>
               <p class="mt-1 text-small font-normal text-muted">
-                Submit a formal request to transfer to a different room or floor within your residential block.
+                {t(locale, 'dashboard.service_transfer_desc')}
               </p>
             </div>
             <span class="flex items-start gap-2 text-small font-normal text-muted">
               <Icon name="lock" size={16} class="mt-0.5 shrink-0" />
-              <span>Locked until your registration is approved and you have checked in.</span>
+              <span>{t(locale, 'dashboard.service_transfer_locked')}</span>
             </span>
           </div>
         )
@@ -380,13 +380,13 @@ import { getCategoryMeta } from '../../lib/maintenance';
           <span class="flex h-11 w-11 items-center justify-center rounded-input bg-gold-500/15 text-navy-800">
             <Icon name="user" size={22} />
           </span>
-          <h3 class="mt-4 text-h3 text-ink transition-colors group-hover:text-teal-600">Resident profile</h3>
+          <h3 class="mt-4 text-h3 text-ink transition-colors group-hover:text-teal-600">{t(locale, 'dashboard.service_profile_title')}</h3>
           <p class="mt-1 text-small font-normal text-muted">
-            Review academic records, civil status, and update your mobile phone and contact email.
+            {t(locale, 'dashboard.service_profile_desc')}
           </p>
         </div>
         <span class="flex items-center gap-1 text-small font-semibold text-teal-600">
-          <span>Edit profile info</span>
+          <span>{t(locale, 'dashboard.service_profile_cta')}</span>
           <Icon name="chevron-right" size={16} />
         </span>
       </a>
@@ -399,8 +399,8 @@ import { getCategoryMeta } from '../../lib/maintenance';
   <section class="mt-8 sm:mt-12" aria-labelledby="activity-heading">
     <div class="flex flex-wrap items-end justify-between gap-2">
       <div>
-        <p class="overline">Timeline</p>
-        <h2 id="activity-heading" class="font-display text-h2 text-ink">Recent activity</h2>
+        <p class="overline">{t(locale, 'dashboard.timeline_overline')}</p>
+        <h2 id="activity-heading" class="font-display text-h2 text-ink">{t(locale, 'dashboard.timeline_title')}</h2>
       </div>
       {
         isActive && (
@@ -408,7 +408,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
             href={localizePath(locale, '/dashboard/maintenance')}
             class="inline-flex min-h-11 items-center gap-1 text-small font-semibold text-teal-600 hover:underline"
           >
-            <span>View all tickets</span>
+            <span>{t(locale, 'dashboard.timeline_view_all')}</span>
             <Icon name="chevron-right" size={16} />
           </a>
         )
@@ -417,7 +417,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
 
     {
       partialReportsError && (
-        <InlineBanner kind="warning" title="Maintenance tickets unavailable" class="mt-4">
+        <InlineBanner kind="warning" title={t(locale, 'dashboard.error_maintenance_unavailable')} class="mt-4">
           {partialReportsError}
         </InlineBanner>
       )
@@ -425,7 +425,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
 
     {
       partialRoomChangesError && (
-        <InlineBanner kind="warning" title="Room transfer requests unavailable" class="mt-4">
+        <InlineBanner kind="warning" title={t(locale, 'dashboard.error_transfers_unavailable')} class="mt-4">
           {partialRoomChangesError}
         </InlineBanner>
       )
@@ -436,11 +436,11 @@ import { getCategoryMeta } from '../../lib/maintenance';
         <EmptyState
           class="mt-4"
           icon="file-text"
-          title="No requests submitted yet"
+          title={t(locale, 'dashboard.timeline_empty_title')}
           message={
             isActive
-              ? 'When you submit maintenance tickets or room change requests, they will appear here with live resolution status.'
-              : 'Your activity timeline will activate once your registration is approved.'
+              ? t(locale, 'dashboard.timeline_empty_active')
+              : t(locale, 'dashboard.timeline_empty_inactive')
           }
         />
       ) : (
@@ -453,7 +453,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
                     <Icon name={getCategoryMeta(r.category).icon} size={20} />
                   </span>
                   <div class="min-w-0">
-                    <p class="overline">Maintenance · {getCategoryMeta(r.category).label}</p>
+                    <p class="overline">{t(locale, 'nav.maintenance')} · {getCategoryMeta(r.category).label}</p>
                     <p class="line-clamp-1 text-body font-semibold text-ink">{r.description}</p>
                     <time class="tnum block text-small font-normal text-muted" datetime={r.created_at}>
                       {new Date(r.created_at).toLocaleDateString()}
@@ -462,7 +462,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
                 </div>
                 <StatusPill
                   kind={r.status === 'resolved' ? 'ok' : r.status === 'in_progress' ? 'progress' : 'pending'}
-                  label={r.status === 'resolved' ? 'Resolved' : r.status === 'in_progress' ? 'In progress' : 'Pending triage'}
+                  label={r.status === 'resolved' ? t(locale, 'status.resolved') : r.status === 'in_progress' ? t(locale, 'status.in_progress') : t(locale, 'status.pending')}
                   class="shrink-0 self-start sm:self-auto"
                 />
               </li>
@@ -476,7 +476,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
                     <Icon name="arrow-left-right" size={20} />
                   </span>
                   <div class="min-w-0">
-                    <p class="overline">Room transfer request</p>
+                    <p class="overline">{t(locale, 'terms.room_change_request')}</p>
                     <p class="line-clamp-1 text-body font-semibold text-ink">{rc.reason}</p>
                     <time class="tnum block text-small font-normal text-muted" datetime={rc.created_at}>
                       {new Date(rc.created_at).toLocaleDateString()}
@@ -485,7 +485,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
                 </div>
                 <StatusPill
                   kind={rc.status === 'approved' ? 'ok' : rc.status === 'rejected' ? 'danger' : 'review'}
-                  label={rc.status === 'approved' ? 'Approved' : rc.status === 'rejected' ? 'Rejected' : 'Under review'}
+                  label={rc.status === 'approved' ? t(locale, 'status.approved') : rc.status === 'rejected' ? t(locale, 'status.rejected') : t(locale, 'status.under_review')}
                   class="shrink-0 self-start sm:self-auto"
                 />
               </li>

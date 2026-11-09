@@ -48,11 +48,16 @@ const sectionTitles: Record<DashboardNav, string> = {
   profile: t(locale, 'nav.profile'),
 };
 
-const currentPathWithSearch = pathname + Astro.url.search;
-const targetEnPath = localizePath('en', currentPathWithSearch);
-const targetFrPath = localizePath('fr', currentPathWithSearch);
-const canonicalEn = new URL(targetEnPath, Astro.url).href;
-const canonicalFr = new URL(targetFrPath, Astro.url).href;
+const cleanQuery = new URLSearchParams(Astro.url.search);
+cleanQuery.delete('lang');
+const queryString = cleanQuery.toString() ? `?${cleanQuery.toString()}` : '';
+const targetEnBase = localizePath('en', pathname) + queryString;
+const targetFrBase = localizePath('fr', pathname) + queryString;
+
+const targetEnPath = targetEnBase + (targetEnBase.includes('?') ? '&lang=en' : '?lang=en');
+const targetFrPath = targetFrBase + (targetFrBase.includes('?') ? '&lang=fr' : '?lang=fr');
+const canonicalEn = new URL(targetEnBase, Astro.url).href;
+const canonicalFr = new URL(targetFrBase, Astro.url).href;
 ---
 
 <!doctype html>
@@ -366,13 +371,14 @@ const canonicalFr = new URL(targetFrPath, Astro.url).href;
       });
 
       /* Language switcher persistent cookie handler */
-      document.querySelectorAll('[data-locale-switch]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var targetLocale = btn.getAttribute('data-locale-switch');
+      document.addEventListener('click', function (e) {
+        var target = e.target && e.target.closest ? e.target.closest('[data-locale-switch]') : null;
+        if (target) {
+          var targetLocale = target.getAttribute('data-locale-switch');
           if (targetLocale) {
             document.cookie = 'resivo_locale=' + targetLocale + '; path=/; max-age=31536000; SameSite=Lax';
           }
-        });
+        }
       });
 
       /* Double-submit protection & submission timeout watchdog */

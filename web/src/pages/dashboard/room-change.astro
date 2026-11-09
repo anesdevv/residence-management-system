@@ -7,7 +7,7 @@ import InlineBanner from '../../components/InlineBanner.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
-import { localizePath, t, type SupportedLocale } from '../../lib/i18n';
+import { localizePath, t, formatDate, type SupportedLocale } from '../../lib/i18n';
 
 export const prerender = false;
 const locale: SupportedLocale = Astro.locals.locale || 'en';
@@ -61,44 +61,44 @@ const currentRoom = (Array.isArray(rawCurrentRoom) ? rawCurrentRoom[0] : rawCurr
 
 const motives = [
   {
-    title: 'Academic needs',
-    desc: 'Study environment / quiet wing',
+    title: t(locale, 'room_change.motive_academic_title'),
+    desc: t(locale, 'room_change.motive_academic_desc'),
     icon: 'file-text',
-    text: 'Academic Schedule & Study Hours (Requires quieter floor for exam preparation)',
+    text: t(locale, 'room_change.motive_academic_text'),
   },
   {
-    title: 'Health & accessibility',
-    desc: 'Floor level / physical mobility',
+    title: t(locale, 'room_change.motive_health_title'),
+    desc: t(locale, 'room_change.motive_health_desc'),
     icon: 'shield-check',
-    text: 'Medical / Physical Accessibility (Requires lower floor or proximity to entrance)',
+    text: t(locale, 'room_change.motive_health_text'),
   },
   {
-    title: 'Roommate & location',
-    desc: 'Study partner proximity',
+    title: t(locale, 'room_change.motive_roommate_title'),
+    desc: t(locale, 'room_change.motive_roommate_desc'),
     icon: 'arrow-left-right',
-    text: 'Proximity to Department Facilities & Study Partners',
+    text: t(locale, 'room_change.motive_roommate_text'),
   },
 ];
 ---
 
 <Layout title={locale === 'fr' ? 'Changement de Chambre — RÉSIVO' : 'Room Transfer Portal — RÉSIVO'} activeNav="room-change">
   <PageHeader
-    title="Room transfer portal"
+    title={t(locale, 'room_change.portal_title')}
     overline="Cité Universitaire Tlemcen"
-    subtitle="Apply for room reassignment or transfer within your designated dormitory block."
+    subtitle={t(locale, 'room_change.portal_subtitle')}
   >
     <Fragment slot="actions">
       <a href={localizePath(locale, '/dashboard')} class="btn btn-secondary">
         <Icon name="arrow-left" size={16} />
-        <span>Back to dashboard</span>
+        <span>{t(locale, 'room_change.back_to_dashboard')}</span>
       </a>
     </Fragment>
   </PageHeader>
 
   <!-- Feedback Alerts -->
   {created && (
-    <InlineBanner kind="success" title="Transfer request submitted!" class="mb-6">
-      Your transfer application has been filed in the administrative docket. Housing officers will review bed availability and update your petition here.
+    <InlineBanner kind="success" title={t(locale, 'room_change.submitted_alert_title')} class="mb-6">
+      {t(locale, 'room_change.submitted_alert_desc')}
     </InlineBanner>
   )}
 
@@ -116,7 +116,7 @@ const motives = [
 
   <!-- Locked State or Application Form -->
   {!isActive ? (
-    <InlineBanner kind="warning" title="Room relocation portal locked" icon="lock" class="mb-8">
+    <InlineBanner kind="warning" title={t(locale, 'room_change.locked_title')} icon="lock" class="mb-8">
       Your account status is <strong class="uppercase">{student?.status ?? 'pending'}</strong>.
       Room transfer requests can only be filed by approved residents who currently occupy an allocated dormitory room.
     </InlineBanner>
@@ -131,17 +131,17 @@ const motives = [
                 <Icon name="building" size={24} />
               </span>
               <div>
-                <span class="overline">Current room assignment</span>
+                <span class="overline">{t(locale, 'room_change.current_room_overline')}</span>
                 <p class="font-display text-h2 text-ink mt-0.5">
-                  Block {currentRoom.block} — Room {currentRoom.number}
+                  {t(locale, 'dashboard.block_room', { block: currentRoom.block, room: currentRoom.number })}
                 </p>
                 <p class="text-small font-normal text-muted">
-                  Floor {currentRoom.floor} · Designated for {student?.gender === 'female' ? 'Female' : 'Male'} Residents
+                  {t(locale, 'room_change.current_room_details', { floor: currentRoom.floor, gender: student?.gender === 'female' ? t(locale, 'terms.female_residents') : t(locale, 'terms.male_residents') })}
                 </p>
               </div>
             </div>
             <div>
-              <StatusPill kind="ok" label="Current occupant" />
+              <StatusPill kind="ok" label={t(locale, 'room_change.current_occupant_pill')} />
             </div>
           </div>
         </section>
@@ -217,7 +217,7 @@ const motives = [
             <div>
               <button type="submit" class="btn btn-primary min-h-[44px]">
                 <Icon name="check-circle" size={18} />
-                <span>Submit relocation request</span>
+                <span>{t(locale, 'room_change.submit_btn')}</span>
               </button>
             </div>
           </form>
@@ -229,15 +229,15 @@ const motives = [
   <!-- Request History Docket -->
   <div class="flex flex-col gap-4">
     <div class="flex items-center justify-between border-b border-line pb-4">
-      <h2 class="font-display text-h2 text-ink">Your relocation requests</h2>
+      <h2 class="font-display text-h2 text-ink">{t(locale, 'room_change.history_heading')}</h2>
       <p class="text-small text-muted">{requests?.length ?? 0} total request{requests?.length === 1 ? '' : 's'}</p>
     </div>
 
     {(!requests || requests.length === 0) ? (
       <EmptyState
         icon="arrow-left-right"
-        title="No transfer requests submitted"
-        message="When you apply for a room change, the status of your petition will appear here."
+        title={t(locale, 'room_change.empty_title')}
+        message={t(locale, 'room_change.empty_desc')}
       />
     ) : (
       <div class="flex flex-col gap-4">
@@ -267,20 +267,20 @@ const motives = [
                 </div>
 
                 <div>
-                  <StatusPill kind={statusKind} label={r.status === 'approved' ? 'Approved' : r.status === 'rejected' ? 'Rejected' : 'Under review'} />
+                  <StatusPill kind={statusKind} label={r.status === 'approved' ? t(locale, 'status.approved') : r.status === 'rejected' ? t(locale, 'status.rejected') : t(locale, 'status.under_review')} />
                 </div>
               </div>
 
               <!-- Stated Reason -->
               <div class="mt-4">
-                <span class="overline block text-muted mb-1">Stated justification</span>
+                <span class="overline block text-muted mb-1">{t(locale, 'room_change.reason_label')}</span>
                 <p class="text-body text-ink leading-relaxed">{r.reason}</p>
               </div>
 
               <!-- Administration Decision Note -->
               {r.decision_note && (
                 <div class="mt-4 rounded-card border border-line bg-subtle p-3.5">
-                  <span class="overline block text-muted mb-1">Housing administration decision</span>
+                  <span class="overline block text-muted mb-1">{t(locale, 'room_change.decision_note_label')}</span>
                   <p class="text-small font-normal text-ink leading-relaxed">{r.decision_note}</p>
                 </div>
               )}

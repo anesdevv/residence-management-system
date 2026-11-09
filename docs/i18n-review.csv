@@ -987,12 +987,22 @@ web,common,common.success,Success,Succès
 web,common,common.update,Update,Mettre à jour
 web,common,common.verified,Verified,Vérifié
 web,common,common.view,View,Consulter
+web,dashboard,dashboard.allocation_finalizing_desc,Your resident status is active. Specific dormitory room allocation records are being finalized by the Housing Bureau.,Votre statut de résident est actif. L’affectation de votre chambre est en cours de finalisation par le bureau du logement.
+web,dashboard,dashboard.allocation_finalizing_title,Allocation being finalized,Attribution en cours de finalisation
+web,dashboard,dashboard.assigned_quarters_overline,Officially assigned quarters,Logement officiellement attribué
+web,dashboard,dashboard.block_room,Block {block} — Room {room},Pavillon {block} — Chambre {room}
 web,dashboard,dashboard.empty_maintenance,No maintenance tickets filed yet.,Aucun signalement de maintenance enregistré.
 web,dashboard,dashboard.empty_transfers,No room transfer requests filed yet.,Aucune demande de changement de chambre enregistrée.
+web,dashboard,dashboard.error_maintenance_unavailable,Maintenance tickets unavailable,Signalements techniques indisponibles
+web,dashboard,dashboard.error_transfers_unavailable,Room transfer requests unavailable,Demandes de transfert indisponibles
+web,dashboard,dashboard.floor_residence,Floor {floor} · Cité Universitaire Tlemcen,Étage {floor} · Cité Universitaire Tlemcen
 web,dashboard,dashboard.maintenance_tab,Maintenance,Maintenance
 web,dashboard,dashboard.overview_tab,Overview,Vue d’ensemble
 web,dashboard,dashboard.pass_badge,Official student pass,Pass résident officiel
 web,dashboard,dashboard.pass_gate_notice,Present this QR code at the residence gate for fast credential verification.,Présentez ce QR code à l’entrée de la résidence pour vérification rapide.
+web,dashboard,dashboard.pass_section_desc,Present this pass at the residence desk for key collection and residency checks.,Présentez cette carte au guichet de la résidence pour le retrait des clés et les vérifications d’accès.
+web,dashboard,dashboard.pass_section_overline,Resident pass,Carte de résident
+web,dashboard,dashboard.pass_section_title,Digital resident pass,Carte de résident numérique
 web,dashboard,dashboard.pass_subtitle,Official Cité Universitaire identity credential,Justificatif officiel de la Cité Universitaire
 web,dashboard,dashboard.pass_title,Digital resident pass,Carte de résident numérique
 web,dashboard,dashboard.pass_verified,Verified Academic Resident,Résident universitaire vérifié
@@ -1003,12 +1013,32 @@ web,dashboard,dashboard.rejection_reason_label,Administrative reason,Motif admin
 web,dashboard,dashboard.room_assignment,Room allocation,Affectation de chambre
 web,dashboard,dashboard.room_change_tab,Room change,Changement de chambre
 web,dashboard,dashboard.room_unassigned,No room assigned yet,Aucune chambre assignée pour l’instant
+web,dashboard,dashboard.service_locked_badge,Locked,Verrouillé
+web,dashboard,dashboard.service_maintenance_cta,Manage tickets,Gérer les signalements
+web,dashboard,dashboard.service_maintenance_desc,"Report plumbing, electricity, carpentry, or other issues with attached photos.","Signalez tout problème de plomberie, d’électricité ou de menuiserie avec photos à l’appui."
+web,dashboard,dashboard.service_maintenance_locked,Locked until your registration is approved and a room is assigned.,Verrouillé tant que votre inscription n’est pas validée et qu’aucune chambre n’est attribuée.
+web,dashboard,dashboard.service_maintenance_title,Maintenance requests,Demandes d’intervention
+web,dashboard,dashboard.service_profile_cta,Edit profile info,Modifier mes coordonnées
+web,dashboard,dashboard.service_profile_desc,"Review academic records, civil status, and update your mobile phone and contact email.","Consultez vos informations pédagogiques, votre état civil et mettez à jour vos coordonnées."
+web,dashboard,dashboard.service_profile_title,Resident profile,Dossier du résident
+web,dashboard,dashboard.service_transfer_cta,Request transfer,Demander un changement
+web,dashboard,dashboard.service_transfer_desc,Submit a formal request to transfer to a different room or floor within your residential block.,Déposez une demande officielle de changement de chambre ou d’étage au sein de votre pavillon.
+web,dashboard,dashboard.service_transfer_locked,Locked until your registration is approved and you have checked in.,Verrouillé tant que votre inscription n’est pas validée et que votre emménagement n’est pas effectif.
+web,dashboard,dashboard.service_transfer_title,Room transfer,Changement de chambre
+web,dashboard,dashboard.services_section_overline,Services,Prestations
+web,dashboard,dashboard.services_section_title,Resident services,Services aux résidents
 web,dashboard,dashboard.status_active_desc,You are officially housed in Cité Universitaire Tlemcen. Your assigned room and resident card are listed below.,Vous êtes officiellement logé à la Cité Universitaire de Tlemcen. Votre chambre assignée et votre pass résident sont affichés ci-dessous.
 web,dashboard,dashboard.status_active_title,Active resident,Résident actif
 web,dashboard,dashboard.status_pending_desc,Your housing application has been submitted and is currently being cross-referenced against the official university roster.,Votre dossier a été soumis et fait l’objet d’une vérification auprès de la liste officielle de l’université.
 web,dashboard,dashboard.status_pending_title,Application pending review,Demande d’hébergement en attente
 web,dashboard,dashboard.status_rejected_desc,Your housing request could not be approved by the administration.,Votre demande d’hébergement n’a pas pu être validée par l’administration.
 web,dashboard,dashboard.status_rejected_title,Application not approved,Demande non approuvée
+web,dashboard,dashboard.timeline_empty_active,"When you submit maintenance tickets or room change requests, they will appear here with live resolution status.",Vos signalements techniques et demandes de changement apparaîtront ici avec leur état d’avancement en temps réel.
+web,dashboard,dashboard.timeline_empty_inactive,Your activity timeline will activate once your registration is approved.,Votre historique d’activité s’activera dès la validation de votre dossier d’hébergement.
+web,dashboard,dashboard.timeline_empty_title,No requests submitted yet,Aucune demande enregistrée
+web,dashboard,dashboard.timeline_overline,Timeline,Historique
+web,dashboard,dashboard.timeline_title,Recent activity,Activité récente
+web,dashboard,dashboard.timeline_view_all,View all tickets,Tous les signalements
 web,dashboard,dashboard.title,Dashboard,Tableau de bord
 web,dashboard,dashboard.view_all_tickets,View all maintenance tickets,Consulter tous les signalements
 web,dashboard,dashboard.view_all_transfers,View all transfer requests,Consulter toutes les demandes
@@ -1097,18 +1127,49 @@ web,landing,landing.steps_overline,Intake lifecycle,Parcours d’admission
 web,landing,landing.steps_title,Residence intake process,Processus d’attribution de logement
 web,maintenance,maintenance.category_label,Category of fault,Catégorie de panne
 web,maintenance,maintenance.description_label,Description of issue,Description de la panne
+web,maintenance,maintenance.description_label_detailed,Detailed issue description,Description détaillée de l’anomalie
 web,maintenance,maintenance.description_placeholder,"Please describe the problem clearly, including the exact location in your room...",Décrivez précisément le problème constaté ainsi que sa localisation exacte dans la chambre…
+web,maintenance,maintenance.description_placeholder_detailed,"Explain the problem clearly (e.g. Bathroom sink faucet leaking steadily, desk drawer handle loose, radiator valve stuck closed)...","Décrivez précisément le problème (ex. robinet qui fuit en continu, poignée de tiroir desserrée, vanne de radiateur bloquée)..."
+web,maintenance,maintenance.emergency_desc,Contact the campus security desk immediately for on-duty technician emergency response.,Contactez immédiatement le poste de sécurité du campus pour l’intervention du technicien d’astreinte.
+web,maintenance,maintenance.emergency_hotline,24/7 Hotline,Permanence 24h/24
+web,maintenance,maintenance.emergency_title,Urgent hazard or major water leak?,Danger urgent ou fuite d’eau majeure ?
 web,maintenance,maintenance.empty_desc,"You haven’t reported any maintenance issues. If something breaks, submit a ticket above.","Vous n’avez déclaré aucun problème. En cas de dégradation ou panne, déposez un signalement ci-dessus."
 web,maintenance,maintenance.empty_title,No maintenance tickets,Aucun signalement
+web,maintenance,maintenance.fault_category_legend,Fault category,Catégorie de panne
+web,maintenance,maintenance.filed_count_one,{count} ticket filed,{count} signalement enregistré
+web,maintenance,maintenance.filed_count_other,{count} tickets filed,{count} signalements enregistrés
+web,maintenance,maintenance.filter_all,All ({count}),Tous ({count})
+web,maintenance,maintenance.filter_in_progress,In progress ({count}),En cours ({count})
+web,maintenance,maintenance.filter_pending,Pending ({count}),En attente ({count})
+web,maintenance,maintenance.filter_resolved,Resolved ({count}),Résolus ({count})
+web,maintenance,maintenance.history_title,Work orders & history,Interventions & historique
+web,maintenance,maintenance.new_ticket_header,Submit a new maintenance ticket,Déposer un nouveau signalement de maintenance
+web,maintenance,maintenance.new_ticket_subtitle,Select the affected category and provide specific details for rapid dispatch.,Sélectionnez la catégorie concernée et détaillez l’anomalie constatée pour une prise en charge rapide.
 web,maintenance,maintenance.new_ticket_title,Report a new maintenance issue,Signaler un nouvel incident
 web,maintenance,maintenance.photo_hint,"PNG, JPEG or WebP up to 5 MB. Photos help technicians bring the right tools.","PNG, JPEG ou WebP jusqu’à 5 Mo. Les photos permettent aux agents d’apporter l’outillage adapté."
+web,maintenance,maintenance.photo_hint_detailed,Clear photos help technicians bring the correct tools and replacement parts. PNG or JPEG up to 4MB.,"Des photos nettes permettent aux techniciens d’apporter les outils et pièces de rechange adéquats. Format PNG ou JPEG, 4 Mo max."
+web,maintenance,maintenance.photo_inspection_title,Attached Fault Inspection Photo,Photo d’inspection jointe
 web,maintenance,maintenance.photo_label,Attach fault photo,Joindre une photo du constat
+web,maintenance,maintenance.photo_optimizing,Optimizing photo...,Optimisation de la photo en cours...
+web,maintenance,maintenance.photo_optional_label,Attach fault photo (optional),Joindre une photo de l’anomalie (facultatif)
+web,maintenance,maintenance.reporting_locked_desc,"Your account status is {status}. Maintenance requests are strictly tied to an officially assigned dormitory room. Once your housing registration is verified and approved, you will be able to file repair tickets here.","Le statut de votre dossier est {status}. Les signalements techniques sont strictement liés à une chambre attribuée. Dès validation de votre hébergement, vous pourrez déposer vos demandes ici."
+web,maintenance,maintenance.reporting_locked_title,Maintenance reporting locked,Dépôt de signalement verrouillé
+web,maintenance,maintenance.residency_unavailable_title,Residency verification unavailable,Vérification du statut d’hébergement indisponible
 web,maintenance,maintenance.staff_note_label,Technician note,Note de l’équipe technique
+web,maintenance,maintenance.stat_in_progress,In progress,En cours
+web,maintenance,maintenance.stat_pending,Pending triage,En attente de tri
+web,maintenance,maintenance.stat_resolved,Resolved,Résolu
+web,maintenance,maintenance.stat_total,Total tickets,Total signalements
 web,maintenance,maintenance.submit_btn,Submit maintenance ticket,Transmettre le signalement
+web,maintenance,maintenance.submitted_date_time,Submitted {date} at {time},Transmis le {date} à {time}
 web,maintenance,maintenance.subtitle,Report facility faults in your room or residence block and track repairs in real time.,Signalez les pannes dans votre chambre ou votre pavillon et suivez l’intervention en direct.
+web,maintenance,maintenance.technician_note_title,Technician / Housing Note,Note du technicien / Service du logement
 web,maintenance,maintenance.ticket_created,Maintenance ticket submitted successfully.,Signalement de maintenance enregistré avec succès.
+web,maintenance,maintenance.ticket_dispatched_desc,Your report has been queued for housing facility technicians. You can follow progress in your ticket history below.,Votre rapport a été transmis aux agents techniques de la résidence. Vous pouvez suivre son avancement ci-dessous.
+web,maintenance,maintenance.ticket_dispatched_title,Maintenance ticket dispatched!,Signalement technique transmis !
 web,maintenance,maintenance.tickets_count_one,{count} active ticket,{count} ticket actif
 web,maintenance,maintenance.tickets_count_other,{count} active tickets,{count} tickets actifs
+web,maintenance,maintenance.tickets_unavailable_title,Ticket history unavailable,Historique des signalements indisponible
 web,maintenance,maintenance.title,Maintenance dispatches,Signalements de maintenance
 web,nav,nav.dashboard,Dashboard,Tableau de bord
 web,nav,nav.home,Home,Accueil
@@ -1131,19 +1192,47 @@ web,nav,nav.student_portal,Student Portal,Portail étudiant
 web,nav,nav.switch_to_en,Switch to English,Switch to English
 web,nav,nav.switch_to_fr,Passer en français,Passer en français
 web,profile,profile.academic_card,Academic enrollment,Inscription universitaire
+web,profile,profile.academic_file_subtitle,Direction des Œuvres Universitaires · DOU Tlemcen,Direction des Œuvres Universitaires · DOU Tlemcen
+web,profile,profile.academic_file_title,Academic resident file,Dossier universitaire du résident
+web,profile,profile.academic_notice_desc,"Matriculation number, faculty, birth date, and civil records are synchronized with university admission registers. To request formal corrections, present your official student card at the housing administration bureau.","Le numéro de carte d’étudiant, la faculté, la date de naissance et l’état civil sont synchronisés avec les registres universitaires officiels. Pour toute rectification, veuillez présenter votre carte d’étudiant au bureau du logement."
+web,profile,profile.academic_notice_title,Academic record changes,Modification du dossier pédagogique
 web,profile,profile.contact_card,Contact information,Coordonnées de contact
+web,profile,profile.contact_coordinates_subtitle,Editable residence communication channels,Canaux de communication modifiables de la résidence
+web,profile,profile.contact_coordinates_title,Contact coordinates,Coordonnées de contact
+web,profile,profile.contact_email_label,Contact email address,Adresse e-mail de correspondance
 web,profile,profile.edit_phone_btn,Update phone number,Mettre à jour le téléphone
 web,profile,profile.overline,Cité Universitaire Tlemcen,Cité Universitaire de Tlemcen
 web,profile,profile.personal_card,Personal details,État civil & identité
+web,profile,profile.phone_hint,Used for urgent facility and security notices.,Utilisé pour les avis techniques urgents et la sécurité.
 web,profile,profile.phone_updated,Contact details updated! Your mobile phone number has been saved successfully.,Coordonnées mises à jour ! Votre numéro de téléphone a été enregistré.
+web,profile,profile.save_phone_btn,Update phone number,Enregistrer le numéro
 web,profile,profile.subtitle,Review your official academic enrollment details and keep your contact info up to date.,Consultez vos informations universitaires officielles et maintenez vos coordonnées à jour.
 web,profile,profile.title,Resident profile & credentials,Profil résident & identifiants
+web,profile,profile.verified_email_pill,Verified,Vérifiée
+web,room_change,room_change.back_to_dashboard,Back to dashboard,Retour au tableau de bord
+web,room_change,room_change.current_occupant_pill,Current occupant,Occupant actuel
 web,room_change,room_change.current_room,Current room,Chambre actuelle
+web,room_change,room_change.current_room_details,Floor {floor} · Designated for {gender} Residents,Étage {floor} · Pavillon réservé aux résidents de sexe {gender}
+web,room_change,room_change.current_room_overline,Current room assignment,Chambre actuellement attribuée
 web,room_change,room_change.decision_note_label,Administration response,Réponse de l’administration
 web,room_change,room_change.empty_desc,You haven’t submitted any transfer requests this academic year.,Vous n’avez déposé aucune demande de changement au cours de cette année académique.
 web,room_change,room_change.empty_title,No room transfer requests,Aucune demande de transfert
+web,room_change,room_change.history_heading,Transfer petitions & history,Dossiers de changement & historique
+web,room_change,room_change.locked_desc,Your account status is {status}. Room transfer requests can only be filed by approved residents who currently occupy an allocated dormitory room.,Le statut de votre dossier est {status}. Seuls les étudiants résidents occupant déjà une chambre attribuée peuvent formuler une demande.
+web,room_change,room_change.locked_title,Room relocation portal locked,Portail de réaffectation verrouillé
+web,room_change,room_change.motive_academic_desc,Study environment / quiet wing,Cadre de travail / aile calme
+web,room_change,room_change.motive_academic_text,Academic Schedule & Study Hours (Requires quieter floor for exam preparation),Contraintes d’études et horaires (aile plus calme nécessaire pour la préparation des examens)
+web,room_change,room_change.motive_academic_title,Academic needs,Besoins pédagogiques
+web,room_change,room_change.motive_health_desc,Floor level / physical mobility,Niveau d’étage / mobilité réduite
+web,room_change,room_change.motive_health_text,Medical / Physical Accessibility (Requires lower floor or proximity to entrance),Raisons médicales ou mobilité (étage inférieur ou proximité des accès requis)
+web,room_change,room_change.motive_health_title,Health & accessibility,Santé & accessibilité
+web,room_change,room_change.motive_roommate_desc,Study partner proximity,Proximité de binômes de travail
+web,room_change,room_change.motive_roommate_text,Proximity to Department Facilities & Study Partners,Rapprochement des infrastructures de département ou de camarades d’études
+web,room_change,room_change.motive_roommate_title,Roommate & location,Rapprochement & localisation
 web,room_change,room_change.new_request_title,Submit transfer request,Déposer une demande de changement
 web,room_change,room_change.pending_alert,You already have a pending room change request under administrative review.,Vous avez déjà une demande de changement en cours d’instruction.
+web,room_change,room_change.portal_subtitle,Apply for room reassignment or transfer within your designated dormitory block.,Déposez une demande de réaffectation ou de changement au sein de votre pavillon de résidence.
+web,room_change,room_change.portal_title,Room transfer portal,Portail des demandes de changement de chambre
 web,room_change,room_change.preferred_room,Preferred room,Chambre souhaitée
 web,room_change,room_change.reason_label,Justification,Motif de la demande
 web,room_change,room_change.reason_placeholder,"Explain the reason for requesting a transfer (e.g. proximity to faculty, study group, health)...","Précisez les raisons motivant votre demande (ex. : rapprochement de faculté, groupe d’études, santé)…"
@@ -1152,6 +1241,8 @@ web,room_change,room_change.requests_count_one,{count} transfer request,{count} 
 web,room_change,room_change.requests_count_other,{count} transfer requests,{count} demandes de changement
 web,room_change,room_change.select_room,Select an available room...,Sélectionnez une chambre disponible…
 web,room_change,room_change.submit_btn,Submit transfer request,Soumettre la demande de transfert
+web,room_change,room_change.submitted_alert_desc,Your transfer application has been filed in the administrative docket. Housing officers will review bed availability and update your petition here.,Votre dossier a été transmis aux services administratifs. Le bureau du logement examinera les disponibilités de places.
+web,room_change,room_change.submitted_alert_title,Transfer request submitted!,Demande de transfert enregistrée !
 web,room_change,room_change.subtitle,Request a transfer to a different room or block based on valid academic or personal grounds.,Sollicitez une permutation ou un changement de chambre pour motifs académiques ou personnels.
 web,room_change,room_change.title,Room transfer request,Demande de changement de chambre
 web,status,status.active,Active,Active
@@ -1169,13 +1260,18 @@ web,status,status.under_review,Under review,En cours d’examen
 web,terms,terms.block,Block,Bloc
 web,terms,terms.capacity,Capacity,Capacité
 web,terms,terms.digital_pass,Digital resident pass,Carte de résident numérique
+web,terms,terms.female,Female,Féminin
+web,terms,terms.female_residents,Female,féminin
 web,terms,terms.floor,Floor,Étage
 web,terms,terms.language,Language,Langue
 web,terms,terms.maintenance_report,Maintenance report,Signalement de maintenance
+web,terms,terms.male,Male,Masculin
+web,terms,terms.male_residents,Male,masculin
 web,terms,terms.notifications,Notifications,Notifications
 web,terms,terms.occupancy,Occupancy,Occupation
 web,terms,terms.official_roster,Official university list,Liste officielle de l’université
 web,terms,terms.quiet_hours,Quiet hours,Heures silencieuses
+web,terms,terms.resident,Resident,Résident
 web,terms,terms.room,Room,Chambre
 web,terms,terms.room_change_request,Room change request,Demande de changement de chambre
 web,terms,terms.rooms,Rooms,Chambres
