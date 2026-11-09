@@ -62,6 +62,12 @@ from PySide6.QtWidgets import (
 
 from ...client import official_lookup, room_occupancy
 from ...timeouts import execute_network_call
+
+try:
+    from i18n import format_date, format_number, format_percent, t, tn
+except ImportError:
+    from desktop.i18n import format_date, format_number, format_percent, t, tn
+
 from .. import theme
 from ..tasks import GatherResult, TaskRunner, human_error
 from ..components import (
@@ -87,30 +93,43 @@ from ..icons import get_pixmap
 from ..theme import C, S
 
 # Live view keys -> segment labels (order = the four application views).
-_VIEWS = [
-    ("all", "All"),
-    ("pending", "Pending"),
-    ("approved", "Approved"),
-    ("rejected", "Rejected"),
-]
+def _views() -> list[tuple[str, str]]:
+    return [
+        ("all", t("pending.tab_all")),
+        ("pending", t("pending.tab_pending")),
+        ("approved", t("pending.tab_approved")),
+        ("rejected", t("pending.tab_rejected")),
+    ]
+
+_VIEWS = _views()
+
 # Table language: overline headers are uppercased by configure_table().
-_COLUMNS = ["Card ID", "Student", "University", "Status", "Roster"]
-# student status -> (status kind for the components, status word for the cells)
-_STATUS_KINDS = {
-    "active": ("ok", "Approved"),
-    "rejected": ("danger", "Rejected"),
-    "pending": ("pending", "Pending"),
-}
-_DEFAULT_STATUS = ("pending", "Pending")
+def _columns() -> list[str]:
+    return [
+        t("pending.col_card_id"),
+        t("pending.col_student"),
+        t("pending.col_university"),
+        t("pending.col_status"),
+        t("pending.col_roster"),
+    ]
 
-# The exact rejection overline asserted by the tests: it must stay inside
-# detail_text together with the reason and the review timestamp.
-_REJECTION_OVERLINE = "REJECTION REASON (Desk Inquiry Reference)"
-
+_COLUMNS = _columns()
 
 def _status_meta(raw_status: str) -> tuple[str, str]:
     """``(status kind, status word)`` for any student status value."""
-    return _STATUS_KINDS.get(raw_status, _DEFAULT_STATUS)
+    kinds = {
+        "active": ("ok", t("status.approved")),
+        "rejected": ("danger", t("status.rejected")),
+        "pending": ("pending", t("status.pending")),
+    }
+    return kinds.get(raw_status, ("pending", t("status.pending")))
+
+# The exact rejection overline asserted by the tests: it must stay inside
+# detail_text together with the reason and the review timestamp.
+def _rejection_overline() -> str:
+    return t("pending.rejection_overline")
+
+_REJECTION_OVERLINE = "REJECTION REASON (Desk Inquiry Reference)"
 
 
 def _rpc_row(response) -> dict:
@@ -218,7 +237,7 @@ class RoomAllocationDialog(QDialog):
         self._occupancy = dict(occupancy or {})
         self._selected: dict | None = None
         name = f"{student.get('first_name', '')} {student.get('last_name', '')}".strip() or "applicant"
-        self.setWindowTitle("Assign room")
+        self.setWindowTitle(t("pending.allocation_title"))
         self.setModal(True)
         self.setMinimumWidth(440)
 
@@ -226,13 +245,17 @@ class RoomAllocationDialog(QDialog):
         root.setContentsMargins(S("space-6"), S("space-6"), S("space-6"), S("space-6"))
         root.setSpacing(S("space-4"))
 
-        title = QLabel(f"Allocate a room for {name}")
+        title = QLabel(t("pending.allocation_heading", name=name))
         theme.apply_role(title, "h2")
         root.addWidget(title)
 
         subtitle = QLabel(
-            f"Card {student.get('card_id') or '—'} · {student.get('gender') or '—'} applicant"
-            f" · {len(self._rooms)} room{'s' if len(self._rooms) != 1 else ''} listed"
+            tn(
+                "pending.allocation_subtitle",
+                count=len(self._rooms),
+                card_id=student.get("card_id") or "—",
+                gender=student.get("gender") or "—",
+            )
         )
         theme.apply_role(subtitle, "small")
         root.addWidget(subtitle)
@@ -240,11 +263,8 @@ class RoomAllocationDialog(QDialog):
         root.addWidget(
             InlineBanner(
                 "info",
-                title="Gender block rule",
-                message=(
-                    "Only rooms in blocks that match the applicant's gender are listed; "
-                    "full rooms cannot be allocated."
-                ),
+                title=t("pending.gender_rule_title"),
+                message=t("pending.gender_rule_message"),
             )
         )
 
@@ -266,7 +286,7 @@ class RoomAllocationDialog(QDialog):
         footer = QHBoxLayout()
         footer.setSpacing(S("space-2"))
         footer.addStretch(1)
-        cancel = Button("Cancel", "secondary")
+        cancel = Button(t("common.cancel"), "secondary")
         cancel.clicked.connect(self.reject)
         footer.addWidget(cancel)
         root.addLayout(footer)
@@ -289,10 +309,23 @@ class RoomAllocationDialog(QDialog):
 
         column = QVBoxLayout()
         column.setSpacing(2)
-        room_label = QLabel(f"Block {room.get('block', '—')} — Room {room.get('number', '—')}")
+        room_label = QLabel(
+            t(
+                "pending.room_row_title",
+                block=room.get("block", "—"),
+                number=room.get("number", "—"),
+            )
+        )
         theme.apply_role(room_label, "h3")
         theme.enable_tabular(room_label)
-        meta = QLabel(f"Floor {room.get('floor', '—')} · {free} of {capacity} beds free")
+        meta = QLabel(
+            t(
+                "pending.room_row_meta",
+                floor=room.get("floor", "—"),
+                free=format_number(free),
+                capacity=format_number(capacity),
+            )
+        )
         theme.apply_role(meta, "small")
         column.addWidget(room_label)
         column.addWidget(meta)
@@ -302,21 +335,34 @@ class RoomAllocationDialog(QDialog):
         bar.setFixedWidth(132)
         line.addWidget(bar, 0, Qt.AlignmentFlag.AlignVCenter)
 
-        button = Button.accent("Allocate", icon="check")
+        button = Button.accent(t("pending.allocate_btn"), icon="check")
         if barred:
             button.setEnabled(False)
-            button.setText("Unavailable")
+            button.setText(t("pending.unavailable_btn"))
             button.setToolTip(
-                f"Reserved for {room.get('gender') or 'other'} residents — gender block rule."
+                t(
+                    "pending.unavailable_tooltip",
+                    gender=room.get("gender") or "other",
+                )
             )
         elif full:
             button.setEnabled(False)
-            button.setText("Full")
+            button.setText(t("status.full"))
             button.setToolTip(
-                f"Room is at maximum bed capacity ({occupied}/{capacity}). Choose another room."
+                t(
+                    "pending.full_tooltip",
+                    occupied=format_number(occupied),
+                    capacity=format_number(capacity),
+                )
             )
         else:
-            button.setToolTip(f"Allocate this room ({free} of {capacity} beds free).")
+            button.setToolTip(
+                t(
+                    "pending.allocate_tooltip",
+                    free=format_number(free),
+                    capacity=format_number(capacity),
+                )
+            )
             button.clicked.connect(lambda _checked=False, chosen=room: self._choose(chosen))
         line.addWidget(button, 0, Qt.AlignmentFlag.AlignVCenter)
         return row
@@ -365,10 +411,10 @@ class PendingPage(QWidget):
         layout.setSpacing(S("space-6"))
 
         self.header = PageHeader(
-            "Applications & housing",
-            "Review applications and allocate rooms.",
+            t("pending.title"),
+            t("pending.subtitle"),
         )
-        self.refresh_btn = IconButton("refresh", "Reload the applications queue")
+        self.refresh_btn = IconButton("refresh", t("pending.refresh_tooltip"))
         self.refresh_btn.clicked.connect(self.reload)
         self.header.actions.addWidget(self.refresh_btn)
         layout.addWidget(self.header)
@@ -377,7 +423,7 @@ class PendingPage(QWidget):
         toolbar = QHBoxLayout()
         toolbar.setSpacing(S("space-3"))
 
-        self.segments = SegmentedControl(_VIEWS)
+        self.segments = SegmentedControl(_views())
         self.btn_all = self.segments.buttons["all"]
         self.btn_pending = self.segments.buttons["pending"]
         self.btn_approved = self.segments.buttons["approved"]
@@ -386,7 +432,7 @@ class PendingPage(QWidget):
         self.segments.changed.connect(self.set_filter)
         toolbar.addWidget(self.segments)
 
-        self.search = SearchField("Search by name, card ID or university…")
+        self.search = SearchField(t("pending.search_placeholder"))
         self.search.changed.connect(self.apply_filter)
         # Legacy alias: the search box used to be a bare QLineEdit.
         self.search_input = self.search.edit
@@ -395,8 +441,8 @@ class PendingPage(QWidget):
 
         self.error_banner = InlineBanner(
             "error",
-            title="Applications could not be loaded",
-            message="The queue is showing the last data received. Use Refresh to try again.",
+            title=t("pending.error_title"),
+            message=t("pending.error_msg"),
         )
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
@@ -404,7 +450,7 @@ class PendingPage(QWidget):
         # Busy state for in-flight background work and the result of the last
         # decision action.  Both stay inline so a slow network never blocks the
         # window with a modal dialog or a traceback.
-        self.busy_banner = InlineBanner("info", title="Working…", message="")
+        self.busy_banner = InlineBanner("info", title=t("pending.working_title"), message="")
         self.busy_banner.setVisible(False)
         layout.addWidget(self.busy_banner)
 
@@ -422,9 +468,10 @@ class PendingPage(QWidget):
         card_layout = QVBoxLayout(table_card)
         card_layout.setContentsMargins(0, 0, 0, 0)
 
+        cols = _columns()
         self.stack = QStackedWidget()
-        self.table = QTableWidget(0, len(_COLUMNS))
-        configure_table(self.table, _COLUMNS)
+        self.table = QTableWidget(0, len(cols))
+        configure_table(self.table, cols)
         self.table.setItemDelegateForColumn(3, StatusPillDelegate(self.table))
         self.table.setItemDelegateForColumn(4, StatusPillDelegate(self.table))
         _fit_columns(
@@ -446,19 +493,19 @@ class PendingPage(QWidget):
 
         self.empty_state = EmptyState(
             "clock",
-            "No applications in this view",
-            "Switch the segmented filter, adjust the search, or refresh the queue.",
+            t("pending.empty_title"),
+            t("pending.empty_desc"),
         )
         self.stack.addWidget(self.empty_state)
         card_layout.addWidget(self.stack)
         self.splitter.addWidget(table_card)
 
         # ------------------------------------------------------ inspector
-        self.panel = DetailPanel(340, 460, title="Application inspector")
+        self.panel = DetailPanel(340, 460, title=t("pending.inspector_title"))
         self.empty_panel = EmptyState(
             "user-check",
-            "No applicant selected",
-            "Select a row in the table to inspect the application and record a decision.",
+            t("pending.empty_inspector_title"),
+            t("pending.empty_inspector_desc"),
         )
         self.panel.add_widget(self.empty_panel)
 
@@ -479,7 +526,7 @@ class PendingPage(QWidget):
         identity_column.addWidget(self.name_label)
         identity_column.addWidget(self.card_label)
         self.roster_badge = RosterMatchBadge(None)
-        self.roster_badge.setToolTip("Cross-check of the card ID against the official university roster")
+        self.roster_badge.setToolTip(t("pending.roster_tooltip"))
         identity_column.addWidget(self.roster_badge, 0, Qt.AlignmentFlag.AlignLeft)
         identity.addLayout(identity_column, 1)
         self.panel.add_widget(self.identity)
@@ -491,15 +538,15 @@ class PendingPage(QWidget):
         actions = QVBoxLayout(self.actions_row)
         actions.setContentsMargins(0, 0, 0, 0)
         actions.setSpacing(S("space-2"))
-        self.approve_btn = Button.accent("Approve & assign room", icon="check")
+        self.approve_btn = Button.accent(t("pending.approve_btn"), icon="check")
         self.approve_btn.clicked.connect(self.on_approve)
         actions.addWidget(self.approve_btn)
         reject_row = QHBoxLayout()
         reject_row.setSpacing(S("space-2"))
-        self.reject_btn = Button.danger("Reject application", icon="x")
+        self.reject_btn = Button.danger(t("pending.reject_btn"), icon="x")
         self.reject_btn.clicked.connect(self.on_reject)
-        self.delete_btn = Button("Delete", "ghost", icon="trash")
-        self.delete_btn.setToolTip("Delete student record")
+        self.delete_btn = Button(t("common.delete"), "ghost", icon="trash")
+        self.delete_btn.setToolTip(t("pending.delete_tooltip"))
         self.delete_btn.clicked.connect(self.on_delete)
         self._style_flat_danger(self.delete_btn)
         reject_row.addWidget(self.reject_btn, 1)
@@ -515,7 +562,7 @@ class PendingPage(QWidget):
         hint_icon.setPixmap(get_pixmap("info", 16, theme.status_tokens("progress")["ink"]))
         hint_icon.setFixedWidth(16)
         hint_icon.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
-        hint_text = QLabel("Pending applications cannot be deleted — approve or reject the application first.")
+        hint_text = QLabel(t("pending.delete_hint_text"))
         theme.apply_role(hint_text, "small")
         hint_text.setWordWrap(True)
         hint_row.addWidget(hint_icon, 0, Qt.AlignmentFlag.AlignTop)
@@ -533,7 +580,7 @@ class PendingPage(QWidget):
         self.record_overline = QLabel("")
         theme.apply_role(self.record_overline, "overline")
         self.record_overline.setWordWrap(True)
-        self.record_pill = StatusPill("pending", "Pending")
+        self.record_pill = StatusPill("pending", t("status.pending"))
         record_head.addWidget(self.record_overline, 1)
         record_head.addWidget(self.record_pill, 0, Qt.AlignmentFlag.AlignTop)
         record_body = QLabel("")
@@ -551,7 +598,7 @@ class PendingPage(QWidget):
         self.detail_text = QPlainTextEdit()
         self.detail_text.setReadOnly(True)
         self.detail_text.setMinimumHeight(S("space-8"))
-        self.detail_text.setPlaceholderText("Select an applicant from the table to inspect the record…")
+        self.detail_text.setPlaceholderText(t("pending.detail_placeholder"))
         theme.enable_tabular(self.detail_text)
         self.panel.add_widget(self.detail_text)
 
@@ -703,7 +750,11 @@ class PendingPage(QWidget):
                 univ_item = QTableWidgetItem(str(s.get("university") or "—"))
                 status_item = QTableWidgetItem(status_text)
                 status_item.setData(Qt.ItemDataRole.UserRole, (status_kind, None, status_text))
-                roster_text = "Matched" if matched is True else "Not in roster" if matched is False else "Not checked"
+                roster_text = (
+                    t("pending.roster_matched")
+                    if matched is True
+                    else (t("pending.roster_not_in_roster") if matched is False else t("pending.roster_not_checked"))
+                )
                 roster_kind = "ok" if matched is True else "danger" if matched is False else "neutral"
                 roster_icon = "check-circle" if matched is True else "x-circle" if matched is False else "info"
                 roster_item = QTableWidgetItem(roster_text)
@@ -735,7 +786,7 @@ class PendingPage(QWidget):
         self._update_segment_counts()
 
     def _update_segment_counts(self):
-        counts = {key: 0 for key, _label in _VIEWS}
+        counts = {key: 0 for key, _label in _views()}
         for r in getattr(self, "all_rows", []):
             status = r.get("status", "")
             counts["all"] += 1
@@ -839,7 +890,7 @@ class PendingPage(QWidget):
             return
         self._request_id += 1
         req_id = self._request_id
-        self._begin_working("Refreshing applications…")
+        self._begin_working(t("pending.refreshing_msg"))
         callables = {
             "students": self._fetch_students,
             "official": self._fetch_official,
@@ -874,9 +925,9 @@ class PendingPage(QWidget):
         self._apply_snapshot(snapshot)
 
     def _on_reload_failed(self, message: str):
-        self.error_banner.set_title("Applications could not be refreshed")
+        self.error_banner.set_title(t("pending.refresh_failed_title"))
         self.error_banner.set_message(
-            f"{message} The queue is showing the last data received."
+            t("pending.refresh_failed_msg", message=message)
         )
         self.error_banner.setVisible(True)
 
@@ -885,7 +936,7 @@ class PendingPage(QWidget):
         """Disable every action control and show the inline Working… banner."""
         self._working = True
         self.busy_banner.set_kind("info")
-        self.busy_banner.set_title("Working…")
+        self.busy_banner.set_title(t("pending.working_title"))
         self.busy_banner.set_message(message)
         self.busy_banner.setVisible(True)
         self.action_banner.setVisible(False)
@@ -913,25 +964,25 @@ class PendingPage(QWidget):
 
     def _show_action_success(self, message: str):
         self.action_banner.set_kind("success")
-        self.action_banner.set_title("Done")
+        self.action_banner.set_title(t("pending.done_title"))
         self.action_banner.set_message(message)
         self.action_banner.setVisible(True)
 
     def _show_action_warning(self, message: str):
         self.action_banner.set_kind("warning")
-        self.action_banner.set_title("Saved — refresh needed")
+        self.action_banner.set_title(t("pending.warning_title"))
         self.action_banner.set_message(message)
         self.action_banner.setVisible(True)
 
     def _on_action_failed(self, message: str):
         self.action_banner.set_kind("error")
         if "result is unknown" in message.lower():
-            self.action_banner.set_title("Request timed out")
+            self.action_banner.set_title(t("pending.timeout_title"))
             self.action_banner.set_message(message)
             self.reload()
         else:
-            self.action_banner.set_title("Action failed")
-            self.action_banner.set_message(f"The request could not be completed: {message}")
+            self.action_banner.set_title(t("pending.failed_title"))
+            self.action_banner.set_message(t("pending.action_failed_msg", message=message))
         self.action_banner.setVisible(True)
         self._end_working()
 
@@ -1006,8 +1057,11 @@ class PendingPage(QWidget):
         if not rooms:
             QMessageBox.warning(
                 self,
-                "No rooms",
-                f"No rooms configured for {student.get('gender') or 'this'} residential blocks.",
+                t("pending.no_rooms_title"),
+                t(
+                    "pending.no_rooms_message",
+                    gender=student.get("gender") or "this",
+                ),
             )
             self._end_working()
             return
@@ -1027,13 +1081,13 @@ class PendingPage(QWidget):
         if occupied >= int(room.get("capacity") or 0):
             QMessageBox.warning(
                 self,
-                "Room Full",
-                "This room is at maximum bed capacity. Please select an available room.",
+                t("pending.room_full_title"),
+                t("pending.room_full_message"),
             )
             self._end_working()
             return
 
-        self._begin_working("Approving application…")
+        self._begin_working(t("pending.approving_msg"))
         student_id = student["id"]
         started = self.tasks.run(
             "approve",
@@ -1055,8 +1109,11 @@ class PendingPage(QWidget):
         self._merge_decision_row(decision_row)
         if refresh_error:
             self._show_action_warning(
-                f"{message} The queue could not be refreshed ({refresh_error}). "
-                "The decision is saved; use Refresh to reload the full list."
+                t(
+                    "pending.decision_warning_refresh",
+                    message=message,
+                    error=refresh_error,
+                )
             )
             return
         self._show_action_success(message)
@@ -1066,7 +1123,7 @@ class PendingPage(QWidget):
         self._apply_decision_result(
             result,
             student,
-            f"Student {name} has been approved and allocated to the room.",
+            t("pending.approved_success_msg", name=name),
         )
 
     def _on_decision_success(self, result, student):
@@ -1074,7 +1131,7 @@ class PendingPage(QWidget):
         self._apply_decision_result(
             result,
             student,
-            f"Official decision for {name} has been recorded.",
+            t("pending.decision_success_msg", name=name),
         )
 
     def _on_delete_success(self, student_id, student):
@@ -1091,7 +1148,7 @@ class PendingPage(QWidget):
         )
         self.apply_filter()
         name = self._student_name(student) or "The resident"
-        self._show_action_success(f"Resident record {name} deleted successfully.")
+        self._show_action_success(t("pending.delete_success_msg", name=name))
 
     def selected(self) -> dict | None:
         r = self.table.currentRow()
@@ -1111,12 +1168,12 @@ class PendingPage(QWidget):
         if not s:
             self.detail_text.clear()
             self.approve_btn.setEnabled(False)
-            self.approve_btn.setToolTip("Select an applicant to approve.")
+            self.approve_btn.setToolTip(t("pending.select_applicant_to_approve"))
             self.reject_btn.setEnabled(False)
-            self.reject_btn.setText("Reject application")
-            self.reject_btn.setToolTip("Select an applicant to record a decision.")
+            self.reject_btn.setText(t("pending.reject_btn"))
+            self.reject_btn.setToolTip(t("pending.select_applicant_to_decide"))
             self.delete_btn.setEnabled(False)
-            self.delete_btn.setToolTip("Select an applicant to delete a non-pending record.")
+            self.delete_btn.setToolTip(t("pending.select_applicant_to_delete"))
             self.delete_hint.setVisible(False)
             self._show_selection(False)
             return
@@ -1128,39 +1185,39 @@ class PendingPage(QWidget):
         # Identity + roster match.
         self.avatar.set_name(name)
         self.name_label.setText(name)
-        self.card_label.setText(f"Card ID {s.get('card_id') or '—'}")
+        self.card_label.setText(t("pending.card_id_label", card_id=s.get('card_id') or '—'))
         official_row = self.official.get(s.get("card_id"))
         self.roster_badge.set_matched(True if official_row else (False if self.official else None))
 
         # Submitted data.
         self.facts.set_rows([
-            ("University", s.get("university") or "—"),
-            ("Faculty", s.get("faculty") or "—"),
-            ("Study level", s.get("study_level") or "—"),
-            ("Wilaya", s.get("wilaya") or "—"),
-            ("Birth date", s.get("birth_date") or "—"),
-            ("Contact", f"{s.get('phone') or '—'} · {s.get('email') or '—'}"),
+            (t("pending.fact_university"), s.get("university") or "—"),
+            (t("pending.fact_faculty"), s.get("faculty") or "—"),
+            (t("pending.fact_study_level"), s.get("study_level") or "—"),
+            (t("pending.fact_wilaya"), s.get("wilaya") or "—"),
+            (t("pending.fact_birth_date"), s.get("birth_date") or "—"),
+            (t("pending.fact_contact"), f"{s.get('phone') or '—'} · {s.get('email') or '—'}"),
         ])
 
         # Action buttons.
         if status == "active":
             self.approve_btn.setEnabled(False)
-            self.approve_btn.setToolTip("Student already approved.")
+            self.approve_btn.setToolTip(t("pending.already_approved_tooltip"))
         else:
             self.approve_btn.setEnabled(True)
             self.approve_btn.setToolTip("")
 
         self.reject_btn.setEnabled(True)
         if status == "rejected":
-            self.reject_btn.setText("Edit Rejection Reason")
-            self.reject_btn.setToolTip("Update the official rejection reason.")
+            self.reject_btn.setText(t("pending.edit_rejection_btn"))
+            self.reject_btn.setToolTip(t("pending.edit_rejection_tooltip"))
         else:
-            self.reject_btn.setText("Reject application")
-            self.reject_btn.setToolTip("Record the official rejection reason (required).")
+            self.reject_btn.setText(t("pending.reject_btn"))
+            self.reject_btn.setToolTip(t("pending.reject_tooltip"))
 
         if status == "pending":
             self.delete_btn.setEnabled(False)
-            self.delete_btn.setToolTip("Pending applications cannot be deleted. Please approve or reject first.")
+            self.delete_btn.setToolTip(t("pending.delete_pending_disabled_tooltip"))
             self.delete_hint.setVisible(True)
         else:
             self.delete_btn.setEnabled(True)
@@ -1180,17 +1237,22 @@ class PendingPage(QWidget):
     def _render_record_block(self, status: str, status_kind: str, status_text: str, student: dict):
         """Tinted record block: rejection reason, housing status or pending state."""
         if status == "rejected":
-            overline = _REJECTION_OVERLINE
-            body = f"“{student.get('rejection_reason') or 'No reason recorded'}”"
-            meta = f"Reviewed: {_fmt_stamp(student.get('reviewed_at'))}"
+            overline = _rejection_overline()
+            body = f"“{student.get('rejection_reason') or t('pending.no_reason_recorded')}”"
+            meta = t("pending.reviewed_stamp", stamp=_fmt_stamp(student.get("reviewed_at")))
         elif status == "active":
-            overline = "Housing status"
-            body = "The student is approved and assigned to a room."
-            meta = f"Reviewed: {_fmt_stamp(student.get('reviewed_at'))}"
+            overline = t("pending.housing_status_overline")
+            body = t("pending.housing_status_active_body")
+            meta = t("pending.reviewed_stamp", stamp=_fmt_stamp(student.get("reviewed_at")))
         else:
-            overline = "Application status"
-            body = "Awaiting administrative review and room allocation."
+            overline = t("pending.application_status_overline")
+            body = t("pending.housing_status_pending_body")
             meta = ""
+        self.record_overline.setText(overline.upper())
+        self.record_body.setText(body)
+        self.record_meta.setText(meta)
+        self.record_meta.setVisible(bool(meta))
+        self.record_pill.set_kind(status_kind, status_text)
         self.record_overline.setText(overline.upper())
         self.record_body.setText(body)
         self.record_meta.setText(meta)
@@ -1220,16 +1282,16 @@ class PendingPage(QWidget):
             )
 
         if status == "rejected":
-            status_overline = _REJECTION_OVERLINE
-            status_body = f"“{student.get('rejection_reason') or 'No reason recorded'}”"
-            status_meta = f"Reviewed: {_fmt_stamp(student.get('reviewed_at'))}"
+            status_overline = _rejection_overline()
+            status_body = f"“{student.get('rejection_reason') or t('pending.no_reason_recorded')}”"
+            status_meta = t("pending.reviewed_stamp", stamp=_fmt_stamp(student.get("reviewed_at")))
         elif status == "active":
-            status_overline = "HOUSING STATUS"
-            status_body = "The student is approved and assigned to a room."
-            status_meta = f"Reviewed: {_fmt_stamp(student.get('reviewed_at'))}"
+            status_overline = t("pending.housing_status_overline")
+            status_body = t("pending.housing_status_active_body")
+            status_meta = t("pending.reviewed_stamp", stamp=_fmt_stamp(student.get("reviewed_at")))
         else:
-            status_overline = "APPLICATION STATUS"
-            status_body = "Awaiting administrative review and room allocation."
+            status_overline = t("pending.application_status_overline")
+            status_body = t("pending.housing_status_pending_body")
             status_meta = ""
 
         return (
@@ -1265,14 +1327,18 @@ class PendingPage(QWidget):
             return
         s = self.selected()
         if not s:
-            QMessageBox.information(self, "Select applicant", "Please select a student applicant from the table first.")
+            QMessageBox.information(
+                self,
+                t("pending.select_applicant_title"),
+                t("pending.select_applicant_message"),
+            )
             return
 
         # Room list + occupancy are optional data: fetch them on the worker,
         # then open the unchanged allocation dialog on the GUI thread.
         self._approve_student = dict(s)
         student = self._approve_student
-        self._begin_working("Loading available rooms…")
+        self._begin_working(t("pending.loading_rooms_msg"))
         started = self.tasks.run(
             "approve-rooms",
             lambda: self._load_rooms(student.get("gender")),
@@ -1293,13 +1359,20 @@ class PendingPage(QWidget):
             return
         s = self.selected()
         if not s:
-            QMessageBox.information(self, "Select applicant", "Please select a student applicant from the table first.")
+            QMessageBox.information(
+                self,
+                t("pending.select_applicant_title"),
+                t("pending.select_applicant_message"),
+            )
             return
         default_reason = s.get("rejection_reason") or ""
         reason, ok = QInputDialog.getMultiLineText(
             self,
-            "Reject Application",
-            f"Enter official rejection reason for {s.get('first_name', '')} {s.get('last_name', '')}:",
+            t("pending.reject_dialog_title"),
+            t(
+                "pending.reject_dialog_prompt",
+                name=f"{s.get('first_name', '')} {s.get('last_name', '')}".strip(),
+            ),
             text=default_reason,
         )
         if not ok:
@@ -1307,14 +1380,14 @@ class PendingPage(QWidget):
         if not reason.strip():
             QMessageBox.warning(
                 self,
-                "Reason Required",
-                "Rejection reason is required so administrative desk staff can answer student inquiries.",
+                t("pending.reason_required_title"),
+                t("pending.reason_required_message"),
             )
             return
 
         student = dict(s)
         reason = reason.strip()
-        self._begin_working("Saving rejection…")
+        self._begin_working(t("pending.saving_rejection_msg"))
         started = self.tasks.run(
             "reject",
             lambda: self._reject_rpc(student["id"], reason),
@@ -1330,10 +1403,18 @@ class PendingPage(QWidget):
             return
         s = self.selected()
         if not s:
-            QMessageBox.information(self, "Select Student", "Please select a student from the table first.")
+            QMessageBox.information(
+                self,
+                t("pending.select_student_title"),
+                t("pending.select_student_message"),
+            )
             return
         if s.get("status") == "pending":
-            QMessageBox.warning(self, "Cannot Delete", "Pending applications cannot be deleted. Please approve or reject first.")
+            QMessageBox.warning(
+                self,
+                t("pending.cannot_delete_title"),
+                t("pending.cannot_delete_message"),
+            )
             return
 
         name = f"{s.get('first_name', '')} {s.get('last_name', '')}".strip()
@@ -1342,16 +1423,20 @@ class PendingPage(QWidget):
 
         confirmed = ConfirmDialog.ask(
             self,
-            "Confirm deletion",
-            f"Permanently delete resident {name} ({card_id})?\n\nStatus: {status}\n"
-            "This removes the student record and unassigns any room.",
-            confirm_text="Delete record",
+            t("pending.confirm_delete_title"),
+            t(
+                "pending.confirm_delete_message",
+                name=name,
+                card_id=card_id,
+                status=status,
+            ),
+            confirm_text=t("pending.confirm_delete_btn"),
         )
         if not confirmed:
             return
 
         student = dict(s)
-        self._begin_working("Deleting record…")
+        self._begin_working(t("pending.deleting_msg"))
         started = self.tasks.run(
             "delete",
             lambda: self._delete_rpc(student["id"]),

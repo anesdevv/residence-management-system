@@ -38,6 +38,11 @@ from PySide6.QtWidgets import (
 )
 
 from ...importers.official_list import read_official_file
+try:
+    from i18n import current_language, t, tn
+except ImportError:
+    from desktop.i18n import current_language, t, tn
+
 from ...timeouts import execute_network_call
 from .. import theme
 from ..components import (
@@ -59,18 +64,26 @@ from ..tasks import TaskRunner, human_error
 from ..theme import C, DESKTOP_STYLESHEET, S
 
 # Table language: overline headers are uppercased by ``configure_table``.
-_COLUMNS = ["Card ID", "First Name", "Last Name", "Birth Date", "Gender", "University", "Faculty"]
+_COLUMNS = [
+    t("official_list.col_card_id"),
+    t("official_list.col_first_name"),
+    t("official_list.col_last_name"),
+    t("official_list.col_birth_date"),
+    t("official_list.col_gender"),
+    t("official_list.col_university"),
+    t("official_list.col_faculty"),
+]
 # File types the import path accepts (button dialog and drag & drop alike).
 _IMPORT_SUFFIXES = (".csv", ".xlsx", ".xls")
 
-_IMPORT_TEXT = "Import list"
-_WORKING_TEXT = "Working..."
+_IMPORT_TEXT = t("official_list.import_btn")
+_WORKING_TEXT = t("common.working")
 _RELOAD_KEY = "official-reload"
 _IMPORT_KEY = "official-import"
 _ACTION_KEY = "official-action"
 
-_ADMIN_MODIFY_TOOLTIP = "Only administrators can modify the official list"
-_ADMIN_IMPORT_TOOLTIP = "Administrator privileges required to import roster."
+_ADMIN_MODIFY_TOOLTIP = t("official_list.admin_modify_tooltip")
+_ADMIN_IMPORT_TOOLTIP = t("official_list.admin_import_tooltip")
 
 
 def _normalize_role(role) -> str | None:
@@ -111,7 +124,7 @@ class OfficialResidentDialog(QDialog):
         self._closing = False
         self.result_data = None
 
-        self.setWindowTitle("Edit Official Resident" if mode == "edit" else "Add Official Resident")
+        self.setWindowTitle(t("official_list.dialog_edit_title") if mode == "edit" else t("official_list.dialog_add_title"))
         self.setMinimumWidth(440)
         self.setModal(True)
         self.setStyleSheet(DESKTOP_STYLESHEET)
@@ -121,8 +134,8 @@ class OfficialResidentDialog(QDialog):
         layout.setSpacing(S("space-4"))
 
         card = Card(
-            "Official resident details" if mode == "edit" else "New official resident",
-            "Update the verified admissions registry details." if mode == "edit" else "Enter verified student details into the official admissions roster.",
+            t("official_list.card_details_edit") if mode == "edit" else t("official_list.card_details_add"),
+            t("official_list.card_desc_edit") if mode == "edit" else t("official_list.card_desc_add"),
             icon="official_list",
         )
 
@@ -147,9 +160,9 @@ class OfficialResidentDialog(QDialog):
         self.birth_date_edit.setText(str(self.initial_data.get("birth_date") or ""))
 
         self.gender_combo = QComboBox()
-        self.gender_combo.addItem("Select gender…", "")
-        self.gender_combo.addItem("Male", "male")
-        self.gender_combo.addItem("Female", "female")
+        self.gender_combo.addItem(t("official_list.select_gender"), "")
+        self.gender_combo.addItem(t("official_list.gender_male"), "male")
+        self.gender_combo.addItem(t("official_list.gender_female"), "female")
         curr_gender = str(self.initial_data.get("gender") or "").lower()
         if curr_gender == "male":
             self.gender_combo.setCurrentIndex(1)
@@ -159,24 +172,24 @@ class OfficialResidentDialog(QDialog):
             self.gender_combo.setCurrentIndex(0)
 
         self.university_edit = QLineEdit()
-        self.university_edit.setPlaceholderText("University name")
+        self.university_edit.setPlaceholderText(t("official_list.university_placeholder", default="University name"))
         self.university_edit.setText(str(self.initial_data.get("university") or ""))
 
         self.faculty_edit = QLineEdit()
-        self.faculty_edit.setPlaceholderText("Faculty or department")
+        self.faculty_edit.setPlaceholderText(t("official_list.faculty_placeholder", default="Faculty or department"))
         self.faculty_edit.setText(str(self.initial_data.get("faculty") or ""))
 
-        form.addRow("Card ID *:", self.card_id_edit)
-        form.addRow("First Name *:", self.first_name_edit)
-        form.addRow("Last Name *:", self.last_name_edit)
-        form.addRow("Birth Date:", self.birth_date_edit)
-        form.addRow("Gender:", self.gender_combo)
-        form.addRow("University:", self.university_edit)
-        form.addRow("Faculty:", self.faculty_edit)
+        form.addRow(t("official_list.field_card_id"), self.card_id_edit)
+        form.addRow(t("official_list.field_first_name"), self.first_name_edit)
+        form.addRow(t("official_list.field_last_name"), self.last_name_edit)
+        form.addRow(t("official_list.field_birth_date"), self.birth_date_edit)
+        form.addRow(t("official_list.field_gender"), self.gender_combo)
+        form.addRow(t("official_list.field_university"), self.university_edit)
+        form.addRow(t("official_list.field_faculty"), self.faculty_edit)
 
         card.add_layout(form)
 
-        self.error_banner = InlineBanner("error", title="Validation Error", message="")
+        self.error_banner = InlineBanner("error", title=t("official_list.validation_error_title"), message="")
         self.error_banner.setVisible(False)
         card.add_widget(self.error_banner)
 
@@ -186,11 +199,11 @@ class OfficialResidentDialog(QDialog):
         btn_row.setSpacing(S("space-2"))
         btn_row.addStretch(1)
 
-        self.cancel_btn = Button.secondary("Cancel")
+        self.cancel_btn = Button.secondary(t("common.cancel"))
         self.cancel_btn.clicked.connect(self.reject)
         btn_row.addWidget(self.cancel_btn)
 
-        save_label = "Save changes" if mode == "edit" else "Add resident"
+        save_label = t("official_list.save_changes") if mode == "edit" else t("official_list.add_resident")
         self.save_btn = Button.primary(save_label)
         self.save_btn.clicked.connect(self.on_save)
         btn_row.addWidget(self.save_btn)
@@ -204,7 +217,7 @@ class OfficialResidentDialog(QDialog):
         if busy:
             self.save_btn.setText(_WORKING_TEXT)
         else:
-            self.save_btn.setText("Save changes" if self.mode == "edit" else "Add resident")
+            self.save_btn.setText(t("official_list.save_changes") if self.mode == "edit" else t("official_list.add_resident"))
 
     def _show_error(self, message: str, title: str = "Validation Error") -> None:
         self.error_banner.set_kind("error")
@@ -225,21 +238,21 @@ class OfficialResidentDialog(QDialog):
         faculty = self.faculty_edit.text().strip() or None
 
         if not card_id:
-            self._show_error("Card ID is required.")
+            self._show_error(t("official_list.card_id_required"))
             self.card_id_edit.setFocus()
             return
         if not first_name:
-            self._show_error("First name is required.")
+            self._show_error(t("official_list.first_name_required"))
             self.first_name_edit.setFocus()
             return
         if not last_name:
-            self._show_error("Last name is required.")
+            self._show_error(t("official_list.last_name_required"))
             self.last_name_edit.setFocus()
             return
 
         if birth_date:
             if not re.match(r"^\d{4}-\d{2}-\d{2}$", birth_date):
-                self._show_error("Birth date must be in YYYY-MM-DD format.")
+                self._show_error(t("official_list.birth_date_format"))
                 self.birth_date_edit.setFocus()
                 return
 
@@ -294,7 +307,7 @@ class OfficialResidentDialog(QDialog):
         self.accept()
 
     def _on_save_failed(self, message: str) -> None:
-        title = "Card ID Already Exists" if "already exists" in message.lower() else "Save Failed"
+        title = t("official_list.card_id_exists") if "already exists" in message.lower() else t("official_list.save_failed", default="Save Failed")
         self._show_error(message, title=title)
 
 
@@ -304,7 +317,7 @@ class ClearAllRosterDialog(QDialog):
     def __init__(self, parent=None, total_count: int = 0, matching_pending: int = 0):
         super().__init__(parent)
         self.confirmed = False
-        self.setWindowTitle("Clear Official Admissions Roster")
+        self.setWindowTitle(t("official_list.clear_dialog_title"))
         self.setModal(True)
         self.setMinimumWidth(440)
         self.setStyleSheet(DESKTOP_STYLESHEET)
@@ -321,14 +334,14 @@ class ClearAllRosterDialog(QDialog):
 
         column = QVBoxLayout()
         column.setSpacing(S("space-1"))
-        title_label = QLabel("Delete all official admissions records?")
+        title_label = QLabel(t("official_list.clear_dialog_heading"))
         theme.apply_role(title_label, "h2")
         column.addWidget(title_label)
 
-        warn_text = f"This action will permanently delete all {total_count} records from the official roster."
+        warn_text = t("official_list.clear_dialog_warn", total_count=total_count)
         if matching_pending > 0:
-            warn_text += f"\n\nWarning: {matching_pending} pending student application(s) will lose their roster match."
-        warn_text += "\n\nTo confirm, please type DELETE below:"
+            warn_text += "\n\n" + t("official_list.clear_dialog_pending_warn", matching_pending=matching_pending)
+        warn_text += "\n\n" + t("official_list.clear_dialog_type_prompt")
 
         msg_label = QLabel(warn_text)
         theme.apply_role(msg_label, "muted")
@@ -338,7 +351,7 @@ class ClearAllRosterDialog(QDialog):
         layout.addLayout(head)
 
         self.confirm_input = QLineEdit()
-        self.confirm_input.setPlaceholderText("Type DELETE to confirm")
+        self.confirm_input.setPlaceholderText(t("official_list.clear_dialog_input_placeholder"))
         self.confirm_input.textChanged.connect(self._on_text_changed)
         layout.addWidget(self.confirm_input)
 
@@ -346,11 +359,11 @@ class ClearAllRosterDialog(QDialog):
         buttons.setSpacing(S("space-2"))
         buttons.addStretch(1)
 
-        self.cancel_button = Button.secondary("Cancel")
+        self.cancel_button = Button.secondary(t("common.cancel"))
         self.cancel_button.clicked.connect(self.reject)
         buttons.addWidget(self.cancel_button)
 
-        self.delete_button = Button.danger("Delete all")
+        self.delete_button = Button.danger(t("official_list.delete_all_btn"))
         self.delete_button.setEnabled(False)
         self.delete_button.clicked.connect(self._on_confirm)
         buttons.addWidget(self.delete_button)
@@ -462,10 +475,10 @@ class OfficialListPage(QWidget):
         layout.setSpacing(S("space-6"))
 
         self.header = PageHeader(
-            "Official university roster",
-            "Master admissions database used to verify student housing applications.",
+            t("official_list.title"),
+            t("official_list.subtitle"),
         )
-        self.count_badge = StatusPill("neutral", "0 Verified Records")
+        self.count_badge = StatusPill("neutral", tn("official_list.verified_records_count", count=0))
         self.header.actions.addWidget(self.count_badge)
         layout.addWidget(self.header)
 
@@ -482,16 +495,16 @@ class OfficialListPage(QWidget):
         upload_icon.setPixmap(get_pixmap("upload", 28, C("teal-600")))
         drop_body.addWidget(upload_icon, 0, Qt.AlignmentFlag.AlignHCenter)
 
-        drop_title = QLabel("Import the official roster")
+        drop_title = QLabel(t("official_list.import_card_title"))
         theme.apply_role(drop_title, "h3")
         drop_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         drop_body.addWidget(drop_title)
 
-        drop_hint = _small_label("Drop a CSV or Excel file here, or choose a file")
+        drop_hint = _small_label(t("official_list.import_card_hint"))
         drop_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         drop_body.addWidget(drop_hint)
 
-        self.import_btn = Button.primary("Import list", icon="upload")
+        self.import_btn = Button.primary(t("official_list.import_btn"), icon="upload")
         self.import_btn.clicked.connect(lambda _checked=False: self.on_import())
         drop_body.addWidget(self.import_btn, 0, Qt.AlignmentFlag.AlignHCenter)
         drop_body.addStretch(1)
@@ -500,7 +513,7 @@ class OfficialListPage(QWidget):
         # -------------------------------------------------- result summary
         self.result_banner = InlineBanner(
             "success",
-            title="Roster import",
+            title=t("official_list.result_banner_title", default="Roster import"),
             message="",
         )
         self.result_banner.setVisible(False)
@@ -508,8 +521,8 @@ class OfficialListPage(QWidget):
 
         self.error_banner = InlineBanner(
             "error",
-            title="Roster could not be loaded",
-            message="Check the connection, then use Refresh to try again.",
+            title=t("official_list.error_banner_title", default="Roster could not be loaded"),
+            message=t("official_list.error_banner_msg", default="Check the connection, then use Refresh to try again."),
         )
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
@@ -519,29 +532,29 @@ class OfficialListPage(QWidget):
         toolbar.setSpacing(S("space-2"))
 
         self.search_field = SearchField(
-            "Search official roster by card ID, student name, university, or faculty…"
+            t("official_list.search_placeholder")
         )
         self.search_field.changed.connect(self.filter_table)
         self.search_input = self.search_field.edit
         toolbar.addWidget(self.search_field, 1)
 
-        self.add_btn = Button.primary("Add entry", icon="plus")
+        self.add_btn = Button.primary(t("official_list.add_btn"), icon="plus")
         self.add_btn.clicked.connect(lambda _checked=False: self.on_add())
         toolbar.addWidget(self.add_btn)
 
-        self.edit_btn = Button.secondary("Edit", icon="edit")
+        self.edit_btn = Button.secondary(t("official_list.edit_btn"), icon="edit")
         self.edit_btn.clicked.connect(lambda _checked=False: self.on_edit())
         toolbar.addWidget(self.edit_btn)
 
-        self.delete_selected_btn = Button.danger("Delete selected", icon="trash")
+        self.delete_selected_btn = Button.danger(t("official_list.delete_selected_btn"), icon="trash")
         self.delete_selected_btn.clicked.connect(lambda _checked=False: self.on_delete_selected())
         toolbar.addWidget(self.delete_selected_btn)
 
-        self.delete_all_btn = Button.danger("Delete all", icon="trash")
+        self.delete_all_btn = Button.danger(t("official_list.delete_all_btn"), icon="trash")
         self.delete_all_btn.clicked.connect(lambda _checked=False: self.on_delete_all())
         toolbar.addWidget(self.delete_all_btn)
 
-        self.refresh_btn = IconButton("refresh", "Reload the official roster")
+        self.refresh_btn = IconButton("refresh", t("official_list.reload_tooltip", default="Reload the official roster"))
         self.refresh_btn.clicked.connect(self.reload)
         toolbar.addWidget(self.refresh_btn)
         layout.addLayout(toolbar)
@@ -752,7 +765,7 @@ class OfficialListPage(QWidget):
             if self.rows[idx].get("card_id")
         }
         self.rows = [row for row in (rows or []) if isinstance(row, dict)]
-        self.count_badge.setText(f"{len(self.rows)} Verified Records")
+        self.count_badge.setText(tn("official_list.verified_records_count", count=len(self.rows)))
         self._render_rows()
 
         # Restore multi-selection if cards still exist
@@ -856,8 +869,9 @@ class OfficialListPage(QWidget):
         if dlg.exec() == QDialog.DialogCode.Accepted:
             card_id = dlg.card_id_edit.text().strip()
             self.result_banner.set_kind("success")
-            self.result_banner.set_title("Roster entry added")
-            self.result_banner.set_message(f"Added record for {dlg.first_name_edit.text().strip()} {dlg.last_name_edit.text().strip()} ({card_id}).")
+            self.result_banner.set_title(t("official_list.entry_added_title", default="Roster entry added"))
+            name = f"{dlg.first_name_edit.text().strip()} {dlg.last_name_edit.text().strip()}"
+            self.result_banner.set_message(t("official_list.added_record_msg", name=name, card_id=card_id))
             self.result_banner.setVisible(True)
             self.reload()
             self._notify_roster_changed()
@@ -880,8 +894,9 @@ class OfficialListPage(QWidget):
         if dlg.exec() == QDialog.DialogCode.Accepted:
             card_id = dlg.card_id_edit.text().strip()
             self.result_banner.set_kind("success")
-            self.result_banner.set_title("Roster entry updated")
-            self.result_banner.set_message(f"Updated record for {dlg.first_name_edit.text().strip()} {dlg.last_name_edit.text().strip()} ({card_id}).")
+            self.result_banner.set_title(t("official_list.entry_updated_title", default="Roster entry updated"))
+            name = f"{dlg.first_name_edit.text().strip()} {dlg.last_name_edit.text().strip()}"
+            self.result_banner.set_message(t("official_list.updated_record_msg", name=name, card_id=card_id))
             self.result_banner.setVisible(True)
             self.reload()
             self._notify_roster_changed()
@@ -925,8 +940,8 @@ class OfficialListPage(QWidget):
 
     def _on_delete_selected_complete(self, requested_count: int, deleted_count: int) -> None:
         self.result_banner.set_kind("success")
-        self.result_banner.set_title("Roster entries deleted")
-        self.result_banner.set_message(f"Successfully deleted {deleted_count} roster record(s).")
+        self.result_banner.set_title(t("official_list.entries_deleted_title", default="Roster entries deleted"))
+        self.result_banner.set_message(tn("official_list.deleted_records_msg", count=deleted_count))
         self.result_banner.setVisible(True)
         self.reload()
         self._notify_roster_changed()
@@ -965,8 +980,8 @@ class OfficialListPage(QWidget):
 
     def _on_clear_all_complete(self, deleted_count: int) -> None:
         self.result_banner.set_kind("success")
-        self.result_banner.set_title("Official roster cleared")
-        self.result_banner.set_message(f"Successfully cleared admissions roster (deleted {deleted_count} records).")
+        self.result_banner.set_title(t("official_list.roster_cleared_title", default="Official roster cleared"))
+        self.result_banner.set_message(t("official_list.clear_success_msg", count=deleted_count))
         self.result_banner.setVisible(True)
         self.reload()
         self._notify_roster_changed()

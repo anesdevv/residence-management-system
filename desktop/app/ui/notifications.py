@@ -11,6 +11,11 @@ from typing import NamedTuple
 from PySide6.QtCore import QObject, QSettings
 from PySide6.QtWidgets import QSystemTrayIcon
 
+try:
+    from i18n import current_language, t, tn
+except ImportError:
+    from desktop.i18n import current_language, t, tn
+
 _log = logging.getLogger("resivo.notifications")
 
 
@@ -144,46 +149,146 @@ class NotificationManager(QObject):
         self.recent_events: deque[NotificationItem] = deque()
         self._seen_messages: set[str] = set()
 
-    def classify_event(self, msg: str) -> tuple[str, str, str] | None:
-        """Classify a LiveSync alert message into (category, title, body).
+    def classify_event(self, msg: str | dict) -> tuple[str, str, str] | None:
+        """Classify an alert event into (category, title, body).
 
+        Supports both structured event dictionaries and unstructured message strings
+        across multiple languages (language-agnostic classification).
         Respects the show_student_names privacy setting.
         """
         show_names = self.settings.show_student_names
-        clean = msg.strip()
+
+        # Structured dictionary event input
+        if isinstance(msg, dict):
+            event_type = str(msg.get("type") or msg.get("event") or msg.get("category") or "").lower().strip()
+            if event_type in ("maintenance", "maint", "repair"):
+                category = "maintenance"
+                title = t("notifications.maintenance_title")
+                raw_cat = str(msg.get("maintenance_category") or msg.get("category") or "others")
+                norm_cat = raw_cat.lower().strip()
+                if norm_cat in ("plumbing", "plomberie"):
+                    cat_display = t("category.plumbing")
+                elif norm_cat in ("electricity", "electrical", "électricité"):
+                    cat_display = t("category.electricity")
+                elif norm_cat in ("carpentry", "furniture", "menuiserie"):
+                    cat_display = t("category.carpentry")
+                elif norm_cat in ("others", "other", "heating", "general", "autres"):
+                    cat_display = t("category.others")
+                else:
+                    cat_display = raw_cat.capitalize()
+
+                student_name = (msg.get("student_name") or msg.get("name") or "").strip()
+                if show_names and student_name:
+                    body = t("notifications.maintenance_report_name", category=cat_display, name=student_name)
+                else:
+                    body = t("notifications.maintenance_report", category=cat_display)
+                return category, title, body
+
+            if event_type in ("room_changes", "room_change", "transfer"):
+                category = "room_changes"
+                title = t("notifications.room_change_title")
+                student_name = (msg.get("student_name") or msg.get("name") or "").strip()
+                if show_names and student_name:
+                    body = t("notifications.room_change_from", name=student_name)
+                else:
+                    body = t("notifications.room_change_submitted")
+                return category, title, body
+
+            if event_type in ("registrations", "registration", "applications", "application"):
+                category = "registrations"
+                title = t("notifications.registration_title")
+                student_name = (msg.get("student_name") or msg.get("name") or "").strip()
+                card_id = str(msg.get("card_id") or "").strip()
+                if show_names and student_name:
+                    body = t("notifications.registration_from", name=student_name, card_id=card_id or "—")
+                else:
+                    if card_id:
+                        body = t("notifications.registration_received_card", card_id=card_id)
+                    else:
+                        body = t("notifications.registration_received")
+                return category, title, body
+
+        # String message event input
+        clean = str(msg).strip()
 
         # 1. Maintenance
-        if clean.startswith("New maintenance report:"):
+        # Matches English: "New maintenance report: Category (Name)"
+        # French: "Nouveau signalement de maintenance : Catégorie (Nom)"
+        # Or structured prefixes: "[maintenance]", "maintenance:"
+        maint_match = re.match(
+            r"^(?:\[maintenance\]|maintenance:|New maintenance report:|Nouveau signalement de maintenance\s*[:\u00A0])\s*([^(]+?)(?:\s*\(([^)]+)\))?$",
+            clean,
+            re.IGNORECASE,
+        )
+        if maint_match:
             category = "maintenance"
-            title = "New Maintenance Report"
-            if not show_names:
-                # Remove student name in parentheses, e.g. "New maintenance report: Plumbing (Student)"
-                body = re.sub(r"\s*\([^)]*\)", "", clean)
+            title = t("notifications.maintenance_title")
+            raw_cat = maint_match.group(1).strip()
+            student_name = (maint_match.group(2) or "").strip()
+
+            norm_cat = raw_cat.lower()
+            if norm_cat in ("plumbing", "plomberie"):
+                cat_display = t("category.plumbing")
+            elif norm_cat in ("electricity", "electrical", "électricité"):
+                cat_display = t("category.electricity")
+            elif norm_cat in ("carpentry", "furniture", "menuiserie"):
+                cat_display = t("category.carpentry")
+            elif norm_cat in ("others", "other", "heating", "general", "autres"):
+                cat_display = t("category.others")
             else:
-                body = clean
+                cat_display = raw_cat
+
+            if show_names and student_name:
+                body = t("notifications.maintenance_report_name", category=cat_display, name=student_name)
+            else:
+                body = t("notifications.maintenance_report", category=cat_display)
             return category, title, body
 
         # 2. Room changes
-        if clean.startswith("New room-change request"):
+        # Matches English: "New room-change request from Alice"
+        # French: "Nouvelle demande de changement de chambre de Alice"
+        # Prefixes: "[room_change]", "room_change:"
+        rc_match = re.match(
+            r"^(?:\[room_changes?\]|room_changes?:|New room-change request(?:\s+from\s+|\s+submitted|\s*:)?|Nouvelle demande de changement de chambre(?:\s+de\s+|\s+soumise|\s*[:\u00A0])?)\s*(.*)$",
+            clean,
+            re.IGNORECASE,
+        )
+        if rc_match:
             category = "room_changes"
-            title = "New Room-Change Request"
-            if not show_names:
-                body = "New room-change request submitted"
+            title = t("notifications.room_change_title")
+            remainder = rc_match.group(1).strip()
+            student_name = remainder if remainder and remainder.lower() not in ("submitted", "soumise") else ""
+            if show_names and student_name:
+                body = t("notifications.room_change_from", name=student_name)
             else:
-                body = clean
+                body = t("notifications.room_change_submitted")
             return category, title, body
 
         # 3. Registrations / Applications
-        if clean.startswith("New registration:"):
+        # Matches English: "New registration: Jane Smith (Card: C123)"
+        # French: "Nouvelle inscription : Jane Smith (N° de carte : C123)"
+        # Prefixes: "[registration]", "registration:", "application:"
+        reg_match = re.match(
+            r"^(?:\[registrations?\]|registrations?:|applications?:|New registration:|Nouvelle inscription\s*[:\u00A0]|Nouvelle demande d[’']hébergement\s*[:\u00A0])\s*(.*)$",
+            clean,
+            re.IGNORECASE,
+        )
+        if reg_match:
             category = "registrations"
-            title = "New Student Application"
-            if not show_names:
-                # Remove name, keeping card id if present
-                card_match = re.search(r"\(Card: ([^)]+)\)", clean)
-                card_suffix = f" (Card: {card_match.group(1)})" if card_match else ""
-                body = f"New registration received{card_suffix}"
+            title = t("notifications.registration_title")
+            content = reg_match.group(1).strip()
+            card_match = re.search(r"\((?:Card|Carte|N° de carte)\s*:\s*([^)]+)\)", content, re.IGNORECASE)
+            card_id = card_match.group(1).strip() if card_match else ""
+            name_part = re.sub(r"\s*\([^)]*\)", "", content).strip()
+            student_name = name_part if name_part else ""
+
+            if show_names and student_name:
+                body = t("notifications.registration_from", name=student_name, card_id=card_id or "—")
             else:
-                body = clean
+                if card_id:
+                    body = t("notifications.registration_received_card", card_id=card_id)
+                else:
+                    body = t("notifications.registration_received")
             return category, title, body
 
         return None
@@ -257,14 +362,14 @@ class NotificationManager(QObject):
 
             parts = []
             if m_count:
-                parts.append(f"{m_count} maintenance report{'s' if m_count > 1 else ''}")
+                parts.append(tn("notifications.count_maintenance", count=m_count))
             if r_count:
-                parts.append(f"{r_count} room change{'s' if r_count > 1 else ''}")
+                parts.append(tn("notifications.count_room_change", count=r_count))
             if s_count:
-                parts.append(f"{s_count} application{'s' if s_count > 1 else ''}")
+                parts.append(tn("notifications.count_application", count=s_count))
 
-            summary_title = "RÉSIVO Updates"
-            summary_body = f"{total} new residence updates: {', '.join(parts)}"
+            summary_title = t("notifications.burst_title")
+            summary_body = tn("notifications.burst_summary", count=total, details=", ".join(parts))
             return {
                 "title": summary_title,
                 "body": summary_body,
@@ -304,8 +409,8 @@ class NotificationManager(QObject):
     def send_test_notification(self) -> dict:
         """Trigger a test notification for operator feedback."""
         res = {
-            "title": "RÉSIVO Notifications",
-            "body": "Desktop notifications are working correctly.",
+            "title": t("notifications.test_title"),
+            "body": t("notifications.test_body"),
             "sound": self.settings.play_sound,
         }
         self.dispatch_notification(res["title"], res["body"], sound=res["sound"])

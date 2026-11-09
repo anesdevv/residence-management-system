@@ -19,10 +19,12 @@ import sys
 import urllib.request
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QThread, QTimer, Signal
+from PySide6.QtCore import QProcess, Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QFontDatabase, QGuiApplication, QPixmap
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
+    QComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -32,6 +34,11 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+try:
+    from i18n import current_language, get_saved_language, set_saved_language, t, tn
+except ImportError:
+    from desktop.i18n import current_language, get_saved_language, set_saved_language, t, tn
 
 from ...client import current_role
 from .. import theme
@@ -60,12 +67,14 @@ MCP_HOSTED_URL = "https://resivo-mcp.anes4tlm.workers.dev/mcp"
 _LOAD_KEY = "settings-load"
 _WRITES_KEY = "settings-writes"
 _WORKING_TEXT = "Working..."
-_WRITES_TOOLTIP = "Allow the ChatGPT connection to change data after your confirmation"
 
-_WRITES_NOTE = (
-    "ChatGPT asks you to confirm every change first. "
-    "Turn this off to make ChatGPT read-only again."
-)
+
+def _writes_tooltip() -> str:
+    return t("settings.writes_tooltip")
+
+
+def _writes_note() -> str:
+    return t("settings.writes_note")
 
 
 def _mono_family() -> str:
@@ -263,41 +272,73 @@ class SettingsPage(QWidget):
         layout.setSpacing(S("space-6"))
 
         self.header = PageHeader(
-            "Settings",
-            "Console preferences and administrative integrations.",
+            t("settings.title"),
+            t("settings.subtitle"),
         )
         layout.addWidget(self.header)
 
         # General settings card
         self.general_card = Card(
-            "General",
-            "Console behavior and application closing preferences.",
+            t("settings.general_title"),
+            t("settings.general_subtitle"),
             icon="settings",
         )
 
-        self.confirm_close_checkbox = QCheckBox("Confirm before closing the app")
+        # Language preference setting
+        lang_row = QHBoxLayout()
+        lang_row.setSpacing(S("space-3"))
+        self.lang_label = QLabel(t("settings.language_label"))
+        theme.apply_role(self.lang_label, "h3")
+        lang_row.addWidget(self.lang_label)
+
+        self.lang_combo = QComboBox()
+        self.lang_combo.addItem("English", "en")
+        self.lang_combo.addItem("Français", "fr")
+        saved_lang = get_saved_language() or current_language()
+        self.lang_combo.setCurrentIndex(1 if saved_lang == "fr" else 0)
+        self.lang_combo.currentIndexChanged.connect(self._on_language_changed)
+        lang_row.addWidget(self.lang_combo)
+        lang_row.addStretch(1)
+        self.general_card.add_layout(lang_row)
+
+        self.lang_note = QLabel(t("settings.language_note"))
+        _apply_small(self.lang_note)
+        self.general_card.add_widget(self.lang_note)
+
+        # Language restart notification banner
+        self.lang_restart_banner = InlineBanner(
+            kind="info",
+            title="RÉSIVO",
+            message=t("settings.restart_banner_message"),
+        )
+        self.restart_now_btn = Button.primary(t("settings.restart_now"))
+        self.restart_now_btn.clicked.connect(self._restart_app)
+        self.restart_later_btn = Button.secondary(t("settings.restart_later"))
+        self.restart_later_btn.clicked.connect(lambda: self.lang_restart_banner.setVisible(False))
+        self.lang_restart_banner.add_action(self.restart_now_btn)
+        self.lang_restart_banner.add_action(self.restart_later_btn)
+        self.lang_restart_banner.setVisible(False)
+        self.general_card.add_widget(self.lang_restart_banner)
+
+        self.confirm_close_checkbox = QCheckBox(t("settings.confirm_close_label"))
         self.confirm_close_checkbox.setStyleSheet(_checkbox_qss())
         self.confirm_close_checkbox.setChecked(get_confirm_close_setting())
-        self.confirm_close_checkbox.setToolTip("Ask for confirmation before quitting RÉSIVO")
+        self.confirm_close_checkbox.setToolTip(t("settings.confirm_close_tooltip"))
         self.confirm_close_checkbox.toggled.connect(self._on_confirm_close_toggled)
         self.general_card.add_widget(self.confirm_close_checkbox)
 
-        self.confirm_close_note = QLabel(
-            "When enabled, RÉSIVO asks for confirmation before closing to prevent interrupting active tasks or live sync."
-        )
+        self.confirm_close_note = QLabel(t("settings.confirm_close_note"))
         _apply_small(self.confirm_close_note)
         self.general_card.add_widget(self.confirm_close_note)
 
-        self.minimize_tray_checkbox = QCheckBox("Minimize to system tray")
+        self.minimize_tray_checkbox = QCheckBox(t("settings.minimize_tray_label"))
         self.minimize_tray_checkbox.setStyleSheet(_checkbox_qss())
         self.minimize_tray_checkbox.setChecked(get_minimize_to_tray_setting())
-        self.minimize_tray_checkbox.setToolTip("When minimizing, hide the window to the system tray instead of the taskbar")
+        self.minimize_tray_checkbox.setToolTip(t("settings.minimize_tray_tooltip"))
         self.minimize_tray_checkbox.toggled.connect(self._on_minimize_tray_toggled)
         self.general_card.add_widget(self.minimize_tray_checkbox)
 
-        self.minimize_tray_note = QLabel(
-            "When enabled, minimizing RÉSIVO hides it to the system tray so live sync and notifications stay active in the background."
-        )
+        self.minimize_tray_note = QLabel(t("settings.minimize_tray_note"))
         _apply_small(self.minimize_tray_note)
         self.general_card.add_widget(self.minimize_tray_note)
 
@@ -307,21 +348,17 @@ class SettingsPage(QWidget):
         autostart_layout.setContentsMargins(0, S("space-3"), 0, 0)
         autostart_layout.setSpacing(S("space-2"))
 
-        self.autostart_checkbox = QCheckBox("Start RÉSIVO when Windows starts")
+        self.autostart_checkbox = QCheckBox(t("settings.autostart_label"))
         self.autostart_checkbox.setStyleSheet(_checkbox_qss())
-        self.autostart_checkbox.setToolTip("Launch RÉSIVO automatically when signing in to Windows")
+        self.autostart_checkbox.setToolTip(t("settings.autostart_tooltip"))
         self.autostart_checkbox.toggled.connect(self._on_autostart_toggled)
         autostart_layout.addWidget(self.autostart_checkbox)
 
-        self.autostart_helper = QLabel(
-            "The app opens automatically when you sign in to Windows. You will still need to log in."
-        )
+        self.autostart_helper = QLabel(t("settings.autostart_helper"))
         _apply_small(self.autostart_helper)
         autostart_layout.addWidget(self.autostart_helper)
 
-        self.autostart_win_note = QLabel(
-            "Turned off in Windows Startup settings. Re-enable it there, or turn this switch off and on again."
-        )
+        self.autostart_win_note = QLabel(t("settings.autostart_win_note"))
         _apply_small(self.autostart_win_note)
         self.autostart_win_note.setStyleSheet(
             f"color: {C('status-pending-ink')}; font-size: {C('fs-small')}; font-weight: {C('fw-medium')};"
@@ -335,9 +372,9 @@ class SettingsPage(QWidget):
         sm_layout.setContentsMargins(S("space-6"), 0, 0, 0)
         sm_layout.setSpacing(S("space-2"))
 
-        self.start_minimized_checkbox = QCheckBox("Start minimized to the taskbar")
+        self.start_minimized_checkbox = QCheckBox(t("settings.start_minimized_label"))
         self.start_minimized_checkbox.setStyleSheet(_checkbox_qss())
-        self.start_minimized_checkbox.setToolTip("Start with the window minimized to the taskbar")
+        self.start_minimized_checkbox.setToolTip(t("settings.start_minimized_tooltip"))
         self.start_minimized_checkbox.setChecked(autostart.get_start_minimized_setting())
         self.start_minimized_checkbox.toggled.connect(self._on_start_minimized_toggled)
         sm_layout.addWidget(self.start_minimized_checkbox)
@@ -347,9 +384,7 @@ class SettingsPage(QWidget):
         self.autostart_error_banner.setVisible(False)
         autostart_layout.addWidget(self.autostart_error_banner)
 
-        self.autostart_note = QLabel(
-            "Notifications and live updates only work while RÉSIVO is running."
-        )
+        self.autostart_note = QLabel(t("settings.autostart_note"))
         _apply_small(self.autostart_note)
         autostart_layout.addWidget(self.autostart_note)
 
@@ -360,15 +395,15 @@ class SettingsPage(QWidget):
 
         # Notifications settings card
         self.notif_card = Card(
-            "Notifications",
-            "Windows desktop notifications for new requests and activity.",
+            t("settings.notifications_title"),
+            t("settings.notifications_subtitle"),
             icon="bell",
         )
 
         self.notif_manager = NotificationManager(self)
         ns = self.notif_manager.settings
 
-        self.notif_master_cb = QCheckBox("Enable desktop notifications")
+        self.notif_master_cb = QCheckBox(t("settings.notifications_enable"))
         self.notif_master_cb.setStyleSheet(_checkbox_qss())
         self.notif_master_cb.setChecked(ns.enabled)
         self.notif_master_cb.toggled.connect(self._on_notif_master_toggled)
@@ -380,45 +415,45 @@ class SettingsPage(QWidget):
         noc_layout.setSpacing(S("space-3"))
 
         # Event toggles
-        self.notif_maint_cb = QCheckBox("New maintenance reports")
+        self.notif_maint_cb = QCheckBox(t("settings.notif_maintenance"))
         self.notif_maint_cb.setStyleSheet(_checkbox_qss())
         self.notif_maint_cb.setChecked(ns.notify_maintenance)
         self.notif_maint_cb.toggled.connect(lambda v: setattr(ns, "notify_maintenance", v))
         noc_layout.addWidget(self.notif_maint_cb)
 
-        self.notif_rooms_cb = QCheckBox("New room change requests")
+        self.notif_rooms_cb = QCheckBox(t("settings.notif_room_changes"))
         self.notif_rooms_cb.setStyleSheet(_checkbox_qss())
         self.notif_rooms_cb.setChecked(ns.notify_room_changes)
         self.notif_rooms_cb.toggled.connect(lambda v: setattr(ns, "notify_room_changes", v))
         noc_layout.addWidget(self.notif_rooms_cb)
 
-        self.notif_regs_cb = QCheckBox("New student registrations / applications")
+        self.notif_regs_cb = QCheckBox(t("settings.notif_registrations"))
         self.notif_regs_cb.setStyleSheet(_checkbox_qss())
         self.notif_regs_cb.setChecked(ns.notify_registrations)
         self.notif_regs_cb.toggled.connect(lambda v: setattr(ns, "notify_registrations", v))
         noc_layout.addWidget(self.notif_regs_cb)
 
         # Delivery & Privacy
-        self.notif_names_cb = QCheckBox("Show student names in notifications")
+        self.notif_names_cb = QCheckBox(t("settings.notif_show_names"))
         self.notif_names_cb.setStyleSheet(_checkbox_qss())
         self.notif_names_cb.setChecked(ns.show_student_names)
         self.notif_names_cb.toggled.connect(lambda v: setattr(ns, "show_student_names", v))
         noc_layout.addWidget(self.notif_names_cb)
 
-        self.notif_unfocused_cb = QCheckBox("Only notify when window is in background or minimized")
+        self.notif_unfocused_cb = QCheckBox(t("settings.notif_only_unfocused"))
         self.notif_unfocused_cb.setStyleSheet(_checkbox_qss())
         self.notif_unfocused_cb.setChecked(ns.only_unfocused)
         self.notif_unfocused_cb.toggled.connect(lambda v: setattr(ns, "only_unfocused", v))
         noc_layout.addWidget(self.notif_unfocused_cb)
 
-        self.notif_sound_cb = QCheckBox("Play notification sound")
+        self.notif_sound_cb = QCheckBox(t("settings.notif_play_sound"))
         self.notif_sound_cb.setStyleSheet(_checkbox_qss())
         self.notif_sound_cb.setChecked(ns.play_sound)
         self.notif_sound_cb.toggled.connect(lambda v: setattr(ns, "play_sound", v))
         noc_layout.addWidget(self.notif_sound_cb)
 
         # Quiet hours
-        self.notif_quiet_cb = QCheckBox("Quiet hours (suppress notifications)")
+        self.notif_quiet_cb = QCheckBox(t("settings.notif_quiet_hours"))
         self.notif_quiet_cb.setStyleSheet(_checkbox_qss())
         self.notif_quiet_cb.setChecked(ns.quiet_hours_enabled)
         self.notif_quiet_cb.toggled.connect(self._on_quiet_hours_toggled)
@@ -426,7 +461,7 @@ class SettingsPage(QWidget):
 
         quiet_row = QHBoxLayout()
         quiet_row.setSpacing(S("space-2"))
-        lbl_start = QLabel("From:")
+        lbl_start = QLabel(t("settings.quiet_hours_from"))
         _apply_small(lbl_start)
         quiet_row.addWidget(lbl_start)
 
@@ -437,7 +472,7 @@ class SettingsPage(QWidget):
         self.quiet_start_edit.textChanged.connect(lambda v: setattr(ns, "quiet_hours_start", v))
         quiet_row.addWidget(self.quiet_start_edit)
 
-        lbl_end = QLabel("to:")
+        lbl_end = QLabel(t("settings.quiet_hours_to"))
         _apply_small(lbl_end)
         quiet_row.addWidget(lbl_end)
 
@@ -456,7 +491,7 @@ class SettingsPage(QWidget):
 
         # Send test notification button
         btn_row = QHBoxLayout()
-        self.test_notif_btn = Button.secondary("Send test notification", icon="bell")
+        self.test_notif_btn = Button.secondary(t("settings.test_notif_button"), icon="bell")
         self.test_notif_btn.setFixedHeight(36)
         self.test_notif_btn.clicked.connect(self._on_send_test_notif)
         btn_row.addWidget(self.test_notif_btn)
@@ -469,39 +504,39 @@ class SettingsPage(QWidget):
 
         # Advanced settings (developer mode) card
         self.dev_card = Card(
-            "Advanced settings",
-            "Developer mode and the ChatGPT connection",
+            t("settings.advanced_title"),
+            t("settings.advanced_subtitle"),
             icon="settings",
         )
 
-        self.dev_checkbox = QCheckBox("Developer mode")
+        self.dev_checkbox = QCheckBox(t("settings.dev_mode_label"))
         self.dev_checkbox.setStyleSheet(_checkbox_qss())
-        self.dev_checkbox.setToolTip("Show the ChatGPT connection steps for this session")
+        self.dev_checkbox.setToolTip(t("settings.dev_mode_tooltip"))
         self.dev_checkbox.toggled.connect(self._on_dev_mode_toggled)
         self.dev_card.add_widget(self.dev_checkbox)
 
-        self.staff_note = QLabel("Developer mode is available to administrators only.")
+        self.staff_note = QLabel(t("settings.dev_mode_admin_only"))
         _apply_small(self.staff_note)
         self.dev_card.add_widget(self.staff_note)
 
-        self.enable_note = QLabel("Enable developer mode to view the ChatGPT connection steps.")
+        self.enable_note = QLabel(t("settings.dev_mode_enable_note"))
         _apply_small(self.enable_note)
         self.dev_card.add_widget(self.enable_note)
 
         # ChatGPT write off-switch — admin only, outside the developer-mode gate
-        self.writes_checkbox = QCheckBox("Allow ChatGPT to change data")
+        self.writes_checkbox = QCheckBox(t("settings.writes_label"))
         self.writes_checkbox.setStyleSheet(_checkbox_qss())
-        self.writes_checkbox.setToolTip("Allow the ChatGPT connection to change data after your confirmation")
+        self.writes_checkbox.setToolTip(_writes_tooltip())
         self.writes_checkbox.toggled.connect(self._on_writes_toggled)
         self.dev_card.add_widget(self.writes_checkbox)
 
-        self.writes_note = QLabel(_WRITES_NOTE)
+        self.writes_note = QLabel(_writes_note())
         _apply_small(self.writes_note)
         self.dev_card.add_widget(self.writes_note)
 
         self.writes_banner = InlineBanner(
             "error",
-            title="Setting could not be loaded",
+            title=t("settings.writes_error_title"),
             message="",
         )
         self.writes_banner.setVisible(False)
@@ -526,23 +561,38 @@ class SettingsPage(QWidget):
         self.health_worker.health_changed.connect(self._on_health_changed)
 
         # Role gating — developer mode is session-only, never persisted.
-        # ``_role_unverified`` is exposed so MainWindow can show its banner
-        # instead of pretending a failed lookup is an ordinary staff account.
         self.writes_checkbox.setEnabled(False)  # enabled once the setting loads
         self.set_role(self.role)
 
         self.reload()
         self._initializing = False
 
-    def set_role(self, role) -> None:
-        """Apply admin gating for a (re)verified role without rebuilding the UI.
+    def _on_language_changed(self, index: int) -> None:
+        lang_code = self.lang_combo.itemData(index)
+        if not lang_code:
+            return
+        current = get_saved_language() or current_language()
+        if lang_code != current:
+            set_saved_language(lang_code)
+            self.lang_restart_banner.set_message(t("settings.restart_banner_message"))
+            self.lang_restart_banner.setVisible(True)
 
-        MainWindow calls this after its background role retry succeeds.  The
-        gating itself is local; a staff/None -> admin promotion starts the
-        existing asynchronous settings reload so the writes switch becomes
-        usable without reopening Settings.  Role comparison is
-        case-insensitive via normalization.
-        """
+    def _restart_app(self) -> None:
+        """Trigger safe restart of RÉSIVO, releasing single-instance lock."""
+        app = QApplication.instance()
+        if app is not None and hasattr(app, "_instance_lock") and app._instance_lock is not None:
+            try:
+                app._instance_lock.unlock()
+            except Exception:
+                pass
+
+        args = [arg for arg in sys.argv[1:] if arg != "--restarted"] + ["--restarted"]
+        QProcess.startDetached(sys.executable, args)
+        if app is not None:
+            app.quit()
+
+    def set_role(self, role) -> None:
+        """Apply admin gating for a (re)verified role without rebuilding the UI."""
         previous = self.role
         normalized = _normalize_role(role)
         self.role = normalized
@@ -552,16 +602,12 @@ class SettingsPage(QWidget):
         if is_admin:
             self.staff_note.setVisible(False)
             self.dev_checkbox.setEnabled(True)
-            self.dev_checkbox.setToolTip(
-                "Show the ChatGPT connection steps for this session"
-            )
+            self.dev_checkbox.setToolTip(t("settings.dev_mode_tooltip"))
             self.enable_note.setVisible(not self.dev_checkbox.isChecked())
             self.content.setVisible(self.dev_checkbox.isChecked())
         else:
             self.dev_checkbox.setEnabled(False)
-            self.dev_checkbox.setToolTip(
-                "Developer mode is available to administrators only."
-            )
+            self.dev_checkbox.setToolTip(t("settings.dev_mode_admin_only"))
             self.staff_note.setVisible(True)
             self.enable_note.setVisible(False)
             self.content.setVisible(False)
@@ -571,8 +617,6 @@ class SettingsPage(QWidget):
 
         if is_admin:
             if previous != "admin" and not self._initializing:
-                # Promotion after a late role check: show the local token now
-                # and let the async reload fetch the writes setting.
                 self._token = _read_mcp_token()
                 self._render_token_row()
                 self.reload()
@@ -604,16 +648,14 @@ class SettingsPage(QWidget):
             self.autostart_checkbox.setEnabled(False)
             self.autostart_checkbox.setChecked(False)
             self.autostart_checkbox.blockSignals(False)
-            self.autostart_helper.setText("Available in the installed app (EXE) only.")
+            self.autostart_helper.setText(t("settings.autostart_unsupported"))
             self.start_minimized_checkbox.setEnabled(False)
             self.start_minimized_checkbox.setChecked(autostart.get_start_minimized_setting())
             self.autostart_win_note.setVisible(False)
             return
 
         self.autostart_checkbox.setEnabled(True)
-        self.autostart_helper.setText(
-            "The app opens automatically when you sign in to Windows. You will still need to log in."
-        )
+        self.autostart_helper.setText(t("settings.autostart_helper"))
         state = autostart.get_state()
         is_active = (state == "enabled")
         self.autostart_checkbox.blockSignals(True)
@@ -646,7 +688,6 @@ class SettingsPage(QWidget):
                 self.start_minimized_checkbox.setEnabled(True)
                 return
 
-        # Re-read get_state() from registry as the source of truth
         state = autostart.get_state()
         is_active = (state == "enabled")
         self.autostart_checkbox.blockSignals(True)
@@ -667,7 +708,6 @@ class SettingsPage(QWidget):
         self.quiet_row_widget.setVisible(checked)
 
     def _on_send_test_notif(self) -> None:
-        # If parent MainWindow has notification_manager with tray_icon, use that
         parent_mw = self.window()
         nm = getattr(parent_mw, "notification_manager", self.notif_manager)
         nm.send_test_notification()
@@ -681,15 +721,13 @@ class SettingsPage(QWidget):
         outer.setContentsMargins(0, S("space-1"), 0, 0)
         outer.setSpacing(S("space-4"))
 
-        # -----------------------------------------------------------------
         # Hosted server (primary path) — Cloudflare Worker, always on
-        # -----------------------------------------------------------------
         hosted = QWidget()
         hoc = QVBoxLayout(hosted)
         hoc.setContentsMargins(0, 0, 0, 0)
         hoc.setSpacing(S("space-2"))
 
-        hoc.addWidget(self._section_title("Hosted server (always on, recommended)"))
+        hoc.addWidget(self._section_title(t("settings.hosted_server_title")))
         hoc.addWidget(self._hint(
             "Runs on Cloudflare at a permanent public URL. Connect ChatGPT once — the connection "
             "keeps working even when this PC is off."
@@ -714,15 +752,13 @@ class SettingsPage(QWidget):
 
         outer.addWidget(self._divider())
 
-        # -----------------------------------------------------------------
         # Local server (developer/testing only)
-        # -----------------------------------------------------------------
         local = QWidget()
         loc = QVBoxLayout(local)
         loc.setContentsMargins(0, 0, 0, 0)
         loc.setSpacing(S("space-2"))
 
-        loc.addWidget(self._section_title("Run it locally (developer/testing only)"))
+        loc.addWidget(self._section_title(t("settings.local_server_title")))
         loc.addWidget(self._hint(
             "The local Python server uses a bearer token and is meant for the MCP Inspector and other "
             "bearer-capable clients. ChatGPT itself requires the hosted server above."
@@ -751,7 +787,7 @@ class SettingsPage(QWidget):
         s1 = QVBoxLayout(step1)
         s1.setContentsMargins(0, 0, 0, 0)
         s1.setSpacing(S("space-2"))
-        s1.addWidget(self._step_title("Step 1 · Start the MCP server"))
+        s1.addWidget(self._step_title(t("settings.local_step1_title")))
         repo_root = _application_root()
         s1.addWidget(self._command_box(f'cd "{repo_root}"; & "mcp\\.venv\\Scripts\\python.exe" "mcp\\server.py"'))
         s1.addWidget(self._hint("Paste into any PowerShell window and leave it open while a testing client is connected. The badge above turns green once the server is running."))
@@ -762,7 +798,7 @@ class SettingsPage(QWidget):
         s2 = QVBoxLayout(step2)
         s2.setContentsMargins(0, 0, 0, 0)
         s2.setSpacing(S("space-2"))
-        s2.addWidget(self._step_title("Step 2 · Expose it with a tunnel (optional)"))
+        s2.addWidget(self._step_title(t("settings.local_step2_title")))
         s2.addWidget(self._command_box("wrangler tunnel quick-start http://localhost:8000"))
         hint2 = self._hint(
             'A public https://… URL is printed in that terminal — leave it open while testing. Alternatives: '
@@ -779,7 +815,7 @@ class SettingsPage(QWidget):
         s3 = QVBoxLayout(step3)
         s3.setContentsMargins(0, 0, 0, 0)
         s3.setSpacing(S("space-2"))
-        s3.addWidget(self._step_title("Step 3 · Connect with the MCP Inspector"))
+        s3.addWidget(self._step_title(t("settings.local_step3_title")))
         s3.addWidget(self._command_box("npx @modelcontextprotocol/inspector"))
         s3.addWidget(self._hint(
             "Choose transport Streamable HTTP and URL http://localhost:8000/mcp, then add the custom "
@@ -802,7 +838,7 @@ class SettingsPage(QWidget):
 
     def _build_about(self) -> QWidget:
         """About card — brand, creator credit, and links. Always visible, never role-gated."""
-        about = Card("About RÉSIVO", "Project credit and contact links", icon="info")
+        about = Card(t("settings.about_title"), t("settings.about_subtitle"), icon="info")
         about.setObjectName("aboutSection")
         about_layout = about.body
 
@@ -825,11 +861,10 @@ class SettingsPage(QWidget):
 
         about_text = QVBoxLayout()
         about_text.setSpacing(S("space-1"))
-        created = QLabel("Created by SEBAI ANES")
+        created = QLabel(t("settings.about_created_by"))
         theme.apply_role(created, "h3")
         about_text.addWidget(created)
 
-        # External links open in the OS browser/mail client (QLabel delegates to QDesktopServices.openUrl)
         github_lbl = QLabel(
             f'<a href="https://github.com/anesdevv" style="color: {C("teal-600")};">GitHub: github.com/anesdevv</a>'
         )
@@ -946,12 +981,12 @@ class SettingsPage(QWidget):
         self.token_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         row.addWidget(self.token_label, 1)
 
-        self.reveal_btn = Button.secondary("Reveal")
+        self.reveal_btn = Button.secondary(t("common.reveal") if t("common.reveal") != "common.reveal" else "Reveal")
         self.reveal_btn.setToolTip("Show or hide the MCP bearer token")
         self.reveal_btn.clicked.connect(self._on_reveal_clicked)
         row.addWidget(self.reveal_btn)
 
-        self.token_copy_btn = Button.secondary("Copy")
+        self.token_copy_btn = Button.secondary(t("common.copy") if t("common.copy") != "common.copy" else "Copy")
         self.token_copy_btn.setToolTip("Copy the MCP bearer token to the clipboard")
         self.token_copy_btn.clicked.connect(self._on_copy_token)
         row.addWidget(self.token_copy_btn)
@@ -961,11 +996,7 @@ class SettingsPage(QWidget):
     # Behavior
     # -------------------------------------------------------------
     def reload(self):
-        """Refresh the token row and the writes off-switch.
-
-        The constructor keeps one synchronous first load; every later call
-        re-reads the token file and the RPC on the thread pool.
-        """
+        """Refresh the token row and the writes off-switch."""
         if self.role != "admin":
             self._token = ""
             self._render_token_row()
@@ -1018,8 +1049,8 @@ class SettingsPage(QWidget):
             return
         self.writes_checkbox.setEnabled(self._writes_available and not self._writes_saving)
         if self._writes_available:
-            self.writes_note.setText(_WRITES_NOTE)
-            self.writes_checkbox.setToolTip(_WRITES_TOOLTIP)
+            self.writes_note.setText(_writes_note())
+            self.writes_checkbox.setToolTip(_writes_tooltip())
         else:
             self.writes_note.setText("Could not load this setting — check the connection.")
             self.writes_checkbox.setToolTip("Disabled until the setting can be loaded")
@@ -1042,7 +1073,7 @@ class SettingsPage(QWidget):
         if self.role != "admin":
             return
         if self._writes_available:
-            self.writes_note.setText(_WRITES_NOTE)
+            self.writes_note.setText(_writes_note())
             self.writes_banner.setVisible(False)
         else:
             self.writes_note.setText("Could not load this setting — check the connection.")
@@ -1061,7 +1092,7 @@ class SettingsPage(QWidget):
         self.writes_checkbox.setEnabled(self._writes_available)
         self.writes_checkbox.setToolTip(
             "Disabled until the setting can be loaded" if not self._writes_available
-            else _WRITES_TOOLTIP
+            else _writes_tooltip()
         )
 
     def _on_writes_toggled(self, checked: bool):
@@ -1097,7 +1128,7 @@ class SettingsPage(QWidget):
         finally:
             self.writes_checkbox.blockSignals(False)
             self._writes_loading = False
-        self.writes_note.setText(_WRITES_NOTE)
+        self.writes_note.setText(_writes_note())
         self.writes_banner.set_message(f"The switch was reverted: {message}")
         self.writes_banner.setVisible(True)
         QMessageBox.warning(self, "Settings", f"Could not save the setting: {message}")
@@ -1108,10 +1139,10 @@ class SettingsPage(QWidget):
             return
         self.writes_checkbox.setEnabled(self._writes_available)
         self.writes_checkbox.setToolTip(
-            _WRITES_TOOLTIP if self._writes_available else "Disabled until the setting can be loaded"
+            _writes_tooltip() if self._writes_available else "Disabled until the setting can be loaded"
         )
         if self._writes_available:
-            self.writes_note.setText(_WRITES_NOTE)
+            self.writes_note.setText(_writes_note())
 
     def _on_dev_mode_toggled(self, checked: bool):
         if self.role != "admin":
@@ -1129,14 +1160,12 @@ class SettingsPage(QWidget):
         self.url_output.setText(build_mcp_url(text))
 
     def _on_reveal_clicked(self):
-        # Defense in depth: the page already holds the role; never re-query.
         if self.role != "admin":
             return
         self._token_revealed = not self._token_revealed
         self._update_token_display()
 
     def _on_copy_token(self):
-        # Defense in depth: the page already holds the role; never re-query.
         if self.role != "admin":
             return
         self._copy_to_clipboard(self.token_copy_btn, self._token)
@@ -1153,16 +1182,19 @@ class SettingsPage(QWidget):
         self._update_token_display()
 
     def _update_token_display(self):
+        hide_text = t("common.hide") if t("common.hide") != "common.hide" else "Hide"
+        reveal_text = t("common.reveal") if t("common.reveal") != "common.reveal" else "Reveal"
         if self._token_revealed:
             self.token_label.setText(self._token)
-            self.reveal_btn.setText("Hide")
+            self.reveal_btn.setText(hide_text)
         else:
             self.token_label.setText("•" * 12 + self._token[-4:])
-            self.reveal_btn.setText("Reveal")
+            self.reveal_btn.setText(reveal_text)
 
     def _copy_button(self, text_getter):
         """Small secondary Copy button bound to a text getter."""
-        btn = Button("Copy", "secondary", size="sm")
+        btn_text = t("common.copy") if t("common.copy") != "common.copy" else "Copy"
+        btn = Button(btn_text, "secondary", size="sm")
         btn.setToolTip("Copy to the clipboard")
         btn.clicked.connect(lambda: self._copy_to_clipboard(btn, text_getter()))
         return btn
@@ -1171,12 +1203,13 @@ class SettingsPage(QWidget):
         if not text:
             return
         QGuiApplication.clipboard().setText(text)
-        btn.setText("Copied")
-        QTimer.singleShot(1500, lambda: self._restore_button_text(btn, "Copy"))
+        copied_text = t("common.copied") if t("common.copied") != "common.copied" else "Copied"
+        copy_text = t("common.copy") if t("common.copy") != "common.copy" else "Copy"
+        btn.setText(copied_text)
+        QTimer.singleShot(1500, lambda: self._restore_button_text(btn, copy_text))
 
     def _restore_button_text(self, btn, text: str):
         try:
             btn.setText(text)
         except RuntimeError:
-            # Widget already destroyed (app shutting down) — nothing to restore
             pass

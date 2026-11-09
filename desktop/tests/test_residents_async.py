@@ -101,7 +101,7 @@ def test_residents_reload_is_async_and_updates_table(qapp):
 
     assert wait_until(qapp, lambda: len(page.rows) == 1 and page.refresh_btn.isEnabled())
     assert page.table.rowCount() == 1
-    assert "1 active residents" in page.count_badge.text()
+    assert "1 active resident" in page.count_badge.text()
     assert not page.error_banner.isVisible()
 
 

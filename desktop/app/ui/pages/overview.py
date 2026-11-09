@@ -26,6 +26,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+try:
+    from i18n import format_date, format_number, format_percent, t, tn
+except ImportError:
+    from desktop.i18n import format_date, format_number, format_percent, t, tn
+
 from ...client import room_occupancy, stored_user_display_name
 from .. import theme
 from ..components import (
@@ -46,12 +51,6 @@ from ..theme import C, S
 # Institutional caption used by the desktop shell (main_window sidebar).
 _RESIDENCE_NAME = "Cité Universitaire · Tlemcen"
 
-_METRIC_LABELS = {
-    "pending": "Pending applications",
-    "reports": "Open tickets",
-    "requests": "Pending transfers",
-    "occupancy": "Occupied beds",
-}
 _METRIC_KINDS = {
     "pending": "pending",
     "reports": "progress",
@@ -59,6 +58,16 @@ _METRIC_KINDS = {
     "occupancy": "ok",
 }
 _MAX_EVENTS = 4
+
+
+def _metric_label(key: str) -> str:
+    labels = {
+        "pending": t("overview.metric_pending"),
+        "reports": t("overview.metric_reports"),
+        "requests": t("overview.metric_requests"),
+        "occupancy": t("overview.metric_occupancy"),
+    }
+    return labels.get(key, key.title())
 
 
 def _clear_layout(layout) -> None:
@@ -89,10 +98,10 @@ def _greeting_word() -> str:
     """Time-of-day greeting from the local clock."""
     hour = datetime.now().hour
     if hour < 12:
-        return "Good morning"
+        return t("overview.greeting_morning")
     if hour < 18:
-        return "Good afternoon"
-    return "Good evening"
+        return t("overview.greeting_afternoon")
+    return t("overview.greeting_evening")
 
 
 def _muted(text: str, word_wrap: bool = True) -> QLabel:
@@ -142,7 +151,7 @@ class _EventRow(QWidget):
         time_label = QLabel(stamp)
         theme.apply_role(time_label, "small")
         theme.enable_tabular(time_label)
-        time_label.setToolTip(f"Received at {stamp}")
+        time_label.setToolTip(t("overview.event_received_at", stamp=stamp))
         line.addWidget(time_label, 0, Qt.AlignmentFlag.AlignTop)
 
 
@@ -182,18 +191,18 @@ class OverviewPage(QWidget):
         layout.setSpacing(S("space-6"))
 
         self.header = PageHeader(
-            "Overview",
-            f"{_RESIDENCE_NAME} — campus operations at a glance.",
+            t("overview.title"),
+            t("overview.subtitle", residence=_RESIDENCE_NAME),
         )
-        self.refresh_btn = IconButton("refresh", "Reload the overview counters")
+        self.refresh_btn = IconButton("refresh", t("overview.refresh_tooltip"))
         self.refresh_btn.clicked.connect(self.reload)
         self.header.actions.addWidget(self.refresh_btn)
         layout.addWidget(self.header)
 
         self.error_banner = InlineBanner(
             "error",
-            title="Overview could not be refreshed",
-            message="The cards are showing the last counters received. Use Refresh to try again.",
+            title=t("overview.error_title"),
+            message=t("overview.error_desc"),
         )
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
@@ -202,16 +211,19 @@ class OverviewPage(QWidget):
         greeting_row = QHBoxLayout()
         greeting_row.setSpacing(S("space-3"))
         staff_name = _staff_display_name(client)
-        self.avatar = Avatar(staff_name or "Housing staff", size=S("size-control"))
+        self.avatar = Avatar(staff_name or t("overview.default_staff"), size=S("size-control"))
         greeting_row.addWidget(self.avatar, 0, Qt.AlignmentFlag.AlignVCenter)
         greeting_column = QVBoxLayout()
         greeting_column.setSpacing(2)
-        self.greeting_label = QLabel(
-            f"{_greeting_word()}, {staff_name}" if staff_name else _greeting_word()
+        greeting_text = (
+            t("overview.greeting_with_name", greeting=_greeting_word(), name=staff_name)
+            if staff_name
+            else _greeting_word()
         )
+        self.greeting_label = QLabel(greeting_text)
         theme.apply_role(self.greeting_label, "h2")
         greeting_column.addWidget(self.greeting_label)
-        self.tick_label = QLabel("Live sync · waiting for the first update")
+        self.tick_label = QLabel(t("overview.tick_waiting"))
         theme.apply_role(self.tick_label, "small")
         greeting_column.addWidget(self.tick_label)
         greeting_row.addLayout(greeting_column, 1)
@@ -230,14 +242,14 @@ class OverviewPage(QWidget):
 
         grid = QGridLayout()
         grid.setSpacing(S("space-4"))
-        self.pending_card = StatCard("Pending applications", "clock", accent="gold")
-        self.pending_card.set_hint("Awaiting review")
-        self.reports_card = StatCard("Open tickets", "wrench", accent="teal")
-        self.reports_card.set_hint("Still unresolved")
-        self.requests_card = StatCard("Pending transfers", "arrow-left-right", accent="review")
-        self.requests_card.set_hint("Awaiting a decision")
-        self.occupancy_card = StatCard("Occupied beds", "bed", accent="green")
-        self.occupancy_card.set_hint("Residents currently housed")
+        self.pending_card = StatCard(t("overview.kpi_pending_title"), "clock", accent="gold")
+        self.pending_card.set_hint(t("overview.kpi_pending_hint"))
+        self.reports_card = StatCard(t("overview.kpi_reports_title"), "wrench", accent="teal")
+        self.reports_card.set_hint(t("overview.kpi_reports_hint"))
+        self.requests_card = StatCard(t("overview.kpi_requests_title"), "arrow-left-right", accent="review")
+        self.requests_card.set_hint(t("overview.kpi_requests_hint"))
+        self.occupancy_card = StatCard(t("overview.kpi_occupancy_title"), "bed", accent="green")
+        self.occupancy_card.set_hint(t("overview.kpi_occupancy_hint"))
         grid.addWidget(self.pending_card, 0, 0)
         grid.addWidget(self.reports_card, 0, 1)
         grid.addWidget(self.requests_card, 1, 0)
@@ -250,16 +262,16 @@ class OverviewPage(QWidget):
         cards_row.setSpacing(S("space-4"))
 
         self.occupancy_block_card = Card(
-            "Occupancy by block",
-            "Beds occupied per residential block",
+            t("overview.occupancy_card_title"),
+            t("overview.occupancy_card_desc"),
             icon="building",
         )
         self.occupancy_rows = self.occupancy_block_card.body
         cards_row.addWidget(self.occupancy_block_card, 1)
 
         self.attention_card = Card(
-            "Needs attention",
-            "Queues with open items",
+            t("overview.attention_card_title"),
+            t("overview.attention_card_desc"),
             icon="alert-triangle",
         )
         self.attention_rows = self.attention_card.body
@@ -267,8 +279,8 @@ class OverviewPage(QWidget):
         content.addLayout(cards_row)
 
         self.events_card = Card(
-            "Recent live events",
-            "Live sync snapshot, newest first",
+            t("overview.events_card_title"),
+            t("overview.events_card_desc"),
             icon="bell",
         )
         self.events_rows = self.events_card.body
@@ -403,7 +415,7 @@ class OverviewPage(QWidget):
 
     def _on_reload_failed(self, message: str):
         self.error_banner.set_message(
-            f"{message} The cards are showing the last counters received."
+            t("overview.reload_failed_msg", message=message)
         )
         self.error_banner.setVisible(True)
 
@@ -420,14 +432,16 @@ class OverviewPage(QWidget):
 
     def _update_tick_label(self) -> None:
         if self._last_tick:
-            self.tick_label.setText(f"Live sync · last update {self._last_tick}")
+            self.tick_label.setText(t("overview.tick_updated", time=self._last_tick))
         else:
-            self.tick_label.setText("Live sync · waiting for the first update")
+            self.tick_label.setText(t("overview.tick_waiting"))
 
     def _append_event(self, key: str, old, new) -> None:
-        label = _METRIC_LABELS.get(key, key.title())
-        pill = f"{_METRIC_LABELS.get(key, key)} {new}"
-        text = f"{label} changed from {old if old is not None else '—'} to {new}."
+        label = _metric_label(key)
+        new_fmt = format_number(new) if isinstance(new, (int, float)) else str(new)
+        old_fmt = format_number(old) if isinstance(old, (int, float)) else (str(old) if old is not None else "—")
+        pill = t("overview.event_pill", label=label, value=new_fmt)
+        text = t("overview.event_text", label=label, old=old_fmt, new=new_fmt)
         self._events.insert(0, (_METRIC_KINDS.get(key, "neutral"), pill, text, self._stamp()))
         del self._events[_MAX_EVENTS:]
 
@@ -446,15 +460,17 @@ class OverviewPage(QWidget):
         occupied = (self._metrics or {}).get("occupancy")
         if occupied is None:
             self.occupancy_rows.addWidget(
-                _muted_row("info", "Not available — the occupied-bed count has not been fetched yet.")
+                _muted_row("info", t("overview.occupancy_not_fetched"))
             )
             return
-        self.occupancy_rows.addWidget(_muted_row("bed", f"{occupied} beds occupied across the residence."))
         self.occupancy_rows.addWidget(
             _muted_row(
-                "info",
-                "Per-block detail is not available: this page does not read room blocks or capacities.",
+                "bed",
+                tn("overview.occupancy_beds_count", count=occupied, count_fmt=format_number(occupied)),
             )
+        )
+        self.occupancy_rows.addWidget(
+            _muted_row("info", t("overview.occupancy_block_unavailable"))
         )
 
     def _render_attention(self) -> None:
@@ -462,22 +478,29 @@ class OverviewPage(QWidget):
         _clear_layout(self.attention_rows)
         metrics = self._metrics or {}
         queues = [
-            ("pending", "pending", "pending", "Applications awaiting a first decision."),
-            ("reports", "progress", "open", "Maintenance tickets still unresolved."),
-            ("requests", "review", "waiting", "Room transfer requests awaiting a decision."),
+            ("pending", "pending", "pending", t("overview.attention_pending_detail")),
+            ("reports", "progress", "open", t("overview.attention_reports_detail")),
+            ("requests", "review", "waiting", t("overview.attention_requests_detail")),
         ]
-        visible = [
-            (kind, f"{int(metrics.get(key) or 0)} {word}", detail)
-            for key, kind, word, detail in queues
-            if int(metrics.get(key) or 0) > 0
-        ]
+        visible = []
+        for key, kind, word, detail in queues:
+            cnt = int(metrics.get(key) or 0)
+            if cnt > 0:
+                if word == "pending":
+                    pill_label = tn("overview.attention_pending_pill", count=cnt, count_fmt=format_number(cnt))
+                elif word == "open":
+                    pill_label = tn("overview.attention_reports_pill", count=cnt, count_fmt=format_number(cnt))
+                else:
+                    pill_label = tn("overview.attention_requests_pill", count=cnt, count_fmt=format_number(cnt))
+                visible.append((kind, pill_label, detail))
+
         if not visible:
-            self.attention_rows.addWidget(_muted_row("check-circle", "Nothing needs attention right now."))
+            self.attention_rows.addWidget(_muted_row("check-circle", t("overview.attention_all_clear")))
             return
         for kind, pill_label, detail in visible:
             self.attention_rows.addWidget(_AttentionRow(kind, pill_label, detail))
         self.attention_rows.addWidget(
-            _muted("Oldest-first detail lives in the Pending accounts and Maintenance pages.")
+            _muted(t("overview.attention_footer_note"))
         )
 
     def _render_events(self) -> None:
@@ -487,8 +510,8 @@ class OverviewPage(QWidget):
             self.events_rows.addWidget(
                 EmptyState(
                     "bell",
-                    "No live events yet",
-                    "Counts that change during live sync will be listed here.",
+                    t("overview.events_empty_title"),
+                    t("overview.events_empty_desc"),
                 )
             )
             return

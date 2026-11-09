@@ -64,6 +64,11 @@ from PySide6.QtWidgets import (
 )
 
 from ...client import official_lookup, room_occupancy
+try:
+    from i18n import current_language, t, tn
+except ImportError:
+    from desktop.i18n import current_language, t, tn
+
 from ...timeouts import execute_network_call
 from .. import theme
 from ..tasks import TaskRunner, human_error
@@ -89,49 +94,54 @@ from ..infocard import StudentInfoCardDialog
 from ..theme import C, S
 
 # Table language: overline headers are uppercased by configure_table().
-_COLUMNS = ["Resident", "Status", "Reason", "Submitted"]
+_COLUMNS = [
+    t("room_changes.col_resident"),
+    t("room_changes.col_status"),
+    t("room_changes.col_reason"),
+    t("room_changes.col_submitted"),
+]
 
 # Live view keys -> segment labels (order = the four request views).
 _VIEWS = [
-    ("all", "All"),
-    ("pending", "Pending"),
-    ("approved", "Approved"),
-    ("rejected", "Rejected"),
+    ("all", t("room_changes.tab_all")),
+    ("pending", t("room_changes.tab_pending")),
+    ("approved", t("room_changes.tab_approved")),
+    ("rejected", t("room_changes.tab_rejected")),
 ]
 _VIEW_KEYS = {key for key, _label in _VIEWS}
 
 # The exact rejection card title (the plain-text record keeps the uppercase
 # desk-inquiry overline used by the applications page).
-_REJECTION_TITLE = "Rejection reason (desk inquiry reference)"
-_REJECTION_OVERLINE = "REJECTION REASON (Desk Inquiry Reference)"
+_REJECTION_TITLE = t("room_changes.rejection_title")
+_REJECTION_OVERLINE = t("room_changes.rejection_overline")
 
 # Empty-state copy per view (never reuse the pending copy under Rejected).
 _EMPTY_COPY = {
     "pending": (
-        "No pending transfer requests",
-        "New requests appear here automatically; adjust the search for a specific student.",
+        t("room_changes.empty_pending_title"),
+        t("room_changes.empty_pending_desc"),
     ),
     "approved": (
-        "No approved transfer requests",
-        "Approved requests stay here as the desk record for inquiries.",
+        t("room_changes.empty_approved_title"),
+        t("room_changes.empty_approved_desc"),
     ),
     "rejected": (
-        "No rejected transfer requests",
-        "Rejected requests appear here with their recorded reason and decider.",
+        t("room_changes.empty_rejected_title"),
+        t("room_changes.empty_rejected_desc"),
     ),
     "all": (
-        "No transfer requests",
-        "New requests appear here automatically; adjust the search for a specific student.",
+        t("room_changes.empty_all_title"),
+        t("room_changes.empty_all_desc"),
     ),
 }
 
 # request status -> (StatusPill kind, status word)
 _STATUS_KINDS = {
-    "pending": ("pending", "Pending"),
-    "approved": ("ok", "Approved"),
-    "rejected": ("danger", "Rejected"),
+    "pending": ("pending", t("room_changes.status_pending")),
+    "approved": ("ok", t("room_changes.status_approved")),
+    "rejected": ("danger", t("room_changes.status_rejected")),
 }
-_DEFAULT_STATUS = ("pending", "Pending")
+_DEFAULT_STATUS = ("pending", t("room_changes.status_pending"))
 
 
 def _normalise_student(row: dict) -> dict:
@@ -348,10 +358,10 @@ class RoomChangesPage(QWidget):
         layout.setSpacing(S("space-6"))
 
         self.header = PageHeader(
-            "Room change requests",
-            "Review resident transfer justifications and reallocate rooms.",
+            t("room_changes.title"),
+            t("room_changes.subtitle"),
         )
-        self.refresh_btn = IconButton("refresh", "Reload the transfer requests")
+        self.refresh_btn = IconButton("refresh", t("room_changes.reload_tooltip"))
         self.refresh_btn.clicked.connect(self.reload)
         self.header.actions.addWidget(self.refresh_btn)
         layout.addWidget(self.header)
@@ -370,7 +380,7 @@ class RoomChangesPage(QWidget):
         toolbar.addWidget(self.segments)
 
         self.search = SearchField(
-            "Filter requests by student, card ID, reason or decision note…"
+            t("room_changes.search_placeholder")
         )
         self.search.changed.connect(self.filter_table)
         # Legacy alias: the search box used to be a bare QLineEdit.
@@ -445,11 +455,11 @@ class RoomChangesPage(QWidget):
         self.splitter.addWidget(table_card)
 
         # ------------------------------------------------------ inspector
-        self.panel = DetailPanel(340, 480, title="Transfer inspector")
+        self.panel = DetailPanel(340, 480, title=t("room_changes.panel_title"))
         self.empty_panel = EmptyState(
             "arrow-left-right",
-            "No request selected",
-            "Select a request to compare the rooms and record a decision.",
+            t("room_changes.empty_panel_title"),
+            t("room_changes.empty_panel_desc"),
         )
         self.panel.add_widget(self.empty_panel)
 
@@ -489,19 +499,19 @@ class RoomChangesPage(QWidget):
         move_layout = QVBoxLayout(self.move_section)
         move_layout.setContentsMargins(0, 0, 0, 0)
         move_layout.setSpacing(S("space-2"))
-        move_overline = QLabel("ROOM MOVE")
+        move_overline = QLabel(t("room_changes.room_move"))
         theme.apply_role(move_overline, "overline")
         move_layout.addWidget(move_overline)
         cards_row = QHBoxLayout()
         cards_row.setSpacing(S("space-2"))
-        self.current_card, self.current_value, self.current_meta = self._room_card("Current room")
+        self.current_card, self.current_value, self.current_meta = self._room_card(t("room_changes.current_room"))
         cards_row.addWidget(self.current_card, 1)
         arrow = QLabel()
         arrow.setPixmap(get_pixmap("arrow-left-right", S("size-icon"), C("text-muted")))
         arrow.setAlignment(Qt.AlignmentFlag.AlignCenter)
         arrow.setToolTip("From the current room to the requested room")
         cards_row.addWidget(arrow, 0)
-        self.target_card, self.target_value, self.target_meta = self._room_card("Requested room")
+        self.target_card, self.target_value, self.target_meta = self._room_card(t("room_changes.requested_room"))
         self.target_bar = RoomOccupancyBar(0, 1)
         self.target_bar.setVisible(False)
         self.target_card.layout().addWidget(self.target_bar)
@@ -554,7 +564,7 @@ class RoomChangesPage(QWidget):
         inspector.addWidget(self.rejection_card)
 
         # Stated reason (quoted block).
-        self.motive_block = _QuotedBlock("Stated reason for transfer")
+        self.motive_block = _QuotedBlock(t("room_changes.stated_reason"))
         inspector.addWidget(self.motive_block)
 
         # Key facts.
@@ -566,13 +576,13 @@ class RoomChangesPage(QWidget):
         actions = QVBoxLayout(self.actions_row)
         actions.setContentsMargins(0, 0, 0, 0)
         actions.setSpacing(S("space-2"))
-        self.approve_btn = Button.accent("Approve & reassign", icon="check")
+        self.approve_btn = Button.accent(t("room_changes.approve_reassign_btn"), icon="check")
         self.approve_btn.clicked.connect(self.on_approve)
-        self.reject_btn = Button.danger("Reject request", icon="x")
+        self.reject_btn = Button.danger(t("room_changes.reject_request_btn"), icon="x")
         self.reject_btn.clicked.connect(self.on_reject)
         actions.addWidget(self.approve_btn)
         actions.addWidget(self.reject_btn)
-        self.delete_btn = Button("Delete request", "ghost", icon="trash")
+        self.delete_btn = Button(t("room_changes.delete_btn"), "ghost", icon="trash")
         self._style_flat_danger(self.delete_btn)
         self.delete_btn.clicked.connect(self.on_delete)
         actions.addWidget(self.delete_btn)
@@ -876,7 +886,7 @@ class RoomChangesPage(QWidget):
     def _reload_async(self):
         if self._working:
             return
-        self._begin_working("Refreshing transfer requests…")
+        self._begin_working(t("room_changes.refreshing"))
         started = self.tasks.run(
             "reload",
             self._fetch_requests,
@@ -891,9 +901,9 @@ class RoomChangesPage(QWidget):
         self._apply_snapshot(rows)
 
     def _on_reload_failed(self, message: str):
-        self.error_banner.set_title("Transfer requests could not be refreshed")
+        self.error_banner.set_title(t("room_changes.refresh_failed_title"))
         self.error_banner.set_message(
-            f"{message} The table is showing the last data received."
+            t("room_changes.refresh_failed_msg", message=message)
         )
         self.error_banner.setVisible(True)
 
@@ -901,7 +911,7 @@ class RoomChangesPage(QWidget):
     def _begin_working(self, message: str):
         self._working = True
         self.busy_banner.set_kind("info")
-        self.busy_banner.set_title("Working…")
+        self.busy_banner.set_title(t("room_changes.working"))
         self.busy_banner.set_message(message)
         self.busy_banner.setVisible(True)
         self.action_banner.setVisible(False)
@@ -929,25 +939,25 @@ class RoomChangesPage(QWidget):
 
     def _show_action_success(self, message: str):
         self.action_banner.set_kind("success")
-        self.action_banner.set_title("Done")
+        self.action_banner.set_title(t("room_changes.action_done"))
         self.action_banner.set_message(message)
         self.action_banner.setVisible(True)
 
     def _show_action_warning(self, message: str):
         self.action_banner.set_kind("warning")
-        self.action_banner.set_title("Action unavailable")
+        self.action_banner.set_title(t("room_changes.action_unavailable"))
         self.action_banner.set_message(message)
         self.action_banner.setVisible(True)
 
     def _on_action_failed(self, message: str):
         self.action_banner.set_kind("error")
         if "result is unknown" in message.lower():
-            self.action_banner.set_title("Request timed out")
+            self.action_banner.set_title(t("maintenance.request_timed_out"))
             self.action_banner.set_message(message)
             self.reload()
         else:
-            self.action_banner.set_title("Action failed")
-            self.action_banner.set_message(f"The request could not be completed: {message}")
+            self.action_banner.set_title(t("room_changes.action_failed"))
+            self.action_banner.set_message(t("room_changes.action_failed_msg", message=message))
         self.action_banner.setVisible(True)
         self._end_working()
 
@@ -1231,7 +1241,7 @@ class RoomChangesPage(QWidget):
         if str(request.get("status", "pending")) == "pending":
             return True
         self._show_action_warning(
-            "Only pending transfer requests can be approved or rejected."
+            t("room_changes.only_pending_warning")
         )
         return False
 
@@ -1259,13 +1269,13 @@ class RoomChangesPage(QWidget):
             return
         r = self.selected()
         if not r:
-            QMessageBox.information(self, "Select request", "Please select a transfer request from the table first.")
+            QMessageBox.information(self, t("room_changes.select_request_title"), t("room_changes.select_request_msg"))
             return
         if not self._require_pending(r):
             return
         request = dict(r)
         gender = _normalise_student(request).get("gender", "male")
-        self._begin_working("Loading available rooms…")
+        self._begin_working(t("room_changes.loading_rooms"))
         started = self.tasks.run(
             "approve-rooms",
             lambda: self._load_rooms(gender),
@@ -1287,19 +1297,19 @@ class RoomChangesPage(QWidget):
         for room in rooms:
             free = room["capacity"] - occ.get(room["id"], 0)
             if free > 0:
-                options.append(f"Block {room['block']} — Room {room['number']} ({free}/{room['capacity']} free) | id={room['id']}")
+                options.append(t("room_changes.room_option_free", block=room['block'], number=room['number'], free=free, capacity=room['capacity']) + f" | id={room['id']}")
             else:
-                options.append(f"Block {room['block']} — Room {room['number']} (FULL) [LOCKED] | id={room['id']}")
+                options.append(t("room_changes.room_option_full", block=room['block'], number=room['number']) + f" | id={room['id']}")
         if not options:
-            QMessageBox.warning(self, "No rooms", "No rooms configured for this gender.")
+            QMessageBox.warning(self, t("room_changes.no_rooms_title"), t("room_changes.no_rooms_msg"))
             self._end_working()
             return
-        choice, ok = QInputDialog.getItem(self, "Allocate New Room", "Select target room for transfer:", options, 0, False)
+        choice, ok = QInputDialog.getItem(self, t("room_changes.dialog_allocate_title"), t("room_changes.dialog_allocate_label"), options, 0, False)
         if not ok:
             self._end_working()
             return
         if "[LOCKED]" in choice:
-            QMessageBox.warning(self, "Room Full", "This room is at capacity. Please select an available room.")
+            QMessageBox.warning(self, t("room_changes.room_full_title"), t("room_changes.room_full_msg"))
             self._end_working()
             return
         if "id=" not in choice:
@@ -1307,7 +1317,7 @@ class RoomChangesPage(QWidget):
             return
         room_id = choice.split("id=")[1].strip()
 
-        self._begin_working("Approving transfer…")
+        self._begin_working(t("room_changes.approving_transfer"))
         request_id = request["id"]
         started = self.tasks.run(
             "approve",
@@ -1334,10 +1344,9 @@ class RoomChangesPage(QWidget):
 
     def _show_decision_refresh_warning(self, refresh_error):
         """The decision is saved; only its list refresh failed."""
-        self.error_banner.set_title("Decision saved; list not refreshed")
+        self.error_banner.set_title(t("room_changes.decision_saved_title"))
         self.error_banner.set_message(
-            f"The decision was saved, but the request list could not be "
-            f"refreshed: {refresh_error}. The next live sync will try again."
+            t("room_changes.decision_saved_msg", error=refresh_error)
         )
         self.error_banner.setVisible(True)
 
@@ -1351,7 +1360,7 @@ class RoomChangesPage(QWidget):
                 # removed from the local data.
                 self.set_filter("approved")
                 self._select_by_id(request_id)
-        self._show_action_success("Room transfer request approved and student reassigned.")
+        self._show_action_success(t("room_changes.transfer_success"))
         if refresh_error:
             self._show_decision_refresh_warning(refresh_error)
 
@@ -1360,22 +1369,22 @@ class RoomChangesPage(QWidget):
             return
         r = self.selected()
         if not r:
-            QMessageBox.information(self, "Select request", "Please select a transfer request from the table first.")
+            QMessageBox.information(self, t("room_changes.select_request_title"), t("room_changes.select_request_msg"))
             return
         if not self._require_pending(r):
             return
-        reason, ok = QInputDialog.getMultiLineText(self, "Reject Transfer", "Reason for refusal:")
+        reason, ok = QInputDialog.getMultiLineText(self, t("room_changes.dialog_reject_title"), t("room_changes.dialog_reject_label"))
         if not ok:
             return
         if not reason.strip():
             self._show_action_warning(
-                "A rejection reason is required before the request can be rejected."
+                t("room_changes.reason_required")
             )
             return
 
         request = dict(r)
         reason = reason.strip()
-        self._begin_working("Saving rejection…")
+        self._begin_working(t("room_changes.saving_rejection"))
         started = self.tasks.run(
             "reject",
             lambda: self._reject_rpc(request["id"], reason),
@@ -1396,7 +1405,7 @@ class RoomChangesPage(QWidget):
             self.set_filter("rejected")
             self._select_by_id(request_id)
             self._show_action_success(
-                "Request rejected. View it in the Rejected tab."
+                t("room_changes.reject_success")
             )
         else:
             # A stale read replica still reports the pre-decision state: keep
@@ -1417,16 +1426,15 @@ class RoomChangesPage(QWidget):
         name = f"{st.get('first_name', '')} {st.get('last_name', '')}".strip() or "this resident"
         confirmed = ConfirmDialog.ask(
             self,
-            "Delete transfer request",
-            f"Permanently delete the room change request from {name}?\n\n"
-            "This removes the resident justification and its decision history.",
-            confirm_text="Delete request",
+            t("room_changes.delete_confirm_title"),
+            t("room_changes.delete_confirm_body", name=name),
+            confirm_text=t("room_changes.delete_btn"),
         )
         if not confirmed:
             return
 
         request = dict(r)
-        self._begin_working("Deleting request…")
+        self._begin_working(t("room_changes.deleting_request"))
         started = self.tasks.run(
             "delete",
             lambda: self._delete_rpc(request["id"]),
@@ -1451,13 +1459,12 @@ class RoomChangesPage(QWidget):
         if removed == []:
             # The server matched no row: it was already deleted elsewhere.
             self.action_banner.set_kind("warning")
-            self.action_banner.set_title("Already removed")
+            self.action_banner.set_title(t("room_changes.already_removed_title"))
             self.action_banner.set_message(
-                "This transfer request no longer exists on the server. "
-                "The table has been updated."
+                t("room_changes.already_removed_msg")
             )
             self.action_banner.setVisible(True)
             return
-        self._show_action_success("Room change request deleted successfully.")
+        self._show_action_success(t("room_changes.delete_success_msg"))
 
 

@@ -72,25 +72,50 @@ def is_pseudo_locale() -> bool:
 # Catalog loading
 # ---------------------------------------------------------------------------
 
+def _deep_merge(target: dict[str, Any], source: dict[str, Any]) -> None:
+    """Deep merge source dict into target dict in-place."""
+    for k, v in source.items():
+        if isinstance(v, dict) and k in target and isinstance(target[k], dict):
+            _deep_merge(target[k], v)
+        else:
+            target[k] = v
+
+
 def _load_catalog(lang_code: str) -> dict[str, Any]:
     """Load JSON translation catalog from disk with fallback to empty dict."""
     if lang_code in _CATALOGS:
         return _CATALOGS[lang_code]
 
     path = _I18N_DIR / f"{lang_code}.json"
-    if not path.is_file():
-        _log.warning("Catalog file not found for locale '%s': %s", lang_code, path)
-        _CATALOGS[lang_code] = {}
-        return _CATALOGS[lang_code]
+    result: dict[str, Any] = {}
+    if path.is_file():
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    result = data
+        except Exception as exc:  # noqa: BLE001
+            _log.error("Failed to parse catalog JSON for locale '%s': %s", lang_code, exc)
 
+    # Also load and merge any partial catalog_*.json files
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            _CATALOGS[lang_code] = data if isinstance(data, dict) else {}
-    except Exception as exc:  # noqa: BLE001
-        _log.error("Failed to parse catalog JSON for locale '%s': %s", lang_code, exc)
-        _CATALOGS[lang_code] = {}
+        for extra_path in sorted(_I18N_DIR.glob("catalog_*.json")):
+            try:
+                with open(extra_path, "r", encoding="utf-8") as f:
+                    extra_data = json.load(f)
+                if isinstance(extra_data, dict):
+                    if lang_code in extra_data and isinstance(extra_data[lang_code], dict):
+                        _deep_merge(result, extra_data[lang_code])
+                    elif lang_code not in ("en", "fr") and not any(k in extra_data for k in ("en", "fr")):
+                        _deep_merge(result, extra_data)
+                    elif extra_path.stem.endswith(f"_{lang_code}"):
+                        _deep_merge(result, extra_data)
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("Failed to load partial catalog %s: %s", extra_path.name, exc)
+    except Exception:
+        pass
 
+    _CATALOGS[lang_code] = result
     return _CATALOGS[lang_code]
 
 

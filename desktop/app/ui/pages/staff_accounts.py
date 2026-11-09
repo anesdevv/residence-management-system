@@ -44,6 +44,11 @@ from PySide6.QtWidgets import (
 )
 
 from ...client import CLIENT_LOCK, stored_user_id
+try:
+    from i18n import current_language, t, tn
+except ImportError:
+    from desktop.i18n import current_language, t, tn
+
 from ...timeouts import execute_network_call
 from ..components import (
     Button,
@@ -60,11 +65,15 @@ from ..tasks import TaskRunner, human_error
 from ..theme import C, S
 
 # Table language: overline headers are uppercased by ``configure_table``.
-_COLUMNS = ["Staff Member", "Position / Role", "System Account ID"]
+_COLUMNS = [
+    t("staff_accounts.col_member"),
+    t("staff_accounts.col_role"),
+    t("staff_accounts.col_account_id"),
+]
 
-_CREATE_TEXT = "Create staff account"
-_DELETE_TEXT = "Delete selected staff account"
-_WORKING_TEXT = "Working..."
+_CREATE_TEXT = t("staff_accounts.create_btn")
+_DELETE_TEXT = t("staff_accounts.delete_selected_btn")
+_WORKING_TEXT = t("common.working")
 _RELOAD_KEY = "staff-reload"
 _ACTION_KEY = "staff-action"
 
@@ -107,18 +116,18 @@ class StaffAccountsPage(QWidget):
         layout.setSpacing(S("space-6"))
 
         self.header = PageHeader(
-            "Staff & administrative access",
-            "Manage department officer credentials, assigned positions, and console privileges.",
+            t("staff_accounts.title"),
+            t("staff_accounts.subtitle"),
         )
-        self.refresh_btn = IconButton("refresh", "Reload the staff list")
+        self.refresh_btn = IconButton("refresh", t("staff_accounts.reload_tooltip"))
         self.refresh_btn.clicked.connect(self.reload)
         self.header.actions.addWidget(self.refresh_btn)
         layout.addWidget(self.header)
 
         self.error_banner = InlineBanner(
             "error",
-            title="Staff accounts could not be loaded",
-            message="Use Refresh to try again.",
+            title=t("staff_accounts.error_load_title"),
+            message=t("staff_accounts.error_load_msg"),
         )
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
@@ -152,8 +161,8 @@ class StaffAccountsPage(QWidget):
 
         self.empty_state = EmptyState(
             "shield-check",
-            "No staff accounts",
-            "Provision the first officer with the form on the right.",
+            t("staff_accounts.empty_title"),
+            t("staff_accounts.empty_desc"),
         )
         self.stack.addWidget(self.empty_state)
 
@@ -165,9 +174,8 @@ class StaffAccountsPage(QWidget):
         # Self-deletion protection is explained while it applies.
         self.self_delete_banner = InlineBanner(
             "info",
-            title="Self-deletion protection",
-            message="You cannot delete the staff account you are signed in with — "
-            "ask another administrator to revoke it if needed.",
+            title=t("staff_accounts.self_delete_title"),
+            message=t("staff_accounts.self_delete_message"),
         )
         self.self_delete_banner.setVisible(False)
         tc_layout.addWidget(self.self_delete_banner)
@@ -176,7 +184,7 @@ class StaffAccountsPage(QWidget):
         btn_row.setContentsMargins(S("space-3"), 0, S("space-3"), S("space-3"))
         btn_row.addStretch(1)
 
-        self.delete_btn = Button.danger("Delete selected staff account", icon="trash")
+        self.delete_btn = Button.danger(t("staff_accounts.delete_selected_btn"), icon="trash")
         self.delete_btn.setFixedHeight(S("size-control"))
         self.delete_btn.setEnabled(False)
         self.delete_btn.setToolTip("")
@@ -188,8 +196,8 @@ class StaffAccountsPage(QWidget):
 
         # Creation form card — the 340/460 QFrame the layout tests assert.
         form_card = Card(
-            "Provision staff account",
-            "Create a console login for a new officer.",
+            t("staff_accounts.create_card_title"),
+            t("staff_accounts.create_card_desc"),
             icon="shield-check",
         )
         form_card.setMinimumWidth(340)
@@ -200,10 +208,10 @@ class StaffAccountsPage(QWidget):
         form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         self.full_name = QLineEdit()
-        self.full_name.setPlaceholderText("e.g. Fatima Zohra")
+        self.full_name.setPlaceholderText(t("staff_accounts.placeholder_fullname"))
 
         self.position = QLineEdit()
-        self.position.setPlaceholderText("e.g. Housing Officer, Reception…")
+        self.position.setPlaceholderText(t("staff_accounts.placeholder_position"))
 
         self.email = QLineEdit()
         self.email.setPlaceholderText("officer@univ-tlemcen.dz")
@@ -212,13 +220,13 @@ class StaffAccountsPage(QWidget):
         self.password.setPlaceholderText("••••••••")
         self.password.setEchoMode(QLineEdit.EchoMode.Password)
 
-        form.addRow("Full Name:", self.full_name)
-        form.addRow("Position:", self.position)
-        form.addRow("Email:", self.email)
-        form.addRow("Password:", self.password)
+        form.addRow(t("staff_accounts.field_full_name"), self.full_name)
+        form.addRow(t("staff_accounts.field_position"), self.position)
+        form.addRow(t("staff_accounts.field_email"), self.email)
+        form.addRow(t("staff_accounts.field_password"), self.password)
         form_card.add_layout(form)
 
-        self.create_btn = Button.primary("Create staff account", icon="plus")
+        self.create_btn = Button.primary(t("staff_accounts.create_btn"), icon="plus")
         self.create_btn.clicked.connect(self.on_create)
         form_card.add_widget(self.create_btn)
 
@@ -286,14 +294,14 @@ class StaffAccountsPage(QWidget):
             # Missing session: fail safe instead of guessing who is signed in.
             self.delete_btn.setEnabled(False)
             self.delete_btn.setToolTip(
-                "Your signed-in account could not be verified, so deletion is disabled."
+                t("staff_accounts.cannot_delete_unverified")
             )
             self.self_delete_banner.setVisible(False)
             return
 
         if staff.get("id") == self._current_uid:
             self.delete_btn.setEnabled(False)
-            self.delete_btn.setToolTip("You cannot delete your own staff account.")
+            self.delete_btn.setToolTip(t("staff_accounts.self_delete_tooltip"))
             self.self_delete_banner.setVisible(True)
         else:
             self.delete_btn.setEnabled(True)
@@ -346,7 +354,7 @@ class StaffAccountsPage(QWidget):
 
     def _on_reload_failed(self, message: str) -> None:
         self.error_banner.set_message(
-            f"Staff accounts could not be loaded ({message}). Use Refresh to try again."
+            t("staff_accounts.load_failed_msg", message=message)
         )
         self.error_banner.setVisible(True)
         self._set_loading(False)
@@ -466,7 +474,7 @@ class StaffAccountsPage(QWidget):
         self._sync_controls()
 
     def _on_action_failed(self, message: str, title: str) -> None:
-        QMessageBox.critical(self, title, f"The request could not be completed: {message}")
+        QMessageBox.critical(self, title, t("staff_accounts.action_failed_msg", message=message))
 
     def on_delete(self):
         staff = self.selected()
@@ -478,20 +486,20 @@ class StaffAccountsPage(QWidget):
         if not self._current_uid:
             QMessageBox.warning(
                 self,
-                "Cannot Delete",
-                "Your signed-in account could not be verified, so deletion is disabled.",
+                t("staff_accounts.cannot_delete_title"),
+                t("staff_accounts.cannot_delete_unverified"),
             )
             return
 
         if staff.get("id") == self._current_uid:
-            QMessageBox.warning(self, "Cannot Delete", "You cannot delete your own staff account.")
+            QMessageBox.warning(self, t("staff_accounts.cannot_delete_title"), t("staff_accounts.cannot_delete_self"))
             return
 
-        name = staff.get("full_name") or "this staff member"
+        name = staff.get("full_name") or t("staff_accounts.this_member")
         ans = QMessageBox.question(
             self,
-            "Confirm Deletion",
-            f"Are you sure you want to delete staff account '{name}'?\n\nThis will permanently revoke their access.",
+            t("staff_accounts.delete_confirm_title"),
+            t("staff_accounts.delete_confirm_message", name=name),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
@@ -504,7 +512,7 @@ class StaffAccountsPage(QWidget):
             _ACTION_KEY,
             lambda: self._delete_staff(staff_id),
             on_success=lambda _result: self._on_delete_success(),
-            on_failed=lambda message: self._on_action_failed(message, "Error Deleting Staff"),
+            on_failed=lambda message: self._on_action_failed(message, t("staff_accounts.error_deleting_title")),
             on_finished=self._end_action,
         )
         if not started:
@@ -533,7 +541,7 @@ class StaffAccountsPage(QWidget):
         return True
 
     def _on_delete_success(self) -> None:
-        QMessageBox.information(self, "Staff Account Deleted", "Staff account deleted successfully.")
+        QMessageBox.information(self, t("staff_accounts.delete_success_title"), t("staff_accounts.delete_success_message"))
         self.reload()
 
     def on_create(self):
@@ -547,7 +555,7 @@ class StaffAccountsPage(QWidget):
             "position": self.position.text().strip(),
         }
         if not (body["email"] and body["password"] and body["full_name"]):
-            QMessageBox.warning(self, "Missing data", "Email, password and full name are required.")
+            QMessageBox.warning(self, t("staff_accounts.missing_data_title"), t("staff_accounts.missing_data_message"))
             return
 
         self._begin_action(self.create_btn, _CREATE_TEXT)
@@ -555,7 +563,7 @@ class StaffAccountsPage(QWidget):
             _ACTION_KEY,
             lambda: self._create_staff(body),
             on_success=lambda _result: self._on_create_success(body),
-            on_failed=lambda message: self._on_action_failed(message, "Error Creating Staff"),
+            on_failed=lambda message: self._on_action_failed(message, t("staff_accounts.error_creating_title")),
             on_finished=self._end_action,
         )
         if not started:
@@ -576,6 +584,6 @@ class StaffAccountsPage(QWidget):
         self.reload()
         QMessageBox.information(
             self,
-            "Staff Account Created",
-            f"Account for {body['full_name']} created successfully.",
+            t("staff_accounts.create_success_title"),
+            t("staff_accounts.create_success_message", name=body['full_name']),
         )

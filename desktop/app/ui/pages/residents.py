@@ -29,6 +29,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+try:
+    from i18n import format_date, format_number, format_percent, t, tn
+except ImportError:
+    from desktop.i18n import format_date, format_number, format_percent, t, tn
+
 from ...client import CLIENT_LOCK, official_lookup
 from .. import theme
 from ..components import (
@@ -47,7 +52,18 @@ from ..tasks import TaskRunner, human_error
 from ..theme import S
 
 # Table language: overline headers are uppercased by configure_table().
-_COLUMNS = ["Card ID", "Resident", "Room", "Faculty / University", "Registered", "Status", "Roster"]
+def _columns() -> list[str]:
+    return [
+        t("residents.col_card_id"),
+        t("residents.col_resident"),
+        t("residents.col_room"),
+        t("residents.col_faculty_univ"),
+        t("residents.col_registered"),
+        t("residents.col_status"),
+        t("residents.col_roster"),
+    ]
+
+_COLUMNS = _columns()
 _ACTIVE_STATUS_KIND = "ok"
 
 
@@ -117,36 +133,40 @@ class ResidentsPage(QWidget):
         layout.setSpacing(S("space-6"))
 
         self.header = PageHeader(
-            "Residents",
-            "Students currently accommodated in the Cité Universitaire.",
+            t("residents.title"),
+            t("residents.subtitle"),
         )
         layout.addWidget(self.header)
 
         toolbar = QHBoxLayout()
         toolbar.setSpacing(S("space-3"))
 
-        self.search = SearchField("Search by card ID, name, room, faculty or university…")
+        self.search = SearchField(t("residents.search_placeholder"))
         self.search.changed.connect(self.render)
         toolbar.addWidget(self.search, 1)
 
         self.gender_filter = QComboBox()
-        self.gender_filter.addItems(["All Genders", "Male Residents", "Female Residents"])
-        self.gender_filter.setToolTip("Show every resident, or only male / female residents")
+        self.gender_filter.addItems([
+            t("residents.gender_all"),
+            t("residents.gender_male"),
+            t("residents.gender_female"),
+        ])
+        self.gender_filter.setToolTip(t("residents.gender_filter_tooltip"))
         self.gender_filter.currentIndexChanged.connect(self.render)
         toolbar.addWidget(self.gender_filter)
 
-        self.count_badge = StatusPill("neutral", "0 active residents")
+        self.count_badge = StatusPill("neutral", tn("residents.count_active", count=0, count_fmt=format_number(0)))
         toolbar.addWidget(self.count_badge)
 
-        self.refresh_btn = IconButton("refresh", "Reload the residents list")
+        self.refresh_btn = IconButton("refresh", t("residents.refresh_tooltip"))
         self.refresh_btn.clicked.connect(self.reload)
         toolbar.addWidget(self.refresh_btn)
         layout.addLayout(toolbar)
 
         self.error_banner = InlineBanner(
             "error",
-            title="Residents could not be loaded",
-            message="Use Refresh to try again.",
+            title=t("residents.error_title"),
+            message=t("residents.error_msg"),
         )
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
@@ -183,20 +203,20 @@ class ResidentsPage(QWidget):
 
         self.empty_no_data = EmptyState(
             "users",
-            "No residents yet",
-            "Approved students appear here as soon as a room has been allocated.",
+            t("residents.empty_no_data_title"),
+            t("residents.empty_no_data_desc"),
         )
         self.empty_no_match = EmptyState(
             "search",
-            "No resident matches",
-            "Clear the search field or switch the gender filter to see everyone again.",
+            t("residents.empty_no_match_title"),
+            t("residents.empty_no_match_desc"),
         )
         self.stack.addWidget(self.empty_no_data)
         self.stack.addWidget(self.empty_no_match)
         card_layout.addWidget(self.stack)
         layout.addWidget(table_card, 1)
 
-        tip = _small_label("Double-click a resident to open the complete profile card.")
+        tip = _small_label(t("residents.double_click_tip"))
         layout.addWidget(tip)
 
         if not defer_initial_load:
@@ -233,21 +253,35 @@ class ResidentsPage(QWidget):
         self.refresh_btn.setEnabled(True)
         self.rows = rows
         self.error_banner.setVisible(False)
-        self.count_badge.setText(f"{len(self.rows)} active residents")
+        self.count_badge.setText(
+            tn("residents.count_active", count=len(self.rows), count_fmt=format_number(len(self.rows)))
+        )
         self.render()
 
     def _on_reload_failed(self, error: str):
         self.refresh_btn.setEnabled(True)
         self.error_banner.set_message(
-            f"The residents list could not be loaded ({human_error(error)}). Use Refresh to try again."
+            t("residents.reload_failed_msg", error=human_error(error))
         )
         self.error_banner.setVisible(True)
         self.render()
 
     def render(self):
         needle = self.search.text().lower().strip()
-        gender_sel = self.gender_filter.currentText()
-        gender_target = "male" if gender_sel == "Male Residents" else "female" if gender_sel == "Female Residents" else None
+        gender_idx = self.gender_filter.currentIndex()
+        if gender_idx == 1:
+            gender_target = "male"
+        elif gender_idx == 2:
+            gender_target = "female"
+        else:
+            gender_sel = self.gender_filter.currentText()
+            gender_target = (
+                "male"
+                if gender_sel in ("Male Residents", t("residents.gender_male"))
+                else "female"
+                if gender_sel in ("Female Residents", t("residents.gender_female"))
+                else None
+            )
 
         filtered = []
         for r in self.rows:
@@ -272,21 +306,35 @@ class ResidentsPage(QWidget):
                 card_id = str(r.get("card_id", ""))
                 name = f"{r.get('first_name', '')} {r.get('last_name', '')}".strip() or "—"
                 room_item = (
-                    QTableWidgetItem(f"Block {room.get('block', '—')} — Room {room.get('number', '—')}")
-                    if room else QTableWidgetItem("Not assigned")
+                    QTableWidgetItem(
+                        t(
+                            "residents.room_assigned_format",
+                            block=str(room.get("block", "—")),
+                            number=str(room.get("number", "—")),
+                        )
+                    )
+                    if room
+                    else QTableWidgetItem(t("residents.room_not_assigned"))
                 )
                 faculty_item = QTableWidgetItem(str(r.get("faculty") or "—"))
                 date_item = QTableWidgetItem(str(r.get("created_at", ""))[:10])
 
                 card_item = QTableWidgetItem(card_id)
                 name_item = QTableWidgetItem(name)
-                status_item = QTableWidgetItem("Active")
-                status_item.setData(Qt.ItemDataRole.UserRole, (_ACTIVE_STATUS_KIND, "check-circle", "Active"))
+                status_text = t("residents.status_active")
+                status_item = QTableWidgetItem(status_text)
+                status_item.setData(Qt.ItemDataRole.UserRole, (_ACTIVE_STATUS_KIND, "check-circle", status_text))
 
                 matched = None
                 if self.roster:
                     matched = card_id in self.roster
-                roster_text = "Matched" if matched is True else "Not in roster" if matched is False else "Not checked"
+                roster_text = (
+                    t("pending.roster_matched")
+                    if matched is True
+                    else t("pending.roster_not_in_roster")
+                    if matched is False
+                    else t("pending.roster_not_checked")
+                )
                 roster_kind = "ok" if matched is True else "danger" if matched is False else "neutral"
                 roster_icon = "check-circle" if matched is True else "x-circle" if matched is False else "info"
                 roster_item = QTableWidgetItem(roster_text)

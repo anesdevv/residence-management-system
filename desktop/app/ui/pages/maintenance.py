@@ -55,6 +55,11 @@ from PySide6.QtWidgets import (
 )
 
 from ...client import official_lookup
+try:
+    from i18n import current_language, t, tn
+except ImportError:
+    from desktop.i18n import current_language, t, tn
+
 from ...timeouts import execute_network_call
 from .. import theme
 from ..components import (
@@ -84,50 +89,55 @@ from ..theme import C, S
 # Lifecycle stages (UI): the inspector Stepper uses this order:
 # Pending > In progress > Resolved (3 stages).
 _STAGES = [
-    ("pending", "Pending"),
-    ("in_progress", "In progress"),
-    ("resolved", "Resolved"),
+    ("pending", t("maintenance.stage_pending")),
+    ("in_progress", t("maintenance.stage_in_progress")),
+    ("resolved", t("maintenance.stage_resolved")),
 ]
 _STAGE_LABELS = [label for _key, label in _STAGES]
 
 # Filter modes for SegmentedControl: All - Pending - In progress - Resolved
 _FILTER_MODES = [
-    ("all", "All"),
-    ("pending", "Pending"),
-    ("in_progress", "In progress"),
-    ("resolved", "Resolved"),
+    ("all", t("maintenance.tab_all")),
+    ("pending", t("maintenance.tab_pending")),
+    ("in_progress", t("maintenance.tab_in_progress")),
+    ("resolved", t("maintenance.tab_resolved")),
 ]
 
 # Table language: overline headers are uppercased by configure_table().
-_COLUMNS = ["Category", "Resident", "Status", "Reported"]
+_COLUMNS = [
+    t("maintenance.col_category"),
+    t("maintenance.col_resident"),
+    t("maintenance.col_status"),
+    t("maintenance.col_reported"),
+]
 
 # report status -> (StatusPill kind, status word)
 _STATUS_KINDS = {
-    "pending": ("pending", "Pending"),
-    "under_review": ("pending", "Pending"),
-    "in_progress": ("progress", "In progress"),
-    "resolved": ("ok", "Resolved"),
+    "pending": ("pending", t("maintenance.status_pending")),
+    "under_review": ("pending", t("maintenance.status_pending")),
+    "in_progress": ("progress", t("maintenance.status_in_progress")),
+    "resolved": ("ok", t("maintenance.status_resolved")),
 }
-_DEFAULT_STATUS = ("pending", "Pending")
+_DEFAULT_STATUS = ("pending", t("maintenance.status_pending"))
 
 # 4 canonical categories: Plumbing, Electricity, Carpentry, Others (in order)
 _CATEGORIES = [
-    ("plumbing", "Plumbing"),
-    ("electricity", "Electricity"),
-    ("carpentry", "Carpentry"),
-    ("others", "Others"),
+    ("plumbing", t("maintenance.category_plumbing")),
+    ("electricity", t("maintenance.category_electricity")),
+    ("carpentry", t("maintenance.category_carpentry")),
+    ("others", t("maintenance.category_others")),
 ]
 
 _CATEGORY_LABELS = {
-    "plumbing": "Plumbing",
-    "electricity": "Electricity",
-    "electrical": "Electricity",
-    "carpentry": "Carpentry",
-    "furniture": "Carpentry",
-    "others": "Others",
-    "other": "Others",
-    "heating": "Others",
-    "general": "Others",
+    "plumbing": t("maintenance.category_plumbing"),
+    "electricity": t("maintenance.category_electricity"),
+    "electrical": t("maintenance.category_electricity"),
+    "carpentry": t("maintenance.category_carpentry"),
+    "furniture": t("maintenance.category_carpentry"),
+    "others": t("maintenance.category_others"),
+    "other": t("maintenance.category_others"),
+    "heating": t("maintenance.category_others"),
+    "general": t("maintenance.category_others"),
 }
 
 # maintenance_category -> icon name (table cell and inspector header)
@@ -161,17 +171,17 @@ def _normalize_category(category) -> str:
 
 def _category_label(category) -> str:
     key = str(category or "").lower().strip()
-    return _CATEGORY_LABELS.get(key, "Others")
+    return _CATEGORY_LABELS.get(key, t("maintenance.category_others"))
 
 # The exact string asserted by the no-photo contract test.
-_NO_PHOTO_TEXT = "No photo attached by resident"
+_NO_PHOTO_TEXT = t("maintenance.no_photo")
 
 # Task keys: writes share one key so status changes and deletes can never
 # overlap; reads use their own keys so a refresh cannot masquerade as a write.
 _ACTION_KEY = "maintenance-action"
 _RELOAD_KEY = "maintenance-reload"
 _INFO_KEY = "maintenance-info"
-_WORKING_TEXT = "Working..."
+_WORKING_TEXT = t("common.working")
 
 
 def _normalise_student(row: dict) -> dict:
@@ -333,10 +343,10 @@ class MaintenancePage(QWidget):
         layout.setSpacing(S("space-6"))
 
         self.header = PageHeader(
-            "Facility maintenance & repairs",
-            "Triage resident repair tickets filed from every residential block.",
+            t("maintenance.title"),
+            t("maintenance.subtitle"),
         )
-        self.refresh_btn = IconButton("refresh", "Reload the maintenance queue")
+        self.refresh_btn = IconButton("refresh", t("maintenance.reload_tooltip"))
         self.refresh_btn.clicked.connect(self.reload)
         self.header.actions.addWidget(self.refresh_btn)
         layout.addWidget(self.header)
@@ -355,16 +365,16 @@ class MaintenancePage(QWidget):
         toolbar.addWidget(self.segments)
 
         self.category_filter = QComboBox()
-        self.category_filter.addItem("All categories", "all")
+        self.category_filter.addItem(t("maintenance.all_categories"), "all")
         for cat_id, cat_label in _CATEGORIES:
             self.category_filter.addItem(cat_label, cat_id)
         self.category_filter.categories = [cat_label for _id, cat_label in _CATEGORIES]
         self.categories = list(self.category_filter.categories)
-        self.category_filter.setToolTip("Filter tickets by category")
+        self.category_filter.setToolTip(t("maintenance.filter_by_category"))
         self.category_filter.currentIndexChanged.connect(lambda _idx: self.apply_filter())
         toolbar.addWidget(self.category_filter)
 
-        self.search = SearchField("Search by description, resident or category…")
+        self.search = SearchField(t("maintenance.search_placeholder"))
         self.search.changed.connect(self.apply_filter)
         # Legacy alias: the search box used to be a bare QLineEdit.
         self.search_input = self.search.edit
@@ -373,8 +383,8 @@ class MaintenancePage(QWidget):
 
         self.error_banner = InlineBanner(
             "error",
-            title="Maintenance queue could not be loaded",
-            message="The table is showing the last data received. Use Refresh to try again.",
+            title=t("maintenance.error_load_title"),
+            message=t("maintenance.error_load_msg"),
         )
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
@@ -411,19 +421,19 @@ class MaintenancePage(QWidget):
 
         self.empty_state = EmptyState(
             "wrench",
-            "No tickets in this view",
-            "Switch the stage filter, adjust the search, or refresh.",
+            t("maintenance.empty_view_title"),
+            t("maintenance.empty_view_desc"),
         )
         self.stack.addWidget(self.empty_state)
         card_layout.addWidget(self.stack)
         self.splitter.addWidget(table_card)
 
         # ------------------------------------------------------ inspector
-        self.panel = DetailPanel(360, 520, title="Ticket inspector")
+        self.panel = DetailPanel(360, 520, title=t("maintenance.panel_title"))
         self.empty_panel = EmptyState(
             "wrench",
-            "No ticket selected",
-            "Select a ticket to inspect the fault, the resident and the repair stage.",
+            t("maintenance.empty_panel_title"),
+            t("maintenance.empty_panel_desc"),
         )
         self.panel.add_widget(self.empty_panel)
 
@@ -487,11 +497,11 @@ class MaintenancePage(QWidget):
         photo_layout = QVBoxLayout(self.photo_section)
         photo_layout.setContentsMargins(0, 0, 0, 0)
         photo_layout.setSpacing(S("space-2"))
-        photo_overline = QLabel("FAULT PHOTO")
+        photo_overline = QLabel(t("maintenance.fault_photo"))
         theme.apply_role(photo_overline, "overline")
         photo_layout.addWidget(photo_overline)
 
-        self.photo_label = ClickablePhotoLabel("No ticket selected")
+        self.photo_label = ClickablePhotoLabel(t("maintenance.empty_panel_title"))
         self.photo_label.setObjectName("maintenancePhotoLabel")
         self.photo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.photo_label.setWordWrap(True)
@@ -520,7 +530,7 @@ class MaintenancePage(QWidget):
         cue_row.setSpacing(S("space-1"))
         cue_icon = QLabel()
         cue_icon.setPixmap(get_pixmap("zoom-in", 14, C("navy-800")))
-        cue_text = QLabel("Open full view")
+        cue_text = QLabel(t("maintenance.zoom_open"))
         theme.apply_role(cue_text, "small")
         cue_row.addWidget(cue_icon, 0)
         cue_row.addWidget(cue_text, 0)
@@ -534,7 +544,7 @@ class MaintenancePage(QWidget):
         self.photo_skeleton = Skeleton(2)
         self.photo_skeleton.setVisible(False)
         photo_layout.addWidget(self.photo_skeleton)
-        self.photo_retry_btn = Button("Retry loading photo", "ghost", icon="refresh")
+        self.photo_retry_btn = Button(t("maintenance.retry_photo"), "ghost", icon="refresh")
         self.photo_retry_btn.setObjectName("photoRetryBtn")
         self.photo_retry_btn.setVisible(False)
         self.photo_retry_btn.clicked.connect(self._retry_photo_fetch)
@@ -542,7 +552,7 @@ class MaintenancePage(QWidget):
         inspector.addWidget(self.photo_section)
 
         # Staff / dispatch note (read-only display; set_status records it).
-        self.note_block = _QuotedBlock("Staff / dispatch note")
+        self.note_block = _QuotedBlock(t("maintenance.staff_dispatch_note"))
         inspector.addWidget(self.note_block)
 
         # ------------------------------------------------------- actions
@@ -550,13 +560,13 @@ class MaintenancePage(QWidget):
         actions = QVBoxLayout(self.actions_row)
         actions.setContentsMargins(0, 0, 0, 0)
         actions.setSpacing(S("space-2"))
-        self.in_progress_btn = Button("Mark in progress", "secondary", icon="wrench")
+        self.in_progress_btn = Button(t("maintenance.mark_in_progress"), "secondary", icon="wrench")
         self.in_progress_btn.clicked.connect(lambda: self.set_status("in_progress"))
-        self.resolved_btn = Button.accent("Mark resolved", icon="check")
+        self.resolved_btn = Button.accent(t("maintenance.mark_resolved"), icon="check")
         self.resolved_btn.clicked.connect(lambda: self.set_status("resolved"))
         actions.addWidget(self.in_progress_btn)
         actions.addWidget(self.resolved_btn)
-        self.delete_btn = Button("Delete ticket", "ghost", icon="trash")
+        self.delete_btn = Button(t("maintenance.delete_ticket"), "ghost", icon="trash")
         self._style_flat_danger(self.delete_btn)
         self.delete_btn.clicked.connect(self.on_delete)
         actions.addWidget(self.delete_btn)
@@ -570,7 +580,7 @@ class MaintenancePage(QWidget):
         self.detail_text.setReadOnly(True)
         self.detail_text.setMinimumHeight(S("space-12"))
         self.detail_text.setMaximumHeight(S("space-12") * 2 + S("space-6"))
-        self.detail_text.setPlaceholderText("Select a ticket from the table to inspect the full record…")
+        self.detail_text.setPlaceholderText(t("maintenance.record_placeholder"))
         theme.enable_tabular(self.detail_text)
         self.panel.body.addWidget(self.detail_text, 0)
 
@@ -703,28 +713,28 @@ class MaintenancePage(QWidget):
         """Enable status/delete controls for the selected ticket (or clear them)."""
         if row is None:
             self.delete_btn.setEnabled(False)
-            self.delete_btn.setToolTip("Select a ticket to delete it.")
+            self.delete_btn.setToolTip(t("maintenance.tooltip_select_to_delete"))
             self.in_progress_btn.setEnabled(False)
-            self.in_progress_btn.setToolTip("Select a ticket to dispatch a technician.")
+            self.in_progress_btn.setToolTip(t("maintenance.tooltip_select_to_dispatch"))
             self.resolved_btn.setEnabled(False)
-            self.resolved_btn.setToolTip("Select a ticket to close it as resolved.")
+            self.resolved_btn.setToolTip(t("maintenance.tooltip_select_to_resolve"))
             return
 
         if self._actions_busy:
             for button in (self.in_progress_btn, self.resolved_btn, self.delete_btn):
                 button.setEnabled(False)
-                button.setToolTip("An action is already in progress for this queue.")
+                button.setToolTip(t("maintenance.tooltip_action_in_progress"))
             return
 
         status = str(row.get("status", "pending"))
         if status == "resolved":
             self.in_progress_btn.setEnabled(False)
-            self.in_progress_btn.setToolTip("This ticket is already resolved.")
+            self.in_progress_btn.setToolTip(t("maintenance.tooltip_already_resolved"))
             self.resolved_btn.setEnabled(False)
-            self.resolved_btn.setToolTip("This ticket is already resolved.")
+            self.resolved_btn.setToolTip(t("maintenance.tooltip_already_resolved"))
         elif status == "in_progress":
             self.in_progress_btn.setEnabled(False)
-            self.in_progress_btn.setToolTip("A technician is already dispatched for this ticket.")
+            self.in_progress_btn.setToolTip(t("maintenance.tooltip_already_dispatched"))
             self.resolved_btn.setEnabled(True)
             self.resolved_btn.setToolTip("")
         else:
@@ -836,15 +846,15 @@ class MaintenancePage(QWidget):
         self.zoom_cue.setVisible(False)
         self.detail_text.clear()
         self.photo_label.clear()
-        self.photo_label.setText("No ticket selected")
+        self.photo_label.setText(t("maintenance.empty_panel_title"))
         self.photo_label.setCursor(Qt.CursorShape.ArrowCursor)
         self.photo_label.setToolTip("")
         self.delete_btn.setEnabled(False)
-        self.delete_btn.setToolTip("Select a ticket to delete it.")
+        self.delete_btn.setToolTip(t("maintenance.tooltip_select_to_delete"))
         self.in_progress_btn.setEnabled(False)
-        self.in_progress_btn.setToolTip("Select a ticket to dispatch a technician.")
+        self.in_progress_btn.setToolTip(t("maintenance.tooltip_select_to_dispatch"))
         self.resolved_btn.setEnabled(False)
-        self.resolved_btn.setToolTip("Select a ticket to close it as resolved.")
+        self.resolved_btn.setToolTip(t("maintenance.tooltip_select_to_resolve"))
         self._show_selection(False)
 
     def _fetch_rows(self) -> list[dict]:
@@ -865,9 +875,8 @@ class MaintenancePage(QWidget):
         except Exception as exc:  # noqa: BLE001 - reported inline
             self._show_banner(
                 "error",
-                "Maintenance queue could not be loaded",
-                f"The table is showing the last data received ({human_error(exc)}). "
-                "Use Refresh to try again.",
+                t("maintenance.error_load_title"),
+                t("maintenance.error_load_msg_detail", detail=human_error(exc)),
                 mode="load",
             )
             return
@@ -883,9 +892,8 @@ class MaintenancePage(QWidget):
     def _on_reload_failed(self, message: str) -> None:
         self._show_banner(
             "error",
-            "Maintenance queue could not be loaded",
-            f"The table is showing the last data received ({message}). "
-            "Use Refresh to try again.",
+            t("maintenance.error_load_title"),
+            t("maintenance.error_load_msg_detail", detail=message),
             mode="reload",
         )
 
@@ -907,7 +915,7 @@ class MaintenancePage(QWidget):
         if not started:
             return
         self.refresh_btn.setEnabled(False)
-        self._show_banner("info", _WORKING_TEXT, "Refreshing the maintenance queue…", mode="reload")
+        self._show_banner("info", _WORKING_TEXT, t("maintenance.refreshing"), mode="reload")
 
     def reload(self):
         """Refresh the queue; the first (constructor) call stays synchronous."""
@@ -945,7 +953,7 @@ class MaintenancePage(QWidget):
         stage = _stage_index(status)
         category = _category_label(r.get("category"))
         st = _normalise_student(r)
-        name = f"{st.get('first_name', '')} {st.get('last_name', '')}".strip() or "Unnamed resident"
+        name = f"{st.get('first_name', '')} {st.get('last_name', '')}".strip() or t("maintenance.unnamed_resident")
 
         # Lifecycle stepper: the current stage is marked, earlier stages done.
         self.stepper.set_current(stage)
@@ -963,9 +971,9 @@ class MaintenancePage(QWidget):
 
         # Key facts (raw data only).
         self.facts.set_rows([
-            ("Room", _room_text(r, st)),
-            ("Submitted", _fmt_date(r.get("created_at"))),
-            ("Resolved", _fmt_date(r.get("updated_at")) if status == "resolved" else "—"),
+            (t("maintenance.fact_room"), _room_text(r, st)),
+            (t("maintenance.fact_submitted"), _fmt_date(r.get("created_at"))),
+            (t("maintenance.fact_resolved"), _fmt_date(r.get("updated_at")) if status == "resolved" else "—"),
         ])
 
         # Status actions: disabled with the reason in the tooltip.
@@ -973,7 +981,7 @@ class MaintenancePage(QWidget):
 
         # Staff / dispatch note.
         note = str(r.get("staff_note") or "").strip()
-        self.note_block.set_text(f"“{note}”" if note else "No technician notes recorded yet.")
+        self.note_block.set_text(f"“{note}”" if note else t("maintenance.no_staff_notes"))
 
         # Plain-text record block (the desk reference for inquiries).
         self.detail_text.setPlainText(
@@ -997,7 +1005,7 @@ class MaintenancePage(QWidget):
         photo_path = r.get("photo_path")
         if not photo_path:
             self.photo_label.setText(_NO_PHOTO_TEXT)
-            self.photo_label.setToolTip("Click to view fault details")
+            self.photo_label.setToolTip(t("maintenance.click_view_fault"))
             return
 
         cache = get_photo_cache()
@@ -1012,14 +1020,14 @@ class MaintenancePage(QWidget):
             )
             self.photo_label.setPixmap(scaled)
             self.photo_label.setCursor(Qt.CursorShape.PointingHandCursor)
-            self.photo_label.setToolTip("Click to open full-size photo viewer")
+            self.photo_label.setToolTip(t("maintenance.photo_click_tooltip"))
             self._photo_loading = False
             self.photo_skeleton.setVisible(False)
             self.photo_retry_btn.setVisible(False)
             return
 
-        self.photo_label.setText("Loading photo…")
-        self.photo_label.setToolTip("Loading photo preview…")
+        self.photo_label.setText(t("maintenance.photo_loading"))
+        self.photo_label.setToolTip(t("maintenance.photo_loading_tooltip"))
         self._photo_loading = True
         self.photo_skeleton.setVisible(True)
 
@@ -1034,8 +1042,8 @@ class MaintenancePage(QWidget):
             self._photo_loading = False
             self.photo_skeleton.setVisible(False)
             self._photo_fetch_failed = True
-            self.photo_label.setText("Photo unavailable")
-            self.photo_label.setToolTip("Failed to retrieve signed URL")
+            self.photo_label.setText(t("maintenance.photo_unavailable"))
+            self.photo_label.setToolTip(t("maintenance.failed_signed_url"))
             self.photo_retry_btn.setVisible(True)
             return
 
@@ -1057,10 +1065,10 @@ class MaintenancePage(QWidget):
                 )
                 self.photo_label.setPixmap(scaled)
                 self.photo_label.setCursor(Qt.CursorShape.PointingHandCursor)
-                self.photo_label.setToolTip("Click to open full-size photo viewer")
+                self.photo_label.setToolTip(t("maintenance.photo_click_tooltip"))
             else:
                 self._photo_fetch_failed = True
-                self.photo_label.setText("Photo preview unavailable")
+                self.photo_label.setText(t("maintenance.photo_preview_unavailable"))
                 self.photo_retry_btn.setVisible(True)
 
         def on_loaded(data: bytes, req=current_req, img_url=url):
@@ -1080,10 +1088,10 @@ class MaintenancePage(QWidget):
                 )
                 self.photo_label.setPixmap(scaled)
                 self.photo_label.setCursor(Qt.CursorShape.PointingHandCursor)
-                self.photo_label.setToolTip("Click to open full-size photo viewer")
+                self.photo_label.setToolTip(t("maintenance.photo_click_tooltip"))
             else:
                 self._photo_fetch_failed = True
-                self.photo_label.setText("Photo preview unavailable")
+                self.photo_label.setText(t("maintenance.photo_preview_unavailable"))
                 self.photo_retry_btn.setVisible(True)
 
         def on_failed(err_msg: str, req=current_req):
@@ -1092,7 +1100,7 @@ class MaintenancePage(QWidget):
             self._photo_loading = False
             self.photo_skeleton.setVisible(False)
             self._photo_fetch_failed = True
-            self.photo_label.setText("Failed to load photo")
+            self.photo_label.setText(t("maintenance.photo_failed"))
             self.photo_retry_btn.setVisible(True)
 
         thumb_w = S("space-12") * 8
@@ -1130,16 +1138,16 @@ class MaintenancePage(QWidget):
         if not r.get("photo_path"):
             QMessageBox.information(
                 self,
-                "Fault Photo",
-                "No photo was attached to this maintenance ticket by the resident.",
+                t("maintenance.photo_info_title"),
+                t("maintenance.photo_none_msg"),
             )
             return
 
         if self._photo_fetch_failed and not self._current_pixmap:
             QMessageBox.information(
                 self,
-                "Fault Photo",
-                "Fault photo could not be loaded from storage. Please check the network connection.",
+                t("maintenance.photo_info_title"),
+                t("maintenance.photo_storage_err_msg"),
             )
             return
 
@@ -1204,8 +1212,8 @@ class MaintenancePage(QWidget):
     def _on_info_failed(self, message: str) -> None:
         self._show_banner(
             "error",
-            "Resident record could not be loaded",
-            f"The roster lookup failed ({message}). The maintenance queue is unchanged.",
+            t("maintenance.error_record_load_title"),
+            t("maintenance.error_record_load_msg", message=message),
             mode="info",
         )
 
@@ -1254,8 +1262,8 @@ class MaintenancePage(QWidget):
         label = status.replace("_", " ")
         self._show_banner(
             "success",
-            "Status updated",
-            f"Maintenance ticket updated to '{label}'.",
+            t("maintenance.status_updated_title"),
+            t("maintenance.status_updated_msg", status=label),
             mode="action",
         )
         self._reload_after_action = True
@@ -1264,7 +1272,7 @@ class MaintenancePage(QWidget):
         if "result is unknown" in message.lower():
             self._show_banner(
                 "error",
-                "Request timed out",
+                t("maintenance.request_timed_out"),
                 message,
                 mode="action",
             )
@@ -1272,8 +1280,8 @@ class MaintenancePage(QWidget):
         else:
             self._show_banner(
                 "error",
-                "Ticket could not be updated",
-                f"The maintenance ticket was not changed. {message}",
+                t("maintenance.update_failed_title"),
+                t("maintenance.update_failed_msg", message=message),
                 mode="action",
             )
 
@@ -1283,8 +1291,8 @@ class MaintenancePage(QWidget):
         self.apply_live_data(self.rows, force=True)
         self._show_banner(
             "success",
-            "Ticket deleted",
-            "Maintenance ticket deleted successfully.",
+            t("maintenance.delete_success_title"),
+            t("maintenance.delete_success_msg"),
             mode="action",
         )
         self._reload_after_action = True
@@ -1292,8 +1300,8 @@ class MaintenancePage(QWidget):
     def _on_delete_failed(self, message: str) -> None:
         self._show_banner(
             "error",
-            "Ticket could not be deleted",
-            f"The maintenance ticket was not removed. {message}",
+            t("maintenance.delete_failed_title"),
+            t("maintenance.delete_failed_msg", message=message),
             mode="action",
         )
 
@@ -1303,14 +1311,14 @@ class MaintenancePage(QWidget):
 
         r = self.selected()
         if not r:
-            QMessageBox.information(self, "Select ticket", "Please select a maintenance ticket from the table first.")
+            QMessageBox.information(self, t("maintenance.select_ticket_title"), t("maintenance.select_ticket_msg"))
             return
 
         default_note = r.get("staff_note") or ""
         note, ok = QInputDialog.getMultiLineText(
             self,
-            "Staff Dispatch Note",
-            f"Add note for technician / resolution ({status.replace('_', ' ')}):",
+            t("maintenance.dispatch_dialog_title"),
+            t("maintenance.dispatch_dialog_label", status=status.replace('_', ' ')),
             text=default_note,
         )
         if not ok:
@@ -1326,7 +1334,7 @@ class MaintenancePage(QWidget):
             _ACTION_KEY,
             lambda: self._update_status_worker(ticket_id, status, note_val),
             button=button,
-            working_message=f"Updating maintenance ticket to '{status.replace('_', ' ')}'…",
+            working_message=t("maintenance.working_status", status=status.replace('_', ' ')),
             on_success=lambda update_data: self._on_status_success(
                 update_data, ticket_id, status
             ),
@@ -1339,32 +1347,30 @@ class MaintenancePage(QWidget):
         if self._actions_busy or self._info_busy or self.tasks.is_busy(_ACTION_KEY):
             return
 
-        t = self.selected()
-        if not t:
+        ticket = self.selected()
+        if not ticket:
             return
 
-        ticket_id = str(t.get("id", ""))[:8]
-        category = _category_label(t.get("category"))
-        status_text = _status_meta(t.get("status", "pending"))[1]
+        ticket_id = str(ticket.get("id", ""))[:8]
+        category = _category_label(ticket.get("category"))
+        status_text = _status_meta(ticket.get("status", "pending"))[1]
         confirmed = ConfirmDialog.ask(
             self,
-            "Delete maintenance ticket",
-            f"Permanently delete maintenance ticket #{ticket_id}?\n\n"
-            f"Category: {category}\nStatus: {status_text}\n"
-            "This removes the resident report and its fault photo.",
-            confirm_text="Delete ticket",
+            t("maintenance.delete_confirm_title"),
+            t("maintenance.delete_confirm_body", ticket_id=ticket_id, category=category, status=status_text),
+            confirm_text=t("maintenance.delete_ticket"),
         )
         if not confirmed:
             return
 
-        raw_id = t.get("id")
+        raw_id = ticket.get("id")
         if raw_id is None:
             return
         self._start_action(
             _ACTION_KEY,
             lambda: self._delete_ticket_worker(raw_id),
             button=self.delete_btn,
-            working_message="Deleting the maintenance ticket…",
+            working_message=t("maintenance.working_delete"),
             on_success=lambda deleted: self._on_delete_success(deleted, raw_id),
             on_failed=self._on_delete_failed,
         )

@@ -45,6 +45,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+try:
+    from i18n import format_date, format_number, format_percent, t, tn
+except ImportError:
+    from desktop.i18n import format_date, format_number, format_percent, t, tn
+
 from ...client import room_occupancy
 from ...timeouts import execute_network_call
 from .. import theme
@@ -69,7 +74,18 @@ from ..tasks import GatherResult, TaskRunner, human_error
 from ..theme import C, S, DESKTOP_STYLESHEET
 
 # Table language: overline headers are uppercased by ``configure_table``.
-_COLUMNS = ["Block", "Floor", "Room No.", "Gender", "Total Beds", "Occupied", "Availability"]
+def _columns() -> list[str]:
+    return [
+        t("rooms.col_block"),
+        t("rooms.col_floor"),
+        t("rooms.col_room_no"),
+        t("rooms.col_gender"),
+        t("rooms.col_total_beds"),
+        t("rooms.col_occupied"),
+        t("rooms.col_availability"),
+    ]
+
+_COLUMNS = _columns()
 # The occupancy meter wants a wider cell than its size hint so the bar is readable.
 _OCCUPANCY_CELL_WIDTH = S("space-12") * 3 + S("space-4")
 
@@ -78,7 +94,7 @@ _OCCUPANCY_CELL_WIDTH = S("space-12") * 3 + S("space-4")
 _ACTION_KEY = "rooms-action"
 _RELOAD_KEY = "rooms-reload"
 _INFO_KEY = "rooms-info"
-_WORKING_TEXT = "Working..."
+_WORKING_TEXT = t("rooms.working_title")
 
 
 def _cell_widget(widget: QWidget, stretch: int = 0) -> QWidget:
@@ -119,7 +135,7 @@ class BlockSetupDialog(QDialog):
 
     def __init__(self, parent=None, client=None, existing_names=None):
         super().__init__(parent)
-        self.setWindowTitle("Add Residential Block")
+        self.setWindowTitle(t("rooms.block_setup_title"))
         self.setMinimumWidth(380)
         self.setStyleSheet(DESKTOP_STYLESHEET)
         self.client = client
@@ -133,8 +149,8 @@ class BlockSetupDialog(QDialog):
         layout.setSpacing(S("space-4"))
 
         card = Card(
-            "New residential block",
-            "Assign a block identifier and its resident gender designation.",
+            t("rooms.block_setup_card_title"),
+            t("rooms.block_setup_card_desc"),
             icon="building",
         )
 
@@ -143,17 +159,17 @@ class BlockSetupDialog(QDialog):
         form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         self.name_edit = QLineEdit()
-        self.name_edit.setPlaceholderText("e.g. A, B, C, D, North Wing…")
+        self.name_edit.setPlaceholderText(t("rooms.block_name_placeholder"))
 
         self.gender_combo = QComboBox()
-        self.gender_combo.addItems(["Female", "Male"])
-        self.gender_combo.setToolTip("Designated gender for students housed in this block.")
+        self.gender_combo.addItems([t("gender.female"), t("gender.male")])
+        self.gender_combo.setToolTip(t("rooms.block_gender_tooltip"))
 
-        form.addRow("Block Identifier:", self.name_edit)
-        form.addRow("Designated Gender:", self.gender_combo)
+        form.addRow(t("rooms.block_identifier_label"), self.name_edit)
+        form.addRow(t("rooms.designated_gender_label"), self.gender_combo)
         card.add_layout(form)
 
-        tip = QLabel("Every room created inside this block will automatically be designated for this gender.")
+        tip = QLabel(t("rooms.block_gender_tip"))
         theme.apply_role(tip, "small")
         tip.setStyleSheet(f"color: {C('text-muted')}; padding-top: 4px;")
         tip.setWordWrap(True)
@@ -161,7 +177,7 @@ class BlockSetupDialog(QDialog):
 
         self.error_banner = InlineBanner(
             "error",
-            title="Block could not be created",
+            title=t("rooms.block_create_failed_title"),
             message="",
         )
         self.error_banner.setVisible(False)
@@ -173,11 +189,11 @@ class BlockSetupDialog(QDialog):
         btn_row.setSpacing(S("space-2"))
         btn_row.addStretch(1)
 
-        self.cancel_btn = Button.secondary("Cancel")
+        self.cancel_btn = Button.secondary(t("common.cancel"))
         self.cancel_btn.clicked.connect(self.reject)
         btn_row.addWidget(self.cancel_btn)
 
-        self.save_btn = Button.primary("Create block")
+        self.save_btn = Button.primary(t("rooms.create_block_btn"))
         self.save_btn.clicked.connect(self.on_save)
         btn_row.addWidget(self.save_btn)
 
@@ -192,10 +208,10 @@ class BlockSetupDialog(QDialog):
             self.save_btn.setText(_WORKING_TEXT)
             self.error_banner.set_kind("info")
             self.error_banner.set_title(_WORKING_TEXT)
-            self.error_banner.set_message("Creating the residential block…")
+            self.error_banner.set_message(t("rooms.creating_block_msg"))
             self.error_banner.setVisible(True)
         else:
-            self.save_btn.setText("Create block")
+            self.save_btn.setText(t("rooms.create_block_btn"))
 
     def _apply_created_block(self, payload: dict) -> None:
         if self._closing:
@@ -205,7 +221,7 @@ class BlockSetupDialog(QDialog):
 
     def _on_create_failed(self, message: str) -> None:
         self.error_banner.set_kind("error")
-        self.error_banner.set_title("Block could not be created")
+        self.error_banner.set_title(t("rooms.block_create_failed_title"))
         self.error_banner.set_message(message)
         self.error_banner.setVisible(True)
 
@@ -220,13 +236,13 @@ class BlockSetupDialog(QDialog):
     def on_save(self):
         name = self.name_edit.text().strip().upper()
         if not name:
-            QMessageBox.warning(self, "Missing Identifier", "Block identifier cannot be empty.")
+            QMessageBox.warning(self, t("rooms.missing_identifier_title"), t("rooms.missing_identifier_msg"))
             return
         if name in self.existing_names:
-            QMessageBox.warning(self, "Block Exists", f"A block named '{name}' already exists.")
+            QMessageBox.warning(self, t("rooms.block_exists_title"), t("rooms.block_exists_msg", name=name))
             return
 
-        gender = self.gender_combo.currentText().lower()
+        gender = "female" if self.gender_combo.currentIndex() == 0 else "male"
         payload = {"name": name, "gender": gender}
 
         # Programmatic (never-shown) invocations keep the historical synchronous
@@ -240,7 +256,7 @@ class BlockSetupDialog(QDialog):
                         is_write=True,
                     )
                 except Exception as exc:  # noqa: BLE001
-                    QMessageBox.critical(self, "Error Creating Block", human_error(exc))
+                    QMessageBox.critical(self, t("rooms.block_create_failed_title"), human_error(exc))
                     return
             self.result_data = payload
             self.accept()
@@ -274,7 +290,7 @@ class ManageBlocksDialog(QDialog):
 
     def __init__(self, parent=None, client=None, rooms=None, occupancy=None, blocks=None):
         super().__init__(parent)
-        self.setWindowTitle("Residential Blocks")
+        self.setWindowTitle(t("rooms.manage_blocks_title"))
         self.setMinimumSize(660, 440)
         self.setStyleSheet(DESKTOP_STYLESHEET)
         self.client = client
@@ -295,19 +311,19 @@ class ManageBlocksDialog(QDialog):
         layout.setSpacing(S("space-4"))
 
         card = Card(
-            "Residential blocks & housing gender",
-            "Every dormitory room automatically inherits its block's designated gender.",
+            t("rooms.manage_blocks_card_title"),
+            t("rooms.manage_blocks_card_desc"),
             icon="building",
         )
 
         toolbar = QHBoxLayout()
         toolbar.setSpacing(S("space-2"))
-        self.add_block_btn = Button.primary("Add block", icon="plus")
-        self.add_block_btn.setToolTip("Configure a new residential block")
+        self.add_block_btn = Button.primary(t("rooms.add_block_btn"), icon="plus")
+        self.add_block_btn.setToolTip(t("rooms.add_block_tooltip"))
         self.add_block_btn.clicked.connect(self.on_add_block)
         toolbar.addWidget(self.add_block_btn)
 
-        self.refresh_btn = IconButton("refresh", "Reload blocks")
+        self.refresh_btn = IconButton("refresh", t("rooms.reload_blocks_tooltip"))
         self.refresh_btn.clicked.connect(self.reload)
         toolbar.addWidget(self.refresh_btn)
         toolbar.addStretch(1)
@@ -315,14 +331,21 @@ class ManageBlocksDialog(QDialog):
 
         self.error_banner = InlineBanner(
             "error",
-            title="Blocks could not be loaded",
+            title=t("rooms.blocks_error_title"),
             message="",
         )
         self.error_banner.setVisible(False)
         card.add_widget(self.error_banner)
 
         self.table = QTableWidget(0, 6)
-        cols = ["Block", "Gender Designation", "Rooms", "Total Beds", "Occupied Beds", "Actions"]
+        cols = [
+            t("rooms.col_block"),
+            t("rooms.col_gender_designation"),
+            t("nav.rooms"),
+            t("rooms.col_total_beds"),
+            t("rooms.col_occupied_beds"),
+            t("rooms.col_actions"),
+        ]
         configure_table(self.table, cols)
         _fit_columns(
             self.table,
@@ -340,7 +363,7 @@ class ManageBlocksDialog(QDialog):
 
         bottom_row = QHBoxLayout()
         bottom_row.addStretch(1)
-        close_btn = Button.secondary("Close")
+        close_btn = Button.secondary(t("common.close"))
         close_btn.clicked.connect(self.accept)
         bottom_row.addWidget(close_btn)
         layout.addLayout(bottom_row)
@@ -397,8 +420,8 @@ class ManageBlocksDialog(QDialog):
     def _on_reload_failed(self, message: str) -> None:
         self._show_banner(
             "error",
-            "Blocks could not be loaded",
-            f"The list is showing the last data received ({message}).",
+            t("rooms.blocks_error_title"),
+            t("rooms.blocks_error_msg", message=message),
         )
 
     def _on_reload_finished(self) -> None:
@@ -408,7 +431,7 @@ class ManageBlocksDialog(QDialog):
     def _reload_async(self) -> None:
         if self.tasks.is_busy(_RELOAD_KEY) or self._busy:
             return
-        self._set_busy(True, "Refreshing residential blocks…")
+        self._set_busy(True, t("rooms.refreshing_blocks_msg"))
         started = self.tasks.run(
             _RELOAD_KEY,
             self._fetch_blocks,
@@ -452,11 +475,12 @@ class ManageBlocksDialog(QDialog):
             gender = str(b.get("gender", "male")).lower()
             m = metrics.get(b_name, {"rooms": 0, "capacity": 0, "occupied": 0})
 
-            name_item = QTableWidgetItem(f"Block {b_name}")
+            name_item = QTableWidgetItem(t("rooms.cell_block", block=b_name))
             name_item.setIcon(get_icon("building", 14, C("teal-600")))
 
             pill_flavor = "ok" if gender == "female" else "progress"
-            pill = StatusPill(pill_flavor, gender.capitalize())
+            gender_text = t("gender.female") if gender == "female" else t("gender.male")
+            pill = StatusPill(pill_flavor, gender_text)
             pill_holder = _cell_widget(pill)
 
             rooms_item = QTableWidgetItem(str(m["rooms"]))
@@ -464,18 +488,18 @@ class ManageBlocksDialog(QDialog):
             occ_item = QTableWidgetItem(str(m["occupied"]))
 
             self.table.setItem(i, 0, name_item)
-            self.table.setItem(i, 1, QTableWidgetItem(gender.capitalize()))
+            self.table.setItem(i, 1, QTableWidgetItem(gender_text))
             self.table.setCellWidget(i, 1, pill_holder)
             self.table.setItem(i, 2, rooms_item)
             self.table.setItem(i, 3, cap_item)
             self.table.setItem(i, 4, occ_item)
 
-            del_btn = Button.danger("Delete", icon="trash")
+            del_btn = Button.danger(t("common.delete"), icon="trash")
             if m["rooms"] > 0:
                 del_btn.setEnabled(False)
-                del_btn.setToolTip(f"Cannot delete Block {b_name} while it contains {m['rooms']} room(s).")
+                del_btn.setToolTip(t("rooms.delete_block_occupied_tooltip", name=b_name, count=m['rooms']))
             else:
-                del_btn.setToolTip(f"Remove empty Block {b_name}.")
+                del_btn.setToolTip(t("rooms.delete_block_empty_tooltip", name=b_name))
                 del_btn.clicked.connect(lambda _, blk=b: self.on_delete_block(blk))
 
             del_holder = _cell_widget(del_btn)
@@ -501,8 +525,8 @@ class ManageBlocksDialog(QDialog):
     def _on_delete_block_failed(self, message: str) -> None:
         self._show_banner(
             "error",
-            "Block could not be deleted",
-            f"Block {self._deleting_block_name} was not removed. {message}",
+            t("rooms.delete_block_failed_title"),
+            t("rooms.delete_block_failed_msg", name=self._deleting_block_name, message=message),
         )
 
     def _on_delete_block_finished(self) -> None:
@@ -515,8 +539,8 @@ class ManageBlocksDialog(QDialog):
         block_name = block.get("name", "?")
         confirm = QMessageBox.question(
             self,
-            "Delete Block",
-            f"Are you sure you want to delete residential Block {block_name}?",
+            t("rooms.delete_block_confirm_title"),
+            t("rooms.delete_block_confirm_msg", name=block_name),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
         )
         if confirm != QMessageBox.StandardButton.Yes and confirm != QMessageBox.Yes:
@@ -533,7 +557,7 @@ class ManageBlocksDialog(QDialog):
                 )
                 return self._fetch_blocks()
 
-            self._set_busy(True, f"Deleting Block {block_name}…")
+            self._set_busy(True, t("rooms.delete_block_busy_msg", name=block_name))
             started = self.tasks.run(
                 _ACTION_KEY,
                 work,
@@ -563,7 +587,7 @@ class RoomSetupDialog(QDialog):
 
     def __init__(self, parent=None, room=None, current_occupancy=0, client=None, blocks=None):
         super().__init__(parent)
-        self.setWindowTitle("Edit Dormitory Room" if room else "Add Dormitory Room")
+        self.setWindowTitle(t("rooms.edit_room_dialog_title") if room else t("rooms.add_room_dialog_title"))
         self.setMinimumWidth(480)
         self.setStyleSheet(DESKTOP_STYLESHEET)
         self.client = client or getattr(parent, "client", None)
@@ -585,8 +609,8 @@ class RoomSetupDialog(QDialog):
         layout.setSpacing(S("space-4"))
 
         card = Card(
-            "Edit Dormitory Room" if room else "Add Dormitory Room",
-            "Select residential block, floor, capacity. Room gender is automatically inherited from the block.",
+            t("rooms.edit_room_dialog_title") if room else t("rooms.add_room_dialog_title"),
+            t("rooms.room_setup_card_desc"),
             icon="bed",
         )
 
@@ -597,7 +621,7 @@ class RoomSetupDialog(QDialog):
         grid.setColumnMinimumWidth(0, 160)
 
         # Row 0: Block
-        lbl_block = QLabel("Dormitory Block:")
+        lbl_block = QLabel(t("rooms.dormitory_block_label"))
         lbl_block.setFixedWidth(160)
         theme.apply_role(lbl_block, "body")
 
@@ -606,12 +630,12 @@ class RoomSetupDialog(QDialog):
 
         self.block_combo = QComboBox()
         self.block_combo.setFixedHeight(40)
-        self.block_combo.setToolTip("Select the residential block for this room.")
+        self.block_combo.setToolTip(t("rooms.select_block_tooltip"))
         block_row.addWidget(self.block_combo, 1)
 
-        self.new_block_btn = Button.secondary("Add block", icon="plus")
+        self.new_block_btn = Button.secondary(t("rooms.add_block_btn"), icon="plus")
         self.new_block_btn.setFixedHeight(40)
-        self.new_block_btn.setToolTip("Create a new residential block designating Female or Male.")
+        self.new_block_btn.setToolTip(t("rooms.quick_add_block_tooltip"))
         self.new_block_btn.clicked.connect(self._on_quick_create_block)
         block_row.addWidget(self.new_block_btn)
 
@@ -623,7 +647,7 @@ class RoomSetupDialog(QDialog):
         self.block_edit.setVisible(False)
 
         # Row 1: Floor
-        lbl_floor = QLabel("Floor Level:")
+        lbl_floor = QLabel(t("rooms.floor_level_label"))
         lbl_floor.setFixedWidth(160)
         theme.apply_role(lbl_floor, "body")
 
@@ -635,7 +659,7 @@ class RoomSetupDialog(QDialog):
         grid.addWidget(self.floor_spin, 1, 1)
 
         # Row 2: Room Number
-        lbl_num = QLabel("Room Number:")
+        lbl_num = QLabel(t("rooms.room_number_label"))
         lbl_num.setFixedWidth(160)
         theme.apply_role(lbl_num, "body")
 
@@ -645,7 +669,7 @@ class RoomSetupDialog(QDialog):
 
         self.num_edit = QLineEdit(str(room.get("number", "")) if room else "")
         self.num_edit.setFixedHeight(40)
-        self.num_edit.setPlaceholderText("e.g. 101, 204…")
+        self.num_edit.setPlaceholderText(t("rooms.room_number_placeholder"))
         self.num_edit.textChanged.connect(self._on_num_changed)
         num_container.addWidget(self.num_edit)
 
@@ -659,7 +683,7 @@ class RoomSetupDialog(QDialog):
 
         # Row 3: Bed Capacity
         min_cap = max(1, current_occupancy)
-        lbl_cap = QLabel(f"Bed Capacity (Min {min_cap}):")
+        lbl_cap = QLabel(t("rooms.bed_capacity_label", min=min_cap))
         lbl_cap.setFixedWidth(160)
         theme.apply_role(lbl_cap, "body")
 
@@ -668,18 +692,17 @@ class RoomSetupDialog(QDialog):
         self.cap_spin.setValue(int(room.get("capacity", 2)) if room else 2)
         if current_occupancy > 0:
             self.cap_spin.setToolTip(
-                f"{current_occupancy} bed(s) are occupied — the capacity cannot be lower "
-                f"than {min_cap}."
+                t("rooms.bed_capacity_occupied_tooltip", count=current_occupancy, min=min_cap)
             )
         else:
-            self.cap_spin.setToolTip("Total beds in this room (1–8).")
+            self.cap_spin.setToolTip(t("rooms.bed_capacity_tooltip"))
         self.cap_spin.valueChanged.connect(self._validate_inputs)
 
         grid.addWidget(lbl_cap, 3, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         grid.addWidget(self.cap_spin, 3, 1)
 
         # Row 4: Designated Gender
-        lbl_gender = QLabel("Designated Gender:")
+        lbl_gender = QLabel(t("rooms.designated_gender_label"))
         lbl_gender.setFixedWidth(160)
         theme.apply_role(lbl_gender, "body")
 
@@ -689,13 +712,13 @@ class RoomSetupDialog(QDialog):
 
         self.gender_combo = QComboBox()
         self.gender_combo.setFixedHeight(40)
-        self.gender_combo.addItems(["Male", "Female"])
+        self.gender_combo.addItems([t("gender.male"), t("gender.female")])
         self.gender_combo.setEnabled(False)
         # Higher contrast for disabled state: text #5B6B82 on #EDF2F7
         self.gender_combo.setStyleSheet(
             f"QComboBox:disabled {{ color: #5B6B82; background-color: #EDF2F7; border: 1px solid #DCE4EE; }}"
         )
-        self.gender_combo.setToolTip("Designated gender is inherited automatically from the selected block.")
+        self.gender_combo.setToolTip(t("rooms.gender_inherited_tooltip"))
         gender_layout.addWidget(self.gender_combo)
 
         self.gender_note = QLabel()
@@ -711,12 +734,12 @@ class RoomSetupDialog(QDialog):
         if current_occupancy > 0:
             self.block_combo.setEnabled(False)
             self.new_block_btn.setEnabled(False)
-            self.block_combo.setToolTip("The block cannot be changed while the room has active occupants.")
+            self.block_combo.setToolTip(t("rooms.block_locked_tooltip"))
             card.add_widget(
                 InlineBanner(
                     "warning",
-                    title="Room locked",
-                    message=f"Room currently has {current_occupancy} active occupant(s). Block and gender cannot be modified.",
+                    title=t("rooms.room_locked_title"),
+                    message=t("rooms.room_locked_message", count=current_occupancy),
                 )
             )
 
@@ -727,11 +750,11 @@ class RoomSetupDialog(QDialog):
         btn_row.addStretch(1)
 
         self.button_box = QDialogButtonBox(Qt.Orientation.Horizontal, self)
-        self.cancel_btn = Button.secondary("Cancel")
+        self.cancel_btn = Button.secondary(t("common.cancel"))
         self.cancel_btn.setFixedHeight(40)
         self.cancel_btn.clicked.connect(self.reject)
 
-        self.save_btn = Button.primary("Save changes" if room else "Create room")
+        self.save_btn = Button.primary(t("rooms.save_changes_btn") if room else t("rooms.create_room_btn"))
         self.save_btn.setFixedHeight(40)
         self.save_btn.setDefault(True)
         self.save_btn.clicked.connect(self.on_save)
@@ -761,7 +784,7 @@ class RoomSetupDialog(QDialog):
         is_valid = True
         if not num:
             is_valid = False
-            self.num_error_label.setText("Room number is required.")
+            self.num_error_label.setText(t("rooms.room_number_required"))
             self.num_error_label.setVisible(self._num_touched)
         else:
             self.num_error_label.setText("")
@@ -782,16 +805,16 @@ class RoomSetupDialog(QDialog):
         selected_index = 0
         for i, b in enumerate(self.blocks):
             name = str(b["name"]).upper()
-            gender = str(b.get("gender", "male")).capitalize()
-            self.block_combo.addItem(f"Block {name}  ·  {gender}", userData=b)
+            gender = t("gender.female") if str(b.get("gender", "male")).lower() == "female" else t("gender.male")
+            self.block_combo.addItem(t("rooms.block_combo_item", block=name, gender=gender), userData=b)
             if initial_block and name == initial_block.strip().upper():
                 selected_index = i
 
         if self.blocks:
             self.block_combo.setCurrentIndex(selected_index)
         else:
-            self.block_combo.addItem("No blocks available", userData=None)
-            self.gender_note.setText("Click 'Add block' to create a residential block first.")
+            self.block_combo.addItem(t("rooms.no_blocks_available_combo"), userData=None)
+            self.gender_note.setText(t("rooms.no_blocks_available_note"))
 
         self.block_combo.blockSignals(False)
         self._validate_inputs()
@@ -805,12 +828,12 @@ class RoomSetupDialog(QDialog):
     def _on_block_changed(self):
         block = self._get_selected_block()
         if block:
-            gender = str(block.get("gender", "male")).capitalize()
+            gender = t("gender.female") if str(block.get("gender", "male")).lower() == "female" else t("gender.male")
             self.gender_combo.setCurrentText(gender)
-            self.gender_note.setText(f"Automatically inherited from Block {block['name'].upper()} ({gender}).")
+            self.gender_note.setText(t("rooms.gender_inherited_note", block=block['name'].upper(), gender=gender))
             self.block_edit.setText(block["name"].upper())
         else:
-            self.gender_note.setText("Please create or select a residential block.")
+            self.gender_note.setText(t("rooms.no_block_selected_note"))
 
         self._validate_inputs()
 
@@ -830,7 +853,7 @@ class RoomSetupDialog(QDialog):
 
         block_data = self._get_selected_block()
         if not block_data:
-            QMessageBox.warning(self, "No Block", "Please create or select a residential block first.")
+            QMessageBox.warning(self, t("rooms.no_block_warning_title"), t("rooms.no_block_warning_msg"))
             return
 
         block_name = str(block_data["name"]).strip().upper()
@@ -838,7 +861,7 @@ class RoomSetupDialog(QDialog):
 
         num = self.num_edit.text().strip()
         if not num:
-            self.num_error_label.setText("Room number is required.")
+            self.num_error_label.setText(t("rooms.room_number_required"))
             self.num_error_label.setVisible(True)
             return
 
@@ -883,11 +906,11 @@ class RoomsPage(QWidget):
         layout.setSpacing(S("space-6"))
 
         self.header = PageHeader(
-            "Dormitory rooms & capacity",
-            "Manage residential blocks, room numbers, bed capacity and live occupancy.",
+            t("rooms.title"),
+            t("rooms.subtitle"),
         )
-        self.blocks_btn = Button.secondary("Residential blocks", icon="building")
-        self.blocks_btn.setToolTip("Manage residential blocks and designated genders")
+        self.blocks_btn = Button.secondary(t("rooms.manage_blocks_btn"), icon="building")
+        self.blocks_btn.setToolTip(t("rooms.manage_blocks_tooltip"))
         self.blocks_btn.clicked.connect(self.on_manage_blocks)
         self.header.actions.addWidget(self.blocks_btn)
         layout.addWidget(self.header)
@@ -896,42 +919,46 @@ class RoomsPage(QWidget):
         toolbar = QHBoxLayout()
         toolbar.setSpacing(S("space-3"))
 
-        self.search_field = SearchField("Search room number or block…")
+        self.search_field = SearchField(t("rooms.search_placeholder"))
         self.search_field.changed.connect(self.filter_table)
         # Legacy alias: the search box used to be a bare ``QLineEdit``.
         self.search_input = self.search_field.edit
         toolbar.addWidget(self.search_field, 1)
 
         self.gender_filter = QComboBox()
-        self.gender_filter.addItems(["All Genders", "Male Blocks", "Female Blocks"])
-        self.gender_filter.setToolTip("Show every block, or only male / female blocks")
+        self.gender_filter.addItems([
+            t("rooms.filter_all_genders"),
+            t("rooms.filter_male_blocks"),
+            t("rooms.filter_female_blocks"),
+        ])
+        self.gender_filter.setToolTip(t("rooms.gender_filter_tooltip"))
         self.gender_filter.currentIndexChanged.connect(self.filter_table)
         toolbar.addWidget(self.gender_filter)
 
-        self.count_badge = StatusPill("neutral", "0 rooms")
+        self.count_badge = StatusPill("neutral", tn("rooms.count_badge", count=0, count_fmt=format_number(0)))
         toolbar.addWidget(self.count_badge)
 
-        self.add_btn = Button.primary("Add room", icon="plus")
+        self.add_btn = Button.primary(t("rooms.add_room_btn"), icon="plus")
         self.add_btn.setFixedHeight(36)
-        self.add_btn.setToolTip("Configure a new dormitory room")
+        self.add_btn.setToolTip(t("rooms.add_room_tooltip"))
         self.add_btn.clicked.connect(self.on_add)
         toolbar.addWidget(self.add_btn)
 
-        self.edit_btn = Button.secondary("Edit", icon="edit")
+        self.edit_btn = Button.secondary(t("common.edit"), icon="edit")
         self.edit_btn.setFixedHeight(36)
         self.edit_btn.setEnabled(False)
-        self.edit_btn.setToolTip("Select a room from the table to edit")
+        self.edit_btn.setToolTip(t("rooms.edit_no_selection_tooltip"))
         self.edit_btn.clicked.connect(self.on_edit)
         toolbar.addWidget(self.edit_btn)
 
-        self.delete_btn = Button.danger("Delete", icon="trash")
+        self.delete_btn = Button.danger(t("common.delete"), icon="trash")
         self.delete_btn.setFixedHeight(36)
         self.delete_btn.setEnabled(False)
-        self.delete_btn.setToolTip("Select a room from the table to delete")
+        self.delete_btn.setToolTip(t("rooms.delete_no_selection_tooltip"))
         self.delete_btn.clicked.connect(self.on_delete)
         toolbar.addWidget(self.delete_btn)
 
-        self.refresh_btn = IconButton("refresh", "Reload the room list")
+        self.refresh_btn = IconButton("refresh", t("rooms.refresh_tooltip"))
         self.refresh_btn.setFixedHeight(36)
         self.refresh_btn.clicked.connect(self.reload)
         toolbar.addWidget(self.refresh_btn)
@@ -939,8 +966,8 @@ class RoomsPage(QWidget):
 
         self.error_banner = InlineBanner(
             "error",
-            title="Rooms could not be loaded",
-            message="Check the connection, then use Refresh to try again.",
+            title=t("rooms.error_title"),
+            message=t("rooms.error_msg"),
         )
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
@@ -994,13 +1021,13 @@ class RoomsPage(QWidget):
 
         self.empty_no_data = EmptyState(
             "bed",
-            "No rooms configured",
-            "Add a room to start allocating beds to residents.",
+            t("rooms.empty_no_data_title"),
+            t("rooms.empty_no_data_desc"),
         )
         self.empty_no_match = EmptyState(
             "search",
-            "No room matches the filters",
-            "Clear the search field or switch the gender filter to see every room again.",
+            t("rooms.empty_no_match_title"),
+            t("rooms.empty_no_match_desc"),
         )
         self.stack.addWidget(self.empty_no_data)
         self.stack.addWidget(self.empty_no_match)
@@ -1011,7 +1038,7 @@ class RoomsPage(QWidget):
         card_layout.addWidget(self.stack)
         layout.addWidget(table_card, 1)
 
-        tip = _small_label("Double-click a room to inspect its occupants and bed allocation.")
+        tip = _small_label(t("rooms.double_click_tip"))
         layout.addWidget(tip)
 
         self.reload()
@@ -1059,11 +1086,11 @@ class RoomsPage(QWidget):
         self.edit_btn.setEnabled(has_sel)
         self.delete_btn.setEnabled(has_sel)
         if has_sel:
-            self.edit_btn.setToolTip("Edit the selected room")
-            self.delete_btn.setToolTip("Delete the selected room (only when no resident is assigned)")
+            self.edit_btn.setToolTip(t("rooms.edit_selected_tooltip"))
+            self.delete_btn.setToolTip(t("rooms.delete_selected_tooltip"))
         else:
-            self.edit_btn.setToolTip("Select a room from the table to edit")
-            self.delete_btn.setToolTip("Select a room from the table to delete")
+            self.edit_btn.setToolTip(t("rooms.edit_no_selection_tooltip"))
+            self.delete_btn.setToolTip(t("rooms.delete_no_selection_tooltip"))
 
     def _current_room_id(self):
         row = self.table.currentRow()
@@ -1120,7 +1147,7 @@ class RoomsPage(QWidget):
         self.rows = list(snapshot.get("rows") or [])
         self.occupancy_map = dict(snapshot.get("occupancy") or {})
         self.blocks = list(snapshot.get("blocks") or [])
-        self.count_badge.setText(f"{len(self.rows)} rooms")
+        self.count_badge.setText(tn("rooms.count_badge", count=len(self.rows), count_fmt=format_number(len(self.rows))))
         self._render_rows(select_id=select_id)
         self._set_loading(False)
 
@@ -1132,9 +1159,8 @@ class RoomsPage(QWidget):
         except Exception as exc:  # noqa: BLE001 - reported inline
             self._show_banner(
                 "error",
-                "Rooms could not be loaded",
-                f"The room list could not be loaded ({human_error(exc)}). "
-                "Check the connection, then use Refresh to try again.",
+                t("rooms.error_title"),
+                f"{t('rooms.error_title')} ({human_error(exc)}). {t('rooms.error_msg')}",
             )
             self._set_loading(False)
             return
@@ -1150,9 +1176,8 @@ class RoomsPage(QWidget):
     def _on_reload_failed(self, message: str) -> None:
         self._show_banner(
             "error",
-            "Rooms could not be loaded",
-            f"The room list could not be reloaded ({message}). "
-            "Check the connection, then use Refresh to try again.",
+            t("rooms.error_title"),
+            f"{t('rooms.error_title')} ({message}). {t('rooms.error_msg')}",
         )
         self._set_loading(False)
 
@@ -1168,7 +1193,7 @@ class RoomsPage(QWidget):
             return
         generation = self._data_generation
         self._set_actions_busy(True)
-        self._show_banner("info", _WORKING_TEXT, "Refreshing the room list…")
+        self._show_banner("info", _WORKING_TEXT, t("rooms.refreshing_msg"))
         self._set_loading(True)
         callables = {
             "rooms": self._fetch_rooms,
@@ -1228,13 +1253,19 @@ class RoomsPage(QWidget):
                 cap = r.get("capacity", 1)
                 occ = self.occupancy_map.get(r["id"], 0)
                 free = cap - occ
-                avail_text = f"{free} bed(s) available" if free > 0 else "Full"
+                avail_text = (
+                    tn("rooms.beds_available", count=free, count_fmt=format_number(free))
+                    if free > 0
+                    else t("status.full")
+                )
 
-                block_item = QTableWidgetItem(f"Block {r['block']}")
+                block_item = QTableWidgetItem(t("rooms.cell_block", block=r['block']))
                 block_item.setIcon(building_icon)
-                floor_item = QTableWidgetItem(f"Floor {r['floor']}")
-                num_item = QTableWidgetItem(f"Room {r['number']}")
-                gender_item = QTableWidgetItem(str(r["gender"]).capitalize())
+                floor_item = QTableWidgetItem(t("rooms.cell_floor", floor=r['floor']))
+                num_item = QTableWidgetItem(t("rooms.cell_room", number=r['number']))
+                gender_val = str(r["gender"]).lower()
+                gender_text = t("gender.female") if gender_val == "female" else t("gender.male")
+                gender_item = QTableWidgetItem(gender_text)
                 cap_item = QTableWidgetItem(str(cap))
                 occ_item = QTableWidgetItem()
                 occ_item.setData(Qt.ItemDataRole.UserRole, (occ, cap))
@@ -1265,8 +1296,20 @@ class RoomsPage(QWidget):
 
     def filter_table(self):
         needle = self.search_input.text().lower().strip()
-        gender_sel = self.gender_filter.currentText()
-        gender_target = "male" if gender_sel == "Male Blocks" else "female" if gender_sel == "Female Blocks" else None
+        gender_idx = self.gender_filter.currentIndex()
+        if gender_idx == 1:
+            gender_target = "male"
+        elif gender_idx == 2:
+            gender_target = "female"
+        else:
+            gender_sel = self.gender_filter.currentText()
+            gender_target = (
+                "male"
+                if gender_sel in ("Male Blocks", t("rooms.filter_male_blocks"))
+                else "female"
+                if gender_sel in ("Female Blocks", t("rooms.filter_female_blocks"))
+                else None
+            )
 
         for r in range(self.table.rowCount()):
             row_data = self.rows[r] if r < len(self.rows) else {}
@@ -1330,8 +1373,8 @@ class RoomsPage(QWidget):
     def _on_info_failed(self, message: str) -> None:
         self._show_banner(
             "error",
-            "Room details could not be loaded",
-            f"The occupant lookup failed ({message}). The room list is unchanged.",
+            t("rooms.details_failed_title"),
+            t("rooms.details_failed_msg", message=message),
         )
 
     def _on_info_finished(self) -> None:
@@ -1412,18 +1455,18 @@ class RoomsPage(QWidget):
 
     def _on_created(self, created, message: str) -> None:
         self._data_generation += 1
-        self._show_banner("success", "Room created", message)
+        self._show_banner("success", t("rooms.room_created_title"), message)
         self._reload_after_action = True
 
     def _on_create_failed(self, message: str) -> None:
         if "result is unknown" in message.lower():
-            self._show_banner("error", "Request timed out", message)
+            self._show_banner("error", t("rooms.timeout_title"), message)
             self.reload()
         else:
             self._show_banner(
                 "error",
-                "Room could not be created",
-                f"The room was not created. {message}",
+                t("rooms.room_create_failed_title"),
+                t("rooms.room_create_failed_msg", message=message),
             )
 
     def _on_updated(self, data, room_id, message: str) -> None:
@@ -1433,18 +1476,18 @@ class RoomsPage(QWidget):
                 row.update(data)
                 break
         self._render_rows(select_id=room_id)
-        self._show_banner("success", "Room updated", message)
+        self._show_banner("success", t("rooms.room_updated_title"), message)
         self._reload_after_action = True
 
     def _on_update_failed(self, message: str) -> None:
         if "result is unknown" in message.lower():
-            self._show_banner("error", "Request timed out", message)
+            self._show_banner("error", t("rooms.timeout_title"), message)
             self.reload()
         else:
             self._show_banner(
                 "error",
-                "Room could not be updated",
-                f"The room was not updated. {message}",
+                t("rooms.room_update_failed_title"),
+                t("rooms.room_update_failed_msg", message=message),
             )
 
     def _on_deleted(self, room_id, message: str) -> None:
@@ -1455,18 +1498,18 @@ class RoomsPage(QWidget):
             target_idx = min(self._last_deleted_row, len(self.rows) - 1)
             select_id = self.rows[target_idx].get("id")
         self._render_rows(select_id=select_id)
-        self._show_banner("success", "Room deleted", message)
+        self._show_banner("success", t("rooms.room_deleted_title"), message)
         self._reload_after_action = True
 
     def _on_delete_failed(self, message: str) -> None:
         if "result is unknown" in message.lower():
-            self._show_banner("error", "Request timed out", message)
+            self._show_banner("error", t("rooms.timeout_title"), message)
             self.reload()
         else:
             self._show_banner(
                 "error",
-                "Room could not be deleted",
-                f"The room was not removed. {message}",
+                t("rooms.room_delete_failed_title"),
+                t("rooms.room_delete_failed_msg", message=message),
             )
 
     def on_add(self):
@@ -1476,9 +1519,8 @@ class RoomsPage(QWidget):
         if not self.blocks:
             confirm = QMessageBox.question(
                 self,
-                "No Residential Blocks",
-                "Every room must belong to a residential block designating Female or Male.\n\n"
-                "Would you like to configure a residential block now?",
+                t("rooms.no_blocks_title"),
+                t("rooms.no_blocks_message"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
             )
             if confirm == QMessageBox.StandardButton.Yes or confirm == QMessageBox.Yes:
@@ -1500,10 +1542,8 @@ class RoomsPage(QWidget):
             return
 
         data = dict(dlg.result_data)
-        message = (
-            f"Room {data['block']}-{data['number']} "
-            f"({data['gender'].capitalize()}) configured successfully."
-        )
+        gender_str = t("gender.female") if data['gender'].lower() == "female" else t("gender.male")
+        message = t("rooms.room_created_success", block=data['block'], number=data['number'], gender=gender_str)
 
         def work():
             execute_network_call(
@@ -1516,7 +1556,7 @@ class RoomsPage(QWidget):
             _ACTION_KEY,
             work,
             button=self.add_btn,
-            working_message=f"Creating room {data['block']}-{data['number']}…",
+            working_message=t("rooms.creating_room_msg", block=data['block'], number=data['number']),
             on_success=lambda created: self._on_created(created, message),
             on_failed=self._on_create_failed,
         )
@@ -1526,7 +1566,7 @@ class RoomsPage(QWidget):
             return
         r = self.table.currentRow()
         if r < 0 or r >= len(self.rows):
-            QMessageBox.information(self, "Select room", "Please select a room from the table to edit.")
+            QMessageBox.information(self, t("rooms.select_room_title"), t("rooms.select_room_to_edit"))
             return
         room = self.rows[r]
         room_id = room.get("id")
@@ -1538,10 +1578,8 @@ class RoomsPage(QWidget):
             return
 
         data = dict(dlg.result_data)
-        message = (
-            f"Room {data['block']}-{data['number']} "
-            f"({data['gender'].capitalize()}) updated successfully."
-        )
+        gender_str = t("gender.female") if data['gender'].lower() == "female" else t("gender.male")
+        message = t("rooms.room_updated_success", block=data['block'], number=data['number'], gender=gender_str)
 
         def work():
             execute_network_call(
@@ -1554,7 +1592,7 @@ class RoomsPage(QWidget):
             _ACTION_KEY,
             work,
             button=self.edit_btn,
-            working_message=f"Updating room {data['block']}-{data['number']}…",
+            working_message=t("rooms.updating_room_msg", block=data['block'], number=data['number']),
             on_success=lambda updated: self._on_updated(updated, room_id, message),
             on_failed=self._on_update_failed,
         )
@@ -1564,7 +1602,7 @@ class RoomsPage(QWidget):
             return
         r = self.table.currentRow()
         if r < 0 or r >= len(self.rows):
-            QMessageBox.information(self, "Select room", "Please select a room from the table to delete.")
+            QMessageBox.information(self, t("rooms.select_room_title"), t("rooms.select_room_to_delete"))
             return
         self._last_deleted_row = r
         room = self.rows[r]
@@ -1572,17 +1610,17 @@ class RoomsPage(QWidget):
         if room_id is None:
             return
         if self.occupancy_map.get(room_id, 0) > 0:
-            QMessageBox.warning(self, "Room Occupied", "Cannot delete a room that still has active residents assigned.")
+            QMessageBox.warning(self, t("rooms.occupied_warning_title"), t("rooms.occupied_warning_msg"))
             return
         confirm = QMessageBox.question(
             self,
-            "Delete Room",
-            f"Are you sure you want to delete room Block {room['block']} — {room['number']}?",
+            t("rooms.delete_confirm_title"),
+            t("rooms.delete_confirm_msg", block=room['block'], number=room['number']),
         )
         if confirm != QMessageBox.StandardButton.Yes and confirm != QMessageBox.Yes:
             return
 
-        message = f"Room {room['block']}-{room['number']} has been removed."
+        message = t("rooms.room_deleted_success", block=room['block'], number=room['number'])
 
         def work():
             execute_network_call(
@@ -1595,7 +1633,7 @@ class RoomsPage(QWidget):
             _ACTION_KEY,
             work,
             button=self.delete_btn,
-            working_message=f"Deleting room {room['block']}-{room['number']}…",
+            working_message=t("rooms.deleting_room_msg", block=room['block'], number=room['number']),
             on_success=lambda deleted_id: self._on_deleted(deleted_id, message),
             on_failed=self._on_delete_failed,
         )
