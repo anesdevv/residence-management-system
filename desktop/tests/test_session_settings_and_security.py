@@ -49,7 +49,9 @@ def qapp():
 
 
 @pytest.fixture(autouse=True)
-def reset_remember_setting():
+def reset_remember_setting(monkeypatch):
+    monkeypatch.setattr("desktop.app.ui.pages.settings.McpHealthWorker.start", lambda self: None)
+    monkeypatch.setattr("desktop.app.ui.main_window.LiveSyncWorker.start", lambda self: None)
     orig = get_remember_session_setting()
     yield
     set_remember_session_setting(orig)
@@ -186,6 +188,8 @@ def test_settings_page_role_update_updates_label(qapp):
 
 
 def test_main_window_connects_settings_sign_out(qapp, monkeypatch):
+    monkeypatch.setattr("desktop.app.ui.main_window.LiveSyncWorker.start", lambda self: None)
+    monkeypatch.setattr("desktop.app.ui.pages.settings.McpHealthWorker.start", lambda self: None)
     client = MockClient(email="admin@univ-tlemcen.dz", role="admin")
 
     window = MainWindow(client, role="admin")
@@ -197,6 +201,7 @@ def test_main_window_connects_settings_sign_out(qapp, monkeypatch):
 
     window.settings_page.sign_out_requested.emit()
     assert len(sign_out_called) == 1
+    window._shutdown_workers(500)
     window.close()
 
 
