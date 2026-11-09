@@ -126,3 +126,35 @@ Supabase local includes an in-memory mail catcher (Mailpit) running at **`http:/
 8. In Mailpit, find the verification email sent exclusively to `tariq.meghazi@univ-tlemcen.dz` (zero email sent to `@students.residence.local`).
 9. Enter the 6-digit code and submit.
 10. **Expected**: Real email is confirmed and mirrored into `students.email`. User is now permitted into `/dashboard`!
+
+---
+
+## 3. Bilingual Web Portal Verification (English & Français)
+
+### Scenario K: Language Switcher & Cookie Persistence
+1. Navigate to the landing page at `http://localhost:4321/`.
+2. Locate the language toggle in the header (`FR | EN`).
+3. Click **FR**.
+4. **Expected**:
+   - The URL updates to `http://localhost:4321/fr`.
+   - `<html lang="fr">` is present in the DOM.
+   - All landing sections (hero headline, value propositions, intake process steps, campus services, institutional footer) render in formal French.
+   - Cookie `resivo_locale=fr` is set with a 1-year max-age.
+5. Click **"Espace Résident"** or **"Se connecter"**.
+6. **Expected**:
+   - Routes to `/fr/login`.
+   - All input labels, placeholders, password toggle tooltips, and help links appear in French.
+7. Close the browser tab and open `http://localhost:4321/`.
+8. **Expected**: Middleware detects `resivo_locale=fr` and serves the French portal.
+
+### Scenario L: Localized Student Dashboard
+1. Sign in to `/fr/login` with resident credentials.
+2. **Expected**:
+   - Navigates to `/fr/dashboard`.
+   - Greeting, status summary pills, digital resident pass labels, and recent activity list are in French.
+   - Tab navigation shows: *"Vue d'ensemble"*, *"Demandes de réparation"*, *"Changement de chambre"*, *"Mon profil"*.
+3. Click **"Demandes de réparation"** (`/fr/dashboard/maintenance`).
+4. **Expected**: Maintenance status pills (*En attente*, *En cours*, *Résolue*), category badges (*Plomberie*, *Électricité*, *Menuiserie*, *Autres*), and ticket creation form appear in French.
+5. In the header, click **EN**.
+6. **Expected**: Switches immediately to `/dashboard/maintenance` in English, preserving state and query parameters.
+

@@ -1,0 +1,1188 @@
+﻿platform,namespace,key,en,fr
+desktop,auth,auth.forgot_password,Forgot password?,Mot de passe oublié ?
+desktop,auth,auth.register,Register,S’inscrire
+desktop,auth,auth.resend_code,Resend code,Renvoyer le code
+desktop,auth,auth.sign_in,Sign in,Se connecter
+desktop,auth,auth.sign_out,Sign out,Se déconnecter
+desktop,category,category.carpentry,Carpentry,Menuiserie
+desktop,category,category.electricity,Electricity,Électricité
+desktop,category,category.others,Others,Autres
+desktop,category,category.plumbing,Plumbing,Plomberie
+desktop,close_dialog,close_dialog.busy_desc,An action is still running. Closing now may leave it unfinished.,Une action est toujours en cours d’exécution. Fermer maintenant peut la laisser inachevée.
+desktop,close_dialog,close_dialog.busy_title,Action in progress,Action en cours
+desktop,close_dialog,close_dialog.busy_warning,Background database operations are currently active. Forcing closure now may corrupt in-flight changes.,Des opérations de base de données en arrière-plan sont actives. Forcer la fermeture maintenant peut corrompre les modifications en cours.
+desktop,close_dialog,close_dialog.cancel,Cancel,Annuler
+desktop,close_dialog,close_dialog.close_anyway,Close anyway,Fermer quand même
+desktop,close_dialog,close_dialog.close_app,Close app,Fermer l’application
+desktop,close_dialog,close_dialog.dont_ask,Don't ask me again,Ne plus me demander
+desktop,close_dialog,close_dialog.minimize_to_tray,Minimize to tray,Réduire dans la zone de notification
+desktop,close_dialog,close_dialog.normal_body,Are you sure you want to close RÉSIVO? Background live sync and desktop notifications will stop running.,Êtes-vous certain de vouloir fermer RÉSIVO ? La synchronisation en direct et les notifications sur le bureau cesseront de fonctionner.
+desktop,close_dialog,close_dialog.normal_desc,Background live sync and notifications will stop running.,La synchronisation en direct et les notifications en arrière-plan cesseront de fonctionner.
+desktop,close_dialog,close_dialog.normal_title,Close RÉSIVO?,Fermer RÉSIVO ?
+desktop,close_dialog,close_dialog.title,Close RÉSIVO?,Fermer RÉSIVO ?
+desktop,close_dialog,close_dialog.warning,Warning,Avertissement
+desktop,common,common.add,Add,Ajouter
+desktop,common,common.all,All,Tous
+desktop,common,common.all_f,All,Toutes
+desktop,common,common.approve,Approve,Approuver
+desktop,common,common.back,Back,Retour
+desktop,common,common.cancel,Cancel,Annuler
+desktop,common,common.close,Close,Fermer
+desktop,common,common.confirm,Confirm,Confirmer
+desktop,common,common.copied,Copied,Copié
+desktop,common,common.copy,Copy,Copier
+desktop,common,common.delete,Delete,Supprimer
+desktop,common,common.dismiss,Dismiss,Ignorer
+desktop,common,common.edit,Edit,Modifier
+desktop,common,common.error,Error,Erreur
+desktop,common,common.filter,Filter,Filtrer
+desktop,common,common.hide,Hide,Masquer
+desktop,common,common.later,Later,Plus tard
+desktop,common,common.loading,Loading...,Chargement…
+desktop,common,common.none,None,Aucun
+desktop,common,common.refresh,Refresh,Actualiser
+desktop,common,common.reject,Reject,Rejeter
+desktop,common,common.resend_code,Resend code,Renvoyer le code
+desktop,common,common.restart_now,Restart now,Redémarrer maintenant
+desktop,common,common.retry,Retry,Réessayer
+desktop,common,common.reveal,Reveal,Afficher
+desktop,common,common.save,Save,Enregistrer
+desktop,common,common.search,Search,Rechercher
+desktop,common,common.success,Success,Succès
+desktop,common,common.verified,Verified,Vérifié
+desktop,common,common.warning,Warning,Avertissement
+desktop,common,common.working,Working...,En cours…
+desktop,fields,fields.card_id,Card ID,N° de carte étudiant
+desktop,fields,fields.email,Email,E-mail
+desktop,fields,fields.faculty,Faculty,Faculté
+desktop,fields,fields.forgot_password,Forgot password?,Mot de passe oublié ?
+desktop,fields,fields.gender,Gender,Genre
+desktop,fields,fields.password,Password,Mot de passe
+desktop,fields,fields.phone,Phone,Téléphone
+desktop,fields,fields.rejection_reason,Rejection reason,Motif du rejet
+desktop,fields,fields.study_level,Study level,Niveau d’études
+desktop,fields,fields.university,University,Université
+desktop,fields,fields.wilaya,Wilaya,Wilaya
+desktop,gender,gender.all_genders,All genders,Tous les genres
+desktop,gender,gender.female,Female,Féminin
+desktop,gender,gender.male,Male,Masculin
+desktop,infocard,infocard.assigned_room_format,Block {block} — Room {number}{floor_text},Bloc {block} — Chambre {number}{floor_text}
+desktop,infocard,infocard.assigned_room_label,Assigned room,Chambre affectée
+desktop,infocard,infocard.available_beds,Available beds,Lits disponibles
+desktop,infocard,infocard.bed_available_one,{count} bed available,{count} lit disponible
+desktop,infocard,infocard.bed_available_other,{count} beds available,{count} lits disponibles
+desktop,infocard,infocard.bed_available_tooltip,Free beds available for allocation in this room.,Places vacantes disponibles pour affectation dans cette chambre.
+desktop,infocard,infocard.birth_date,Date of birth,Date de naissance
+desktop,infocard,infocard.capacity_card_desc,Floor {floor} · Designated for {gender} students,Étage {floor} · Réservé aux étudiants de genre {gender}
+desktop,infocard,infocard.capacity_card_title,Block {block} — Room {number},Bloc {block} — Chambre {number}
+desktop,infocard,infocard.card_id_prefix,Card ID {card_id},N° de carte {card_id}
+desktop,infocard,infocard.contact_phone,Contact phone,Téléphone de contact
+desktop,infocard,infocard.default_occupant_name,Resident student,Étudiant résident
+desktop,infocard,infocard.default_student_name,Student resident,Étudiant résident
+desktop,infocard,infocard.floor_suffix, (Floor {floor}), (Étage {floor})
+desktop,infocard,infocard.housing_card_desc,Room assignment and official roster cross-check.,Affectation de chambre et contrôle avec la liste officielle.
+desktop,infocard,infocard.housing_card_title,Housing & verification,Hébergement et vérification
+desktop,infocard,infocard.no_residents_desc,All beds in this room are currently vacant and available for allocation.,Tous les lits de cette chambre sont actuellement vacants et disponibles pour affectation.
+desktop,infocard,infocard.no_residents_title,No residents assigned,Aucun résident affecté
+desktop,infocard,infocard.no_room_assigned,No room assigned yet,Aucune chambre affectée pour le moment
+desktop,infocard,infocard.no_room_desc,The resident has no room allocation recorded yet.,Le résident ne dispose d’aucune affectation de chambre enregistrée.
+desktop,infocard,infocard.no_room_title,No room assigned,Aucune chambre affectée
+desktop,infocard,infocard.occupants_card_desc,{occupied} of {capacity} beds occupied.,{occupied} lit sur {capacity} occupé.
+desktop,infocard,infocard.occupants_card_title,Current occupants,Occupants actuels
+desktop,infocard,infocard.occupied_beds,Occupied beds,Lits occupés
+desktop,infocard,infocard.room_full,Room full,Chambre complète
+desktop,infocard,infocard.room_full_tooltip,Every bed in this room is occupied.,Tous les lits de cette chambre sont occupés.
+desktop,infocard,infocard.room_title,Room details — Block {block} Room {number},Détails de la chambre — Bloc {block} Chambre {number}
+desktop,infocard,infocard.roster_match_desc,Identity and academic records are confirmed against the official university register.,L’identité et le dossier universitaire sont confirmés sur le registre officiel de l’université.
+desktop,infocard,infocard.roster_match_title,Official roster match — verified,Correspondance avec la liste officielle — vérifié
+desktop,infocard,infocard.roster_mismatch_desc,Self-registered record. Audit the physical dossier before authorising a room allocation.,Dossier auto-enregistré. Contrôlez le dossier physique avant d’autoriser une affectation de chambre.
+desktop,infocard,infocard.roster_mismatch_title,Not found on the admissions roster,Absent de la liste des admissions
+desktop,infocard,infocard.roster_tooltip,Cross-check of the card ID against the official university roster,Vérification du numéro de carte par rapport à la liste officielle de l’université
+desktop,infocard,infocard.section_academic,Academic & identity,Parcours académique et état civil
+desktop,infocard,infocard.status_active_resident,Active resident,Résident actif
+desktop,infocard,infocard.status_cancelled,Cancelled,Annulé
+desktop,infocard,infocard.status_pending_verification,Pending verification,En attente de vérification
+desktop,infocard,infocard.student_card_desc,Read-only record for desk inquiries.,Dossier consultable pour les démarches au guichet.
+desktop,infocard,infocard.student_card_id,Student card ID,N° de carte étudiant
+desktop,infocard,infocard.student_card_title,Student profile,Profil de l’étudiant
+desktop,infocard,infocard.student_title,Student profile — {name},Profil étudiant — {name}
+desktop,infocard,infocard.table_col_card_id,Card ID,N° de carte
+desktop,infocard,infocard.table_col_faculty,Faculty,Faculté
+desktop,infocard,infocard.table_col_name,Resident name,Nom du résident
+desktop,infocard,infocard.total_capacity,Total capacity,Capacité totale
+desktop,infocard,infocard.wilaya_prefix,Wilaya {wilaya},Wilaya {wilaya}
+desktop,live_sync,live_sync.active,Live sync active,Synchronisation active
+desktop,live_sync,live_sync.connected,Live sync connected,Synchronisation en direct connectée
+desktop,live_sync,live_sync.offline,Live sync offline,Synchronisation en direct hors ligne
+desktop,live_sync,live_sync.reconnecting,Live sync reconnecting,Reconnexion de la synchronisation en direct…
+desktop,live_sync,live_sync.status_bar,{status} • Last update: {timestamp} • Pending: {pending} • Open tickets: {open_tickets} • Transfers: {transfers},{status} • Dernière mise à jour : {timestamp} • En attente : {pending} • Tickets ouverts : {open_tickets} • Transferts : {transfers}
+desktop,login,login.access_denied,Access denied: Console restricted to staff and administrators.,Accès refusé : Console réservée au personnel et aux administrateurs.
+desktop,login,login.checking_role,Checking role...,Vérification du rôle…
+desktop,login,login.email_label,Staff email,E-mail professionnel
+desktop,login,login.email_placeholder,staff@univ-tlemcen.dz,personnel@univ-tlemcen.dz
+desktop,login,login.hero_caption,Direction des Œuvres Universitaires · Cité Universitaire · Tlemcen,Direction des Œuvres Universitaires · Cité Universitaire · Tlemcen
+desktop,login,login.hero_desc,"Applications, rooms and repairs in one live console.","Demandes, chambres et réparations dans une console en direct."
+desktop,login,login.hero_title,Staff Console,Console du personnel
+desktop,login,login.hide_password,Hide password,Masquer le mot de passe
+desktop,login,login.login_failed,Sign in failed,Échec de la connexion
+desktop,login,login.missing_credentials,Please enter both email and password.,Veuillez saisir votre e-mail et votre mot de passe.
+desktop,login,login.password_label,Password,Mot de passe
+desktop,login,login.password_placeholder,••••••••,••••••••
+desktop,login,login.retry_role_check,Retry role check,Réessayer la vérification du rôle
+desktop,login,login.role_error,Could not verify your role. Check your connection or configuration.,Impossible de vérifier votre rôle. Vérifiez votre connexion ou votre configuration.
+desktop,login,login.show_password,Show password,Afficher le mot de passe
+desktop,login,login.sign_in,Sign in,Se connecter
+desktop,login,login.sign_out_error,Could not sign out of the current session. Check your connection and try again: {reason},Impossible de se déconnecter de la session active. Vérifiez votre connexion et réessayez : {reason}
+desktop,login,login.signing_in,Signing in...,Connexion en cours…
+desktop,login,login.subtitle,Staff & Housing Operations Console,Console des opérations de logement et du personnel
+desktop,login,login.switch_account,Use another account,Utiliser un autre compte
+desktop,login,login.title,Staff Login — RÉSIVO,Connexion personnel — RÉSIVO
+desktop,login,login.welcome,"Welcome, {name}","Bienvenue, {name}"
+desktop,maintenance,maintenance.all_categories,All categories,Toutes les catégories
+desktop,maintenance,maintenance.category_carpentry,Carpentry,Menuiserie
+desktop,maintenance,maintenance.category_electricity,Electricity,Électricité
+desktop,maintenance,maintenance.category_others,Others,Autres
+desktop,maintenance,maintenance.category_plumbing,Plumbing,Plomberie
+desktop,maintenance,maintenance.click_view_fault,Click to view fault details,Cliquer pour afficher les détails du problème
+desktop,maintenance,maintenance.col_category,Category,Catégorie
+desktop,maintenance,maintenance.col_reported,Reported,Signalé
+desktop,maintenance,maintenance.col_resident,Resident,Résident
+desktop,maintenance,maintenance.col_status,Status,Statut
+desktop,maintenance,maintenance.delete_confirm_body,"Permanently delete maintenance ticket #{ticket_id}?
+
+Category: {category}
+Status: {status}
+This removes the resident report and its fault photo.","Supprimer définitivement le signalement #{ticket_id} ?
+
+Catégorie : {category}
+Statut : {status}
+Cette action supprime le signalement et sa photo."
+desktop,maintenance,maintenance.delete_confirm_title,Delete maintenance ticket,Supprimer le signalement de maintenance
+desktop,maintenance,maintenance.delete_failed_msg,The maintenance ticket was not removed. {message},Le signalement n’a pas été supprimé. {message}
+desktop,maintenance,maintenance.delete_failed_title,Ticket could not be deleted,Impossible de supprimer le signalement
+desktop,maintenance,maintenance.delete_success_msg,Maintenance ticket deleted successfully.,Le signalement de maintenance a été supprimé avec succès.
+desktop,maintenance,maintenance.delete_success_title,Ticket deleted,Signalement supprimé
+desktop,maintenance,maintenance.delete_ticket,Delete ticket,Supprimer le signalement
+desktop,maintenance,maintenance.dispatch_dialog_label,Add note for technician / resolution ({status}):,Ajouter une note pour le technicien / la résolution ({status}) :
+desktop,maintenance,maintenance.dispatch_dialog_title,Staff Dispatch Note,Note d’intervention du personnel
+desktop,maintenance,maintenance.empty_panel_desc,"Select a ticket to inspect the fault, the resident and the repair stage.","Sélectionnez un signalement pour consulter l’incident, le résident et le statut."
+desktop,maintenance,maintenance.empty_panel_title,No ticket selected,Aucun signalement sélectionné
+desktop,maintenance,maintenance.empty_view_desc,"Switch the stage filter, adjust the search, or refresh.","Changez de filtre, modifiez la recherche ou actualisez."
+desktop,maintenance,maintenance.empty_view_title,No tickets in this view,Aucun signalement dans cette vue
+desktop,maintenance,maintenance.error_load_msg,The table is showing the last data received. Use Refresh to try again.,Le tableau affiche les dernières données reçues. Actualisez pour réessayer.
+desktop,maintenance,maintenance.error_load_msg_detail,The table is showing the last data received ({detail}). Use Refresh to try again.,Le tableau affiche les dernières données reçues ({detail}). Actualisez pour réessayer.
+desktop,maintenance,maintenance.error_load_title,Maintenance queue could not be loaded,Impossible de charger la file de maintenance
+desktop,maintenance,maintenance.error_record_load_msg,The roster lookup failed ({message}). The maintenance queue is unchanged.,La recherche sur le registre a échoué ({message}). La file de maintenance reste inchangée.
+desktop,maintenance,maintenance.error_record_load_title,Resident record could not be loaded,Impossible de charger le dossier du résident
+desktop,maintenance,maintenance.fact_resolved,Resolved,Résolue
+desktop,maintenance,maintenance.fact_room,Room,Chambre
+desktop,maintenance,maintenance.fact_submitted,Submitted,Déposé
+desktop,maintenance,maintenance.failed_signed_url,Failed to retrieve signed URL,Échec de récupération du lien sécurisé
+desktop,maintenance,maintenance.fault_photo,FAULT PHOTO,PHOTO DU PROBLÈME
+desktop,maintenance,maintenance.filter_by_category,Filter tickets by category,Filtrer les signalements par catégorie
+desktop,maintenance,maintenance.mark_in_progress,Mark in progress,Marquer en cours
+desktop,maintenance,maintenance.mark_resolved,Mark resolved,Marquer comme résolue
+desktop,maintenance,maintenance.no_photo,No photo attached by resident,Aucune photo jointe par le résident
+desktop,maintenance,maintenance.no_staff_notes,No technician notes recorded yet.,Aucune note technique enregistrée pour l’instant.
+desktop,maintenance,maintenance.panel_title,Ticket inspector,Détails du signalement
+desktop,maintenance,maintenance.photo_click_tooltip,Click to open full-size photo viewer,Cliquer pour ouvrir le visualiseur grand format
+desktop,maintenance,maintenance.photo_failed,Failed to load photo,Échec du chargement de la photo
+desktop,maintenance,maintenance.photo_info_title,Fault Photo,Photo du problème
+desktop,maintenance,maintenance.photo_loading,Loading photo…,Chargement de la photo…
+desktop,maintenance,maintenance.photo_loading_tooltip,Loading photo preview…,Chargement de l’aperçu de la photo…
+desktop,maintenance,maintenance.photo_none_msg,No photo was attached to this maintenance ticket by the resident.,Aucune photo n’a été jointe à ce signalement par le résident.
+desktop,maintenance,maintenance.photo_preview_unavailable,Photo preview unavailable,Aperçu photo non disponible
+desktop,maintenance,maintenance.photo_storage_err_msg,Fault photo could not be loaded from storage. Please check the network connection.,Impossible de charger la photo depuis le stockage. Vérifiez la connexion réseau.
+desktop,maintenance,maintenance.photo_unavailable,Photo unavailable,Photo non disponible
+desktop,maintenance,maintenance.record_placeholder,Select a ticket from the table to inspect the full record…,Sélectionnez un signalement dans le tableau pour afficher le dossier complet…
+desktop,maintenance,maintenance.refreshing,Refreshing the maintenance queue…,Actualisation de la file de maintenance…
+desktop,maintenance,maintenance.reload_tooltip,Reload the maintenance queue,Actualiser la file de maintenance
+desktop,maintenance,maintenance.request_timed_out,Request timed out,Délai d’attente de la requête dépassé
+desktop,maintenance,maintenance.retry_photo,Retry loading photo,Réessayer le chargement de la photo
+desktop,maintenance,maintenance.search_placeholder,"Search by description, resident or category…","Rechercher par description, résident ou catégorie…"
+desktop,maintenance,maintenance.select_ticket_msg,Please select a maintenance ticket from the table first.,Veuillez d’abord sélectionner un signalement dans le tableau.
+desktop,maintenance,maintenance.select_ticket_title,Select ticket,Sélectionner un signalement
+desktop,maintenance,maintenance.staff_dispatch_note,Staff / dispatch note,Note de transmission / intervention
+desktop,maintenance,maintenance.stage_in_progress,In progress,En cours
+desktop,maintenance,maintenance.stage_pending,Pending,En attente
+desktop,maintenance,maintenance.stage_resolved,Resolved,Résolue
+desktop,maintenance,maintenance.status_in_progress,In progress,En cours
+desktop,maintenance,maintenance.status_pending,Pending,En attente
+desktop,maintenance,maintenance.status_resolved,Resolved,Résolue
+desktop,maintenance,maintenance.status_updated_msg,Maintenance ticket updated to '{status}'.,Signalement de maintenance mis à jour à « {status} ».
+desktop,maintenance,maintenance.status_updated_title,Status updated,Statut mis à jour
+desktop,maintenance,maintenance.subtitle,Triage resident repair tickets filed from every residential block.,Triez les signalements de réparation déposés depuis chaque bloc de la cité.
+desktop,maintenance,maintenance.tab_all,All,Tous
+desktop,maintenance,maintenance.tab_in_progress,In progress,En cours
+desktop,maintenance,maintenance.tab_pending,Pending,En attente
+desktop,maintenance,maintenance.tab_resolved,Resolved,Résolue
+desktop,maintenance,maintenance.title,Facility maintenance & repairs,Maintenance et réparations des installations
+desktop,maintenance,maintenance.tooltip_action_in_progress,An action is already in progress for this queue.,Une action est déjà en cours pour cette file.
+desktop,maintenance,maintenance.tooltip_already_dispatched,A technician is already dispatched for this ticket.,Un technicien est déjà affecté à ce ticket.
+desktop,maintenance,maintenance.tooltip_already_resolved,This ticket is already resolved.,Ce ticket est déjà résolu.
+desktop,maintenance,maintenance.tooltip_select_to_delete,Select a ticket to delete it.,Sélectionnez un ticket pour le supprimer.
+desktop,maintenance,maintenance.tooltip_select_to_dispatch,Select a ticket to dispatch a technician.,Sélectionnez un ticket pour affecter un technicien.
+desktop,maintenance,maintenance.tooltip_select_to_resolve,Select a ticket to close it as resolved.,Sélectionnez un ticket pour le clôturer comme résolu.
+desktop,maintenance,maintenance.unnamed_resident,Unnamed resident,Résident sans nom
+desktop,maintenance,maintenance.update_failed_msg,The maintenance ticket was not changed. {message},Le signalement n’a pas été modifié. {message}
+desktop,maintenance,maintenance.update_failed_title,Ticket could not be updated,Impossible de mettre à jour le signalement
+desktop,maintenance,maintenance.working,Working...,En cours…
+desktop,maintenance,maintenance.working_delete,Deleting the maintenance ticket…,Suppression du signalement de maintenance en cours…
+desktop,maintenance,maintenance.working_status,Updating maintenance ticket to '{status}'…,Mise à jour du signalement vers « {status} »…
+desktop,maintenance,maintenance.zoom_open,Open full view,Agrandir l’image
+desktop,nav,nav.collapse_menu,Minimize menu,Réduire le menu
+desktop,nav,nav.expand_menu,Expand menu,Développer le menu
+desktop,nav,nav.live_sync,Live sync,Synchronisation en direct
+desktop,nav,nav.maintenance,Maintenance,Maintenance
+desktop,nav,nav.official_list,Official list,Liste officielle de l’université
+desktop,nav,nav.overview,Overview,Tableau de bord
+desktop,nav,nav.pending,Applications,Demandes d’hébergement
+desktop,nav,nav.residents,Residents,Résidents
+desktop,nav,nav.room_changes,Room changes,Demandes de changement de chambre
+desktop,nav,nav.rooms,Rooms,Chambres
+desktop,nav,nav.settings,Settings,Paramètres
+desktop,nav,nav.sign_out,Sign out,Se déconnecter
+desktop,nav,nav.staff_accounts,Staff accounts,Comptes du personnel
+desktop,notifications,notifications.burst_summary_one,{count} new residence update: {details},{count} nouvelle mise à jour de la résidence : {details}
+desktop,notifications,notifications.burst_summary_other,{count} new residence updates: {details},{count} nouvelles mises à jour de la résidence : {details}
+desktop,notifications,notifications.burst_title,RÉSIVO Updates,Mises à jour RÉSIVO
+desktop,notifications,notifications.count_application_one,{count} application,{count} demande d’hébergement
+desktop,notifications,notifications.count_application_other,{count} applications,{count} demandes d’hébergement
+desktop,notifications,notifications.count_maintenance_one,{count} maintenance report,{count} signalement de maintenance
+desktop,notifications,notifications.count_maintenance_other,{count} maintenance reports,{count} signalements de maintenance
+desktop,notifications,notifications.count_room_change_one,{count} room change,{count} demande de changement de chambre
+desktop,notifications,notifications.count_room_change_other,{count} room changes,{count} demandes de changement de chambre
+desktop,notifications,notifications.maintenance_report,New maintenance report: {category},Nouveau signalement de maintenance : {category}
+desktop,notifications,notifications.maintenance_report_name,New maintenance report: {category} ({name}),Nouveau signalement de maintenance : {category} ({name})
+desktop,notifications,notifications.maintenance_title,New Maintenance Report,Nouveau signalement de maintenance
+desktop,notifications,notifications.registration_from,New registration: {name} (Card: {card_id}),Nouvelle inscription : {name} (N° de carte : {card_id})
+desktop,notifications,notifications.registration_received,New registration received,Nouvelle demande d’hébergement reçue
+desktop,notifications,notifications.registration_received_card,New registration received (Card: {card_id}),Nouvelle demande d’hébergement reçue (N° de carte : {card_id})
+desktop,notifications,notifications.registration_title,New Student Application,Nouvelle demande d’hébergement
+desktop,notifications,notifications.room_change_from,New room-change request from {name},Nouvelle demande de changement de chambre de {name}
+desktop,notifications,notifications.room_change_submitted,New room-change request submitted,Nouvelle demande de changement de chambre soumise
+desktop,notifications,notifications.room_change_title,New Room-Change Request,Nouvelle demande de changement de chambre
+desktop,notifications,notifications.test_body,Desktop notifications are working correctly.,Les notifications sur le bureau fonctionnent correctement.
+desktop,notifications,notifications.test_title,RÉSIVO Notifications,Notifications RÉSIVO
+desktop,official_list,official_list.add_btn,Add entry,Ajouter une entrée
+desktop,official_list,official_list.add_resident,Add resident,Ajouter le résident
+desktop,official_list,official_list.added_record_msg,Added {name} ({card_id}) to official roster.,Ajout de {name} ({card_id}) au registre officiel.
+desktop,official_list,official_list.admin_import_tooltip,Administrator privileges required to import roster.,Privilèges d’administrateur requis pour importer la liste.
+desktop,official_list,official_list.admin_modify_tooltip,Only administrators can modify the official list,Seuls les administrateurs peuvent modifier la liste officielle
+desktop,official_list,official_list.birth_date_format,Birth date must be in YYYY-MM-DD format.,La date de naissance doit être au format AAAA-MM-JJ.
+desktop,official_list,official_list.card_desc_add,Enter verified student details into the official admissions roster.,Enregistrer les informations de l’étudiant sur la liste officielle.
+desktop,official_list,official_list.card_desc_edit,Update the verified admissions registry details.,Mettre à jour les informations du registre d’admissions.
+desktop,official_list,official_list.card_details_add,New official resident,Nouveau résident officiel
+desktop,official_list,official_list.card_details_edit,Official resident details,Détails du résident officiel
+desktop,official_list,official_list.card_id_exists,Card ID Already Exists,Ce n° de carte existe déjà
+desktop,official_list,official_list.card_id_exists_msg,A resident with Card ID '{card_id}' already exists.,Un résident avec le N° de carte '{card_id}' existe déjà.
+desktop,official_list,official_list.card_id_required,Card ID is required.,Le n° de carte est obligatoire.
+desktop,official_list,official_list.clear_dialog_heading,Delete all official admissions records?,Supprimer tous les enregistrements officiels ?
+desktop,official_list,official_list.clear_dialog_input_placeholder,Type DELETE to confirm,Saisir DELETE pour confirmer
+desktop,official_list,official_list.clear_dialog_pending_warn,Warning: {matching_pending} pending student application(s) will lose their roster match.,Attention : {matching_pending} demande(s) en attente perdront leur correspondance officielle.
+desktop,official_list,official_list.clear_dialog_title,Clear Official Admissions Roster,Effacer la liste officielle d’admissions
+desktop,official_list,official_list.clear_dialog_type_prompt,"To confirm, please type DELETE below:","Pour confirmer, veuillez saisir DELETE ci-dessous :"
+desktop,official_list,official_list.clear_dialog_warn,This action will permanently delete all {total_count} records from the official roster.,Cette action supprimera définitivement les {total_count} enregistrements de la liste officielle.
+desktop,official_list,official_list.clear_success_msg,Successfully cleared admissions roster (deleted {count} records).,Registre des admissions effacé avec succès ({count} enregistrements supprimés).
+desktop,official_list,official_list.col_birth_date,Birth Date,Date de naissance
+desktop,official_list,official_list.col_card_id,Card ID,N° de carte étudiant
+desktop,official_list,official_list.col_faculty,Faculty,Faculté
+desktop,official_list,official_list.col_first_name,First Name,Prénom
+desktop,official_list,official_list.col_gender,Gender,Genre
+desktop,official_list,official_list.col_last_name,Last Name,Nom
+desktop,official_list,official_list.col_university,University,Université
+desktop,official_list,official_list.delete_all_btn,Delete all,Tout supprimer
+desktop,official_list,official_list.delete_selected_btn,Delete selected,Supprimer la sélection
+desktop,official_list,official_list.deleted_records_msg_one,Deleted {count} record.,{count} enregistrement supprimé.
+desktop,official_list,official_list.deleted_records_msg_other,Deleted {count} records.,{count} enregistrements supprimés.
+desktop,official_list,official_list.dialog_add_title,Add Official Resident,Ajouter un résident officiel
+desktop,official_list,official_list.dialog_edit_title,Edit Official Resident,Modifier un résident officiel
+desktop,official_list,official_list.edit_btn,Edit,Modifier
+desktop,official_list,official_list.entries_deleted_title,Roster entries deleted,Entrées du registre supprimées
+desktop,official_list,official_list.entry_added_title,Roster entry added,Entrée du registre ajoutée
+desktop,official_list,official_list.entry_updated_title,Roster entry updated,Entrée du registre mise à jour
+desktop,official_list,official_list.error_banner_msg,"Check the connection, then use Refresh to try again.","Vérifiez la connexion, puis actualisez pour réessayer."
+desktop,official_list,official_list.error_banner_title,Roster could not be loaded,Impossible de charger le registre
+desktop,official_list,official_list.field_birth_date,Birth Date:,Date de naissance :
+desktop,official_list,official_list.field_card_id,Card ID *:,N° de carte étudiant * :
+desktop,official_list,official_list.field_faculty,Faculty:,Faculté :
+desktop,official_list,official_list.field_first_name,First Name *:,Prénom * :
+desktop,official_list,official_list.field_gender,Gender:,Genre :
+desktop,official_list,official_list.field_last_name,Last Name *:,Nom * :
+desktop,official_list,official_list.field_university,University:,Université :
+desktop,official_list,official_list.first_name_required,First name is required.,Le prénom est obligatoire.
+desktop,official_list,official_list.gender_female,Female,Féminin
+desktop,official_list,official_list.gender_male,Male,Masculin
+desktop,official_list,official_list.import_btn,Import list,Importer la liste
+desktop,official_list,official_list.import_card_hint,"Drop a CSV or Excel file here, or choose a file","Glissez un fichier CSV ou Excel ici, ou choisissez un fichier"
+desktop,official_list,official_list.import_card_title,Import the official roster,Importer la liste officielle
+desktop,official_list,official_list.import_success_msg,"Successfully imported {imported} records ({skipped} skipped, {errors} errors).","{imported} enregistrements importés avec succès ({skipped} ignorés, {errors} erreurs)."
+desktop,official_list,official_list.last_name_required,Last name is required.,Le nom est obligatoire.
+desktop,official_list,official_list.reload_tooltip,Reload the official roster,Actualiser le registre officiel
+desktop,official_list,official_list.result_banner_title,Roster import,Importation du registre
+desktop,official_list,official_list.roster_cleared_title,Official roster cleared,Registre officiel effacé
+desktop,official_list,official_list.save_changes,Save changes,Enregistrer les modifications
+desktop,official_list,official_list.search_placeholder,"Search official roster by card ID, student name, university, or faculty…","Rechercher par n° de carte, nom, université ou faculté…"
+desktop,official_list,official_list.select_gender,Select gender…,Sélectionner le genre…
+desktop,official_list,official_list.subtitle,Master admissions database used to verify student housing applications.,Registre officiel des admissions utilisé pour vérifier les demandes de logement.
+desktop,official_list,official_list.title,Official university roster,Liste officielle de l’université
+desktop,official_list,official_list.updated_record_msg,Updated record for {name} ({card_id}).,Dossier mis à jour pour {name} ({card_id}).
+desktop,official_list,official_list.validation_error_title,Validation Error,Erreur de validation
+desktop,official_list,official_list.verified_records_count_one,{count} Verified Record,{count} enregistrement vérifié
+desktop,official_list,official_list.verified_records_count_other,{count} Verified Records,{count} enregistrements vérifiés
+desktop,overview,overview.attention_all_clear,Nothing needs attention right now.,Aucun élément ne requiert d’attention pour le moment.
+desktop,overview,overview.attention_card_desc,Queues with open items,Files de traitement avec éléments ouverts
+desktop,overview,overview.attention_card_title,Needs attention,Attention requise
+desktop,overview,overview.attention_footer_note,Oldest-first detail lives in the Pending accounts and Maintenance pages.,Le détail chronologique se trouve dans les pages Demandes d’hébergement et Maintenance.
+desktop,overview,overview.attention_pending_detail,Applications awaiting a first decision.,Demandes en attente d’une première décision.
+desktop,overview,overview.attention_pending_pill_one,{count} pending,{count} en attente
+desktop,overview,overview.attention_pending_pill_other,{count} pending,{count} en attente
+desktop,overview,overview.attention_reports_detail,Maintenance tickets still unresolved.,Signalements de maintenance non résolus.
+desktop,overview,overview.attention_reports_pill_one,{count} open,{count} ouvert
+desktop,overview,overview.attention_reports_pill_other,{count} open,{count} ouverts
+desktop,overview,overview.attention_requests_detail,Room transfer requests awaiting a decision.,Demandes de changement de chambre en attente de décision.
+desktop,overview,overview.attention_requests_pill_one,{count} waiting,{count} en attente
+desktop,overview,overview.attention_requests_pill_other,{count} waiting,{count} en attente
+desktop,overview,overview.default_staff,Housing staff,Personnel de la cité
+desktop,overview,overview.error_desc,The cards are showing the last counters received. Use Refresh to try again.,Les cartes affichent les derniers compteurs reçus. Utilisez Actualiser pour réessayer.
+desktop,overview,overview.error_title,Overview could not be refreshed,Impossible d’actualiser le tableau de bord
+desktop,overview,overview.event_pill,{label} {value},{label} {value}
+desktop,overview,overview.event_received_at,Received at {stamp},Reçu à {stamp}
+desktop,overview,overview.event_text,{label} changed from {old} to {new}.,{label} est passé de {old} à {new}.
+desktop,overview,overview.events_card_desc,"Live sync snapshot, newest first","Instantané de synchronisation, les plus récents en premier"
+desktop,overview,overview.events_card_title,Recent live events,Événements récents en direct
+desktop,overview,overview.events_empty_desc,Counts that change during live sync will be listed here.,Les compteurs modifiés lors de la synchronisation apparaîtront ici.
+desktop,overview,overview.events_empty_title,No live events yet,Aucun événement en direct pour l’instant
+desktop,overview,overview.greeting_afternoon,Good afternoon,Bonjour
+desktop,overview,overview.greeting_evening,Good evening,Bonsoir
+desktop,overview,overview.greeting_morning,Good morning,Bonjour
+desktop,overview,overview.greeting_with_name,"{greeting}, {name}","{greeting}, {name}"
+desktop,overview,overview.kpi_occupancy_hint,Residents currently housed,Résidents actuellement hébergés
+desktop,overview,overview.kpi_occupancy_title,Occupied beds,Lits occupés
+desktop,overview,overview.kpi_pending_hint,Awaiting review,En attente d’examen
+desktop,overview,overview.kpi_pending_title,Pending applications,Demandes en attente
+desktop,overview,overview.kpi_reports_hint,Still unresolved,En cours de résolution
+desktop,overview,overview.kpi_reports_title,Open tickets,Tickets ouverts
+desktop,overview,overview.kpi_requests_hint,Awaiting a decision,En attente d’une décision
+desktop,overview,overview.kpi_requests_title,Pending transfers,Transferts en attente
+desktop,overview,overview.maintenance_count_one,{count} active repair,{count} réparation active
+desktop,overview,overview.maintenance_count_other,{count} active repairs,{count} réparations actives
+desktop,overview,overview.metric_occupancy,Occupied beds,Lits occupés
+desktop,overview,overview.metric_pending,Pending applications,Demandes en attente
+desktop,overview,overview.metric_reports,Open tickets,Tickets ouverts
+desktop,overview,overview.metric_requests,Pending transfers,Transferts en attente
+desktop,overview,overview.occupancy_beds_count_one,{count} bed occupied across the residence.,{count} lit occupé dans l’ensemble de la résidence.
+desktop,overview,overview.occupancy_beds_count_other,{count} beds occupied across the residence.,{count} lits occupés dans l’ensemble de la résidence.
+desktop,overview,overview.occupancy_block_unavailable,Per-block detail is not available: this page does not read room blocks or capacities.,Détail par bloc non disponible : cette page ne charge pas les blocs ou capacités des chambres.
+desktop,overview,overview.occupancy_card_desc,Beds occupied per residential block,Lits occupés par bloc résidentiel
+desktop,overview,overview.occupancy_card_title,Occupancy by block,Occupation par bloc
+desktop,overview,overview.occupancy_not_fetched,Not available — the occupied-bed count has not been fetched yet.,Non disponible — le décompte des lits occupés n’a pas encore été récupéré.
+desktop,overview,overview.pending_count_one,{count} pending application,{count} demande en attente
+desktop,overview,overview.pending_count_other,{count} pending applications,{count} demandes en attente
+desktop,overview,overview.refresh_tooltip,Reload the overview counters,Recharger les compteurs du tableau de bord
+desktop,overview,overview.reload_failed_msg,{message} The cards are showing the last counters received.,{message} Les cartes affichent les derniers compteurs reçus.
+desktop,overview,overview.room_changes_count_one,{count} room change request,{count} demande de changement
+desktop,overview,overview.room_changes_count_other,{count} room change requests,{count} demandes de changement
+desktop,overview,overview.subtitle,{residence} — campus operations at a glance.,{residence} — aperçu des opérations de la cité.
+desktop,overview,overview.tick_updated,Live sync · last update {time},Synchronisation en direct · dernière mise à jour : {time}
+desktop,overview,overview.tick_waiting,Live sync · waiting for the first update,Synchronisation en direct · en attente de la première mise à jour
+desktop,overview,overview.title,Overview,Tableau de bord
+desktop,pending,pending.action_failed_msg,The request could not be completed: {message},La requête n’a pas pu aboutir : {message}
+desktop,pending,pending.allocate_btn,Allocate,Attribuer
+desktop,pending,pending.allocate_tooltip,Allocate this room ({free} of {capacity} beds free).,Attribuer cette chambre ({free} sur {capacity} lits disponibles).
+desktop,pending,pending.allocation_heading,Allocate a room for {name},Attribuer une chambre pour {name}
+desktop,pending,pending.allocation_subtitle_one,Card {card_id} · {gender} applicant · {count} room listed,N° de carte : {card_id} · Candidat {gender} · {count} chambre répertoriée
+desktop,pending,pending.allocation_subtitle_other,Card {card_id} · {gender} applicant · {count} rooms listed,N° de carte : {card_id} · Candidat {gender} · {count} chambres répertoriées
+desktop,pending,pending.allocation_title,Assign room,Attribuer une chambre
+desktop,pending,pending.already_approved_tooltip,Student already approved.,Étudiant déjà approuvé.
+desktop,pending,pending.application_status_overline,APPLICATION STATUS,STATUT DE LA DEMANDE
+desktop,pending,pending.approve_btn,Approve & assign room,Approuver et assigner une chambre
+desktop,pending,pending.approved_success_msg,Student {name} has been approved and allocated to the room.,L’étudiant {name} a été approuvé et affecté à la chambre.
+desktop,pending,pending.approving_msg,Approving application…,Validation de la demande…
+desktop,pending,pending.cannot_delete_message,Pending applications cannot be deleted. Please approve or reject first.,Les demandes en attente ne peuvent pas être supprimées. Veuillez d’abord approuver ou rejeter le dossier.
+desktop,pending,pending.cannot_delete_title,Cannot Delete,Suppression impossible
+desktop,pending,pending.card_id_label,Card ID {card_id},N° de carte : {card_id}
+desktop,pending,pending.col_card_id,Card ID,N° de carte
+desktop,pending,pending.col_roster,Roster,Liste officielle
+desktop,pending,pending.col_status,Status,Statut
+desktop,pending,pending.col_student,Student,Étudiant
+desktop,pending,pending.col_university,University,Université
+desktop,pending,pending.confirm_delete_btn,Delete record,Supprimer le dossier
+desktop,pending,pending.confirm_delete_message,"Permanently delete resident {name} ({card_id})?
+
+Status: {status}
+This removes the student record and unassigns any room.","Supprimer définitivement le dossier du résident {name} ({card_id}) ?
+
+Statut : {status}
+Cette opération supprime le dossier étudiant et libère la chambre assignée."
+desktop,pending,pending.confirm_delete_title,Confirm deletion,Confirmer la suppression
+desktop,pending,pending.decision_success_msg,Official decision for {name} has been recorded.,La décision officielle concernant {name} a été enregistrée.
+desktop,pending,pending.decision_warning_refresh,{message} The queue could not be refreshed ({error}). The decision is saved; use Refresh to reload the full list.,{message} La file n’a pas pu être actualisée ({error}). La décision est enregistrée ; utilisez Actualiser pour recharger la liste complète.
+desktop,pending,pending.delete_hint_text,Pending applications cannot be deleted — approve or reject the application first.,Les demandes en attente ne peuvent pas être supprimées — approuvez ou rejetez d’abord la demande.
+desktop,pending,pending.delete_pending_disabled_tooltip,Pending applications cannot be deleted. Please approve or reject first.,Les demandes en attente ne peuvent pas être supprimées. Veuillez d’abord approuver ou rejeter le dossier.
+desktop,pending,pending.delete_success_msg,Resident record {name} deleted successfully.,Le dossier du résident {name} a été supprimé avec succès.
+desktop,pending,pending.delete_tooltip,Delete student record,Supprimer le dossier de l’étudiant
+desktop,pending,pending.deleting_msg,Deleting record…,Suppression du dossier…
+desktop,pending,pending.detail_placeholder,Select an applicant from the table to inspect the record…,Sélectionnez un candidat dans le tableau pour examiner son dossier…
+desktop,pending,pending.done_title,Done,Terminé
+desktop,pending,pending.edit_rejection_btn,Edit Rejection Reason,Modifier le motif du rejet
+desktop,pending,pending.edit_rejection_tooltip,Update the official rejection reason.,Mettre à jour le motif officiel du rejet.
+desktop,pending,pending.empty_desc,"Switch the segmented filter, adjust the search, or refresh the queue.","Changez de filtre, modifiez la recherche ou actualisez la file."
+desktop,pending,pending.empty_inspector_desc,Select a row in the table to inspect the application and record a decision.,Sélectionnez une ligne du tableau pour examiner la demande et consigner une décision.
+desktop,pending,pending.empty_inspector_title,No applicant selected,Aucun candidat sélectionné
+desktop,pending,pending.empty_title,No applications in this view,Aucune demande dans cette vue
+desktop,pending,pending.error_msg,The queue is showing the last data received. Use Refresh to try again.,La file affiche les dernières données reçues. Utilisez Actualiser pour réessayer.
+desktop,pending,pending.error_title,Applications could not be loaded,Impossible de charger les demandes
+desktop,pending,pending.fact_birth_date,Birth date,Date de naissance
+desktop,pending,pending.fact_contact,Contact,Contact
+desktop,pending,pending.fact_faculty,Faculty,Faculté
+desktop,pending,pending.fact_study_level,Study level,Niveau d’études
+desktop,pending,pending.fact_university,University,Université
+desktop,pending,pending.fact_wilaya,Wilaya,Wilaya
+desktop,pending,pending.failed_title,Action failed,Échec de l’action
+desktop,pending,pending.full_tooltip,Room is at maximum bed capacity ({occupied}/{capacity}). Choose another room.,La chambre a atteint sa capacité maximale ({occupied}/{capacity}). Choisissez une autre chambre.
+desktop,pending,pending.gender_rule_message,Only rooms in blocks that match the applicant's gender are listed; full rooms cannot be allocated.,Seules les chambres des blocs correspondant au genre du candidat sont répertoriées ; les chambres complètes ne peuvent pas être attribuées.
+desktop,pending,pending.gender_rule_title,Gender block rule,Règle de séparation des blocs par genre
+desktop,pending,pending.housing_status_active_body,The student is approved and assigned to a room.,L’étudiant est approuvé et assigné à une chambre.
+desktop,pending,pending.housing_status_overline,HOUSING STATUS,STATUT D’HÉBERGEMENT
+desktop,pending,pending.housing_status_pending_body,Awaiting administrative review and room allocation.,En attente de l’examen administratif et de l’attribution d’une chambre.
+desktop,pending,pending.inspector_title,Application inspector,Examen de la demande
+desktop,pending,pending.loading_rooms_msg,Loading available rooms…,Chargement des chambres disponibles…
+desktop,pending,pending.no_reason_recorded,No reason recorded,Aucun motif consigné
+desktop,pending,pending.no_rooms_message,No rooms configured for {gender} residential blocks.,Aucune chambre configurée pour les blocs résidentiels {gender}.
+desktop,pending,pending.no_rooms_title,No rooms,Aucune chambre
+desktop,pending,pending.reason_required_message,Rejection reason is required so administrative desk staff can answer student inquiries.,Le motif du rejet est obligatoire afin que le personnel d’accueil puisse répondre aux demandes des étudiants.
+desktop,pending,pending.reason_required_title,Reason Required,Motif obligatoire
+desktop,pending,pending.refresh_failed_msg,{message} The queue is showing the last data received.,{message} La file affiche les dernières données reçues.
+desktop,pending,pending.refresh_failed_title,Applications could not be refreshed,Impossible d’actualiser les demandes
+desktop,pending,pending.refresh_tooltip,Reload the applications queue,Recharger la file des demandes
+desktop,pending,pending.refreshing_msg,Refreshing applications…,Actualisation des demandes…
+desktop,pending,pending.reject_btn,Reject application,Rejeter la demande
+desktop,pending,pending.reject_dialog_prompt,Enter official rejection reason for {name}:,Saisissez le motif officiel du rejet pour {name} :
+desktop,pending,pending.reject_dialog_title,Reject Application,Rejeter la demande
+desktop,pending,pending.reject_tooltip,Record the official rejection reason (required).,Consigner le motif officiel du rejet (obligatoire).
+desktop,pending,pending.rejection_overline,REJECTION REASON (Desk Inquiry Reference),MOTIF DU REJET (Référence d’accueil)
+desktop,pending,pending.reviewed_stamp,Reviewed: {stamp},Examiné : {stamp}
+desktop,pending,pending.room_full_message,This room is at maximum bed capacity. Please select an available room.,Cette chambre a atteint sa capacité maximale de lits. Veuillez sélectionner une chambre disponible.
+desktop,pending,pending.room_full_title,Room Full,Chambre complète
+desktop,pending,pending.room_row_meta,Floor {floor} · {free} of {capacity} beds free,Étage {floor} · {free} sur {capacity} lits disponibles
+desktop,pending,pending.room_row_title,Block {block} — Room {number},Bloc {block} — Chambre {number}
+desktop,pending,pending.roster_matched,Matched,Vérifié
+desktop,pending,pending.roster_not_checked,Not checked,Non vérifié
+desktop,pending,pending.roster_not_in_roster,Not in roster,Absent de la liste
+desktop,pending,pending.roster_tooltip,Cross-check of the card ID against the official university roster,Vérification du n° de carte par rapport à la liste officielle de l’université
+desktop,pending,pending.saving_rejection_msg,Saving rejection…,Enregistrement du rejet…
+desktop,pending,pending.search_placeholder,"Search by name, card ID or university…","Rechercher par nom, n° de carte ou université…"
+desktop,pending,pending.select_applicant_message,Please select a student applicant from the table first.,Veuillez d’abord sélectionner un étudiant candidat dans le tableau.
+desktop,pending,pending.select_applicant_title,Select applicant,Sélectionner un candidat
+desktop,pending,pending.select_applicant_to_approve,Select an applicant to approve.,Sélectionnez un candidat à approuver.
+desktop,pending,pending.select_applicant_to_decide,Select an applicant to record a decision.,Sélectionnez un candidat pour consigner une décision.
+desktop,pending,pending.select_applicant_to_delete,Select an applicant to delete a non-pending record.,Sélectionnez un candidat pour supprimer un dossier non en attente.
+desktop,pending,pending.select_student_message,Please select a student from the table first.,Veuillez d’abord sélectionner un étudiant dans le tableau.
+desktop,pending,pending.select_student_title,Select Student,Sélectionner un étudiant
+desktop,pending,pending.subtitle,Review applications and allocate rooms.,Examinez les demandes et attribuez les chambres.
+desktop,pending,pending.tab_all,All,Toutes
+desktop,pending,pending.tab_approved,Approved,Approuvées
+desktop,pending,pending.tab_pending,Pending,En attente
+desktop,pending,pending.tab_rejected,Rejected,Rejetées
+desktop,pending,pending.timeout_title,Request timed out,Délai d’attente dépassé
+desktop,pending,pending.title,Applications & housing,Demandes d’hébergement
+desktop,pending,pending.unavailable_btn,Unavailable,Indisponible
+desktop,pending,pending.unavailable_tooltip,Reserved for {gender} residents — gender block rule.,Réservé aux résidents {gender} — règle de séparation des blocs.
+desktop,pending,pending.warning_title,Saved — refresh needed,Enregistré — actualisation nécessaire
+desktop,pending,pending.working_title,Working…,Opération en cours…
+desktop,photo_viewer,photo_viewer.close,Close (Esc),Fermer (Échap)
+desktop,photo_viewer,photo_viewer.fetching_full,Fetching full-resolution photo…,Récupération de la photo en haute résolution…
+desktop,photo_viewer,photo_viewer.fit,Fit,Ajuster
+desktop,photo_viewer,photo_viewer.fit_tooltip,Fit to window (F),Ajuster à la fenêtre (F)
+desktop,photo_viewer,photo_viewer.format_unsupported,Image format unsupported,Format d’image non pris en charge
+desktop,photo_viewer,photo_viewer.full_res_status,{width} × {height} px (full resolution),{width} × {height} px (pleine résolution)
+desktop,photo_viewer,photo_viewer.invalid_data,Photo preview unavailable (invalid image data),Aperçu indisponible (données d’image invalides)
+desktop,photo_viewer,photo_viewer.invalid_url,Invalid image URL,URL de l’image invalide
+desktop,photo_viewer,photo_viewer.load_failed,Failed to load photo,Échec du chargement de la photo
+desktop,photo_viewer,photo_viewer.loading,Loading photo…,Chargement de la photo…
+desktop,photo_viewer,photo_viewer.no_preview,No photo preview available,Aucun aperçu photo disponible
+desktop,photo_viewer,photo_viewer.no_preview_status,No preview image,Aucune image d’aperçu
+desktop,photo_viewer,photo_viewer.pan_hint,Arrow keys pan,Touches fléchées pour déplacer
+desktop,photo_viewer,photo_viewer.pan_hint_tooltip,Use the arrow keys to pan the photo when it is zoomed in,Utilisez les touches fléchées pour déplacer l’image en mode zoom
+desktop,photo_viewer,photo_viewer.preview_download_unavailable,Showing preview (full-res download unavailable),Aperçu affiché (téléchargement haute résolution indisponible)
+desktop,photo_viewer,photo_viewer.preview_status,{width} × {height} px (preview),{width} × {height} px (aperçu)
+desktop,photo_viewer,photo_viewer.preview_unsupported,Showing preview (full-res format unsupported),Aperçu affiché (format haute résolution non pris en charge)
+desktop,photo_viewer,photo_viewer.retry,Retry loading photo,Réessayer le chargement de la photo
+desktop,photo_viewer,photo_viewer.rotate,Rotate,Pivoter
+desktop,photo_viewer,photo_viewer.rotate_left,Rotate counterclockwise,Pivoter vers la gauche
+desktop,photo_viewer,photo_viewer.rotate_right,Rotate clockwise,Pivoter vers la droite
+desktop,photo_viewer,photo_viewer.title,Ticket fault evidence,Preuve de dégradation du signalement
+desktop,photo_viewer,photo_viewer.window_title,Maintenance fault photo — RÉSIVO,Photo de dégradation — RÉSIVO
+desktop,photo_viewer,photo_viewer.zoom_in,Zoom in (+),Zoom avant (+)
+desktop,photo_viewer,photo_viewer.zoom_out,Zoom out (−),Zoom arrière (−)
+desktop,photo_viewer,photo_viewer.zoom_tooltip,Current zoom level — the arrow keys pan the photo when it is zoomed in,Niveau de zoom actuel — les touches fléchées déplacent l’image en mode zoom
+desktop,residents,residents.col_card_id,Card ID,N° de carte
+desktop,residents,residents.col_faculty_univ,Faculty / University,Faculté / Université
+desktop,residents,residents.col_registered,Registered,Inscrit le
+desktop,residents,residents.col_resident,Resident,Résident
+desktop,residents,residents.col_room,Room,Chambre
+desktop,residents,residents.col_roster,Roster,Liste officielle
+desktop,residents,residents.col_status,Status,Statut
+desktop,residents,residents.count_active_one,{count} active resident,{count} résident actif
+desktop,residents,residents.count_active_other,{count} active residents,{count} résidents actifs
+desktop,residents,residents.double_click_tip,Double-click a resident to open the complete profile card.,Double-cliquez sur un résident pour ouvrir sa fiche profil complète.
+desktop,residents,residents.empty_no_data_desc,Approved students appear here as soon as a room has been allocated.,Les étudiants approuvés apparaîtront ici dès qu’une chambre leur sera attribuée.
+desktop,residents,residents.empty_no_data_title,No residents yet,Aucun résident pour l’instant
+desktop,residents,residents.empty_no_match_desc,Clear the search field or switch the gender filter to see everyone again.,Effacez le champ de recherche ou changez le filtre de genre pour réafficher tous les résidents.
+desktop,residents,residents.empty_no_match_title,No resident matches,Aucun résident correspondant
+desktop,residents,residents.error_msg,Use Refresh to try again.,Utilisez Actualiser pour réessayer.
+desktop,residents,residents.error_title,Residents could not be loaded,Impossible de charger les résidents
+desktop,residents,residents.gender_all,All Genders,Tous les genres
+desktop,residents,residents.gender_female,Female Residents,Résidentes féminines
+desktop,residents,residents.gender_filter_tooltip,"Show every resident, or only male / female residents","Afficher tous les résidents, ou uniquement les résidents masculins / résidentes féminines"
+desktop,residents,residents.gender_male,Male Residents,Résidents masculins
+desktop,residents,residents.refresh_tooltip,Reload the residents list,Recharger la liste des résidents
+desktop,residents,residents.reload_failed_msg,The residents list could not be loaded ({error}). Use Refresh to try again.,La liste des résidents n’a pas pu être chargée ({error}). Utilisez Actualiser pour réessayer.
+desktop,residents,residents.room_assigned_format,Block {block} — Room {number},Bloc {block} — Chambre {number}
+desktop,residents,residents.room_not_assigned,Not assigned,Non assignée
+desktop,residents,residents.search_placeholder,"Search by card ID, name, room, faculty or university…","Rechercher par n° de carte, nom, chambre, faculté ou université…"
+desktop,residents,residents.status_active,Active,Actif
+desktop,residents,residents.subtitle,Students currently accommodated in the Cité Universitaire.,Étudiants actuellement hébergés à la Cité Universitaire.
+desktop,residents,residents.title,Residents,Résidents
+desktop,roles,roles.admin,Administrator,Administrateur
+desktop,roles,roles.checking,Checking...,Vérification en cours…
+desktop,roles,roles.denied_console,This account is not allowed to use the staff console.,Ce compte n’est pas autorisé à utiliser la console du personnel.
+desktop,roles,roles.retry_tooltip,Check the signed-in account's role again,Vérifier à nouveau le rôle du compte connecté
+desktop,roles,roles.staff,Housing staff,Personnel du logement
+desktop,roles,roles.unverified,Role not verified,Rôle non vérifié
+desktop,room_changes,room_changes.action_done,Done,Terminé
+desktop,room_changes,room_changes.action_failed,Action failed,Échec de l’action
+desktop,room_changes,room_changes.action_failed_msg,The request could not be completed: {message},La requête n’a pas pu aboutir : {message}
+desktop,room_changes,room_changes.action_unavailable,Action unavailable,Action non disponible
+desktop,room_changes,room_changes.already_removed_msg,This transfer request no longer exists on the server. The table has been updated.,Cette demande n’existe plus sur le serveur. Le tableau a été mis à jour.
+desktop,room_changes,room_changes.already_removed_title,Already removed,Déjà supprimée
+desktop,room_changes,room_changes.approve_btn,Approve transfer,Approuver le transfert
+desktop,room_changes,room_changes.approve_reassign_btn,Approve & reassign,Approuver et réassigner
+desktop,room_changes,room_changes.approving_transfer,Approving transfer…,Approbation du transfert en cours…
+desktop,room_changes,room_changes.col_reason,Reason,Motif
+desktop,room_changes,room_changes.col_resident,Resident,Résident
+desktop,room_changes,room_changes.col_status,Status,Statut
+desktop,room_changes,room_changes.col_submitted,Submitted,Déposée
+desktop,room_changes,room_changes.current_room,Current room,Chambre actuelle
+desktop,room_changes,room_changes.decided_at,Decided at: {timestamp},Décidé le : {timestamp}
+desktop,room_changes,room_changes.decided_by,Decided by: {name},Décidé par : {name}
+desktop,room_changes,room_changes.decision_saved_msg,"The decision was saved, but the request list could not be refreshed: {error}. The next live sync will try again.","La décision a été enregistrée, mais la liste n’a pas pu être actualisée : {error}. La prochaine synchronisation réessaiera."
+desktop,room_changes,room_changes.decision_saved_title,Decision saved; list not refreshed,Décision enregistrée ; liste non actualisée
+desktop,room_changes,room_changes.delete_btn,Delete request,Supprimer la demande
+desktop,room_changes,room_changes.delete_confirm_body,"Permanently delete the room change request from {name}?
+
+This removes the resident justification and its decision history.","Supprimer définitivement la demande de changement de chambre de {name} ?
+
+Cette action efface la justification du résident et son historique de décision."
+desktop,room_changes,room_changes.delete_confirm_title,Delete transfer request,Supprimer la demande de transfert
+desktop,room_changes,room_changes.delete_success_msg,Room change request deleted successfully.,Demande de changement de chambre supprimée avec succès.
+desktop,room_changes,room_changes.deleting_request,Deleting request…,Suppression de la demande en cours…
+desktop,room_changes,room_changes.dialog_allocate_label,Select target room for transfer:,Sélectionnez la chambre de destination pour le transfert :
+desktop,room_changes,room_changes.dialog_allocate_title,Allocate New Room,Attribuer une nouvelle chambre
+desktop,room_changes,room_changes.dialog_reject_label,Reason for refusal:,Motif du refus :
+desktop,room_changes,room_changes.dialog_reject_title,Reject Transfer,Rejeter le transfert
+desktop,room_changes,room_changes.empty_all_desc,New requests appear here automatically; adjust the search for a specific student.,Les nouvelles demandes apparaissent ici automatiquement ; modifiez la recherche pour un étudiant.
+desktop,room_changes,room_changes.empty_all_title,No transfer requests,Aucune demande de transfert
+desktop,room_changes,room_changes.empty_approved_desc,Approved requests stay here as the desk record for inquiries.,Les demandes approuvées sont conservées pour le registre d’accueil.
+desktop,room_changes,room_changes.empty_approved_title,No approved transfer requests,Aucune demande de transfert approuvée
+desktop,room_changes,room_changes.empty_panel_desc,Select a request to compare the rooms and record a decision.,Sélectionnez une demande pour comparer les chambres et enregistrer une décision.
+desktop,room_changes,room_changes.empty_panel_title,No request selected,Aucune demande sélectionnée
+desktop,room_changes,room_changes.empty_pending_desc,New requests appear here automatically; adjust the search for a specific student.,Les nouvelles demandes apparaîtront ici automatiquement.
+desktop,room_changes,room_changes.empty_pending_title,No pending transfer requests,Aucune demande de transfert en attente
+desktop,room_changes,room_changes.empty_rejected_desc,Rejected requests appear here with their recorded reason and decider.,Les demandes rejetées figurent ici avec leur motif et le responsable.
+desktop,room_changes,room_changes.empty_rejected_title,No rejected transfer requests,Aucune demande de transfert rejetée
+desktop,room_changes,room_changes.loading_rooms,Loading available rooms…,Chargement des chambres disponibles…
+desktop,room_changes,room_changes.no_rooms_msg,No rooms configured for this gender.,Aucune chambre disponible pour ce genre.
+desktop,room_changes,room_changes.no_rooms_title,No rooms,Aucune chambre
+desktop,room_changes,room_changes.only_pending_warning,Only pending transfer requests can be approved or rejected.,Seules les demandes en attente peuvent être approuvées ou rejetées.
+desktop,room_changes,room_changes.panel_title,Transfer inspector,Détails de la demande
+desktop,room_changes,room_changes.reason_required,A rejection reason is required before the request can be rejected.,Un motif de refus est obligatoire avant de rejeter la demande.
+desktop,room_changes,room_changes.refresh_failed_msg,{message} The table is showing the last data received.,{message} Le tableau affiche les dernières données reçues.
+desktop,room_changes,room_changes.refresh_failed_title,Transfer requests could not be refreshed,Impossible d’actualiser les demandes de transfert
+desktop,room_changes,room_changes.refreshing,Refreshing transfer requests…,Actualisation des demandes de transfert…
+desktop,room_changes,room_changes.reject_btn,Reject transfer,Rejeter le transfert
+desktop,room_changes,room_changes.reject_request_btn,Reject request,Rejeter la demande
+desktop,room_changes,room_changes.reject_success,Request rejected. View it in the Rejected tab.,Demande rejetée. Consultez-la dans l’onglet « Rejetée ».
+desktop,room_changes,room_changes.rejection_overline,REJECTION REASON (Desk Inquiry Reference),MOTIF DU REJET (Référence d’accueil)
+desktop,room_changes,room_changes.rejection_reason_label,Reason for refusal: {reason},Motif du refus : {reason}
+desktop,room_changes,room_changes.rejection_title,Rejection reason (desk inquiry reference),Motif du rejet (référence d’accueil)
+desktop,room_changes,room_changes.reload_tooltip,Reload the transfer requests,Actualiser les demandes de transfert
+desktop,room_changes,room_changes.requested_room,Requested room,Chambre demandée
+desktop,room_changes,room_changes.room_full_msg,This room is at capacity. Please select an available room.,Cette chambre a atteint sa capacité maximale. Veuillez sélectionner une chambre disponible.
+desktop,room_changes,room_changes.room_full_title,Room Full,Chambre complète
+desktop,room_changes,room_changes.room_move,ROOM MOVE,CHANGEMENT DE CHAMBRE
+desktop,room_changes,room_changes.room_option_free,Block {block} — Room {number} ({free}/{capacity} free),Bloc {block} — Chambre {number} ({free}/{capacity} libre(s))
+desktop,room_changes,room_changes.room_option_full,Block {block} — Room {number} (FULL) [LOCKED],Bloc {block} — Chambre {number} (COMPLÈTE) [VERROUILLÉE]
+desktop,room_changes,room_changes.saving_rejection,Saving rejection…,Enregistrement du refus en cours…
+desktop,room_changes,room_changes.search_placeholder,"Search room changes by resident, room, reason…","Rechercher par résident, chambre, motif…"
+desktop,room_changes,room_changes.select_request_msg,Please select a transfer request from the table first.,Veuillez d’abord sélectionner une demande dans le tableau.
+desktop,room_changes,room_changes.select_request_title,Select request,Sélectionner une demande
+desktop,room_changes,room_changes.stated_reason,Stated reason for transfer,Motif déclaré du transfert
+desktop,room_changes,room_changes.status_approved,Approved,Approuvée
+desktop,room_changes,room_changes.status_pending,Pending,En attente
+desktop,room_changes,room_changes.status_rejected,Rejected,Rejetée
+desktop,room_changes,room_changes.subtitle,Review and process residential transfer applications.,Examinez et traitez les demandes de changement de chambre.
+desktop,room_changes,room_changes.tab_all,All,Toutes
+desktop,room_changes,room_changes.tab_approved,Approved,Approuvée
+desktop,room_changes,room_changes.tab_pending,Pending,En attente
+desktop,room_changes,room_changes.tab_rejected,Rejected,Rejetée
+desktop,room_changes,room_changes.title,Room change requests,Demandes de changement de chambre
+desktop,room_changes,room_changes.transfer_success,Room transfer request approved and student reassigned.,Demande de transfert approuvée et étudiant réassigné.
+desktop,room_changes,room_changes.working,Working…,En cours…
+desktop,rooms,rooms.add_block_btn,Add block,Ajouter un bloc
+desktop,rooms,rooms.add_block_tooltip,Configure a new residential block,Configurer un nouveau bloc résidentiel
+desktop,rooms,rooms.add_room_btn,Add room,Ajouter une chambre
+desktop,rooms,rooms.add_room_dialog_title,Add Dormitory Room,Ajouter une chambre
+desktop,rooms,rooms.add_room_tooltip,Configure a new dormitory room,Configurer une nouvelle chambre
+desktop,rooms,rooms.bed_capacity_label,Bed Capacity (Min {min}):,Capacité en lits (min. {min}) :
+desktop,rooms,rooms.bed_capacity_occupied_tooltip,{count} bed(s) are occupied — the capacity cannot be lower than {min}.,{count} lit(s) sont occupés — la capacité ne peut pas être inférieure à {min}.
+desktop,rooms,rooms.bed_capacity_tooltip,Total beds in this room (1–8).,Nombre total de lits dans cette chambre (1–8).
+desktop,rooms,rooms.beds_available_one,{count} bed available,{count} lit disponible
+desktop,rooms,rooms.beds_available_other,{count} beds available,{count} lits disponibles
+desktop,rooms,rooms.block_combo_item,Block {block}  ·  {gender},Bloc {block}  ·  {gender}
+desktop,rooms,rooms.block_create_failed_title,Block could not be created,Impossible de créer le bloc
+desktop,rooms,rooms.block_exists_msg,A block named '{name}' already exists.,Un bloc nommé « {name} » existe déjà.
+desktop,rooms,rooms.block_exists_title,Block Exists,Le bloc existe déjà
+desktop,rooms,rooms.block_gender_tip,Every room created inside this block will automatically be designated for this gender.,Chaque chambre créée dans ce bloc recevra automatiquement cette affectation de genre.
+desktop,rooms,rooms.block_gender_tooltip,Designated gender for students housed in this block.,Genre désigné pour les étudiants hébergés dans ce bloc.
+desktop,rooms,rooms.block_identifier_label,Block Identifier:,Identifiant du bloc :
+desktop,rooms,rooms.block_locked_tooltip,The block cannot be changed while the room has active occupants.,Le bloc ne peut pas être modifié tant que la chambre compte des occupants actifs.
+desktop,rooms,rooms.block_name_placeholder,"e.g. A, B, C, D, North Wing…","ex. A, B, C, D, Pavillon Nord…"
+desktop,rooms,rooms.block_setup_card_desc,Assign a block identifier and its resident gender designation.,Attribuez un identifiant de bloc et sa désignation de genre pour les résidents.
+desktop,rooms,rooms.block_setup_card_title,New residential block,Nouveau bloc résidentiel
+desktop,rooms,rooms.block_setup_title,Add Residential Block,Ajouter un bloc résidentiel
+desktop,rooms,rooms.blocks_error_msg,The list is showing the last data received ({message}).,La liste affiche les dernières données reçues ({message}).
+desktop,rooms,rooms.blocks_error_title,Blocks could not be loaded,Impossible de charger les blocs
+desktop,rooms,rooms.cell_block,Block {block},Bloc {block}
+desktop,rooms,rooms.cell_floor,Floor {floor},Étage {floor}
+desktop,rooms,rooms.cell_room,Room {number},Chambre {number}
+desktop,rooms,rooms.col_actions,Actions,Actions
+desktop,rooms,rooms.col_availability,Availability,Disponibilité
+desktop,rooms,rooms.col_block,Block,Bloc
+desktop,rooms,rooms.col_floor,Floor,Étage
+desktop,rooms,rooms.col_gender,Gender,Genre
+desktop,rooms,rooms.col_gender_designation,Gender Designation,Désignation de genre
+desktop,rooms,rooms.col_occupied,Occupied,Occupés
+desktop,rooms,rooms.col_occupied_beds,Occupied Beds,Lits occupés
+desktop,rooms,rooms.col_room_no,Room No.,N° Chambre
+desktop,rooms,rooms.col_total_beds,Total Beds,Total des lits
+desktop,rooms,rooms.count_badge_one,{count} room,{count} chambre
+desktop,rooms,rooms.count_badge_other,{count} rooms,{count} chambres
+desktop,rooms,rooms.create_block_btn,Create block,Créer le bloc
+desktop,rooms,rooms.create_room_btn,Create room,Créer la chambre
+desktop,rooms,rooms.creating_block_msg,Creating the residential block…,Création du bloc résidentiel en cours…
+desktop,rooms,rooms.creating_room_msg,Creating room {block}-{number}…,Création de la chambre {block}-{number}…
+desktop,rooms,rooms.delete_block_busy_msg,Deleting Block {name}…,Suppression du bloc {name}…
+desktop,rooms,rooms.delete_block_confirm_msg,Are you sure you want to delete residential Block {name}?,Êtes-vous sûr de vouloir supprimer le bloc résidentiel {name} ?
+desktop,rooms,rooms.delete_block_confirm_title,Delete Block,Supprimer le bloc
+desktop,rooms,rooms.delete_block_empty_tooltip,Remove empty Block {name}.,Supprimer le bloc vide {name}.
+desktop,rooms,rooms.delete_block_failed_msg,Block {name} was not removed. {message},Le bloc {name} n’a pas été supprimé. {message}
+desktop,rooms,rooms.delete_block_failed_title,Block could not be deleted,Impossible de supprimer le bloc
+desktop,rooms,rooms.delete_block_occupied_tooltip,Cannot delete Block {name} while it contains {count} room(s).,Impossible de supprimer le bloc {name} tant qu’il contient {count} chambre(s).
+desktop,rooms,rooms.delete_confirm_msg,Are you sure you want to delete room Block {block} — {number}?,Êtes-vous sûr de vouloir supprimer la chambre Bloc {block} — {number} ?
+desktop,rooms,rooms.delete_confirm_title,Delete Room,Supprimer la chambre
+desktop,rooms,rooms.delete_no_selection_tooltip,Select a room from the table to delete,Sélectionnez une chambre dans le tableau pour la supprimer
+desktop,rooms,rooms.delete_selected_tooltip,Delete the selected room (only when no resident is assigned),Supprimer la chambre sélectionnée (uniquement si aucun résident n’y est assigné)
+desktop,rooms,rooms.deleting_room_msg,Deleting room {block}-{number}…,Suppression de la chambre {block}-{number}…
+desktop,rooms,rooms.designated_gender_label,Designated Gender:,Genre attribué :
+desktop,rooms,rooms.details_failed_msg,The occupant lookup failed ({message}). The room list is unchanged.,La recherche des occupants a échoué ({message}). La liste des chambres reste inchangée.
+desktop,rooms,rooms.details_failed_title,Room details could not be loaded,Impossible de charger les détails de la chambre
+desktop,rooms,rooms.dormitory_block_label,Dormitory Block:,Bloc résidentiel :
+desktop,rooms,rooms.double_click_tip,Double-click a room to inspect its occupants and bed allocation.,Double-cliquez sur une chambre pour examiner ses occupants et la répartition des lits.
+desktop,rooms,rooms.edit_no_selection_tooltip,Select a room from the table to edit,Sélectionnez une chambre dans le tableau pour la modifier
+desktop,rooms,rooms.edit_room_dialog_title,Edit Dormitory Room,Modifier la chambre
+desktop,rooms,rooms.edit_selected_tooltip,Edit the selected room,Modifier la chambre sélectionnée
+desktop,rooms,rooms.empty_no_data_desc,Add a room to start allocating beds to residents.,Ajoutez une chambre pour commencer à attribuer des lits aux résidents.
+desktop,rooms,rooms.empty_no_data_title,No rooms configured,Aucune chambre configurée
+desktop,rooms,rooms.empty_no_match_desc,Clear the search field or switch the gender filter to see every room again.,Effacez le champ de recherche ou changez le filtre de genre pour réafficher toutes les chambres.
+desktop,rooms,rooms.empty_no_match_title,No room matches the filters,Aucune chambre ne correspond aux filtres
+desktop,rooms,rooms.error_msg,"Check the connection, then use Refresh to try again.","Vérifiez la connexion, puis utilisez Actualiser pour réessayer."
+desktop,rooms,rooms.error_title,Rooms could not be loaded,Impossible de charger les chambres
+desktop,rooms,rooms.filter_all_genders,All Genders,Tous les genres
+desktop,rooms,rooms.filter_female_blocks,Female Blocks,Blocs féminins
+desktop,rooms,rooms.filter_male_blocks,Male Blocks,Blocs masculins
+desktop,rooms,rooms.floor_level_label,Floor Level:,Niveau de l’étage :
+desktop,rooms,rooms.gender_filter_tooltip,"Show every block, or only male / female blocks","Afficher tous les blocs, ou uniquement les blocs masculins / féminins"
+desktop,rooms,rooms.gender_inherited_note,Automatically inherited from Block {block} ({gender}).,Hérité automatiquement du bloc {block} ({gender}).
+desktop,rooms,rooms.gender_inherited_tooltip,Designated gender is inherited automatically from the selected block.,Le genre attribué est hérité automatiquement du bloc sélectionné.
+desktop,rooms,rooms.manage_blocks_btn,Residential blocks,Blocs résidentiels
+desktop,rooms,rooms.manage_blocks_card_desc,Every dormitory room automatically inherits its block's designated gender.,Chaque chambre de résidence hérite automatiquement du genre désigné pour son bloc.
+desktop,rooms,rooms.manage_blocks_card_title,Residential blocks & housing gender,Blocs résidentiels et genre d’hébergement
+desktop,rooms,rooms.manage_blocks_title,Residential Blocks,Blocs résidentiels
+desktop,rooms,rooms.manage_blocks_tooltip,Manage residential blocks and designated genders,Gérer les blocs résidentiels et les genres attribués
+desktop,rooms,rooms.missing_identifier_msg,Block identifier cannot be empty.,L’identifiant du bloc ne peut pas être vide.
+desktop,rooms,rooms.missing_identifier_title,Missing Identifier,Identifiant manquant
+desktop,rooms,rooms.no_block_selected_note,Please create or select a residential block.,Veuillez créer ou sélectionner un bloc résidentiel.
+desktop,rooms,rooms.no_block_warning_msg,Please create or select a residential block first.,Veuillez d’abord créer ou sélectionner un bloc résidentiel.
+desktop,rooms,rooms.no_block_warning_title,No Block,Aucun bloc
+desktop,rooms,rooms.no_blocks_available_combo,No blocks available,Aucun bloc disponible
+desktop,rooms,rooms.no_blocks_available_note,Click 'Add block' to create a residential block first.,Cliquez sur « Ajouter un bloc » pour créer d’abord un bloc résidentiel.
+desktop,rooms,rooms.no_blocks_message,"Every room must belong to a residential block designating Female or Male.
+
+Would you like to configure a residential block now?","Chaque chambre doit appartenir à un bloc résidentiel désignant Masculin ou Féminin.
+
+Souhaitez-vous configurer un bloc résidentiel maintenant ?"
+desktop,rooms,rooms.no_blocks_title,No Residential Blocks,Aucun bloc résidentiel
+desktop,rooms,rooms.occupied_warning_msg,Cannot delete a room that still has active residents assigned.,Impossible de supprimer une chambre à laquelle des résidents actifs sont encore affectés.
+desktop,rooms,rooms.occupied_warning_title,Room Occupied,Chambre occupée
+desktop,rooms,rooms.quick_add_block_tooltip,Create a new residential block designating Female or Male.,Créer un nouveau bloc résidentiel désignant Féminin ou Masculin.
+desktop,rooms,rooms.refresh_tooltip,Reload the room list,Recharger la liste des chambres
+desktop,rooms,rooms.refreshing_blocks_msg,Refreshing residential blocks…,Actualisation des blocs résidentiels…
+desktop,rooms,rooms.refreshing_msg,Refreshing the room list…,Actualisation de la liste des chambres…
+desktop,rooms,rooms.reload_blocks_tooltip,Reload blocks,Recharger les blocs
+desktop,rooms,rooms.room_create_failed_msg,The room was not created. {message},La chambre n’a pas été créée. {message}
+desktop,rooms,rooms.room_create_failed_title,Room could not be created,Impossible de créer la chambre
+desktop,rooms,rooms.room_created_success,Room {block}-{number} ({gender}) configured successfully.,Chambre {block}-{number} ({gender}) configurée avec succès.
+desktop,rooms,rooms.room_created_title,Room created,Chambre créée
+desktop,rooms,rooms.room_delete_failed_msg,The room was not removed. {message},La chambre n’a pas été supprimée. {message}
+desktop,rooms,rooms.room_delete_failed_title,Room could not be deleted,Impossible de supprimer la chambre
+desktop,rooms,rooms.room_deleted_success,Room {block}-{number} has been removed.,La chambre {block}-{number} a été supprimée.
+desktop,rooms,rooms.room_deleted_title,Room deleted,Chambre supprimée
+desktop,rooms,rooms.room_locked_message,Room currently has {count} active occupant(s). Block and gender cannot be modified.,La chambre compte actuellement {count} occupant(s) actif(s). Le bloc et le genre ne peuvent pas être modifiés.
+desktop,rooms,rooms.room_locked_title,Room locked,Chambre verrouillée
+desktop,rooms,rooms.room_number_label,Room Number:,Numéro de chambre :
+desktop,rooms,rooms.room_number_placeholder,"e.g. 101, 204…","ex. 101, 204…"
+desktop,rooms,rooms.room_number_required,Room number is required.,Le numéro de chambre est obligatoire.
+desktop,rooms,rooms.room_setup_card_desc,"Select residential block, floor, capacity. Room gender is automatically inherited from the block.","Sélectionnez le bloc résidentiel, l’étage et la capacité. Le genre de la chambre est automatiquement hérité du bloc."
+desktop,rooms,rooms.room_update_failed_msg,The room was not updated. {message},La chambre n’a pas été modifiée. {message}
+desktop,rooms,rooms.room_update_failed_title,Room could not be updated,Impossible de modifier la chambre
+desktop,rooms,rooms.room_updated_success,Room {block}-{number} ({gender}) updated successfully.,Chambre {block}-{number} ({gender}) modifiée avec succès.
+desktop,rooms,rooms.room_updated_title,Room updated,Chambre modifiée
+desktop,rooms,rooms.save_changes_btn,Save changes,Enregistrer les modifications
+desktop,rooms,rooms.search_placeholder,Search room number or block…,Rechercher un numéro de chambre ou un bloc…
+desktop,rooms,rooms.select_block_tooltip,Select the residential block for this room.,Sélectionnez le bloc résidentiel pour cette chambre.
+desktop,rooms,rooms.select_room_title,Select room,Sélectionner une chambre
+desktop,rooms,rooms.select_room_to_delete,Please select a room from the table to delete.,Veuillez sélectionner une chambre dans le tableau pour la supprimer.
+desktop,rooms,rooms.select_room_to_edit,Please select a room from the table to edit.,Veuillez sélectionner une chambre dans le tableau pour la modifier.
+desktop,rooms,rooms.subtitle,"Manage residential blocks, room numbers, bed capacity and live occupancy.","Gérez les blocs résidentiels, les numéros de chambre, la capacité en lits et l’occupation en temps réel."
+desktop,rooms,rooms.timeout_title,Request timed out,Délai d’attente dépassé
+desktop,rooms,rooms.title,Dormitory rooms & capacity,Chambres et capacités
+desktop,rooms,rooms.updating_room_msg,Updating room {block}-{number}…,Modification de la chambre {block}-{number}…
+desktop,rooms,rooms.working_title,Working...,Opération en cours…
+desktop,settings,settings.about_created_by,Created by SEBAI ANES,Créé par SEBAI ANES
+desktop,settings,settings.about_subtitle,Project credit and contact links,Crédits du projet et contacts
+desktop,settings,settings.about_title,About RÉSIVO,À propos de RÉSIVO
+desktop,settings,settings.advanced_subtitle,Developer mode and the ChatGPT connection,Mode développeur et connexion ChatGPT
+desktop,settings,settings.advanced_title,Advanced settings,Paramètres avancés
+desktop,settings,settings.autostart_helper,The app opens automatically when you sign in to Windows. You will still need to log in.,L’application s’ouvre automatiquement à l’ouverture de Windows. Vous devrez toujours vous connecter.
+desktop,settings,settings.autostart_label,Start RÉSIVO when Windows starts,Lancer RÉSIVO au démarrage de Windows
+desktop,settings,settings.autostart_note,Notifications and live updates only work while RÉSIVO is running.,Les notifications et mises à jour en direct ne fonctionnent que lorsque RÉSIVO est ouvert.
+desktop,settings,settings.autostart_tooltip,Launch RÉSIVO automatically when signing in to Windows,Lancer RÉSIVO automatiquement à l’ouverture de session Windows
+desktop,settings,settings.autostart_unsupported,Available in the installed app (EXE) only.,Disponible uniquement dans l’application installée (EXE).
+desktop,settings,settings.autostart_win_note,"Turned off in Windows Startup settings. Re-enable it there, or turn this switch off and on again.","Désactivé dans les paramètres de démarrage de Windows. Réactivez-le dans Windows, ou réactivez ce bouton."
+desktop,settings,settings.confirm_close_label,Confirm before closing the app,Confirmer avant de fermer l’application
+desktop,settings,settings.confirm_close_note,"When enabled, RÉSIVO asks for confirmation before closing to prevent interrupting active tasks or live sync.","Lorsqu’activé, RÉSIVO demande confirmation avant fermeture afin d’éviter l’interruption de tâches ou de la synchronisation."
+desktop,settings,settings.confirm_close_tooltip,Ask for confirmation before quitting RÉSIVO,Demander confirmation avant de quitter RÉSIVO
+desktop,settings,settings.dev_mode_admin_only,Developer mode is available to administrators only.,Le mode développeur est réservé aux administrateurs.
+desktop,settings,settings.dev_mode_enable_note,Enable developer mode to view the ChatGPT connection steps.,Activez le mode développeur pour afficher les étapes de connexion ChatGPT.
+desktop,settings,settings.dev_mode_label,Developer mode,Mode développeur
+desktop,settings,settings.dev_mode_tooltip,Show the ChatGPT connection steps for this session,Afficher les étapes de connexion ChatGPT pour cette session
+desktop,settings,settings.general_subtitle,Console behavior and application closing preferences.,Comportement de la console et préférences de fermeture.
+desktop,settings,settings.general_title,General,Général
+desktop,settings,settings.hosted_server_title,"Hosted server (always on, recommended)","Serveur hébergé (toujours actif, recommandé)"
+desktop,settings,settings.language_label,Language,Langue de l’interface
+desktop,settings,settings.language_note,Select the display language for the application.,Sélectionnez la langue d’affichage de l’application.
+desktop,settings,settings.local_server_title,Run it locally (developer/testing only),Exécution locale (développement/tests uniquement)
+desktop,settings,settings.local_step1_title,Step 1 · Start the MCP server,Étape 1 · Démarrer le serveur MCP
+desktop,settings,settings.local_step2_title,Step 2 · Expose it with a tunnel (optional),Étape 2 · Exposer via un tunnel (facultatif)
+desktop,settings,settings.local_step3_title,Step 3 · Connect with the MCP Inspector,Étape 3 · Se connecter avec MCP Inspector
+desktop,settings,settings.minimize_tray_label,Minimize to system tray,Réduire dans la zone de notification
+desktop,settings,settings.minimize_tray_note,"When enabled, minimizing RÉSIVO hides it to the system tray so live sync and notifications stay active in the background.","Lorsqu’activé, la réduction de RÉSIVO le masque dans la zone de notification pour maintenir la synchronisation et les alertes."
+desktop,settings,settings.minimize_tray_tooltip,"When minimizing, hide the window to the system tray instead of the taskbar","Lors de la réduction, masquer la fenêtre dans la zone de notification plutôt que la barre des tâches"
+desktop,settings,settings.notif_maintenance,New maintenance reports,Nouveaux signalements de maintenance
+desktop,settings,settings.notif_only_unfocused,Only notify when window is in background or minimized,Notifier uniquement si la fenêtre est en arrière-plan ou réduite
+desktop,settings,settings.notif_play_sound,Play notification sound,Émettre un son de notification
+desktop,settings,settings.notif_quiet_hours,Quiet hours (suppress notifications),Heures silencieuses (désactiver les notifications)
+desktop,settings,settings.notif_registrations,New student registrations / applications,Nouvelles demandes d’hébergement
+desktop,settings,settings.notif_room_changes,New room change requests,Nouvelles demandes de changement de chambre
+desktop,settings,settings.notif_show_names,Show student names in notifications,Afficher le nom des étudiants dans les notifications
+desktop,settings,settings.notifications_enable,Enable desktop notifications,Activer les notifications sur le bureau
+desktop,settings,settings.notifications_subtitle,Windows desktop notifications for new requests and activity.,Notifications sur le bureau Windows pour les nouvelles demandes et activités.
+desktop,settings,settings.notifications_title,Notifications,Notifications
+desktop,settings,settings.quiet_hours_from,From:,De :
+desktop,settings,settings.quiet_hours_to,to:,à :
+desktop,settings,settings.restart_banner_message,Language changed. Restart RÉSIVO to apply changes.,Langue modifiée. Redémarrez RÉSIVO pour appliquer les modifications.
+desktop,settings,settings.restart_later,Later,Plus tard
+desktop,settings,settings.restart_now,Restart now,Redémarrer maintenant
+desktop,settings,settings.start_minimized_label,Start minimized to the taskbar,Démarrer réduit dans la barre des tâches
+desktop,settings,settings.start_minimized_tooltip,Start with the window minimized to the taskbar,Démarrer avec la fenêtre réduite dans la barre des tâches
+desktop,settings,settings.subtitle,Console preferences and administrative integrations.,Préférences de la console et intégrations administratives.
+desktop,settings,settings.test_notif_button,Send test notification,Envoyer une notification de test
+desktop,settings,settings.title,Settings,Paramètres
+desktop,settings,settings.writes_error_title,Setting could not be loaded,Impossible de charger ce paramètre
+desktop,settings,settings.writes_label,Allow ChatGPT to change data,Autoriser ChatGPT à modifier les données
+desktop,settings,settings.writes_note,ChatGPT asks you to confirm every change first. Turn this off to make ChatGPT read-only again.,ChatGPT vous demande confirmation avant chaque modification. Désactivez pour repasser en lecture seule.
+desktop,settings,settings.writes_tooltip,Allow the ChatGPT connection to change data after your confirmation,Autoriser ChatGPT à modifier des données après confirmation
+desktop,staff_accounts,staff_accounts.action_failed_msg,The request could not be completed: {message},La requête n’a pas pu aboutir : {message}
+desktop,staff_accounts,staff_accounts.cannot_delete_self,You cannot delete your own staff account.,Vous ne pouvez pas supprimer votre propre compte.
+desktop,staff_accounts,staff_accounts.cannot_delete_title,Cannot Delete,Suppression impossible
+desktop,staff_accounts,staff_accounts.cannot_delete_unverified,"Your signed-in account could not be verified, so deletion is disabled.",Votre compte connecté n’a pas pu être vérifié ; la suppression est désactivée.
+desktop,staff_accounts,staff_accounts.col_account_id,System Account ID,Identifiant système
+desktop,staff_accounts,staff_accounts.col_member,Staff Member,Membre du personnel
+desktop,staff_accounts,staff_accounts.col_role,Position / Role,Poste / Rôle
+desktop,staff_accounts,staff_accounts.create_btn,Create staff account,Créer le compte
+desktop,staff_accounts,staff_accounts.create_card_desc,Create a console login for a new officer.,Créer des accès à la console pour un nouvel agent.
+desktop,staff_accounts,staff_accounts.create_card_title,Provision staff account,Créer un compte du personnel
+desktop,staff_accounts,staff_accounts.create_success_message,Account for {name} created successfully.,Le compte de {name} a été créé avec succès.
+desktop,staff_accounts,staff_accounts.create_success_title,Staff Account Created,Compte créé
+desktop,staff_accounts,staff_accounts.delete_confirm_message,"Are you sure you want to delete staff account '{name}'?
+
+This will permanently revoke their access.","Êtes-vous sûr de vouloir supprimer le compte du personnel '{name}' ?
+
+Cette action révoquera définitivement ses accès."
+desktop,staff_accounts,staff_accounts.delete_confirm_title,Confirm Deletion,Confirmer la suppression
+desktop,staff_accounts,staff_accounts.delete_selected_btn,Delete selected staff account,Supprimer le compte sélectionné
+desktop,staff_accounts,staff_accounts.delete_success_message,Staff account deleted successfully.,Le compte du personnel a été supprimé avec succès.
+desktop,staff_accounts,staff_accounts.delete_success_title,Staff Account Deleted,Compte supprimé
+desktop,staff_accounts,staff_accounts.empty_desc,Provision the first officer with the form on the right.,Créez le premier agent à l’aide du formulaire ci-contre.
+desktop,staff_accounts,staff_accounts.empty_title,No staff accounts,Aucun compte personnel
+desktop,staff_accounts,staff_accounts.error_creating_title,Error Creating Staff,Erreur lors de la création du personnel
+desktop,staff_accounts,staff_accounts.error_deleting_title,Error Deleting Staff,Erreur lors de la suppression du personnel
+desktop,staff_accounts,staff_accounts.error_load_msg,Use Refresh to try again.,Actualisez pour réessayer.
+desktop,staff_accounts,staff_accounts.error_load_title,Staff accounts could not be loaded,Impossible de charger les comptes du personnel
+desktop,staff_accounts,staff_accounts.field_email,Email:,E-mail :
+desktop,staff_accounts,staff_accounts.field_full_name,Full Name:,Nom complet :
+desktop,staff_accounts,staff_accounts.field_password,Password:,Mot de passe :
+desktop,staff_accounts,staff_accounts.field_position,Position:,Poste :
+desktop,staff_accounts,staff_accounts.field_role,Role:,Rôle :
+desktop,staff_accounts,staff_accounts.load_failed_msg,Staff accounts could not be loaded ({message}). Use Refresh to try again.,Impossible de charger les comptes du personnel ({message}). Actualisez pour réessayer.
+desktop,staff_accounts,staff_accounts.missing_data_message,"Email, password and full name are required.","L’e-mail, le mot de passe et le nom complet sont obligatoires."
+desktop,staff_accounts,staff_accounts.missing_data_title,Missing data,Données manquantes
+desktop,staff_accounts,staff_accounts.placeholder_fullname,e.g. Fatima Zohra,ex. Fatima Zohra
+desktop,staff_accounts,staff_accounts.placeholder_position,"e.g. Housing Officer, Reception…","ex. Agent de logement, Accueil…"
+desktop,staff_accounts,staff_accounts.role_admin,Administrator,Administrateur
+desktop,staff_accounts,staff_accounts.role_staff,Housing Staff,Personnel de résidence
+desktop,staff_accounts,staff_accounts.self_delete_message,You cannot delete the staff account you are signed in with — ask another administrator to revoke it if needed.,Vous ne pouvez pas supprimer le compte avec lequel vous êtes connecté — demandez à un autre administrateur si nécessaire.
+desktop,staff_accounts,staff_accounts.self_delete_title,Self-deletion protection,Protection contre l’auto-suppression
+desktop,staff_accounts,staff_accounts.self_delete_tooltip,You cannot delete your own staff account.,Vous ne pouvez pas supprimer votre propre compte personnel.
+desktop,staff_accounts,staff_accounts.subtitle,"Manage department officer credentials, assigned positions, and console privileges.","Gérez les identifiants des agents, leurs postes et leurs privilèges."
+desktop,staff_accounts,staff_accounts.this_member,this staff member,ce membre du personnel
+desktop,staff_accounts,staff_accounts.title,Staff & administrative access,Personnel et accès administratifs
+desktop,status,status.active,Active,Active
+desktop,status,status.approved,Approved,Approuvée
+desktop,status,status.available,Available,Disponible
+desktop,status,status.full,Full,Complet
+desktop,status,status.in_progress,In progress,En cours
+desktop,status,status.matched,Roster match,Correspondance avec la liste officielle
+desktop,status,status.not_checked,Not checked,Non vérifié
+desktop,status,status.not_in_roster,Not in roster,Absent de la liste officielle
+desktop,status,status.pending,Pending,En attente
+desktop,status,status.rejected,Rejected,Rejetée
+desktop,status,status.resolved,Resolved,Résolue
+desktop,status,status.under_review,Under review,En cours d’examen
+desktop,terms,terms.block,Block,Bloc
+desktop,terms,terms.capacity,Capacity,Capacité
+desktop,terms,terms.digital_pass,Digital resident pass,Carte de résident numérique
+desktop,terms,terms.floor,Floor,Étage
+desktop,terms,terms.language,Language,Langue
+desktop,terms,terms.maintenance_report,Maintenance report,Signalement de maintenance
+desktop,terms,terms.notifications,Notifications,Notifications
+desktop,terms,terms.occupancy,Occupancy,Occupation
+desktop,terms,terms.official_roster,Official university list,Liste officielle de l’université
+desktop,terms,terms.quiet_hours,Quiet hours,Heures silencieuses
+desktop,terms,terms.room,Room,Chambre
+desktop,terms,terms.room_change_request,Room change request,Demande de changement de chambre
+desktop,terms,terms.rooms,Rooms,Chambres
+desktop,time,time.days_ago_one,{count} day ago,Il y a {count} jour
+desktop,time,time.days_ago_other,{count} days ago,Il y a {count} jours
+desktop,time,time.hours_ago_one,{count} hour ago,Il y a {count} heure
+desktop,time,time.hours_ago_other,{count} hours ago,Il y a {count} heures
+desktop,time,time.just_now,Just now,À l’instant
+desktop,time,time.minutes_ago_one,{count} minute ago,Il y a {count} minute
+desktop,time,time.minutes_ago_other,{count} minutes ago,Il y a {count} minutes
+desktop,tray,tray.balloon_msg,RÉSIVO is running in the background. Click the tray icon to restore.,RÉSIVO s’exécute en arrière-plan. Cliquez sur l’icône pour restaurer la fenêtre.
+desktop,tray,tray.balloon_title,RÉSIVO,RÉSIVO
+desktop,tray,tray.minimize,Minimize to tray,Réduire dans la zone de notification
+desktop,tray,tray.open,Open RÉSIVO,Ouvrir RÉSIVO
+desktop,tray,tray.quit,Quit,Quitter
+desktop,tray,tray.tooltip,RÉSIVO — University Residence Management,RÉSIVO — Gestion de Résidence Universitaire
+web,auth,auth.add_email_btn,Send verification code,Envoyer le code de vérification
+web,auth,auth.add_email_overline,Account security update,Sécurité du compte
+web,auth,auth.add_email_required_desc,"Your resident file currently uses a temporary matriculation address. Linking a verified email is required to access your dashboard, receive room assignments, and recover your password.",Votre dossier résident utilise actuellement une adresse temporaire. L’association d’un e-mail vérifié est indispensable pour accéder à votre tableau de bord et recevoir vos affectations.
+web,auth,auth.add_email_required_title,Action required,Action requise
+web,auth,auth.add_email_subtitle,"To safeguard your dormitory account and receive housing notifications, please register a real verified email address.","Afin de protéger votre compte résident et recevoir les notifications d’hébergement, veuillez associer une adresse e-mail valide."
+web,auth,auth.add_email_title,Link verified email,Associer un e-mail vérifié
+web,auth,auth.forgot_btn,Send recovery code,Envoyer le code de récupération
+web,auth,auth.forgot_overline,Account recovery,Récupération de compte
+web,auth,auth.forgot_password,Forgot password?,Mot de passe oublié ?
+web,auth,auth.forgot_sent_desc,"If an account exists for that identifier, a 6-digit recovery code and recovery link have been dispatched to the email on file.","Si un compte est associé à cet identifiant, un code à 6 chiffres et un lien de réinitialisation ont été envoyés à votre adresse."
+web,auth,auth.forgot_sent_title,Recovery instructions dispatched,Instructions de récupération envoyées
+web,auth,auth.forgot_subtitle,Recover access to your resident account with your matriculation card ID or email.,Retrouvez l’accès à votre compte résident à l’aide de votre N° de carte étudiant ou de votre e-mail.
+web,auth,auth.forgot_target_email,Target email,E-mail de destination
+web,auth,auth.forgot_title,Reset your password,Réinitialiser votre mot de passe
+web,auth,auth.login_application_received,Application received!,Demande d’hébergement reçue !
+web,auth,auth.login_application_received_desc,"Your registration dossier has been submitted. Check your inbox to verify your email, then sign in below.","Votre dossier a été enregistré. Vérifiez votre boîte de réception pour confirmer votre e-mail, puis connectez-vous ci-dessous."
+web,auth,auth.login_btn,Sign in to portal,Se connecter au portail
+web,auth,auth.login_card_or_email,Student card ID or verified email,N° de carte étudiant ou e-mail vérifié
+web,auth,auth.login_card_or_email_placeholder,e.g. 202431001234 or student@univ-tlemcen.dz,ex. : 202431001234 ou etudiant@univ-tlemcen.dz
+web,auth,auth.login_email_verified,Email verified!,E-mail vérifié !
+web,auth,auth.login_email_verified_desc,Your email address has been confirmed. You may now sign in to your student portal.,Votre adresse e-mail a été confirmée. Vous pouvez désormais vous connecter à votre portail résident.
+web,auth,auth.login_link_sent,Sign-in link sent,Lien de connexion envoyé
+web,auth,auth.login_link_sent_desc,"If an account matches that student record, we sent a secure sign-in link to your inbox.","Si un compte correspond à ces identifiants, un lien de connexion sécurisé vous a été envoyé par e-mail."
+web,auth,auth.login_magic_link,Sign in with one-time code / link,Se connecter avec un code ou lien unique
+web,auth,auth.login_no_account,Don’t have a room application yet?,Vous n’avez pas encore déposé de demande ?
+web,auth,auth.login_overline,Resident authentication,Authentification résident
+web,auth,auth.login_password,Password,Mot de passe
+web,auth,auth.login_password_placeholder,••••••••,••••••••
+web,auth,auth.login_password_reset_complete,Password reset complete,Mot de passe réinitialisé
+web,auth,auth.login_password_reset_complete_desc,Your password has been updated. Please sign in with your new password.,Votre mot de passe a été mis à jour. Veuillez vous connecter avec votre nouveau mot de passe.
+web,auth,auth.login_register_link,Submit housing application,Déposer une demande d’hébergement
+web,auth,auth.login_subtitle,Enter your student card ID or verified email and password to access your dormitory account.,Saisissez votre N° de carte étudiant ou votre e-mail vérifié et votre mot de passe pour accéder à votre compte.
+web,auth,auth.login_title,Resident sign in,Connexion résident
+web,auth,auth.register,Register,S’inscrire
+web,auth,auth.register_have_account,Already have an active account?,Vous possédez déjà un compte résident ?
+web,auth,auth.register_overline,Housing intake dossier,Dossier de demande de logement
+web,auth,auth.register_submit_btn,Submit registration dossier,Soumettre le dossier d’inscription
+web,auth,auth.register_subtitle,Complete the official housing intake form to request accommodation for the academic year.,Renseignez le formulaire officiel pour solliciter une affectation en chambre universitaire pour l’année académique.
+web,auth,auth.register_title,Resident registration,Inscription d’hébergement
+web,auth,auth.resend_code,Resend code,Renvoyer le code
+web,auth,auth.reset_btn,Save new password,Enregistrer le nouveau mot de passe
+web,auth,auth.reset_overline,Password update,Mise à jour du mot de passe
+web,auth,auth.reset_subtitle,Choose a strong password with at least 8 characters to secure your resident portal account.,Choisissez un mot de passe robuste d’au moins 8 caractères pour sécuriser votre compte portail.
+web,auth,auth.reset_title,Set new password,Définir un nouveau mot de passe
+web,auth,auth.sign_in,Sign in,Se connecter
+web,auth,auth.sign_out,Sign out,Se déconnecter
+web,auth,auth.verify_btn,Confirm email address,Confirmer l’adresse e-mail
+web,auth,auth.verify_code_sent_to,Code sent to,Code envoyé à
+web,auth,auth.verify_email_overline,Account activation,Activation du compte
+web,auth,auth.verify_email_required_desc,"Your university housing dossier has been submitted, but your email address has not been verified yet. Please enter the code sent to your inbox.","Votre dossier de logement a été transmis, mais votre adresse e-mail n’a pas encore été vérifiée. Veuillez saisir le code reçu par e-mail."
+web,auth,auth.verify_email_required_title,Verification required,Vérification requise
+web,auth,auth.verify_email_subtitle,Enter the 6-digit code sent to your email address to confirm your account and activate portal access.,Saisissez le code à 6 chiffres envoyé à votre adresse e-mail pour confirmer votre compte et activer votre accès.
+web,auth,auth.verify_email_title,Verify your email,Vérifier votre adresse e-mail
+web,category,category.carpentry,Carpentry,Menuiserie
+web,category,category.electricity,Electricity,Électricité
+web,category,category.others,Others,Autres
+web,category,category.plumbing,Plumbing,Plomberie
+web,common,common.actions,Actions,Actions
+web,common,common.add,Add,Ajouter
+web,common,common.all,All,Tous
+web,common,common.all_f,All,Toutes
+web,common,common.approve,Approve,Approuver
+web,common,common.back,Back,Retour
+web,common,common.cancel,Cancel,Annuler
+web,common,common.close,Close,Fermer
+web,common,common.confirm,Confirm,Confirmer
+web,common,common.delete,Delete,Supprimer
+web,common,common.details,Details,Détails
+web,common,common.dismiss,Dismiss,Ignorer
+web,common,common.edit,Edit,Modifier
+web,common,common.error,Error,Erreur
+web,common,common.filter,Filter,Filtrer
+web,common,common.later,Later,Plus tard
+web,common,common.loading,Loading...,Chargement…
+web,common,common.none,None,Aucun
+web,common,common.optional,Optional,Facultatif
+web,common,common.refresh,Refresh,Actualiser
+web,common,common.reject,Reject,Rejeter
+web,common,common.required,Required,Obligatoire
+web,common,common.resend_code,Resend code,Renvoyer le code
+web,common,common.restart_now,Restart now,Redémarrer maintenant
+web,common,common.retry,Retry,Réessayer
+web,common,common.save,Save,Enregistrer
+web,common,common.search,Search,Rechercher
+web,common,common.send,Send,Envoyer
+web,common,common.submit,Submit,Soumettre
+web,common,common.success,Success,Succès
+web,common,common.update,Update,Mettre à jour
+web,common,common.verified,Verified,Vérifié
+web,common,common.view,View,Consulter
+web,dashboard,dashboard.empty_maintenance,No maintenance tickets filed yet.,Aucun signalement de maintenance enregistré.
+web,dashboard,dashboard.empty_transfers,No room transfer requests filed yet.,Aucune demande de changement de chambre enregistrée.
+web,dashboard,dashboard.maintenance_tab,Maintenance,Maintenance
+web,dashboard,dashboard.overview_tab,Overview,Vue d’ensemble
+web,dashboard,dashboard.pass_badge,Official student pass,Pass résident officiel
+web,dashboard,dashboard.pass_gate_notice,Present this QR code at the residence gate for fast credential verification.,Présentez ce QR code à l’entrée de la résidence pour vérification rapide.
+web,dashboard,dashboard.pass_subtitle,Official Cité Universitaire identity credential,Justificatif officiel de la Cité Universitaire
+web,dashboard,dashboard.pass_title,Digital resident pass,Carte de résident numérique
+web,dashboard,dashboard.pass_verified,Verified Academic Resident,Résident universitaire vérifié
+web,dashboard,dashboard.profile_tab,Profile,Profil
+web,dashboard,dashboard.recent_maintenance,Recent maintenance tickets,Derniers signalements de maintenance
+web,dashboard,dashboard.recent_room_changes,Recent room transfer requests,Dernières demandes de changement
+web,dashboard,dashboard.rejection_reason_label,Administrative reason,Motif administratif
+web,dashboard,dashboard.room_assignment,Room allocation,Affectation de chambre
+web,dashboard,dashboard.room_change_tab,Room change,Changement de chambre
+web,dashboard,dashboard.room_unassigned,No room assigned yet,Aucune chambre assignée pour l’instant
+web,dashboard,dashboard.status_active_desc,You are officially housed in Cité Universitaire Tlemcen. Your assigned room and resident card are listed below.,Vous êtes officiellement logé à la Cité Universitaire de Tlemcen. Votre chambre assignée et votre pass résident sont affichés ci-dessous.
+web,dashboard,dashboard.status_active_title,Active resident,Résident actif
+web,dashboard,dashboard.status_pending_desc,Your housing application has been submitted and is currently being cross-referenced against the official university roster.,Votre dossier a été soumis et fait l’objet d’une vérification auprès de la liste officielle de l’université.
+web,dashboard,dashboard.status_pending_title,Application pending review,Demande d’hébergement en attente
+web,dashboard,dashboard.status_rejected_desc,Your housing request could not be approved by the administration.,Votre demande d’hébergement n’a pas pu être validée par l’administration.
+web,dashboard,dashboard.status_rejected_title,Application not approved,Demande non approuvée
+web,dashboard,dashboard.title,Dashboard,Tableau de bord
+web,dashboard,dashboard.view_all_tickets,View all maintenance tickets,Consulter tous les signalements
+web,dashboard,dashboard.view_all_transfers,View all transfer requests,Consulter toutes les demandes
+web,dashboard,dashboard.welcome,"Welcome, {name}","Bienvenue, {name}"
+web,errors,errors.connection_error,Connection error. Please check your internet connection.,Erreur de connexion. Veuillez vérifier votre accès à Internet.
+web,errors,errors.email_not_verified,Your email address has not been verified yet.,Votre adresse e-mail n’a pas encore été vérifiée.
+web,errors,errors.expired_code,This code has expired. Please request a new one.,Ce code a expiré. Veuillez en demander un nouveau.
+web,errors,errors.file_too_large,Uploaded photo exceeds the 5 MB file size limit.,La photo dépasse la taille limite autorisée de 5 Mo.
+web,errors,errors.forbidden,You do not have permission to perform this action.,Vous n’avez pas les droits nécessaires pour effectuer cette action.
+web,errors,errors.generic,An unexpected error occurred. Please try again.,Une erreur inattendue est survenue. Veuillez réessayer.
+web,errors,errors.invalid_code,The 6-digit verification code entered is incorrect or expired.,Le code de vérification à 6 chiffres est incorrect ou a expiré.
+web,errors,errors.invalid_credentials,"Invalid student card ID, email or password.","N° de carte étudiant, e-mail ou mot de passe invalide."
+web,errors,errors.invalid_file_type,"Only PNG, JPEG and WebP photos are permitted.","Seuls les formats PNG, JPEG et WebP sont autorisés."
+web,errors,errors.invalid_phone,Please enter a valid Algerian mobile number.,Veuillez saisir un numéro de téléphone mobile algérien valide.
+web,errors,errors.not_found,The requested resource could not be found.,La ressource demandée est introuvable.
+web,errors,errors.password_mismatch,Passwords do not match.,Les mots de passe ne correspondent pas.
+web,errors,errors.password_too_short,Password must be at least 8 characters.,Le mot de passe doit comporter au moins 8 caractères.
+web,errors,errors.real_email_required,Please link and verify a real email address to access this feature.,Veuillez associer et vérifier une adresse e-mail valide pour accéder à cette fonctionnalité.
+web,errors,errors.timeout,The server is taking too long to respond. Check your connection and try again.,Le serveur met trop de temps à répondre. Vérifiez votre connexion et réessayez.
+web,errors,errors.unauthorized,You must be signed in to access this page.,Vous devez être connecté pour accéder à cette page.
+web,fields,fields.birth_date,Date of birth,Date de naissance
+web,fields,fields.block,Block,Bloc
+web,fields,fields.card_id,Card ID,N° de carte étudiant
+web,fields,fields.category,Category,Catégorie
+web,fields,fields.confirm_password,Confirm password,Confirmer le mot de passe
+web,fields,fields.current_password,Current password,Mot de passe actuel
+web,fields,fields.description,Description,Description
+web,fields,fields.email,Email,E-mail
+web,fields,fields.faculty,Faculty,Faculté
+web,fields,fields.first_name,First name,Prénom
+web,fields,fields.floor,Floor,Étage
+web,fields,fields.full_name,Full name,Nom complet
+web,fields,fields.gender,Gender,Genre
+web,fields,fields.last_name,Last name,Nom
+web,fields,fields.new_password,New password,Nouveau mot de passe
+web,fields,fields.notes,Notes,Remarques
+web,fields,fields.password,Password,Mot de passe
+web,fields,fields.phone,Phone,Téléphone
+web,fields,fields.photo,Photo,Photo
+web,fields,fields.reason,Reason,Motif
+web,fields,fields.rejection_reason,Rejection reason,Motif du rejet
+web,fields,fields.room,Room,Chambre
+web,fields,fields.study_level,Study level,Niveau d’études
+web,fields,fields.university,University,Université
+web,fields,fields.wilaya,Wilaya,Wilaya
+web,gender,gender.all_genders,All genders,Tous les genres
+web,gender,gender.female,Female,Féminin
+web,gender,gender.male,Male,Masculin
+web,landing,landing.badge,DOU Tlemcen • Direction des Œuvres Universitaires,DOU Tlemcen • Direction des Œuvres Universitaires
+web,landing,landing.desk_hours,Desk: Sun–Thu 08:30–16:30,Guichet : dim–jeu 08:30–16:30
+web,landing,landing.footer_contact_title,Department Contact,Coordonnées de l’administration
+web,landing,landing.footer_desc,"Official university accommodation system for enrolled students. Providing secure housing, streamlined room allocations, and 24/7 facility maintenance services in Tlemcen.","Système officiel d’hébergement universitaire pour les étudiants inscrits. Logement sécurisé, affectations coordonnées et assistance technique continue à Tlemcen."
+web,landing,landing.footer_emergency,Emergency Desk: Open 24/7,"Permanence d’urgence : 24h/24, 7j/7"
+web,landing,landing.footer_housing_bureau,"Housing Bureau, Administration Bloc A","Bureau du logement, Bâtiment administratif Bloc A"
+web,landing,landing.footer_institution,Direction des Œuvres Universitaires (DOU) • Ministère de l'Enseignement Supérieur et de la Recherche Scientifique,Direction des Œuvres Universitaires (DOU) • Ministère de l’Enseignement Supérieur et de la Recherche Scientifique
+web,landing,landing.footer_rights,© {year} Cité Universitaire Tlemcen. All rights reserved.,© {year} Cité Universitaire de Tlemcen. Tous droits réservés.
+web,landing,landing.footer_services_title,Resident Services,Services résidents
+web,landing,landing.footer_tagline,RÉSIVO — Student Residence Management Platform,RÉSIVO — Plateforme de gestion de résidence universitaire
+web,landing,landing.hero_desc,"Welcome to RÉSIVO, the official dormitory management system of Cité Universitaire Tlemcen. Register your student card ID, verify admissions status in real time, view your assigned residential room, and submit maintenance dispatches.","Bienvenue sur RÉSIVO, le système officiel de gestion de la Cité Universitaire de Tlemcen. Enregistrez votre N° de carte étudiant, vérifiez votre statut d’admission en direct, consultez votre chambre assignée et déclarez vos interventions de maintenance."
+web,landing,landing.hero_overline,Official student housing portal,Portail officiel d’hébergement étudiant
+web,landing,landing.hero_register_cta,Register as resident,S’inscrire comme résident
+web,landing,landing.hero_signin_cta,Sign in to portal,Se connecter au portail
+web,landing,landing.hero_title,Student residence management platform,Plateforme de gestion de résidence universitaire
+web,landing,landing.hotline,24/7 Security Hotline: +213 (0) 43 21 00 00,Urgences & sécurité 24h/24 : +213 (0) 43 21 00 00
+web,landing,landing.service_maintenance_desc,"Report plumbing, electricity, carpentry, or other issues directly through your dashboard with fault photos. Track triage and repair status in real-time.","Déclarez vos incidents de plomberie, électricité, menuiserie ou autres avec photos. Suivez l’avancement des réparations en temps réel."
+web,landing,landing.service_maintenance_title,Maintenance tickets with photos,Signalements de maintenance avec photos
+web,landing,landing.service_room_desc,Allocations are automatically cross-referenced with official university admission rosters. Residential blocks are designated with strict capacity limits.,Les affectations s’appuient sur la liste officielle de l’université. Les pavillons respectent des quotas stricts de capacité.
+web,landing,landing.service_room_title,Room details,Détails de la chambre
+web,landing,landing.service_status_desc,"Follow your dossier from submission to decision, and read the reason recorded by housing officers when an application is not approved.","Suivez votre dossier du dépôt jusqu’à la décision, et consultez le motif administratif enregistré en cas de non-approbation."
+web,landing,landing.service_status_title,Application status,Suivi de dossier
+web,landing,landing.service_transfers_desc,"Active residents may apply for room transfers based on block preferences and academic justifications, reviewed directly by housing officers.","Les résidents actifs peuvent solliciter un changement de chambre pour motifs académiques ou personnels, étudié par l’administration."
+web,landing,landing.service_transfers_title,Room transfer requests,Demandes de changement de chambre
+web,landing,landing.services_desc,Everything you need to manage your campus living arrangements in one secure place.,Tout le nécessaire pour gérer votre hébergement universitaire au sein d’un espace sécurisé.
+web,landing,landing.services_overline,Campus services,Services de la résidence
+web,landing,landing.services_title,Resident services,Services aux résidents
+web,landing,landing.step_1_desc,"Submit your student card ID, academic faculty, and personal details via the online intake form.","Transmettez votre N° de carte étudiant, votre faculté et vos coordonnées via le formulaire en ligne."
+web,landing,landing.step_1_title,Register,Inscription
+web,landing,landing.step_2_desc,Housing officers cross-reference your record with official admission lists and allocate an available room.,Les gestionnaires comparent vos données avec la liste officielle et procèdent à l’affectation d’une chambre disponible.
+web,landing,landing.step_2_title,Verification,Vérification
+web,landing,landing.step_3_desc,"View your allocated block and room number on the student portal, then collect your key at the housing bureau.","Consultez votre bloc et votre numéro de chambre sur le portail, puis retirez votre clé au bureau des œuvres universitaires."
+web,landing,landing.step_3_title,Room assigned,Chambre assignée
+web,landing,landing.step_4_desc,"Once you have moved in, the portal stays with you: report a fault, request a room transfer, or update your contact details.","Une fois installé, le portail reste à votre service : signalez une panne, demandez une permutation ou actualisez vos informations."
+web,landing,landing.step_4_title,Living in residence,Vie en résidence
+web,landing,landing.steps_desc,Follow the four simple steps from matriculation to settling into your assigned dormitory room.,"Suivez les quatre étapes simples, de l’inscription académique à votre installation en chambre."
+web,landing,landing.steps_overline,Intake lifecycle,Parcours d’admission
+web,landing,landing.steps_title,Residence intake process,Processus d’attribution de logement
+web,maintenance,maintenance.category_label,Category of fault,Catégorie de panne
+web,maintenance,maintenance.description_label,Description of issue,Description de la panne
+web,maintenance,maintenance.description_placeholder,"Please describe the problem clearly, including the exact location in your room...",Décrivez précisément le problème constaté ainsi que sa localisation exacte dans la chambre…
+web,maintenance,maintenance.empty_desc,"You haven’t reported any maintenance issues. If something breaks, submit a ticket above.","Vous n’avez déclaré aucun problème. En cas de dégradation ou panne, déposez un signalement ci-dessus."
+web,maintenance,maintenance.empty_title,No maintenance tickets,Aucun signalement
+web,maintenance,maintenance.new_ticket_title,Report a new maintenance issue,Signaler un nouvel incident
+web,maintenance,maintenance.photo_hint,"PNG, JPEG or WebP up to 5 MB. Photos help technicians bring the right tools.","PNG, JPEG ou WebP jusqu’à 5 Mo. Les photos permettent aux agents d’apporter l’outillage adapté."
+web,maintenance,maintenance.photo_label,Attach fault photo,Joindre une photo du constat
+web,maintenance,maintenance.staff_note_label,Technician note,Note de l’équipe technique
+web,maintenance,maintenance.submit_btn,Submit maintenance ticket,Transmettre le signalement
+web,maintenance,maintenance.subtitle,Report facility faults in your room or residence block and track repairs in real time.,Signalez les pannes dans votre chambre ou votre pavillon et suivez l’intervention en direct.
+web,maintenance,maintenance.ticket_created,Maintenance ticket submitted successfully.,Signalement de maintenance enregistré avec succès.
+web,maintenance,maintenance.tickets_count_one,{count} active ticket,{count} ticket actif
+web,maintenance,maintenance.tickets_count_other,{count} active tickets,{count} tickets actifs
+web,maintenance,maintenance.title,Maintenance dispatches,Signalements de maintenance
+web,nav,nav.dashboard,Dashboard,Tableau de bord
+web,nav,nav.home,Home,Accueil
+web,nav,nav.language,Language,Langue
+web,nav,nav.maintenance,Maintenance,Maintenance
+web,nav,nav.official_list,Official list,Liste officielle de l’université
+web,nav,nav.overview,Overview,Tableau de bord
+web,nav,nav.pending,Applications,Demandes d’hébergement
+web,nav,nav.profile,Profile,Profil
+web,nav,nav.register,Register,S’inscrire
+web,nav,nav.register_resident,Register as Resident,S’inscrire comme résident
+web,nav,nav.residents,Residents,Résidents
+web,nav,nav.room_changes,Room changes,Demandes de changement de chambre
+web,nav,nav.rooms,Rooms,Chambres
+web,nav,nav.settings,Settings,Paramètres
+web,nav,nav.sign_in,Sign in,Se connecter
+web,nav,nav.sign_out,Sign out,Se déconnecter
+web,nav,nav.staff_accounts,Staff accounts,Comptes du personnel
+web,nav,nav.student_portal,Student Portal,Portail étudiant
+web,nav,nav.switch_to_en,Switch to English,Switch to English
+web,nav,nav.switch_to_fr,Passer en français,Passer en français
+web,profile,profile.academic_card,Academic enrollment,Inscription universitaire
+web,profile,profile.contact_card,Contact information,Coordonnées de contact
+web,profile,profile.edit_phone_btn,Update phone number,Mettre à jour le téléphone
+web,profile,profile.overline,Cité Universitaire Tlemcen,Cité Universitaire de Tlemcen
+web,profile,profile.personal_card,Personal details,État civil & identité
+web,profile,profile.phone_updated,Contact details updated! Your mobile phone number has been saved successfully.,Coordonnées mises à jour ! Votre numéro de téléphone a été enregistré.
+web,profile,profile.subtitle,Review your official academic enrollment details and keep your contact info up to date.,Consultez vos informations universitaires officielles et maintenez vos coordonnées à jour.
+web,profile,profile.title,Resident profile & credentials,Profil résident & identifiants
+web,room_change,room_change.current_room,Current room,Chambre actuelle
+web,room_change,room_change.decision_note_label,Administration response,Réponse de l’administration
+web,room_change,room_change.empty_desc,You haven’t submitted any transfer requests this academic year.,Vous n’avez déposé aucune demande de changement au cours de cette année académique.
+web,room_change,room_change.empty_title,No room transfer requests,Aucune demande de transfert
+web,room_change,room_change.new_request_title,Submit transfer request,Déposer une demande de changement
+web,room_change,room_change.pending_alert,You already have a pending room change request under administrative review.,Vous avez déjà une demande de changement en cours d’instruction.
+web,room_change,room_change.preferred_room,Preferred room,Chambre souhaitée
+web,room_change,room_change.reason_label,Justification,Motif de la demande
+web,room_change,room_change.reason_placeholder,"Explain the reason for requesting a transfer (e.g. proximity to faculty, study group, health)...","Précisez les raisons motivant votre demande (ex. : rapprochement de faculté, groupe d’études, santé)…"
+web,room_change,room_change.request_created,Your room change request has been submitted to the housing office.,Votre demande de changement a été transmise au bureau du logement.
+web,room_change,room_change.requests_count_one,{count} transfer request,{count} demande de changement
+web,room_change,room_change.requests_count_other,{count} transfer requests,{count} demandes de changement
+web,room_change,room_change.select_room,Select an available room...,Sélectionnez une chambre disponible…
+web,room_change,room_change.submit_btn,Submit transfer request,Soumettre la demande de transfert
+web,room_change,room_change.subtitle,Request a transfer to a different room or block based on valid academic or personal grounds.,Sollicitez une permutation ou un changement de chambre pour motifs académiques ou personnels.
+web,room_change,room_change.title,Room transfer request,Demande de changement de chambre
+web,status,status.active,Active,Active
+web,status,status.approved,Approved,Approuvée
+web,status,status.available,Available,Disponible
+web,status,status.full,Full,Complet
+web,status,status.in_progress,In progress,En cours
+web,status,status.matched,Roster match,Correspondance avec la liste officielle
+web,status,status.not_checked,Not checked,Non vérifié
+web,status,status.not_in_roster,Not in roster,Absent de la liste officielle
+web,status,status.pending,Pending,En attente
+web,status,status.rejected,Rejected,Rejetée
+web,status,status.resolved,Resolved,Résolue
+web,status,status.under_review,Under review,En cours d’examen
+web,terms,terms.block,Block,Bloc
+web,terms,terms.capacity,Capacity,Capacité
+web,terms,terms.digital_pass,Digital resident pass,Carte de résident numérique
+web,terms,terms.floor,Floor,Étage
+web,terms,terms.language,Language,Langue
+web,terms,terms.maintenance_report,Maintenance report,Signalement de maintenance
+web,terms,terms.notifications,Notifications,Notifications
+web,terms,terms.occupancy,Occupancy,Occupation
+web,terms,terms.official_roster,Official university list,Liste officielle de l’université
+web,terms,terms.quiet_hours,Quiet hours,Heures silencieuses
+web,terms,terms.room,Room,Chambre
+web,terms,terms.room_change_request,Room change request,Demande de changement de chambre
+web,terms,terms.rooms,Rooms,Chambres
+web,time,time.days_ago_one,{count} day ago,Il y a {count} jour
+web,time,time.days_ago_other,{count} days ago,Il y a {count} jours
+web,time,time.hours_ago_one,{count} hour ago,Il y a {count} heure
+web,time,time.hours_ago_other,{count} hours ago,Il y a {count} heures
+web,time,time.just_now,Just now,À l’instant
+web,time,time.minutes_ago_one,{count} minute ago,Il y a {count} minute
+web,time,time.minutes_ago_other,{count} minutes ago,Il y a {count} minutes
