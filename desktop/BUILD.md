@@ -1,124 +1,113 @@
-# RÉSIVO desktop — build & run
+# RÉSIVO desktop — build & distribution guide
 
-All commands are run from the repository root (the folder containing `desktop\`).
+All commands run from the repository root (the folder containing `desktop\`).
+Builds target **64-bit Windows 10 (21H2+) and Windows 11** with zero external
+runtime prerequisites on the user's PC (no Python, no VC++ Redistributable,
+no .NET, no Qt installer, no internet downloads during install).
 
-## Run the test suite
+## 1. Run the test suite
 
 ```powershell
 desktop\.venv\Scripts\python.exe -m pytest desktop\tests -q
 ```
 
-The suite runs with Qt's offscreen platform and mocked Supabase clients; it
-does not need network access.
+## 2. Clean & build the zero-prerequisite release (recommended order)
 
-## Build the Windows executable
-
-Install the build-only tool once (it is not a runtime dependency):
+### Step A — Clean previous build & dist folders
 
 ```powershell
-desktop\.venv\Scripts\python.exe -m pip install pyinstaller==6.22.3
+Remove-Item -Recurse -Force build\resivo, dist\RESIVO, dist\installer -ErrorAction SilentlyContinue
+Remove-Item -Force dist\RESIVO-*-portable-win64.zip -ErrorAction SilentlyContinue
 ```
 
-Then build:
+### Step B — Build the PyInstaller `onedir` bundle
+
+`pyinstaller==6.22.3` is a build-time dependency only (`desktop\.venv`):
 
 ```powershell
 desktop\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean desktop\resivo.spec
 ```
 
-Output:
+Outputs `dist\RESIVO\RESIVO.exe` plus `_internal\` containing:
+- VC++ 2015–2022 runtime DLLs (`vcruntime140.dll`, `vcruntime140_1.dll`, `msvcp140*.dll`, `concrt140.dll`, `vccorlib140.dll`) and UCRT forwarders (`api-ms-win-crt-*.dll`)
+- Qt6 Core/Gui/Widgets/Svg/Network + plugins (`platforms\qwindows.dll`, `styles`, `imageformats`, `iconengines`, `tls\qschannelbackend.dll`) + `translations\qtbase_fr.qm`
+- `certifi\cacert.pem` TLS CA bundle, `i18n\{en,fr}.json`, bundled `Outfit`/`Inter` fonts, icons, and brand graphics
+- Sanitized `.env` (`SUPABASE_URL` and `SUPABASE_ANON_KEY` only — never secrets) next to `RESIVO.exe`
 
-```text
-dist\RESIVO\RESIVO.exe
+### Step C — Verify DLL dependencies & run `--selftest`
+
+```powershell
+desktop\.venv\Scripts\python.exe tools\check_deps.py dist\RESIVO
+dist\RESIVO\RESIVO.exe --selftest
 ```
 
-The folder (`dist\RESIVO\`) is self-contained. The optional installer is built
-with Inno Setup from `desktop\installer.iss` and ships that folder's contents.
+### Step D — Build the single-file Inno Setup installer
 
-### Distribution Mode & Optimization Strategy
+If Inno Setup 6 is not installed on the build PC, install it once (build PC only; target PCs never need Inno Setup):
 
-1. **Distribution Mode**: Packaged as a folder directory (`onedir`) via PyInstaller's `COLLECT`.
-   - **Why `onedir` instead of `onefile`**: In `onefile` mode, Windows must decompress the entire archive into a temporary `%TEMP%\_MEIxxxxxx` directory on every single launch, adding 3-5 seconds of disk I/O and CPU overhead. In `onedir` mode, binaries are mapped directly into virtual memory, allowing rapid cold-start (~1.9 s).
-2. **UPX Compression**: Set to `upx = False` per project policy.
-   - UPX-compressed executables on Windows frequently trigger antivirus heuristic false positives and incur a decompression CPU cost on process startup. Without UPX, the binary executes cleanly with standard OS paging.
-3. **Module & Binary Exclusion**:
-   - `desktop/resivo.spec` strictly excludes unused standard libraries (`tkinter`, `unittest`, `pydoc`, `test`, `pytest`) and large third-party math packages accidentally pulled in by virtual environment tooling (`numpy`, `scipy`, `matplotlib`, `pandas`, `lxml`).
-   - All unused Qt6 submodules (such as `QtWebEngine`, `Qt3D`, `QtQuick`, `QtQml`, `QtMultimedia`, `QtPdf`, `QtSql`, `QtCharts`) are excluded, and extraneous DLLs (e.g., `Qt6Quick.dll`, `Qt6Qml.dll`, `Qt6Pdf.dll`, `openblas`) are pruned in the binary collection stage.
-   - All necessary components (`QtWidgets`, `QtGui`, `QtCore`, `QtSvg`, platform plugins, styles, image formats, `openpyxl`, and `supabase`/`httpx`) are fully preserved.
-
-### Windows Icon Caching Note
-Windows caches executable icons aggressively in `%LocalAppData%\IconCache.db`. After
-rebuilding `RESIVO.exe`, if Explorer or Task Manager still displays an old or generic icon:
-1. Rename the executable temporarily (e.g. `RESIVO_test.exe`), or
-2. Run `ie4uinit.exe -show` in PowerShell / Command Prompt, or
-3. Restart Windows Explorer (`Stop-Process -Name explorer -Force`).
-
-The spec bundles `assets\` and the repository-root `.env` (when present) as the
-packaged fallback. It intentionally does **not** bundle `mcp/.env`.
-
-## Configuration file placement
-
-At runtime the app reads configuration in this order:
-
-1. `.env` next to `RESIVO.exe` — `dist\RESIVO\.env` for the build above.
-2. Bundled `.env` inside `_MEIPASS` (the repository-root file captured at build
-   time).
-3. Development only: `desktop\.env`, then the repository-root `.env`.
-
-To point a deployment at another project, place this file next to the EXE:
-
-```dotenv
-SUPABASE_URL=https://<project-ref>.supabase.co
-SUPABASE_ANON_KEY=<public-anon-key>
+```powershell
+winget install --id JRSoftware.InnoSetup -e
 ```
 
-Only the public anon key belongs here. Never put a service-role key in the
-desktop app or in the build.
+Compile `desktop\installer\resivo.iss`:
 
-Use `SUPABASE_URL` and `SUPABASE_ANON_KEY` exactly. If either is missing or the
-URL is not a valid `http(s)` URL, the app shows a configuration error before the
-login window and exits non-zero (the message never includes key values).
-
-## Log file
-
-The rotating log lives at:
-
-```text
-%APPDATA%\RESIVO\logs\app.log
+```powershell
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" desktop\installer\resivo.iss
 ```
 
-Set `RESIVO_DATA_DIR` to override the base directory (useful for a portable or
-test run). If an unexpected exception occurs, the error dialog provides an
-**Open log folder** button to access logs directly.
+If installed system-wide instead of per-user, run `"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" desktop\installer\resivo.iss`.
 
-## Windows Autostart & Startup Settings
+Output: `dist\installer\Setup-RESIVO-0.1.0.exe` (per-user `%LOCALAPPDATA%\Programs\RESIVO`, no admin rights required, 64-bit Windows 10+ check, English/French installer UI, optional unchecked autostart task, clean uninstaller).
 
-RÉSIVO provides an opt-in "Start RÉSIVO when Windows starts" switch in **Settings → General**.
-- **Per-User Registry Key**: Writes the quoted executable path and `--autostart` to `HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run` under value `"RESIVO"`. No administrator rights or elevated privileges are required.
-- **Windows Startup Settings**: Reads `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run` to respect user toggles made directly in Task Manager > Startup apps or Windows Settings. Turning the switch ON automatically clears any disabled flag.
-- **Single Instance & Minimized Launch**: Launches with `--autostart` exit silently if another copy of RÉSIVO is already running (guarded via `QLockFile`). When "Start minimized to the taskbar" is enabled, both the login window and subsequent main console window open minimized.
-- **Moved Executable Handling**: Normal launches verify the registered Run key path and repair it automatically if the executable was moved or reinstalled.
-- **Uninstallation**: When using the Inno Setup uninstaller (`desktop\installer.iss`), registry entries under `Run` and `StartupApproved\Run` are automatically deleted. For portable folder installations, turning the switch OFF in Settings before deleting the folder cleanly removes the registry value.
+### Step E — Build the portable zip fallback
 
-## Developer-mode MCP token
-
-The local MCP server token lives in `mcp\.env` (`MCP_AUTH_TOKEN=...`) and is
-**not** bundled: it is a secret. To show it in Settings → Developer mode for a
-packaged build, place the file next to the EXE:
-
-```text
-dist\RESIVO\mcp\.env
+```powershell
+Compress-Archive -Path dist\RESIVO\* -DestinationPath dist\RESIVO-0.1.0-portable-win64.zip -Force
 ```
 
-```dotenv
-MCP_AUTH_TOKEN=<token>
+Unzipping anywhere writable (for example `Desktop\RESIVO` or `%LOCALAPPDATA%\Programs\RESIVO`) and running `RESIVO.exe` gives the exact same zero-prerequisite behavior.
+
+### Step F — Record SHA-256 checksums
+
+```powershell
+Get-FileHash dist\installer\Setup-RESIVO-0.1.0.exe, dist\RESIVO-0.1.0-portable-win64.zip -Algorithm SHA256 | Format-Table Algorithm, Hash, Path -AutoSize
 ```
 
-In development the app reads the repository's `mcp\.env` directly. If the file
-is absent, Settings keeps the existing "Token not found — check mcp/.env."
-message.
+_Current release checksums are recorded below after the final build verification step._
 
-## Version
+---
 
-`APP_VERSION` in `desktop\app\config.py` is the single application version
-(currently `0.1.0`). Keep it in sync with `MyAppVersion` in
-`desktop\installer.iss` and `desktop\version_info.txt`.
+## Distribution & Target PC Notes
+
+### Distribution strategy (`onedir`, `upx=False`)
+- Packaged as `onedir` (not `onefile`) so startup skips temporary `%TEMP%\_MEI*` unpacking and avoids heuristic antivirus triggers.
+- `upx=False` eliminates UPX false-positive antivirus flags and startup decompression latency.
+
+### Windows SmartScreen & downloaded ZIP unblocking (target PC)
+1. **Unblock downloaded ZIP (before extracting)**: Right-click `RESIVO-0.1.0-portable-win64.zip` -> **Properties** -> check **Unblock** (at the bottom next to Security) -> **OK**, or extract cleanly after unblocking.
+2. **SmartScreen prompt on unsigned EXE / installer**: Click **More info** -> **Run anyway**.
+3. Run `tools\preflight.ps1` on the target PC before or during troubleshooting:
+   - Right-click `tools\preflight.ps1` -> **Run with PowerShell**, or run:
+     ```powershell
+     powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\preflight.ps1
+     ```
+
+### Windows system proxy & configuration placement
+- RÉSIVO uses `httpx` (`trust_env=True`) and `urllib` (`create_ssl_context()` backed by bundled `certifi\cacert.pem`), which automatically honor Windows Internet Settings proxy configuration as well as `HTTP_PROXY`/`HTTPS_PROXY` environment variables.
+- Configuration search order at runtime:
+  1. `.env` next to `RESIVO.exe` (`SUPABASE_URL` and public `SUPABASE_ANON_KEY` only — editable without rebuilding)
+  2. Bundled `.env` inside `_internal\` (`_MEIPASS`)
+  3. Development only: `desktop\.env`, then repository root `.env`
+
+### Per-user writable locations (never writes beside `RESIVO.exe` or `Program Files`)
+- Rotating logs: `%APPDATA%\RESIVO\logs\app.log` (fallback `%TEMP%\RESIVO\logs\app.log`, override `RESIVO_DATA_DIR`)
+- Single-instance lock: `%APPDATA%\RESIVO\resivo.lock`
+- Encrypted session token: `%LOCALAPPDATA%\RESIVO\session\session.bin` (DPAPI bound to logon session)
+- User preferences: `HKCU\Software\RESIVO\StaffConsole`
+- Autostart entry (when enabled): `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` (`RESIVO`)
+
+### Developer-mode MCP token
+`mcp\.env` (`MCP_AUTH_TOKEN=...`) is intentionally **never** bundled. For developer-mode inspection in a packaged install, place it manually beside `RESIVO.exe` (`<install_dir>\mcp\.env`).
+
+### Version alignment
+Keep `APP_VERSION` in `desktop\app\config.py` (`0.1.0`) synchronized with `MyAppVersion` in `desktop\installer\resivo.iss` and `desktop\version_info.txt`.
