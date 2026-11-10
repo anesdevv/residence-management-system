@@ -73,7 +73,30 @@ Unzipping anywhere writable (for example `Desktop\RESIVO` or `%LOCALAPPDATA%\Pro
 Get-FileHash dist\installer\Setup-RESIVO-0.1.0.exe, dist\RESIVO-0.1.0-portable-win64.zip -Algorithm SHA256 | Format-Table Algorithm, Hash, Path -AutoSize
 ```
 
-_Current release checksums are recorded below after the final build verification step._
+### Final Release Artifacts & SHA-256 Checksums (`v0.1.0`)
+
+| Artifact | Size (bytes) | SHA-256 |
+|---|---|---|
+| `dist\installer\Setup-RESIVO-0.1.0.exe` | `37651817` | `08BD578B8449CB12A44D4E0428546D661AD273BA8A9AB67F2E2140F6EABD7294` |
+| `dist\RESIVO-0.1.0-portable-win64.zip` | `49928965` | `CEBEFCA62B34DCD957DB1BA5EC62291A6EA0836A7740BC97E34F4F99E04A06B7` |
+
+### Clean-Machine Verification in Windows Sandbox
+
+Windows Sandbox launches a fresh Windows desktop with zero Python, VC++ Redistributable, or development tools. On Windows 10/11 Pro, Enterprise, or Education (if Sandbox is not enabled yet):
+
+1. Enable the feature once in an elevated PowerShell and reboot:
+   ```powershell
+   Enable-WindowsOptionalFeature -Online -FeatureName Containers-DisposableClientVM -All
+   ```
+2. Double-click `desktop\installer\resivo-sandbox.wsb` (or run `WindowsSandbox.exe desktop\installer\resivo-sandbox.wsb`).
+3. Inside the Sandbox terminal:
+   ```powershell
+   cd "$env:USERPROFILE\Desktop\RESIVO-Tools"
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\preflight.ps1
+   Start-Process "$env:USERPROFILE\Desktop\RESIVO-Release\installer\Setup-RESIVO-0.1.0.exe" -Wait
+   & "$env:LOCALAPPDATA\Programs\RESIVO\RESIVO.exe" --selftest
+   ```
+4. Launch **RÉSIVO** from the Start Menu and confirm login UI, fonts, French/English switch, tray notifications, and connection all work cleanly.
 
 ---
 
