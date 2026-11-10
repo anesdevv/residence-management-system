@@ -169,6 +169,7 @@ hiddenimports = [
     "desktop.auth.session_store",
     "desktop.i18n",
     "desktop.platform.autostart",
+    "desktop.platform.win32_compat",
 ]
 hiddenimports.extend(collect_submodules("pydantic_core"))
 hiddenimports.extend(collect_submodules("websockets"))

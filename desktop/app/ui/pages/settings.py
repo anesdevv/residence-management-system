@@ -740,6 +740,10 @@ class SettingsPage(QWidget):
                 pass
 
         args = [arg for arg in sys.argv[1:] if arg != "--restarted"] + ["--restarted"]
+        if not getattr(sys, "frozen", False):
+            main_script = str(Path(__file__).resolve().parents[3] / "main.py")
+            if not args or Path(args[0]).name != "main.py":
+                args = [main_script, *args]
         QProcess.startDetached(sys.executable, args)
         if app is not None:
             app.quit()

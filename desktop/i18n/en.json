@@ -975,5 +975,17 @@
     "open_settings_btn": "Open Settings",
     "gender_differs_badge": "Gender differs from this residence",
     "gender_differs_tooltip": "This student or official roster entry carries another gender (warning only — staff decide)."
+  },
+  "portability": {
+    "config_error_title": "RÉSIVO — Configuration error",
+    "config_missing_url": "Supabase URL is missing. Add SUPABASE_URL to the .env file next to RESIVO.exe (or use the bundled configuration).",
+    "config_missing_key": "Supabase anon key is missing. Add SUPABASE_ANON_KEY to the .env file next to RESIVO.exe (or use the bundled configuration).",
+    "config_invalid_url": "SUPABASE_URL is not a valid http(s) URL. Fix the .env file next to RESIVO.exe and start the app again.",
+    "log_file_hint": "Log file: {path}",
+    "tls_default": "Secure HTTPS connection failed during certificate verification. Check your network proxy or firewall settings.",
+    "tls_clock_skew": "Secure connection failed because the certificate appears expired or not yet valid. Please check your PC's system date, time, and time zone.",
+    "selftest_title": "RÉSIVO — System Self-Test",
+    "selftest_passed_summary": "All {passed} readiness checks passed.",
+    "selftest_failed_summary": "{failed} of {total} readiness checks failed. Review the log file for details."
   }
 }

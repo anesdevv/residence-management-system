@@ -18,7 +18,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QMessageBox
 try:
     from desktop.app.client import RoleLookupError, make_client, remember_role, resolve_role
-    from desktop.app.config import config_error
+    from desktop.app.config import config_error, config_error_code
     from desktop.app.tls import configure_tls_environment
     from desktop.app.logging_setup import (
         SafeApplication,
@@ -39,7 +39,7 @@ try:
     from desktop.app.ui.theme import load_fonts
 except ImportError:
     from app.client import RoleLookupError, make_client, remember_role, resolve_role
-    from app.config import config_error
+    from app.config import config_error, config_error_code
     from app.tls import configure_tls_environment
     from app.logging_setup import (
         SafeApplication,
@@ -59,6 +59,7 @@ except ImportError:
     from app.ui.resource import get_asset_path
     from app.ui.theme import load_fonts
 from desktop.auth.session_store import (
+    default_session_dir,
     get_remember_session_setting,
     session_manager,
 )
@@ -69,9 +70,9 @@ except ImportError:
     from desktop.i18n import t
 
 try:
-    from desktop.platform import autostart
+    from desktop.platform import autostart, win32_compat
 except ImportError:
-    from platform import autostart
+    from platform import autostart, win32_compat
 
 
 def _resolve_brand_icon() -> Path:
@@ -95,6 +96,13 @@ def main() -> int:
     setup_logging()
     configure_tls_environment()
 
+    # Ensure per-user writable directories exist (handles spaces & non-ASCII profiles).
+    for _dir_fn in (app_data_dir, default_session_dir):
+        try:
+            _dir_fn().mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            logging.getLogger("resivo").warning("Could not create per-user dir: %s", exc)
+
     is_autostart = "--autostart" in sys.argv
 
     # Single-instance guard (QLockFile in per-user AppData location)
@@ -105,12 +113,7 @@ def main() -> int:
     if exit_code is not None:
         return exit_code
 
-    if sys.platform == "win32":
-        try:
-            import ctypes
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("dz.dou.resivo.desktop")
-        except Exception:  # pragma: no cover - non-fatal Windows shell API
-            logging.getLogger("resivo").warning("Could not set process AppUserModelID")
+    win32_compat.set_app_user_model_id("dz.dou.resivo.desktop")
 
     app = SafeApplication(sys.argv)
     # Store lock_file on app instance so it remains locked until process termination
@@ -129,14 +132,17 @@ def main() -> int:
     app.setDesktopFileName("dz.dou.resivo.desktop")
 
     # Validate before the login window: a broken deployment gets one clear
-    # message (no key material) instead of a misleading auth failure.
-    error = config_error()
-    if error:
-        logging.getLogger("resivo").error("Configuration error: %s", error)
+    # message in the active app language (no key material).
+    err_code = config_error_code()
+    if err_code:
+        error_en = config_error() or err_code
+        logging.getLogger("resivo").error("Configuration error: %s", error_en)
+        localized_msg = t(f"portability.config_{err_code}")
+        hint = t("portability.log_file_hint", path=str(log_path()))
         QMessageBox.critical(
             None,
-            "RÉSIVO — Configuration error",
-            f"{error}\n\nLog file: {log_path()}",
+            t("portability.config_error_title"),
+            f"{localized_msg}\n\n{hint}",
         )
         return 1
 

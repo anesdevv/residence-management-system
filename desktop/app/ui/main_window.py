@@ -486,7 +486,17 @@ class MainWindow(QMainWindow):
         self._minimize_shortcut.activated.connect(self._on_minimize_shortcut)
         self.setWindowTitle("RÉSIVO — Staff Console")
         self.setMinimumSize(980, 640)
-        self.resize(1180, 760)
+        init_w, init_h = 1180, 760
+        try:
+            screen = qapp.primaryScreen() if qapp is not None else None
+            if screen is not None:
+                avail = screen.availableGeometry()
+                if avail.width() > 0 and avail.height() > 0:
+                    init_w = max(980, min(init_w, avail.width()))
+                    init_h = max(640, min(init_h, avail.height()))
+        except Exception:  # pragma: no cover - headless fallback
+            pass
+        self.resize(init_w, init_h)
         self.setStyleSheet(DESKTOP_STYLESHEET)
 
         central = QWidget()

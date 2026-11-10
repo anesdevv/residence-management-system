@@ -31,11 +31,19 @@ def _env_candidates() -> list[Path]:
 
 
 _env_path = next((path for path in _env_candidates() if path.is_file()), None)
+_ENV_SOURCE = "fallback"
 if _env_path is not None:
-    load_dotenv(_env_path)
+    load_dotenv(_env_path, encoding="utf-8")
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).resolve().parent
+        _ENV_SOURCE = "exe_dir" if _env_path.parent == exe_dir else "bundled"
+    else:
+        desktop_dir = Path(__file__).resolve().parent.parent
+        _ENV_SOURCE = "desktop_env" if _env_path.parent == desktop_dir else "repo_env"
 elif not getattr(sys, "frozen", False):
     # Development convenience: also honour a .env in the current directory.
-    load_dotenv()
+    if load_dotenv(encoding="utf-8"):
+        _ENV_SOURCE = "cwd_env"
 
 # Production project credentials as fallback for packaged installers
 _FALLBACK_URL = "https://kjqbnurycfjsuufibkac.supabase.co"
@@ -65,25 +73,42 @@ from .timeouts import (
 )
 
 
+def config_source() -> str:
+    """Return a safe description of where config was loaded from (no secrets)."""
+    return _ENV_SOURCE
+
+
+def config_error_code() -> str | None:
+    """Return ``'missing_url'``, ``'missing_key'``, ``'invalid_url'``, or ``None``."""
+    url = (SUPABASE_URL or "").strip()
+    key = (SUPABASE_ANON_KEY or "").strip()
+    if not url:
+        return "missing_url"
+    if not key:
+        return "missing_key"
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return "invalid_url"
+    return None
+
+
 def config_error() -> str | None:
     """Return a safe, user-facing configuration error, or ``None`` if valid.
 
     Values are never included in the message (no URL, no key material).
     """
-    url = (SUPABASE_URL or "").strip()
-    key = (SUPABASE_ANON_KEY or "").strip()
-    if not url:
+    code = config_error_code()
+    if code == "missing_url":
         return (
             "Supabase URL is missing. Add SUPABASE_URL to the .env file next to "
             "RESIVO.exe (or use the bundled configuration)."
         )
-    if not key:
+    if code == "missing_key":
         return (
             "Supabase anon key is missing. Add SUPABASE_ANON_KEY to the .env file "
             "next to RESIVO.exe (or use the bundled configuration)."
         )
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+    if code == "invalid_url":
         return (
             "SUPABASE_URL is not a valid http(s) URL. Fix the .env file next to "
             "RESIVO.exe and start the app again."

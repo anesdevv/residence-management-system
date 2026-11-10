@@ -51,84 +51,95 @@ CRYPTPROTECT_UI_FORBIDDEN = 0x01
 TOKEN_QUERY = 0x0008
 TOKEN_STATISTICS_CLASS = 10
 
+_WIN32_DPAPI_READY = False
 if sys.platform == "win32":
+    try:
 
-    class DATA_BLOB(ctypes.Structure):
-        _fields_ = [
-            ("cbData", wintypes.DWORD),
-            ("pbData", ctypes.POINTER(ctypes.c_byte)),
+        class DATA_BLOB(ctypes.Structure):
+            _fields_ = [
+                ("cbData", wintypes.DWORD),
+                ("pbData", ctypes.POINTER(ctypes.c_byte)),
+            ]
+
+        class LUID(ctypes.Structure):
+            _fields_ = [
+                ("LowPart", wintypes.DWORD),
+                ("HighPart", wintypes.LONG),
+            ]
+
+        class TOKEN_STATISTICS(ctypes.Structure):
+            _fields_ = [
+                ("TokenId", LUID),
+                ("AuthenticationId", LUID),
+                ("ExpirationTime", ctypes.c_int64),
+                ("TokenType", wintypes.DWORD),
+                ("ImpersonationLevel", wintypes.DWORD),
+                ("DynamicCharged", wintypes.DWORD),
+                ("DynamicAvailable", wintypes.DWORD),
+                ("GroupCount", wintypes.DWORD),
+                ("PrivilegeCount", wintypes.DWORD),
+                ("ModifiedId", LUID),
+            ]
+
+        crypt32 = ctypes.windll.crypt32
+        kernel32 = ctypes.windll.kernel32
+        advapi32 = ctypes.windll.advapi32
+
+        # Set 64-bit safe function signatures
+        kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+        kernel32.LocalFree.argtypes = [ctypes.c_void_p]
+        kernel32.LocalFree.restype = ctypes.c_void_p
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel32.CloseHandle.restype = wintypes.BOOL
+        kernel32.GetTickCount64.restype = ctypes.c_uint64
+        kernel32.GetTickCount64.argtypes = []
+
+        advapi32.OpenProcessToken.argtypes = [
+            wintypes.HANDLE,
+            wintypes.DWORD,
+            ctypes.POINTER(wintypes.HANDLE),
         ]
+        advapi32.OpenProcessToken.restype = wintypes.BOOL
 
-    class LUID(ctypes.Structure):
-        _fields_ = [
-            ("LowPart", wintypes.DWORD),
-            ("HighPart", wintypes.LONG),
+        advapi32.GetTokenInformation.argtypes = [
+            wintypes.HANDLE,
+            wintypes.DWORD,
+            ctypes.c_void_p,
+            wintypes.DWORD,
+            ctypes.POINTER(wintypes.DWORD),
         ]
+        advapi32.GetTokenInformation.restype = wintypes.BOOL
 
-    class TOKEN_STATISTICS(ctypes.Structure):
-        _fields_ = [
-            ("TokenId", LUID),
-            ("AuthenticationId", LUID),
-            ("ExpirationTime", ctypes.c_int64),
-            ("TokenType", wintypes.DWORD),
-            ("ImpersonationLevel", wintypes.DWORD),
-            ("DynamicCharged", wintypes.DWORD),
-            ("DynamicAvailable", wintypes.DWORD),
-            ("GroupCount", wintypes.DWORD),
-            ("PrivilegeCount", wintypes.DWORD),
-            ("ModifiedId", LUID),
+        crypt32.CryptProtectData.argtypes = [
+            ctypes.POINTER(DATA_BLOB),
+            wintypes.LPCWSTR,
+            ctypes.POINTER(DATA_BLOB),
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            wintypes.DWORD,
+            ctypes.POINTER(DATA_BLOB),
         ]
+        crypt32.CryptProtectData.restype = wintypes.BOOL
 
-    crypt32 = ctypes.windll.crypt32
-    kernel32 = ctypes.windll.kernel32
-    advapi32 = ctypes.windll.advapi32
-
-    # Set 64-bit safe function signatures
-    kernel32.GetCurrentProcess.restype = wintypes.HANDLE
-    kernel32.LocalFree.argtypes = [ctypes.c_void_p]
-    kernel32.LocalFree.restype = ctypes.c_void_p
-    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
-    kernel32.CloseHandle.restype = wintypes.BOOL
-    kernel32.GetTickCount64.restype = ctypes.c_uint64
-    kernel32.GetTickCount64.argtypes = []
-
-    advapi32.OpenProcessToken.argtypes = [
-        wintypes.HANDLE,
-        wintypes.DWORD,
-        ctypes.POINTER(wintypes.HANDLE),
-    ]
-    advapi32.OpenProcessToken.restype = wintypes.BOOL
-
-    advapi32.GetTokenInformation.argtypes = [
-        wintypes.HANDLE,
-        wintypes.DWORD,
-        ctypes.c_void_p,
-        wintypes.DWORD,
-        ctypes.POINTER(wintypes.DWORD),
-    ]
-    advapi32.GetTokenInformation.restype = wintypes.BOOL
-
-    crypt32.CryptProtectData.argtypes = [
-        ctypes.POINTER(DATA_BLOB),
-        wintypes.LPCWSTR,
-        ctypes.POINTER(DATA_BLOB),
-        ctypes.c_void_p,
-        ctypes.c_void_p,
-        wintypes.DWORD,
-        ctypes.POINTER(DATA_BLOB),
-    ]
-    crypt32.CryptProtectData.restype = wintypes.BOOL
-
-    crypt32.CryptUnprotectData.argtypes = [
-        ctypes.POINTER(DATA_BLOB),
-        ctypes.POINTER(wintypes.LPWSTR),
-        ctypes.POINTER(DATA_BLOB),
-        ctypes.c_void_p,
-        ctypes.c_void_p,
-        wintypes.DWORD,
-        ctypes.POINTER(DATA_BLOB),
-    ]
-    crypt32.CryptUnprotectData.restype = wintypes.BOOL
+        crypt32.CryptUnprotectData.argtypes = [
+            ctypes.POINTER(DATA_BLOB),
+            ctypes.POINTER(wintypes.LPWSTR),
+            ctypes.POINTER(DATA_BLOB),
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            wintypes.DWORD,
+            ctypes.POINTER(DATA_BLOB),
+        ]
+        crypt32.CryptUnprotectData.restype = wintypes.BOOL
+        _WIN32_DPAPI_READY = True
+    except Exception as exc:  # pragma: no cover - restricted Windows DLL guard
+        _log.warning("Windows DPAPI bindings unavailable: %s", exc)
+        DATA_BLOB = None  # type: ignore[assignment,misc]
+        LUID = None  # type: ignore[assignment,misc]
+        TOKEN_STATISTICS = None  # type: ignore[assignment,misc]
+        crypt32 = None  # type: ignore[assignment]
+        kernel32 = None  # type: ignore[assignment]
+        advapi32 = None  # type: ignore[assignment]
 else:
     DATA_BLOB = None  # type: ignore[assignment,misc]
     LUID = None  # type: ignore[assignment,misc]
@@ -145,7 +156,7 @@ class WindowsBackend:
     """Windows DPAPI backend leveraging CryptProtectData and LUID logon sessions."""
 
     def is_supported(self) -> bool:
-        return sys.platform == "win32"
+        return sys.platform == "win32" and _WIN32_DPAPI_READY
 
     def protect(self, data: bytes, entropy: bytes = b"") -> bytes:
         if not self.is_supported():

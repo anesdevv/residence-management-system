@@ -975,5 +975,17 @@
     "open_settings_btn": "Ouvrir les Paramètres",
     "gender_differs_badge": "Le genre diffère de cette résidence",
     "gender_differs_tooltip": "Cet étudiant ou la liste officielle indique un autre genre (avertissement uniquement — vous décidez)."
+  },
+  "portability": {
+    "config_error_title": "RÉSIVO — Erreur de configuration",
+    "config_missing_url": "L’URL Supabase est manquante. Ajoutez SUPABASE_URL au fichier .env à côté de RESIVO.exe (ou utilisez la configuration intégrée).",
+    "config_missing_key": "La clé anonyme Supabase est manquante. Ajoutez SUPABASE_ANON_KEY au fichier .env à côté de RESIVO.exe (ou utilisez la configuration intégrée).",
+    "config_invalid_url": "SUPABASE_URL n’est pas une URL http(s) valide. Corrigez le fichier .env à côté de RESIVO.exe et relancez l’application.",
+    "log_file_hint": "Fichier journal\u00a0: {path}",
+    "tls_default": "La connexion HTTPS sécurisée a échoué lors de la vérification du certificat. Vérifiez vos paramètres de proxy ou de pare-feu.",
+    "tls_clock_skew": "La connexion sécurisée a échoué car le certificat semble expiré ou pas encore valide. Vérifiez la date, l’heure et le fuseau horaire de votre ordinateur.",
+    "selftest_title": "RÉSIVO — Autotest du système",
+    "selftest_passed_summary": "Les {passed} vérifications de disponibilité ont réussi.",
+    "selftest_failed_summary": "{failed} vérification(s) sur {total} ont échoué. Consultez le fichier journal pour plus de détails."
   }
 }

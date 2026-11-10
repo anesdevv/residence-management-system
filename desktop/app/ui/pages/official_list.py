@@ -18,7 +18,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QStandardPaths, Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -1030,7 +1030,13 @@ class OfficialListPage(QWidget):
             QMessageBox.warning(self, "Permission Denied", "Importing the official residents list requires administrator privileges.")
             return
         if path is None:
-            path, _ = QFileDialog.getOpenFileName(self, "Open Official Roster File", "", "Spreadsheets (*.xlsx *.csv)")
+            docs_dir = (
+                QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DocumentsLocation)
+                or str(Path.home())
+            )
+            path, _ = QFileDialog.getOpenFileName(
+                self, "Open Official Roster File", docs_dir, "Spreadsheets (*.xlsx *.csv)"
+            )
         if not path:
             return
 
