@@ -22,7 +22,7 @@ let queryError: string | null = null;
 try {
   const { data } = await supabase
     .from('students')
-    .select('card_id, first_name, last_name, birth_date, gender, phone, email, university, faculty, study_level, wilaya, status')
+    .select('card_id, first_name, last_name, birth_date, phone, email, university, faculty, study_level, wilaya, status')
     .eq('id', uid)
     .single();
   s = data;
@@ -93,7 +93,6 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
             { label: t(locale, 'fields.card_id'), value: s?.card_id || '—', tnum: true, mono: true },
             { label: t(locale, 'fields.full_name'), value: `${s?.first_name || ''} ${s?.last_name || ''}`.trim() || '—' },
             { label: t(locale, 'fields.birth_date'), value: s?.birth_date || '—', tnum: true },
-            { label: t(locale, 'fields.gender'), value: s?.gender === 'female' ? t(locale, 'gender.female') : t(locale, 'gender.male') },
             { label: t(locale, 'fields.wilaya'), value: s?.wilaya || '—' },
             { label: t(locale, 'fields.study_level'), value: s?.study_level || '—' },
             { label: t(locale, 'fields.university'), value: s?.university || '—' },

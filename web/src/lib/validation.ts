@@ -5,7 +5,6 @@ export interface RegistrationInput {
   first_name: string;
   last_name: string;
   birth_date: string;
-  gender: string;
   phone: string;
   email: string;
   confirm_email?: string;
@@ -69,7 +68,6 @@ export function validateRegistration(d: RegistrationInput): string[] {
       errors.push('Birth date cannot be in the future.');
     }
   }
-  if (!['male', 'female'].includes(d.gender)) errors.push('Gender must be male or female.');
   if (!/^[0-9+\s]{6,}$/.test(d.phone)) errors.push('Phone number is invalid.');
 
   // Email is strictly required and must be a real address

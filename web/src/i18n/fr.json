@@ -52,7 +52,12 @@
     "verify_email_required_desc": "Votre dossier de logement a été transmis, mais votre adresse e-mail n’a pas encore été vérifiée. Veuillez saisir le code reçu par e-mail.",
     "verify_email_required_title": "Vérification requise",
     "verify_email_subtitle": "Saisissez le code à 6 chiffres envoyé à votre adresse e-mail pour confirmer votre compte et activer votre accès.",
-    "verify_email_title": "Vérifier votre adresse e-mail"
+    "verify_email_title": "Vérifier votre adresse e-mail",
+    "register_for_male": "Inscription pour la résidence masculine",
+    "register_for_female": "Inscription pour la résidence féminine",
+    "registration_closed_title": "Les inscriptions ne sont pas encore ouvertes",
+    "registration_closed_desc": "Les inscriptions ne sont pas encore ouvertes. L’administrateur doit d’abord définir le type de résidence avant l’ouverture des dépôts.",
+    "register_identity_hint": "Utilisé pour la vérification officielle d’identité et les contacts d’urgence"
   },
   "category": {
     "carpentry": "Menuiserie",
@@ -351,7 +356,7 @@
     "subtitle": "Sollicitez une permutation ou un changement de chambre pour motifs académiques ou personnels.",
     "title": "Demande de changement de chambre",
     "portal_title": "Portail des demandes de changement de chambre",
-    "portal_subtitle": "Déposez une demande de réaffectation ou de changement au sein de votre pavillon de résidence.",
+    "portal_subtitle": "Déposez une demande de réaffectation ou de changement vers une chambre disponible.",
     "back_to_dashboard": "Retour au tableau de bord",
     "motive_academic_title": "Besoins pédagogiques",
     "motive_academic_desc": "Cadre de travail / aile calme",
@@ -367,9 +372,11 @@
     "locked_title": "Portail de réaffectation verrouillé",
     "locked_desc": "Le statut de votre dossier est {status}. Seuls les étudiants résidents occupant déjà une chambre attribuée peuvent formuler une demande.",
     "current_room_overline": "Chambre actuellement attribuée",
-    "current_room_details": "Étage {floor} · Pavillon réservé aux résidents de sexe {gender}",
+    "current_room_details": "Étage {floor}",
     "current_occupant_pill": "Occupant actuel",
-    "history_heading": "Dossiers de changement & historique"
+    "history_heading": "Dossiers de changement & historique",
+    "no_preference_option": "Aucune préférence (attribuer toute chambre disponible)",
+    "available_rooms_hint": "Toutes les chambres disponibles de la résidence sont affichées ci-dessous."
   },
   "status": {
     "active": "Active",

@@ -15,7 +15,6 @@ const base: RegistrationInput = {
   first_name: 'Yacine',
   last_name: 'Benali',
   birth_date: '2003-05-14',
-  gender: 'male',
   phone: '0550000001',
   email: 'yacine.benali@univ-tlemcen.dz',
   confirm_email: 'yacine.benali@univ-tlemcen.dz',
@@ -59,10 +58,6 @@ describe('validateRegistration', () => {
 
   it('rejects an invalid study level', () => {
     expect(validateRegistration({ ...base, study_level: 'InvalidLevel' })).toContain('Study level is invalid.');
-  });
-
-  it('rejects an invalid gender', () => {
-    expect(validateRegistration({ ...base, gender: 'other' })).toContain('Gender must be male or female.');
   });
 
   it('rejects an invalid birth date format', () => {

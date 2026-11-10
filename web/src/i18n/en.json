@@ -52,7 +52,12 @@
     "verify_email_required_desc": "Your university housing dossier has been submitted, but your email address has not been verified yet. Please enter the code sent to your inbox.",
     "verify_email_required_title": "Verification required",
     "verify_email_subtitle": "Enter the 6-digit code sent to your email address to confirm your account and activate portal access.",
-    "verify_email_title": "Verify your email"
+    "verify_email_title": "Verify your email",
+    "register_for_male": "Registration for the male residence",
+    "register_for_female": "Registration for the female residence",
+    "registration_closed_title": "Registration is not open yet",
+    "registration_closed_desc": "Registration is not open yet. An administrator must configure the residence type before applications open.",
+    "register_identity_hint": "Used for official identity verification and emergency records"
   },
   "category": {
     "carpentry": "Carpentry",
@@ -351,7 +356,7 @@
     "subtitle": "Request a transfer to a different room or block based on valid academic or personal grounds.",
     "title": "Room transfer request",
     "portal_title": "Room transfer portal",
-    "portal_subtitle": "Apply for room reassignment or transfer within your designated dormitory block.",
+    "portal_subtitle": "Apply for room reassignment or transfer across available dormitory rooms.",
     "back_to_dashboard": "Back to dashboard",
     "motive_academic_title": "Academic needs",
     "motive_academic_desc": "Study environment / quiet wing",
@@ -367,9 +372,11 @@
     "locked_title": "Room relocation portal locked",
     "locked_desc": "Your account status is {status}. Room transfer requests can only be filed by approved residents who currently occupy an allocated dormitory room.",
     "current_room_overline": "Current room assignment",
-    "current_room_details": "Floor {floor} · Designated for {gender} Residents",
+    "current_room_details": "Floor {floor}",
     "current_occupant_pill": "Current occupant",
-    "history_heading": "Transfer petitions & history"
+    "history_heading": "Transfer petitions & history",
+    "no_preference_option": "No preference (Assign any available room)",
+    "available_rooms_hint": "All dormitory rooms matching capacity rules are listed below."
   },
   "status": {
     "active": "Active",

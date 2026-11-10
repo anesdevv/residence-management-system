@@ -1,7 +1,8 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
-import { validateRegistration, normalizeEmail, maskEmail } from '../../lib/validation';
+import { validateRegistration, normalizeEmail } from '../../lib/validation';
+import { checkRegistrationGate, getResidencePublic } from '../../lib/residence';
 import { TIMEOUT_MESSAGES } from '../../lib/timeouts';
 
 export const POST: APIRoute = async (context) => {
@@ -12,7 +13,6 @@ export const POST: APIRoute = async (context) => {
     first_name: String(form.get('first_name') ?? ''),
     last_name: String(form.get('last_name') ?? ''),
     birth_date: String(form.get('birth_date') ?? ''),
-    gender: String(form.get('gender') ?? ''),
     phone: String(form.get('phone') ?? ''),
     email: rawEmail,
     confirm_email: String(form.get('confirm_email') ?? ''),
@@ -33,6 +33,12 @@ export const POST: APIRoute = async (context) => {
 
   try {
     const supabase = createSupabaseServerClient(context.request, context.cookies);
+    const residence = await getResidencePublic(supabase);
+    const gateError = checkRegistrationGate(residence, context.locals?.locale || 'en');
+    if (gateError) {
+      return context.redirect(`/register?error=${encodeURIComponent(gateError)}`);
+    }
+
     const origin = new URL(context.request.url).origin;
 
     const { data: signUpData, error } = await supabase.auth.signUp({
@@ -45,7 +51,6 @@ export const POST: APIRoute = async (context) => {
           first_name: data.first_name.trim(),
           last_name: data.last_name.trim(),
           birth_date: data.birth_date,
-          gender: data.gender,
           phone: data.phone.trim(),
           email: cleanEmail,
           university: data.university.trim(),

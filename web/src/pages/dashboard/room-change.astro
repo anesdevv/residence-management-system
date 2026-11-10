@@ -24,7 +24,7 @@ try {
   const [stuRes, reqRes] = await Promise.all([
     supabase
       .from('students')
-      .select('gender, status, room_id, rooms(block, floor, number)')
+      .select('status, room_id, rooms(block, floor, number)')
       .eq('id', uid)
       .single(),
     supabase
@@ -39,8 +39,7 @@ try {
   if (student?.status === 'active' && Boolean(student?.room_id)) {
     const { data: roomsData } = await supabase
       .from('rooms')
-      .select('id, block, floor, number, capacity, gender')
-      .eq('gender', student?.gender ?? 'male')
+      .select('id, block, floor, number, capacity')
       .order('block')
       .order('number');
     rawRooms = roomsData ?? [];
@@ -136,7 +135,7 @@ const motives = [
                   {t(locale, 'dashboard.block_room', { block: currentRoom.block, room: currentRoom.number })}
                 </p>
                 <p class="text-small font-normal text-muted">
-                  {t(locale, 'room_change.current_room_details', { floor: currentRoom.floor, gender: student?.gender === 'female' ? t(locale, 'terms.female_residents') : t(locale, 'terms.male_residents') })}
+                  {t(locale, 'room_change.current_room_details', { floor: currentRoom.floor })}
                 </p>
               </div>
             </div>
@@ -201,7 +200,7 @@ const motives = [
                 id="preferred_room_id"
                 class="input min-h-[44px]"
               >
-                <option value="">No preference (Assign any available room in my block)</option>
+                <option value="">{t(locale, 'room_change.no_preference_option')}</option>
                 {(rooms ?? []).map((r) => (
                   <option value={r.id}>
                     Block {r.block} — Room {r.number} (Floor {r.floor}, Capacity: {r.capacity} beds)
@@ -209,7 +208,7 @@ const motives = [
                 ))}
               </select>
               <p class="field-hint">
-                Only rooms matching your residential block gender ({student?.gender === 'female' ? 'Female' : 'Male'}) are listed.
+                {t(locale, 'room_change.available_rooms_hint')}
               </p>
             </div>
 

@@ -20,7 +20,7 @@ export const POST: APIRoute = async (context) => {
     const supabase = createSupabaseServerClient(context.request, context.cookies);
     const { data: student } = await supabase
       .from('students')
-      .select('room_id, status, gender')
+      .select('room_id, status')
       .eq('id', user.id)
       .single();
 
@@ -57,20 +57,13 @@ export const POST: APIRoute = async (context) => {
       }
       const { data: targetRoom } = await supabase
         .from('rooms')
-        .select('gender')
+        .select('id')
         .eq('id', preferred)
         .maybeSingle();
 
       if (!targetRoom) {
         return context.redirect(
           `/dashboard/room-change?error=${encodeURIComponent('The selected room does not exist.')}`,
-        );
-      }
-      if (targetRoom.gender !== student.gender) {
-        return context.redirect(
-          `/dashboard/room-change?error=${encodeURIComponent(
-            'Selected room is not designated for your gender block.',
-          )}`,
         );
       }
     }
