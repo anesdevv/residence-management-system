@@ -140,6 +140,7 @@ hiddenimports = [
     "app.coalescer",
     "app.config",
     "app.logging_setup",
+    "app.selftest",
     "app.timeouts",
     "app.tls",
     "app.ui.close_policy",

@@ -986,6 +986,14 @@
     "tls_clock_skew": "La connexion sécurisée a échoué car le certificat semble expiré ou pas encore valide. Vérifiez la date, l’heure et le fuseau horaire de votre ordinateur.",
     "selftest_title": "RÉSIVO — Autotest du système",
     "selftest_passed_summary": "Les {passed} vérifications de disponibilité ont réussi.",
-    "selftest_failed_summary": "{failed} vérification(s) sur {total} ont échoué. Consultez le fichier journal pour plus de détails."
+    "selftest_failed_summary": "{failed} vérification(s) sur {total} ont échoué. Consultez le fichier journal pour plus de détails.",
+    "selftest_check_config": "Configuration (URL et clé publique)",
+    "selftest_check_writable": "Dossiers utilisateur accessibles en écriture (journaux et session)",
+    "selftest_check_fonts_i18n": "Polices intégrées (Outfit/Inter) et traductions",
+    "selftest_check_qt_plugins": "Plugins Qt6 (qwindows, styles, icônes, TLS)",
+    "selftest_check_ca_bundle": "Autorités de certification HTTPS (certifi)",
+    "selftest_check_network": "Résolution DNS et accès HTTPS Supabase",
+    "selftest_check_clock": "Exactitude de l’horloge système",
+    "selftest_check_dpi": "Mise à l’échelle DPI et exécution 64 bits"
   }
 }

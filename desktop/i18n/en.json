@@ -986,6 +986,14 @@
     "tls_clock_skew": "Secure connection failed because the certificate appears expired or not yet valid. Please check your PC's system date, time, and time zone.",
     "selftest_title": "RÉSIVO — System Self-Test",
     "selftest_passed_summary": "All {passed} readiness checks passed.",
-    "selftest_failed_summary": "{failed} of {total} readiness checks failed. Review the log file for details."
+    "selftest_failed_summary": "{failed} of {total} readiness checks failed. Review the log file for details.",
+    "selftest_check_config": "Configuration (URL and public key)",
+    "selftest_check_writable": "Writable user folders (logs & session)",
+    "selftest_check_fonts_i18n": "Bundled fonts (Outfit/Inter) & translations",
+    "selftest_check_qt_plugins": "Qt6 plugins (qwindows, styles, icons, TLS)",
+    "selftest_check_ca_bundle": "HTTPS CA certificate bundle (certifi)",
+    "selftest_check_network": "Supabase DNS & HTTPS reachability",
+    "selftest_check_clock": "System clock accuracy",
+    "selftest_check_dpi": "Display DPI & 64-bit runtime"
   }
 }

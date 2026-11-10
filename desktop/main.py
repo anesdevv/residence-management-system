@@ -19,6 +19,7 @@ from PySide6.QtWidgets import QMessageBox
 try:
     from desktop.app.client import RoleLookupError, make_client, remember_role, resolve_role
     from desktop.app.config import config_error, config_error_code
+    from desktop.app.selftest import execute_selftest_cli
     from desktop.app.tls import configure_tls_environment
     from desktop.app.logging_setup import (
         SafeApplication,
@@ -40,6 +41,7 @@ try:
 except ImportError:
     from app.client import RoleLookupError, make_client, remember_role, resolve_role
     from app.config import config_error, config_error_code
+    from app.selftest import execute_selftest_cli
     from app.tls import configure_tls_environment
     from app.logging_setup import (
         SafeApplication,
@@ -104,14 +106,17 @@ def main() -> int:
             logging.getLogger("resivo").warning("Could not create per-user dir: %s", exc)
 
     is_autostart = "--autostart" in sys.argv
+    is_selftest = "--selftest" in sys.argv
 
     # Single-instance guard (QLockFile in per-user AppData location)
-    lock_path = app_data_dir() / "resivo.lock"
-    lock_file, exit_code = autostart.acquire_single_instance(
-        lock_path, is_autostart=is_autostart
-    )
-    if exit_code is not None:
-        return exit_code
+    lock_file = None
+    if not is_selftest:
+        lock_path = app_data_dir() / "resivo.lock"
+        lock_file, exit_code = autostart.acquire_single_instance(
+            lock_path, is_autostart=is_autostart
+        )
+        if exit_code is not None:
+            return exit_code
 
     win32_compat.set_app_user_model_id("dz.dou.resivo.desktop")
 
@@ -130,6 +135,11 @@ def main() -> int:
     app.setApplicationName("RÉSIVO")
     app.setApplicationDisplayName("RÉSIVO")
     app.setDesktopFileName("dz.dou.resivo.desktop")
+    if _BRAND_ICON.is_file():
+        app.setWindowIcon(QIcon(str(_BRAND_ICON)))
+
+    if is_selftest:
+        return execute_selftest_cli(app)
 
     # Validate before the login window: a broken deployment gets one clear
     # message in the active app language (no key material).
@@ -151,8 +161,6 @@ def main() -> int:
     autostart.repair()
 
     load_fonts()  # bundled Outfit/Inter; must run after the QApplication exists
-    if _BRAND_ICON.is_file():
-        app.setWindowIcon(QIcon(str(_BRAND_ICON)))
 
     return launch_application(
         app=app,
