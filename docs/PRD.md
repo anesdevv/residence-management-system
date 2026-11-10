@@ -73,10 +73,10 @@ flowchart TB
 ## 4. Functional Requirements (FR)
 
 ### Module 1: Student Application & Roster Verification
-- **FR-1.1 Student Registration**: Students register with official university Card ID (`card_id`), Full Name, Gender, Birth Date, Wilaya of origin, Faculty, Academic Study Level, Phone, Email, and Password.
+- **FR-1.1 Student Registration**: Students register with official university Card ID (`card_id`), Full Name, Birth Date, Wilaya of origin, University, Faculty, Academic Study Level, Phone, Email, and Password. The residence is single-gender (`residence_settings.residence_gender`), so registration does not ask for gender; a database trigger fills `students.gender` automatically and keeps registration closed while unset.
 - **FR-1.2 Identity Verification**: The system cross-references the student's `card_id` against the `official_residents` roster table.
-  - Matches display a `✓ Matched` emerald badge.
-  - Missing records display a `⚠ Not in Roster` rose warning badge.
+  - Matches display a `Matched` emerald badge; missing records display a `Not in Roster` rose badge.
+  - If an official roster entry or stored record has another gender than the configured `residence_gender`, the desktop detail panel displays an amber `"Gender differs from this residence"` warning badge (informational only; does not block approval).
 - **FR-1.3 Digital Resident Pass**: Approved residents receive a digital pass card displaying their assigned Dormitory Block, Floor, Room Number, and registration barcode.
 
 ### Module 2: Housing Application Adjudication (`PendingPage`)
@@ -86,7 +86,7 @@ flowchart TB
   - `Rejected Applications` *(rejected applicants)*
   - `All Applications` *(global table view)*
 - **FR-2.2 Real-Time Search**: Search bar filters displayed records by Card ID, Name, or University in real-time.
-- **FR-2.3 Room Allocation Modal**: Staff assign approved applicants to available rooms; capacity limits and gender segregation (Block A = Male, Block B = Female) are strictly validated.
+- **FR-2.3 Room Allocation Modal**: Staff assign approved applicants to available rooms across any block in the single-gender residence; room bed capacity limits are strictly validated.
 - **FR-2.4 Mandatory Rejection Note**:
   - Rejecting an applicant requires a non-empty administrative justification.
   - The reason is saved to `students.rejection_reason` and review timestamp to `students.reviewed_at`.
@@ -178,12 +178,18 @@ erDiagram
         timestamp created_at
     }
 
+    RESIDENCE_SETTINGS {
+        int id PK "singleton 1"
+        string residence_name
+        string residence_gender "male | female | null"
+    }
+
     STUDENTS {
         uuid id PK
         string card_id UK
         string first_name
         string last_name
-        string gender "male | female"
+        string gender "auto-filled from residence_settings"
         date birth_date
         string university
         string faculty

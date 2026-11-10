@@ -81,9 +81,9 @@ flowchart TD
     ReviewPending --> ActionDecision{"Administrative Decision"}
     
     ActionDecision -->|Approve| OpenRoomModal["Open Room Selection Modal"]
-    OpenRoomModal --> CheckCapacity{"Block & Capacity Check"}
-    CheckCapacity -->|Valid Room & Gender Match| AssignRoom["Set room_id, status = 'active'<br/>Reviewed timestamp recorded"]
-    CheckCapacity -->|Full or Gender Mismatch| RejectRoom["Prevent Assignment with Warning"]
+    OpenRoomModal --> CheckCapacity{"Capacity Check"}
+    CheckCapacity -->|Available Beds| AssignRoom["Set room_id, status = 'active'<br/>Reviewed timestamp recorded"]
+    CheckCapacity -->|Full| RejectRoom["Disable Full Room Selection"]
 
     ActionDecision -->|Reject| PromptReason["Prompt for Rejection Reason"]
     PromptReason --> ValidateReason{"Reason entered?"}
@@ -200,7 +200,7 @@ sequenceDiagram
 
 | Entity | Current State | Allowed Transitions | Trigger / Condition |
 | :--- | :--- | :--- | :--- |
-| **Student** | `pending` | `active` | Staff approves and allocates a room with available capacity matching student gender. |
+| **Student** | `pending` | `active` | Staff approves and allocates any room with available bed capacity (optional warning badge if roster/stored gender differs). |
 | **Student** | `pending` | `rejected` | Staff rejects application with mandatory written justification. |
 | **Student** | `pending` | *Deletion Blocked* | **Strictly Prohibited**: Pending applications cannot be deleted. |
 | **Student** | `active` | `deleted` | Staff permanently removes record; unassigns room and cascades dependencies. |
@@ -219,6 +219,6 @@ sequenceDiagram
 | :--- | :--- | :--- |
 | **Missing from University Roster** | Cross-reference flag returns negative match. | Desktop displays red `⚠ Not in Roster` badge; alerts officer to request physical enrollment certificate before approval. |
 | **Room at Maximum Capacity** | Allocation modal calculates `occupants >= capacity`. | Room row styled with full indicator; allocation button disabled for that room. |
-| **Gender Mismatch in Allocation** | Student gender compared with Dormitory Block gender rule. | Allocation modal displays warning; blocks assignment to opposite-gender block. |
+| **Gender Differs from Residence Setting** | Student stored gender or official roster `gender` compared with `residence_settings.residence_gender`. | Desktop displays an amber `"Gender differs from this residence"` badge in Pending & Resident detail panels; approval remains unblocked so staff decide. |
 | **Live Sync Network Interruption** | Background `LiveSyncWorker` wraps polling in `try/except`. | Worker remains alive; retries on next 2000ms tick without crashing desktop application. |
 | **Desktop Window Resize** | Minimum geometry pinned to 980×640; panels use flexible min/max stretch rules. | Layout remains clean across all monitor sizes from laptop displays to 4K monitors without crushed controls. |

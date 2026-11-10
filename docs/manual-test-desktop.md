@@ -233,3 +233,34 @@ Execute with the rebuilt standalone executable (`dist\RESIVO\RESIVO.exe`):
   4. Toggle switch **ON**: verify active session is persisted to `session.bin` immediately.
   5. Verify account information line correctly shows `Signed in as <email> (<role>)`.
   6. Click "Sign out" button in the security card: verify full sign-out flow executes and lands on Login window.
+
+---
+
+## Single-Gender Residence Mode Checks
+
+- [ ] **15. First-Time Setup Prompt (Admin) & Unset Banner (Staff)**:
+  1. Ensure `residence_settings.residence_gender` is `NULL` in local Supabase.
+  2. Sign in as **staff** (non-admin): verify no modal dialog opens, and the top warning banner shows: *"The residence type has not been set. Ask an administrator."*
+  3. Sign in as **admin**: verify the one-time setup dialog prompts *"Choose the residence type: Male residence / Female residence. You can change this later in Settings."* Select **Male residence** and confirm.
+  4. **Pass criteria**: Dialog saves cleanly off the GUI thread and the unset banner disappears.
+
+- [ ] **16. Settings Residence Section (No Data vs Existing Data Typed `CHANGE`)**:
+  1. As **staff**, verify the **Residence** card in Settings is hidden.
+  2. As **admin**, open **Settings → Residence**. Edit **Residence name** and click **Save name**; verify Overview and sidebar captions reflect the updated name.
+  3. On a database with **0 students**, change **Residence type** and confirm the simple confirmation dialog; verify *"Last changed by <name> on <date>"* updates.
+  4. With **existing students** present, change **Residence type**: verify the warning dialog opens with `"Change the residence type?"` and exact student/room counts.
+  5. Verify **Cancel** is the default button (`Esc` closes cleanly), typing anything other than exact `CHANGE` leaves the red **Change residence type** button disabled, and canceling reverts the selector without calling `set_residence_gender`.
+  6. Type `CHANGE` and click **Change residence type**: verify it succeeds off-thread, updates the audit line, and leaves existing students/rooms untouched.
+
+- [ ] **17. Room & Block Dialogs Without Per-Room Gender Controls**:
+  1. Open **Rooms → Residential blocks → Add block**: verify there is no gender dropdown.
+  2. Open **Add room** and **Edit room**: verify the gender dropdown and *"inherited from block"* copy are gone, replaced by a read-only **Residence type** chip.
+  3. Verify **Rooms** and **Residents** tables have no gender filter dropdown or gender column.
+
+- [ ] **18. Room Allocation & Room Transfer Without Gender Restrictions**:
+  1. Attempt to allocate an applicant to an available room whose historical `rooms.gender` differs from `students.gender`.
+  2. **Pass criteria**: Available rooms are selectable without gender warnings or disabling; full rooms remain disabled cleanly.
+
+- [ ] **19. Amber Warning-Only Gender Badges**:
+  1. In **Pending applications**, select a student whose roster entry or stored record has the opposite gender from `residence_gender`: verify the amber `"Gender differs from this residence"` badge displays while **Approve & assign room** stays enabled.
+  2. Double-click an active resident stored with the other gender (e.g. after switching residence type): verify `StudentInfoCardDialog` displays the amber `"Gender differs from this residence"` badge.

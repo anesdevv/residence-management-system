@@ -158,3 +158,22 @@ Supabase local includes an in-memory mail catcher (Mailpit) running at **`http:/
 5. In the header, click **EN**.
 6. **Expected**: Switches immediately to `/dashboard/maintenance` in English, preserving state and query parameters.
 
+---
+
+### Scenario M: Single-Gender Registration Header & Closed State
+1. With `residence_settings.residence_gender = NULL`, open `http://localhost:4321/register` (and `/fr/register`).
+2. **Expected**:
+   - Displays a warning banner: *"Registration is not open yet"* (*"Les inscriptions ne sont pas encore ouvertes"*).
+   - Form fields and submit button are disabled, and direct `POST /api/register` rejects registration.
+3. Have an administrator set `residence_gender = 'female'` (or `'male'`), then reload `/register` and `/fr/register`.
+4. **Expected**:
+   - Header shows the configured `residence_name` and *"Registration for the female residence"* (or male).
+   - No `<select name="gender">` field appears anywhere in the registration form.
+   - Submitting valid registration succeeds and assigns `students.gender` from `residence_settings` automatically via Postgres trigger.
+
+### Scenario N: Room Change Portal Without Gender Filtering
+1. Sign in as an active resident with an assigned room and open `/dashboard/room-change`.
+2. **Expected**:
+   - Preferred room dropdown lists all dormitory rooms (no block-gender restriction or hint text).
+   - Submitting a valid room change request succeeds across blocks.
+
