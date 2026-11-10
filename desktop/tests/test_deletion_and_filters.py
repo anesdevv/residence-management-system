@@ -300,11 +300,11 @@ def test_rooms_occupancy_column_no_duplicate_text(qapp):
     # Column 5 (Occupied) QTableWidgetItem must have empty display text so Qt's default
     # delegate does NOT draw an overlapping duplicate number behind the RoomOccupancyBar widget.
     for row, expected_text in enumerate(["1 / 3", "2 / 2"]):
-        item = page.table.item(row, 5)
+        item = page.table.item(row, 4)
         assert item is not None
         assert item.text() == "", f"Row {row} item text must be empty to avoid double-painting, got {item.text()!r}"
 
-        holder = page.table.cellWidget(row, 5)
+        holder = page.table.cellWidget(row, 4)
         assert holder is not None
         bar = holder.findChild(RoomOccupancyBar)
         assert bar is not None

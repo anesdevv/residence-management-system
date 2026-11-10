@@ -50,7 +50,7 @@ try:
 except ImportError:
     from desktop.i18n import format_date, format_number, format_percent, t, tn
 
-from ...client import room_occupancy
+from ...client import get_cached_residence_settings, room_occupancy
 from ...timeouts import execute_network_call
 from .. import theme
 from ..components import (
@@ -70,6 +70,7 @@ from ..components import (
 )
 from ..icons import get_icon
 from ..infocard import RoomInfoCardDialog
+from ..residence_dialogs import residence_gender_label
 from ..tasks import GatherResult, TaskRunner, human_error
 from ..theme import C, S, DESKTOP_STYLESHEET
 
@@ -79,7 +80,6 @@ def _columns() -> list[str]:
         t("rooms.col_block"),
         t("rooms.col_floor"),
         t("rooms.col_room_no"),
-        t("rooms.col_gender"),
         t("rooms.col_total_beds"),
         t("rooms.col_occupied"),
         t("rooms.col_availability"),
@@ -131,7 +131,7 @@ def _small_label(text: str) -> QLabel:
 
 
 class BlockSetupDialog(QDialog):
-    """Add a residential block designating female or male resident housing."""
+    """Add a residential block."""
 
     def __init__(self, parent=None, client=None, existing_names=None):
         super().__init__(parent)
@@ -161,19 +161,8 @@ class BlockSetupDialog(QDialog):
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText(t("rooms.block_name_placeholder"))
 
-        self.gender_combo = QComboBox()
-        self.gender_combo.addItems([t("gender.female"), t("gender.male")])
-        self.gender_combo.setToolTip(t("rooms.block_gender_tooltip"))
-
         form.addRow(t("rooms.block_identifier_label"), self.name_edit)
-        form.addRow(t("rooms.designated_gender_label"), self.gender_combo)
         card.add_layout(form)
-
-        tip = QLabel(t("rooms.block_gender_tip"))
-        theme.apply_role(tip, "small")
-        tip.setStyleSheet(f"color: {C('text-muted')}; padding-top: 4px;")
-        tip.setWordWrap(True)
-        card.add_widget(tip)
 
         self.error_banner = InlineBanner(
             "error",
@@ -242,8 +231,7 @@ class BlockSetupDialog(QDialog):
             QMessageBox.warning(self, t("rooms.block_exists_title"), t("rooms.block_exists_msg", name=name))
             return
 
-        gender = "female" if self.gender_combo.currentIndex() == 0 else "male"
-        payload = {"name": name, "gender": gender}
+        payload = {"name": name}
 
         # Programmatic (never-shown) invocations keep the historical synchronous
         # behaviour used by callers/tests.  Every dialog the user actually sees
@@ -337,10 +325,9 @@ class ManageBlocksDialog(QDialog):
         self.error_banner.setVisible(False)
         card.add_widget(self.error_banner)
 
-        self.table = QTableWidget(0, 6)
+        self.table = QTableWidget(0, 5)
         cols = [
             t("rooms.col_block"),
-            t("rooms.col_gender_designation"),
             t("nav.rooms"),
             t("rooms.col_total_beds"),
             t("rooms.col_occupied_beds"),
@@ -350,7 +337,6 @@ class ManageBlocksDialog(QDialog):
         _fit_columns(
             self.table,
             [
-                QHeaderView.ResizeMode.ResizeToContents,
                 QHeaderView.ResizeMode.ResizeToContents,
                 QHeaderView.ResizeMode.ResizeToContents,
                 QHeaderView.ResizeMode.ResizeToContents,
@@ -386,7 +372,7 @@ class ManageBlocksDialog(QDialog):
             self._show_banner("info", _WORKING_TEXT, message)
 
     def _fetch_blocks(self) -> list[dict]:
-        resp = self.client.table("blocks").select("id, name, gender").order("name").execute()
+        resp = self.client.table("blocks").select("id, name").order("name").execute()
         data = getattr(resp, "data", None)
         return [b for b in data if isinstance(b, dict)] if isinstance(data, list) else []
 
@@ -397,7 +383,7 @@ class ManageBlocksDialog(QDialog):
         for r in self.rooms:
             b_name = str(r.get("block", "")).strip().upper()
             if b_name and b_name not in seen:
-                seen[b_name] = {"name": b_name, "gender": str(r.get("gender", "male")).lower()}
+                seen[b_name] = {"name": b_name}
         self.blocks = list(seen.values())
 
     def _load_sync(self) -> None:
@@ -472,27 +458,19 @@ class ManageBlocksDialog(QDialog):
         self.table.setRowCount(len(self.blocks))
         for i, b in enumerate(self.blocks):
             b_name = b["name"].upper()
-            gender = str(b.get("gender", "male")).lower()
             m = metrics.get(b_name, {"rooms": 0, "capacity": 0, "occupied": 0})
 
             name_item = QTableWidgetItem(t("rooms.cell_block", block=b_name))
             name_item.setIcon(get_icon("building", 14, C("teal-600")))
-
-            pill_flavor = "ok" if gender == "female" else "progress"
-            gender_text = t("gender.female") if gender == "female" else t("gender.male")
-            pill = StatusPill(pill_flavor, gender_text)
-            pill_holder = _cell_widget(pill)
 
             rooms_item = QTableWidgetItem(str(m["rooms"]))
             cap_item = QTableWidgetItem(str(m["capacity"]))
             occ_item = QTableWidgetItem(str(m["occupied"]))
 
             self.table.setItem(i, 0, name_item)
-            self.table.setItem(i, 1, QTableWidgetItem(gender_text))
-            self.table.setCellWidget(i, 1, pill_holder)
-            self.table.setItem(i, 2, rooms_item)
-            self.table.setItem(i, 3, cap_item)
-            self.table.setItem(i, 4, occ_item)
+            self.table.setItem(i, 1, rooms_item)
+            self.table.setItem(i, 2, cap_item)
+            self.table.setItem(i, 3, occ_item)
 
             del_btn = Button.danger(t("common.delete"), icon="trash")
             if m["rooms"] > 0:
@@ -503,7 +481,7 @@ class ManageBlocksDialog(QDialog):
                 del_btn.clicked.connect(lambda _, blk=b: self.on_delete_block(blk))
 
             del_holder = _cell_widget(del_btn)
-            self.table.setCellWidget(i, 5, del_holder)
+            self.table.setCellWidget(i, 4, del_holder)
 
     def on_add_block(self):
         if self._busy:
@@ -577,15 +555,15 @@ class ManageBlocksDialog(QDialog):
 
 
 class RoomSetupDialog(QDialog):
-    """Add / edit one room with automatic block gender inheritance.
+    """Add / edit one room in single-gender residence mode.
 
     The occupancy/capacity guard: ``cap_spin`` starts at ``current_occupancy``
     so a room can never be shrunk below its live occupants, with a tooltip that
-    explains the limit. A room with active occupants also has its designated
-    gender and block locked (warning banner + disabled combo).
+    explains the limit. A room with active occupants also has its block locked
+    (warning banner + disabled combo).
     """
 
-    def __init__(self, parent=None, room=None, current_occupancy=0, client=None, blocks=None):
+    def __init__(self, parent=None, room=None, current_occupancy=0, client=None, blocks=None, residence_gender=None):
         super().__init__(parent)
         self.setWindowTitle(t("rooms.edit_room_dialog_title") if room else t("rooms.add_room_dialog_title"))
         self.setMinimumWidth(480)
@@ -595,6 +573,12 @@ class RoomSetupDialog(QDialog):
         self.current_occupancy = current_occupancy
         self._busy = False
         self._num_touched = bool(room and str(room.get("number", "")).strip())
+        cached_res = get_cached_residence_settings(self.client) if self.client else None
+        self.residence_gender = (
+            residence_gender
+            or getattr(parent, "residence_gender", None)
+            or (cached_res or {}).get("residence_gender")
+        )
 
         # Reuse the already-loaded blocks supplied by the page/dialog.  No
         # network query is made here: the caller loads them off the GUI thread.
@@ -602,7 +586,7 @@ class RoomSetupDialog(QDialog):
         if room:
             r_block = str(room.get("block", "")).strip().upper()
             if r_block and not any(b["name"].upper() == r_block for b in self.blocks):
-                self.blocks.append({"name": r_block, "gender": str(room.get("gender", "male")).lower()})
+                self.blocks.append({"name": r_block})
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(S("space-6"), S("space-6"), S("space-6"), S("space-6"))
@@ -701,33 +685,20 @@ class RoomSetupDialog(QDialog):
         grid.addWidget(lbl_cap, 3, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         grid.addWidget(self.cap_spin, 3, 1)
 
-        # Row 4: Designated Gender
-        lbl_gender = QLabel(t("rooms.designated_gender_label"))
-        lbl_gender.setFixedWidth(160)
-        theme.apply_role(lbl_gender, "body")
+        # Row 4: Read-only residence type chip
+        lbl_res_type = QLabel(t("residence.type_label"))
+        lbl_res_type.setFixedWidth(160)
+        theme.apply_role(lbl_res_type, "body")
 
-        gender_layout = QVBoxLayout()
-        gender_layout.setSpacing(2)
-        gender_layout.setContentsMargins(0, 0, 0, 0)
+        chip_kind = "progress" if self.residence_gender == "male" else ("ok" if self.residence_gender == "female" else "neutral")
+        self.residence_type_chip = StatusPill(chip_kind, residence_gender_label(self.residence_gender))
+        chip_holder = QHBoxLayout()
+        chip_holder.setContentsMargins(0, 0, 0, 0)
+        chip_holder.addWidget(self.residence_type_chip, 0, Qt.AlignmentFlag.AlignLeft)
+        chip_holder.addStretch(1)
 
-        self.gender_combo = QComboBox()
-        self.gender_combo.setFixedHeight(40)
-        self.gender_combo.addItems([t("gender.male"), t("gender.female")])
-        self.gender_combo.setEnabled(False)
-        # Higher contrast for disabled state: text #5B6B82 on #EDF2F7
-        self.gender_combo.setStyleSheet(
-            f"QComboBox:disabled {{ color: #5B6B82; background-color: #EDF2F7; border: 1px solid #DCE4EE; }}"
-        )
-        self.gender_combo.setToolTip(t("rooms.gender_inherited_tooltip"))
-        gender_layout.addWidget(self.gender_combo)
-
-        self.gender_note = QLabel()
-        theme.apply_role(self.gender_note, "small")
-        self.gender_note.setStyleSheet(f"color: {C('text-muted')}; font-style: italic; margin-top: 2px;")
-        gender_layout.addWidget(self.gender_note)
-
-        grid.addWidget(lbl_gender, 4, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-        grid.addLayout(gender_layout, 4, 1)
+        grid.addWidget(lbl_res_type, 4, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        grid.addLayout(chip_holder, 4, 1)
 
         card.add_layout(grid)
 
@@ -805,8 +776,7 @@ class RoomSetupDialog(QDialog):
         selected_index = 0
         for i, b in enumerate(self.blocks):
             name = str(b["name"]).upper()
-            gender = t("gender.female") if str(b.get("gender", "male")).lower() == "female" else t("gender.male")
-            self.block_combo.addItem(t("rooms.block_combo_item", block=name, gender=gender), userData=b)
+            self.block_combo.addItem(t("rooms.block_combo_item", block=name), userData=b)
             if initial_block and name == initial_block.strip().upper():
                 selected_index = i
 
@@ -814,7 +784,6 @@ class RoomSetupDialog(QDialog):
             self.block_combo.setCurrentIndex(selected_index)
         else:
             self.block_combo.addItem(t("rooms.no_blocks_available_combo"), userData=None)
-            self.gender_note.setText(t("rooms.no_blocks_available_note"))
 
         self.block_combo.blockSignals(False)
         self._validate_inputs()
@@ -828,12 +797,7 @@ class RoomSetupDialog(QDialog):
     def _on_block_changed(self):
         block = self._get_selected_block()
         if block:
-            gender = t("gender.female") if str(block.get("gender", "male")).lower() == "female" else t("gender.male")
-            self.gender_combo.setCurrentText(gender)
-            self.gender_note.setText(t("rooms.gender_inherited_note", block=block['name'].upper(), gender=gender))
-            self.block_edit.setText(block["name"].upper())
-        else:
-            self.gender_note.setText(t("rooms.no_block_selected_note"))
+            self.block_edit.setText(str(block["name"]).upper())
 
         self._validate_inputs()
 
@@ -857,7 +821,6 @@ class RoomSetupDialog(QDialog):
             return
 
         block_name = str(block_data["name"]).strip().upper()
-        block_gender = str(block_data["gender"]).strip().lower()
 
         num = self.num_edit.text().strip()
         if not num:
@@ -874,7 +837,6 @@ class RoomSetupDialog(QDialog):
             "floor": self.floor_spin.value(),
             "number": num,
             "capacity": self.cap_spin.value(),
-            "gender": block_gender,
         }
         self.accept()
 
@@ -888,6 +850,7 @@ class RoomsPage(QWidget):
         self.rows: list[dict] = []
         self.blocks: list[dict] = []
         self.occupancy_map: dict[str, int] = {}
+        self.residence_gender: str | None = (get_cached_residence_settings(client) or {}).get("residence_gender")
 
         # Background action plumbing: every room/block write and every read
         # used to build a dialog runs on the task pool, never on the GUI thread.
@@ -924,16 +887,6 @@ class RoomsPage(QWidget):
         # Legacy alias: the search box used to be a bare ``QLineEdit``.
         self.search_input = self.search_field.edit
         toolbar.addWidget(self.search_field, 1)
-
-        self.gender_filter = QComboBox()
-        self.gender_filter.addItems([
-            t("rooms.filter_all_genders"),
-            t("rooms.filter_male_blocks"),
-            t("rooms.filter_female_blocks"),
-        ])
-        self.gender_filter.setToolTip(t("rooms.gender_filter_tooltip"))
-        self.gender_filter.currentIndexChanged.connect(self.filter_table)
-        toolbar.addWidget(self.gender_filter)
 
         self.count_badge = StatusPill("neutral", tn("rooms.count_badge", count=0, count_fmt=format_number(0)))
         toolbar.addWidget(self.count_badge)
@@ -981,11 +934,10 @@ class RoomsPage(QWidget):
         self.stack = QStackedWidget()
         self.table = QTableWidget(0, len(_COLUMNS))
         configure_table(self.table, _COLUMNS)
-        self.table.setItemDelegateForColumn(5, RoomOccupancyDelegate(self.table))
+        self.table.setItemDelegateForColumn(4, RoomOccupancyDelegate(self.table))
         _fit_columns(
             self.table,
             [
-                QHeaderView.ResizeMode.Interactive,
                 QHeaderView.ResizeMode.Interactive,
                 QHeaderView.ResizeMode.Interactive,
                 QHeaderView.ResizeMode.Interactive,
@@ -997,17 +949,16 @@ class RoomsPage(QWidget):
         self.table.setColumnWidth(0, 110)
         self.table.setColumnWidth(1, 90)
         self.table.setColumnWidth(2, 110)
-        self.table.setColumnWidth(3, 100)
-        self.table.setColumnWidth(4, 90)
-        self.table.setColumnWidth(5, 160)
+        self.table.setColumnWidth(3, 90)
+        self.table.setColumnWidth(4, 160)
 
-        # Backward compatibility for tests querying cellWidget(row, 5)
+        # Backward compatibility for tests querying cellWidget(row, 4)
         _orig_cell_widget = self.table.cellWidget
         def _cell_widget_compat(row, col):
             w = _orig_cell_widget(row, col)
             if w is not None:
                 return w
-            if col == 5 and 0 <= row < len(self.rows):
+            if col == 4 and 0 <= row < len(self.rows):
                 r = self.rows[row]
                 cap = int(r.get("capacity") or 1)
                 occ = int(self.occupancy_map.get(r.get("id"), 0))
@@ -1099,7 +1050,7 @@ class RoomsPage(QWidget):
         return None
 
     def _fetch_rooms(self) -> list[dict]:
-        resp = self.client.table("rooms").select("id, block, floor, number, capacity, gender").order("block").order("number").execute()
+        resp = self.client.table("rooms").select("id, block, floor, number, capacity").order("block").order("number").execute()
         data = getattr(resp, "data", None)
         return [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
 
@@ -1109,15 +1060,18 @@ class RoomsPage(QWidget):
 
     def _fetch_blocks(self) -> list[dict]:
         try:
-            resp_b = self.client.table("blocks").select("id, name, gender").order("name").execute()
+            resp_b = self.client.table("blocks").select("id, name").order("name").execute()
             data_b = getattr(resp_b, "data", None)
             return [b for b in data_b if isinstance(b, dict)] if isinstance(data_b, list) else []
         except Exception:  # noqa: BLE001 - blocks are a best-effort addition
             return []
 
+    def set_residence_gender(self, gender: str | None) -> None:
+        self.residence_gender = gender
+
     def _fetch_snapshot(self) -> dict:
-        """Worker read: rooms + occupancy + blocks, all under CLIENT_LOCK."""
-        resp = self.client.table("rooms").select("id, block, floor, number, capacity, gender").order("block").order("number").execute()
+        """Worker read: rooms + occupancy + blocks."""
+        resp = self.client.table("rooms").select("id, block, floor, number, capacity").order("block").order("number").execute()
         data = getattr(resp, "data", None)
         rows = [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
         occupancy = room_occupancy(self.client)
@@ -1125,7 +1079,7 @@ class RoomsPage(QWidget):
             occupancy = {}
 
         try:
-            resp_b = self.client.table("blocks").select("id, name, gender").order("name").execute()
+            resp_b = self.client.table("blocks").select("id, name").order("name").execute()
             data_b = getattr(resp_b, "data", None)
             blocks = [b for b in data_b if isinstance(b, dict)] if isinstance(data_b, list) else []
         except Exception:  # noqa: BLE001 - blocks are a best-effort addition
@@ -1136,10 +1090,13 @@ class RoomsPage(QWidget):
             for r in rows:
                 b_name = str(r.get("block", "")).strip().upper()
                 if b_name and b_name not in seen:
-                    seen[b_name] = {"name": b_name, "gender": str(r.get("gender", "male")).lower()}
+                    seen[b_name] = {"name": b_name}
             blocks = list(seen.values())
 
-        return {"rows": rows, "occupancy": occupancy, "blocks": blocks}
+        cached_res = get_cached_residence_settings(self.client)
+        res_gender = (cached_res or {}).get("residence_gender") if cached_res else None
+
+        return {"rows": rows, "occupancy": occupancy, "blocks": blocks, "residence_gender": res_gender}
 
     def _apply_snapshot(self, snapshot: dict, select_id=None) -> None:
         if select_id is None:
@@ -1147,6 +1104,8 @@ class RoomsPage(QWidget):
         self.rows = list(snapshot.get("rows") or [])
         self.occupancy_map = dict(snapshot.get("occupancy") or {})
         self.blocks = list(snapshot.get("blocks") or [])
+        if "residence_gender" in snapshot and snapshot.get("residence_gender") is not None:
+            self.residence_gender = snapshot.get("residence_gender")
         self.count_badge.setText(tn("rooms.count_badge", count=len(self.rows), count_fmt=format_number(len(self.rows))))
         self._render_rows(select_id=select_id)
         self._set_loading(False)
@@ -1263,9 +1222,6 @@ class RoomsPage(QWidget):
                 block_item.setIcon(building_icon)
                 floor_item = QTableWidgetItem(t("rooms.cell_floor", floor=r['floor']))
                 num_item = QTableWidgetItem(t("rooms.cell_room", number=r['number']))
-                gender_val = str(r["gender"]).lower()
-                gender_text = t("gender.female") if gender_val == "female" else t("gender.male")
-                gender_item = QTableWidgetItem(gender_text)
                 cap_item = QTableWidgetItem(str(cap))
                 occ_item = QTableWidgetItem()
                 occ_item.setData(Qt.ItemDataRole.UserRole, (occ, cap))
@@ -1278,10 +1234,9 @@ class RoomsPage(QWidget):
                 self.table.setItem(i, 0, block_item)
                 self.table.setItem(i, 1, floor_item)
                 self.table.setItem(i, 2, num_item)
-                self.table.setItem(i, 3, gender_item)
-                self.table.setItem(i, 4, cap_item)
-                self.table.setItem(i, 5, occ_item)
-                self.table.setItem(i, 6, avail_item)
+                self.table.setItem(i, 3, cap_item)
+                self.table.setItem(i, 4, occ_item)
+                self.table.setItem(i, 5, avail_item)
         finally:
             self.table.blockSignals(False)
             self.table.setUpdatesEnabled(True)
@@ -1296,30 +1251,14 @@ class RoomsPage(QWidget):
 
     def filter_table(self):
         needle = self.search_input.text().lower().strip()
-        gender_idx = self.gender_filter.currentIndex()
-        if gender_idx == 1:
-            gender_target = "male"
-        elif gender_idx == 2:
-            gender_target = "female"
-        else:
-            gender_sel = self.gender_filter.currentText()
-            gender_target = (
-                "male"
-                if gender_sel in ("Male Blocks", t("rooms.filter_male_blocks"))
-                else "female"
-                if gender_sel in ("Female Blocks", t("rooms.filter_female_blocks"))
-                else None
-            )
 
         for r in range(self.table.rowCount()):
             row_data = self.rows[r] if r < len(self.rows) else {}
             block = str(row_data.get("block", "")).lower()
             number = str(row_data.get("number", "")).lower()
-            gender = str(row_data.get("gender", "")).lower()
 
             matches_text = needle in f"{block} {number}"
-            matches_gender = gender_target is None or gender == gender_target
-            self.table.setRowHidden(r, not (matches_text and matches_gender))
+            self.table.setRowHidden(r, not matches_text)
 
         self._update_empty_state()
         self._update_action_buttons()
@@ -1537,13 +1476,12 @@ class RoomsPage(QWidget):
             else:
                 return
 
-        dlg = RoomSetupDialog(self, client=self.client, blocks=self.blocks)
+        dlg = RoomSetupDialog(self, client=self.client, blocks=self.blocks, residence_gender=self.residence_gender)
         if not dlg.exec() or not dlg.result_data:
             return
 
         data = dict(dlg.result_data)
-        gender_str = t("gender.female") if data['gender'].lower() == "female" else t("gender.male")
-        message = t("rooms.room_created_success", block=data['block'], number=data['number'], gender=gender_str)
+        message = t("rooms.room_created_success", block=data['block'], number=data['number'])
 
         def work():
             execute_network_call(
@@ -1573,13 +1511,19 @@ class RoomsPage(QWidget):
         if room_id is None:
             return
         occ = self.occupancy_map.get(room_id, 0)
-        dlg = RoomSetupDialog(self, room=room, current_occupancy=occ, client=self.client, blocks=self.blocks)
+        dlg = RoomSetupDialog(
+            self,
+            room=room,
+            current_occupancy=occ,
+            client=self.client,
+            blocks=self.blocks,
+            residence_gender=self.residence_gender,
+        )
         if not dlg.exec() or not dlg.result_data:
             return
 
         data = dict(dlg.result_data)
-        gender_str = t("gender.female") if data['gender'].lower() == "female" else t("gender.male")
-        message = t("rooms.room_updated_success", block=data['block'], number=data['number'], gender=gender_str)
+        message = t("rooms.room_updated_success", block=data['block'], number=data['number'])
 
         def work():
             execute_network_call(

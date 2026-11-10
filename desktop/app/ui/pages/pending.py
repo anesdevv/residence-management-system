@@ -60,7 +60,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...client import official_lookup, room_occupancy
+from ...client import (
+    get_cached_residence_settings,
+    has_gender_mismatch,
+    official_lookup,
+    room_occupancy,
+)
 from ...timeouts import execute_network_call
 
 try:
@@ -254,19 +259,10 @@ class RoomAllocationDialog(QDialog):
                 "pending.allocation_subtitle",
                 count=len(self._rooms),
                 card_id=student.get("card_id") or "—",
-                gender=student.get("gender") or "—",
             )
         )
         theme.apply_role(subtitle, "small")
         root.addWidget(subtitle)
-
-        root.addWidget(
-            InlineBanner(
-                "info",
-                title=t("pending.gender_rule_title"),
-                message=t("pending.gender_rule_message"),
-            )
-        )
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -298,7 +294,6 @@ class RoomAllocationDialog(QDialog):
         occupied = int(self._occupancy.get(room_id, 0) or 0)
         capacity = int(room.get("capacity") or 0)
         free = max(0, capacity - occupied)
-        barred = str(room.get("gender", "")).lower() != str(self._student.get("gender", "")).lower()
         full = capacity > 0 and free <= 0
 
         row = QFrame()
@@ -336,16 +331,7 @@ class RoomAllocationDialog(QDialog):
         line.addWidget(bar, 0, Qt.AlignmentFlag.AlignVCenter)
 
         button = Button.accent(t("pending.allocate_btn"), icon="check")
-        if barred:
-            button.setEnabled(False)
-            button.setText(t("pending.unavailable_btn"))
-            button.setToolTip(
-                t(
-                    "pending.unavailable_tooltip",
-                    gender=room.get("gender") or "other",
-                )
-            )
-        elif full:
+        if full:
             button.setEnabled(False)
             button.setText(t("status.full"))
             button.setToolTip(
@@ -404,6 +390,7 @@ class PendingPage(QWidget):
         self._working = False
         self._request_id = 0
         self._approve_student: dict | None = None
+        self.residence_gender: str | None = (get_cached_residence_settings(client) or {}).get("residence_gender")
         self.tasks = TaskRunner(self)
 
         layout = QVBoxLayout(self)
@@ -528,6 +515,10 @@ class PendingPage(QWidget):
         self.roster_badge = RosterMatchBadge(None)
         self.roster_badge.setToolTip(t("pending.roster_tooltip"))
         identity_column.addWidget(self.roster_badge, 0, Qt.AlignmentFlag.AlignLeft)
+        self.gender_warning_badge = StatusPill("warning", t("residence.gender_differs_badge"))
+        self.gender_warning_badge.setToolTip(t("residence.gender_differs_tooltip"))
+        self.gender_warning_badge.setVisible(False)
+        identity_column.addWidget(self.gender_warning_badge, 0, Qt.AlignmentFlag.AlignLeft)
         identity.addLayout(identity_column, 1)
         self.panel.add_widget(self.identity)
 
@@ -811,6 +802,10 @@ class PendingPage(QWidget):
     def _fetch_official(self):
         return official_lookup(self.client)
 
+    def set_residence_gender(self, gender: str | None) -> None:
+        self.residence_gender = gender
+        self.show_detail()
+
     def _fetch_snapshot(self):
         """Network-only snapshot (students + official roster), for a worker."""
         resp = self.client.table("students").select(
@@ -827,6 +822,9 @@ class PendingPage(QWidget):
         reports ``pending`` cannot roll back a decision recorded locally.
         """
         rows, official = snapshot
+        cached_res = get_cached_residence_settings(self.client)
+        if cached_res:
+            self.residence_gender = cached_res.get("residence_gender")
         current_by_id = {
             str(row.get("id")): row for row in getattr(self, "all_rows", [])
         }
@@ -987,11 +985,11 @@ class PendingPage(QWidget):
         self._end_working()
 
     # ------------------------------------------------------- worker payloads
-    def _load_rooms(self, gender):
-        """Gender-filtered rooms + occupancy (network-only, worker thread)."""
+    def _load_rooms(self, *_args):
+        """Load dormitory rooms + occupancy (network-only, worker thread)."""
         rooms = self.client.table("rooms").select(
-            "id, block, number, floor, capacity, gender"
-        ).eq("gender", gender).order("block").order("number").execute().data or []
+            "id, block, number, floor, capacity"
+        ).order("block").order("number").execute().data or []
         return list(rooms), room_occupancy(self.client)
 
     def _fetch_after_decision(self):
@@ -1058,10 +1056,7 @@ class PendingPage(QWidget):
             QMessageBox.warning(
                 self,
                 t("pending.no_rooms_title"),
-                t(
-                    "pending.no_rooms_message",
-                    gender=student.get("gender") or "this",
-                ),
+                t("pending.no_rooms_message"),
             )
             self._end_working()
             return
@@ -1175,6 +1170,7 @@ class PendingPage(QWidget):
             self.delete_btn.setEnabled(False)
             self.delete_btn.setToolTip(t("pending.select_applicant_to_delete"))
             self.delete_hint.setVisible(False)
+            self.gender_warning_badge.setVisible(False)
             self._show_selection(False)
             return
 
@@ -1182,12 +1178,22 @@ class PendingPage(QWidget):
         status_kind, status_text = _status_meta(status)
         name = f"{s.get('first_name', '')} {s.get('last_name', '')}".strip() or "Unnamed applicant"
 
-        # Identity + roster match.
+        # Identity + roster match + non-blocking residence gender warning.
         self.avatar.set_name(name)
         self.name_label.setText(name)
         self.card_label.setText(t("pending.card_id_label", card_id=s.get('card_id') or '—'))
         official_row = self.official.get(s.get("card_id"))
         self.roster_badge.set_matched(True if official_row else (False if self.official else None))
+        cached_res = get_cached_residence_settings(self.client)
+        res_gender = (cached_res or {}).get("residence_gender") if cached_res else getattr(self, "residence_gender", None)
+        self.residence_gender = res_gender
+        self.gender_warning_badge.setVisible(
+            has_gender_mismatch(
+                res_gender,
+                student_gender=s.get("gender"),
+                roster_gender=(official_row or {}).get("gender"),
+            )
+        )
 
         # Submitted data.
         self.facts.set_rows([
@@ -1319,7 +1325,9 @@ class PendingPage(QWidget):
         s = self.selected()
         if s:
             o = self.official.get(s.get("card_id"))
-            dlg = StudentInfoCardDialog(self, s, o)
+            cached_res = get_cached_residence_settings(self.client)
+            res_gender = (cached_res or {}).get("residence_gender") if cached_res else getattr(self, "residence_gender", None)
+            dlg = StudentInfoCardDialog(self, s, o, residence_gender=res_gender)
             dlg.exec()
 
     def on_approve(self):
@@ -1335,13 +1343,12 @@ class PendingPage(QWidget):
             return
 
         # Room list + occupancy are optional data: fetch them on the worker,
-        # then open the unchanged allocation dialog on the GUI thread.
+        # then open the allocation dialog on the GUI thread.
         self._approve_student = dict(s)
-        student = self._approve_student
         self._begin_working(t("pending.loading_rooms_msg"))
         started = self.tasks.run(
             "approve-rooms",
-            lambda: self._load_rooms(student.get("gender")),
+            lambda: self._load_rooms(),
             on_success=self._on_approve_rooms_loaded,
             on_failed=self._on_action_failed,
             on_finished=self._finish_approve_rooms_stage,

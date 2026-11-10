@@ -591,7 +591,7 @@ def test_visible_block_dialog_saves_through_task_runner(qapp):
         and dialog.save_btn.text() == "Create block",
         qapp,
     )
-    assert dialog.result_data == {"name": "C", "gender": "female"}
+    assert dialog.result_data == {"name": "C"}
     assert len(client.block_insert_calls) == 1
     dialog.close()
     qapp.processEvents()

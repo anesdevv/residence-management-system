@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
+    QDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -36,11 +37,19 @@ from PySide6.QtWidgets import (
 )
 
 try:
-    from i18n import current_language, get_saved_language, set_saved_language, t, tn
+    from i18n import current_language, format_date, get_saved_language, set_saved_language, t, tn
 except ImportError:
-    from desktop.i18n import current_language, get_saved_language, set_saved_language, t, tn
+    from desktop.i18n import current_language, format_date, get_saved_language, set_saved_language, t, tn
 
-from ...client import current_role, stored_user_email
+from ...client import (
+    DEFAULT_RESIDENCE_NAME,
+    current_role,
+    fetch_residence_gender_impact,
+    fetch_residence_settings_admin,
+    set_residence_gender,
+    set_residence_name,
+    stored_user_email,
+)
 try:
     from desktop.auth.session_store import (
         get_remember_session_setting,
@@ -60,8 +69,9 @@ from ..close_policy import (
     get_minimize_to_tray_setting,
     set_minimize_to_tray_setting,
 )
-from ..components import Button, Card, InlineBanner, PageHeader, StatusPill
+from ..components import Button, Card, ConfirmDialog, InlineBanner, PageHeader, StatusPill
 from ..notifications import NotificationManager
+from ..residence_dialogs import ResidenceGenderChangeDialog, residence_gender_label
 from ..tasks import TaskRunner, human_error
 from ..theme import C, S
 
@@ -78,6 +88,9 @@ MCP_HOSTED_URL = "https://resivo-mcp.anes4tlm.workers.dev/mcp"
 
 _LOAD_KEY = "settings-load"
 _WRITES_KEY = "settings-writes"
+_RESIDENCE_IMPACT_KEY = "settings-residence-impact"
+_RESIDENCE_SAVE_KEY = "settings-residence-save"
+_RESIDENCE_NAME_KEY = "settings-residence-name"
 _WORKING_TEXT = "Working..."
 
 
@@ -261,6 +274,7 @@ def _role_label(role: str | None) -> str:
 
 class SettingsPage(QWidget):
     sign_out_requested = Signal()
+    residence_settings_changed = Signal()
 
     def __init__(self, client):
         super().__init__()
@@ -274,6 +288,10 @@ class SettingsPage(QWidget):
         self._writes_available = False
         self._writes_saving = False
         self._settings_loading = False
+        self._current_residence_name = DEFAULT_RESIDENCE_NAME
+        self._current_residence_gender: str | None = None
+        self._residence_loading = False
+        self._residence_saving = False
         self._initializing = True
         self.tasks = TaskRunner(self)
 
@@ -302,6 +320,67 @@ class SettingsPage(QWidget):
             t("settings.subtitle"),
         )
         layout.addWidget(self.header)
+
+        # Residence settings card (admin only)
+        self.residence_card = Card(
+            t("settings.residence_title"),
+            t("settings.residence_subtitle"),
+            icon="building",
+        )
+
+        res_name_row = QHBoxLayout()
+        res_name_row.setSpacing(S("space-3"))
+        self.residence_name_label = QLabel(t("settings.residence_name_label"))
+        theme.apply_role(self.residence_name_label, "h3")
+        self.residence_name_label.setMinimumWidth(140)
+        res_name_row.addWidget(self.residence_name_label)
+
+        self.residence_name_edit = QLineEdit(DEFAULT_RESIDENCE_NAME)
+        self.residence_name_edit.setObjectName("residenceNameEdit")
+        self.residence_name_edit.setPlaceholderText(t("settings.residence_name_placeholder"))
+        res_name_row.addWidget(self.residence_name_edit, 1)
+
+        self.residence_name_save_btn = Button.secondary(t("settings.residence_name_save"))
+        self.residence_name_save_btn.setObjectName("residenceNameSaveButton")
+        self.residence_name_save_btn.clicked.connect(self._on_residence_name_save)
+        res_name_row.addWidget(self.residence_name_save_btn)
+        self.residence_card.add_layout(res_name_row)
+
+        res_type_row = QHBoxLayout()
+        res_type_row.setSpacing(S("space-3"))
+        self.residence_type_label = QLabel(t("settings.residence_type_label"))
+        theme.apply_role(self.residence_type_label, "h3")
+        self.residence_type_label.setMinimumWidth(140)
+        res_type_row.addWidget(self.residence_type_label)
+
+        self.residence_type_combo = QComboBox()
+        self.residence_type_combo.setObjectName("residenceTypeCombo")
+        self.residence_type_combo.addItem(t("settings.residence_type_unset"), None)
+        self.residence_type_combo.addItem(t("residence.male_residence"), "male")
+        self.residence_type_combo.addItem(t("residence.female_residence"), "female")
+        self.residence_type_combo.currentIndexChanged.connect(self._on_residence_type_selected)
+        res_type_row.addWidget(self.residence_type_combo)
+        res_type_row.addStretch(1)
+        self.residence_card.add_layout(res_type_row)
+
+        self.residence_type_helper = QLabel(t("settings.residence_type_helper"))
+        _apply_small(self.residence_type_helper)
+        self.residence_card.add_widget(self.residence_type_helper)
+
+        self.residence_audit_label = QLabel(t("settings.residence_never_changed"))
+        self.residence_audit_label.setObjectName("residenceAuditLabel")
+        _apply_small(self.residence_audit_label)
+        self.residence_card.add_widget(self.residence_audit_label)
+
+        self.residence_banner = InlineBanner(
+            kind="error",
+            title=t("settings.residence_error_title"),
+            message="",
+        )
+        self.residence_banner.setVisible(False)
+        self.residence_card.add_widget(self.residence_banner)
+
+        layout.addWidget(self.residence_card)
 
         # General settings card
         self.general_card = Card(
@@ -632,6 +711,8 @@ class SettingsPage(QWidget):
         self.set_role(self.role)
 
         self.reload()
+        if self.role == "admin":
+            self._load_residence_sync()
         self._initializing = False
 
     def _on_language_changed(self, index: int) -> None:
@@ -668,6 +749,9 @@ class SettingsPage(QWidget):
         self.role = normalized
         self._role_unverified = normalized is None
         is_admin = normalized == "admin"
+
+        if hasattr(self, "residence_card"):
+            self.residence_card.setVisible(is_admin)
 
         if is_admin:
             self.staff_note.setVisible(False)
@@ -1157,6 +1241,8 @@ class SettingsPage(QWidget):
         self._writes_available = bool(result.get("writes_ok"))
         if self.role != "admin":
             return
+        if result.get("residence"):
+            self._apply_residence_snapshot(result.get("residence"))
         if self._writes_available:
             self.writes_note.setText(_writes_note())
             self.writes_banner.setVisible(False)
@@ -1298,3 +1384,237 @@ class SettingsPage(QWidget):
             btn.setText(text)
         except RuntimeError:
             pass
+
+    # -------------------------------------------------------------
+    # Single-gender residence settings (admin only)
+    # -------------------------------------------------------------
+    def _load_residence_sync(self) -> None:
+        if self.role != "admin":
+            return
+        try:
+            res = fetch_residence_settings_admin(self.client)
+            if isinstance(res, dict) and res.get("loaded"):
+                self._apply_residence_snapshot(res)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def reload_residence(self) -> None:
+        if self.role != "admin" or self._residence_saving:
+            return
+        if self.tasks.is_busy("settings-residence-load"):
+            return
+        self.tasks.run(
+            "settings-residence-load",
+            lambda: fetch_residence_settings_admin(self.client),
+            on_success=self._apply_residence_snapshot,
+            on_failed=lambda _msg: None,
+        )
+
+    def _set_combo_residence_gender(self, value: str | None) -> None:
+        self._residence_loading = True
+        try:
+            self.residence_type_combo.blockSignals(True)
+            target_idx = 0
+            for i in range(self.residence_type_combo.count()):
+                if self.residence_type_combo.itemData(i) == value:
+                    target_idx = i
+                    break
+            self.residence_type_combo.setCurrentIndex(target_idx)
+        finally:
+            self.residence_type_combo.blockSignals(False)
+            self._residence_loading = False
+
+    def _apply_residence_snapshot(self, res: dict | None) -> None:
+        if not isinstance(res, dict):
+            return
+        name = str(res.get("residence_name") or DEFAULT_RESIDENCE_NAME).strip() or DEFAULT_RESIDENCE_NAME
+        gender = res.get("residence_gender")
+        self._current_residence_name = name
+        self._current_residence_gender = gender if gender in ("male", "female") else None
+        self.residence_name_edit.setText(name)
+        self._set_combo_residence_gender(self._current_residence_gender)
+
+        changed_at = res.get("last_changed_at")
+        if changed_at:
+            actor = str(res.get("last_changed_by_name") or t("roles.admin")).strip()
+            try:
+                date_str = format_date(str(changed_at))
+            except Exception:
+                date_str = str(changed_at)[:10]
+            self.residence_audit_label.setText(
+                t("settings.residence_last_changed", name=actor, date=date_str)
+            )
+        else:
+            self.residence_audit_label.setText(t("settings.residence_never_changed"))
+
+    def _set_residence_busy(self, busy: bool, status_text: str | None = None) -> None:
+        self._residence_saving = busy
+        self.residence_type_combo.setEnabled(not busy)
+        self.residence_name_edit.setEnabled(not busy)
+        self.residence_name_save_btn.setEnabled(not busy)
+        if busy and status_text:
+            self.residence_banner.set_kind("info")
+            self.residence_banner.set_title(_WORKING_TEXT)
+            self.residence_banner.set_message(status_text)
+            self.residence_banner.setVisible(True)
+
+    def _on_residence_name_save(self) -> None:
+        if self.role != "admin" or self._residence_saving:
+            return
+        if self.tasks.is_busy(_RESIDENCE_NAME_KEY):
+            return
+        name = self.residence_name_edit.text().strip()
+        if not name:
+            self.residence_banner.set_kind("error")
+            self.residence_banner.set_title(t("settings.residence_error_title"))
+            self.residence_banner.set_message(t("settings.residence_name_required"))
+            self.residence_banner.setVisible(True)
+            return
+
+        self._set_residence_busy(True, t("settings.residence_saving"))
+        started = self.tasks.run(
+            _RESIDENCE_NAME_KEY,
+            lambda: set_residence_name(self.client, name),
+            on_success=self._on_residence_name_saved,
+            on_failed=self._on_residence_name_failed,
+            on_finished=self._on_residence_name_finished,
+        )
+        if not started:
+            self._set_residence_busy(False)
+
+    def _on_residence_name_saved(self, payload: dict) -> None:
+        self._current_residence_name = str(
+            (payload or {}).get("residence_name") or self.residence_name_edit.text().strip()
+        )
+        self.residence_name_edit.setText(self._current_residence_name)
+        self.residence_banner.set_kind("success")
+        self.residence_banner.set_title(t("settings.residence_title"))
+        self.residence_banner.set_message(t("settings.residence_name_saved"))
+        self.residence_banner.setVisible(True)
+        self.residence_settings_changed.emit()
+
+    def _on_residence_name_failed(self, message: str) -> None:
+        self.residence_name_edit.setText(self._current_residence_name)
+        self.residence_banner.set_kind("error")
+        self.residence_banner.set_title(t("settings.residence_error_title"))
+        self.residence_banner.set_message(message)
+        self.residence_banner.setVisible(True)
+
+    def _on_residence_name_finished(self) -> None:
+        if not self.tasks.is_busy(_RESIDENCE_SAVE_KEY):
+            self._set_residence_busy(False)
+
+    def _on_residence_type_selected(self, index: int) -> None:
+        if self._residence_loading or self._residence_saving or self.role != "admin":
+            return
+        if self.tasks.is_busy(_RESIDENCE_IMPACT_KEY) or self.tasks.is_busy(_RESIDENCE_SAVE_KEY):
+            self._set_combo_residence_gender(self._current_residence_gender)
+            return
+
+        target = self.residence_type_combo.itemData(index)
+        if target not in ("male", "female"):
+            self._set_combo_residence_gender(self._current_residence_gender)
+            return
+        if target == self._current_residence_gender:
+            return
+
+        self.residence_banner.setVisible(False)
+        self._set_residence_busy(True, t("settings.residence_checking"))
+        started = self.tasks.run(
+            _RESIDENCE_IMPACT_KEY,
+            lambda: fetch_residence_gender_impact(self.client, target),
+            on_success=lambda impact: self._on_residence_impact_loaded(target, impact),
+            on_failed=self._on_residence_gender_failed,
+            on_finished=self._on_residence_impact_finished,
+        )
+        if not started:
+            self._set_residence_busy(False)
+            self._set_combo_residence_gender(self._current_residence_gender)
+
+    def _on_residence_impact_finished(self) -> None:
+        if not self.tasks.is_busy(_RESIDENCE_SAVE_KEY):
+            self._set_residence_busy(False)
+
+    def _on_residence_impact_loaded(self, target_gender: str, impact: dict) -> None:
+        self._set_residence_busy(False)
+        self.residence_banner.setVisible(False)
+        needs_confirmation = bool((impact or {}).get("needs_confirmation"))
+
+        if needs_confirmation:
+            dlg = ResidenceGenderChangeDialog(self, impact, target_gender)
+            accepted = dlg.exec() == QDialog.DialogCode.Accepted and dlg.confirmed
+            confirmation_token: str | None = "CHANGE"
+        else:
+            accepted = ConfirmDialog.ask(
+                self,
+                t("settings.residence_simple_confirm_title"),
+                t(
+                    "settings.residence_simple_confirm_body",
+                    target=residence_gender_label(target_gender),
+                ),
+                confirm_text=t("settings.residence_simple_confirm_btn"),
+                danger=False,
+            )
+            confirmation_token = None
+
+        if not accepted:
+            self._set_combo_residence_gender(self._current_residence_gender)
+            return
+
+        self._submit_residence_gender_change(target_gender, confirmation_token)
+
+    def _submit_residence_gender_change(
+        self,
+        target_gender: str,
+        confirmation_token: str | None,
+    ) -> None:
+        self._set_residence_busy(True, t("settings.residence_saving"))
+
+        def work():
+            res = set_residence_gender(self.client, target_gender, confirmation=confirmation_token)
+            try:
+                admin_snap = fetch_residence_settings_admin(self.client)
+            except Exception:
+                admin_snap = None
+            return res, admin_snap
+
+        started = self.tasks.run(
+            _RESIDENCE_SAVE_KEY,
+            work,
+            on_success=lambda out: self._on_residence_gender_saved(target_gender, out),
+            on_failed=self._on_residence_gender_failed,
+            on_finished=self._on_residence_save_finished,
+        )
+        if not started:
+            self._set_residence_busy(False)
+            self._set_combo_residence_gender(self._current_residence_gender)
+
+    def _on_residence_gender_saved(self, target_gender: str, out) -> None:
+        _res, admin_snap = out if isinstance(out, tuple) else (out, None)
+        self._current_residence_gender = target_gender
+        if isinstance(admin_snap, dict) and admin_snap.get("loaded"):
+            self._apply_residence_snapshot(admin_snap)
+        else:
+            self._set_combo_residence_gender(target_gender)
+            actor = stored_user_email(self.client) or t("roles.admin")
+            from datetime import date
+            self.residence_audit_label.setText(
+                t("settings.residence_last_changed", name=actor, date=format_date(date.today().isoformat()))
+            )
+        self.residence_banner.set_kind("success")
+        self.residence_banner.set_title(t("settings.residence_title"))
+        self.residence_banner.set_message(
+            t("settings.residence_changed_success", value=residence_gender_label(target_gender))
+        )
+        self.residence_banner.setVisible(True)
+        self.residence_settings_changed.emit()
+
+    def _on_residence_gender_failed(self, message: str) -> None:
+        self._set_combo_residence_gender(self._current_residence_gender)
+        self.residence_banner.set_kind("error")
+        self.residence_banner.set_title(t("settings.residence_error_title"))
+        self.residence_banner.set_message(message)
+        self.residence_banner.setVisible(True)
+
+    def _on_residence_save_finished(self) -> None:
+        self._set_residence_busy(False)

@@ -34,7 +34,7 @@ try:
 except ImportError:
     from desktop.i18n import format_date, format_number, format_percent, t, tn
 
-from ...client import CLIENT_LOCK, official_lookup
+from ...client import CLIENT_LOCK, get_cached_residence_settings, official_lookup
 from .. import theme
 from ..components import (
     StatusPillDelegate,
@@ -127,6 +127,7 @@ class ResidentsPage(QWidget):
         # Official roster cache: filled by the lookup in
         # ``on_row_double_clicked`` (no extra query is issued by this page).
         self.roster: dict[str, dict] = {}
+        self.residence_gender: str | None = (get_cached_residence_settings(client) or {}).get("residence_gender")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(S("space-8"), S("space-8"), S("space-8"), S("space-8"))
@@ -144,16 +145,6 @@ class ResidentsPage(QWidget):
         self.search = SearchField(t("residents.search_placeholder"))
         self.search.changed.connect(self.render)
         toolbar.addWidget(self.search, 1)
-
-        self.gender_filter = QComboBox()
-        self.gender_filter.addItems([
-            t("residents.gender_all"),
-            t("residents.gender_male"),
-            t("residents.gender_female"),
-        ])
-        self.gender_filter.setToolTip(t("residents.gender_filter_tooltip"))
-        self.gender_filter.currentIndexChanged.connect(self.render)
-        toolbar.addWidget(self.gender_filter)
 
         self.count_badge = StatusPill("neutral", tn("residents.count_active", count=0, count_fmt=format_number(0)))
         toolbar.addWidget(self.count_badge)
@@ -234,6 +225,9 @@ class ResidentsPage(QWidget):
             on_failed=self._on_reload_failed,
         )
 
+    def set_residence_gender(self, gender: str | None) -> None:
+        self.residence_gender = gender
+
     def _fetch_residents(self) -> list[dict]:
         with CLIENT_LOCK:
             resp = (
@@ -268,20 +262,6 @@ class ResidentsPage(QWidget):
 
     def render(self):
         needle = self.search.text().lower().strip()
-        gender_idx = self.gender_filter.currentIndex()
-        if gender_idx == 1:
-            gender_target = "male"
-        elif gender_idx == 2:
-            gender_target = "female"
-        else:
-            gender_sel = self.gender_filter.currentText()
-            gender_target = (
-                "male"
-                if gender_sel in ("Male Residents", t("residents.gender_male"))
-                else "female"
-                if gender_sel in ("Female Residents", t("residents.gender_female"))
-                else None
-            )
 
         filtered = []
         for r in self.rows:
@@ -293,8 +273,7 @@ class ResidentsPage(QWidget):
 
             haystack = f"{r.get('first_name', '')} {r.get('last_name', '')} {r.get('card_id', '')} {room.get('block', '')} {room.get('number', '')} {r.get('university', '')} {r.get('faculty', '')}".lower()
             matches_text = needle in haystack
-            matches_gender = gender_target is None or str(r.get("gender", "")).lower() == gender_target
-            if matches_text and matches_gender:
+            if matches_text:
                 filtered.append((r, room))
 
         self.filtered_rows = filtered
@@ -388,5 +367,8 @@ class ResidentsPage(QWidget):
 
     def _open_student_card(self, st_data: dict, roster_map: dict[str, dict]):
         roster_item = roster_map.get(st_data.get("card_id"))
-        dlg = StudentInfoCardDialog(self, st_data, roster_item)
+        cached_res = get_cached_residence_settings(self.client)
+        res_gender = (cached_res or {}).get("residence_gender") if cached_res else self.residence_gender
+        self.residence_gender = res_gender
+        dlg = StudentInfoCardDialog(self, st_data, roster_item, residence_gender=res_gender)
         dlg.exec()

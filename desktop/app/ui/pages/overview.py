@@ -517,3 +517,7 @@ class OverviewPage(QWidget):
             return
         for kind, pill_label, text, stamp in self._events:
             self.events_rows.addWidget(_EventRow(kind, pill_label, text, stamp))
+
+    def set_residence_name(self, name: str) -> None:
+        cleaned = str(name or "").strip() or _RESIDENCE_NAME
+        self.header.set_subtitle(t("overview.subtitle", residence=cleaned))

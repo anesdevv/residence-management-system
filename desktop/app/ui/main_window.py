@@ -59,10 +59,13 @@ except ImportError:
 from desktop.auth.session_store import session_manager
 
 from ..client import (
+    DEFAULT_RESIDENCE_NAME,
     invalidate_official_lookup_cache,
     clear_local_session,
     current_role,
+    fetch_residence_public,
     forget_role,
+    get_cached_residence_settings,
     remember_role,
     resolve_role,
     stored_user_display_name,
@@ -78,6 +81,7 @@ from .close_policy import (
 )
 from .components import Avatar, BrandMark, Button, InlineBanner, LiveDot
 from .notifications import NotificationManager
+from .residence_dialogs import ResidenceSetupDialog
 from .icons import get_icon, get_pixmap
 from .live_sync import LiveSyncWorker
 from .photo_viewer import running_photo_fetchers
@@ -469,6 +473,8 @@ class MainWindow(QMainWindow):
         self._sign_out_error: str | None = None
         self._is_session_ending = False
         self._shutdown_confirmed = False
+        self._closing = False
+        self._residence_prompt_shown = False
 
         qapp = QGuiApplication.instance()
         if qapp is not None:
@@ -521,6 +527,8 @@ class MainWindow(QMainWindow):
         self.settings_page = SettingsPage(client)
         if hasattr(self.settings_page, "sign_out_requested"):
             self.settings_page.sign_out_requested.connect(self.on_sign_out_clicked)
+        if hasattr(self.settings_page, "residence_settings_changed"):
+            self.settings_page.residence_settings_changed.connect(self._on_residence_settings_changed)
         self.pages[t("nav.settings")] = self.settings_page
         self.pages["Settings"] = self.settings_page
         self.stack.addWidget(self.settings_page)
@@ -556,6 +564,7 @@ class MainWindow(QMainWindow):
         self.sync_worker.sync_tick.connect(self.on_live_sync_tick)
         self.sync_worker.alert_event.connect(self.on_live_alert)
         self.sync_worker.sync_error.connect(self.on_live_sync_error)
+        self.sync_worker.residence_loaded.connect(self._on_residence_checked)
         self.sync_worker.start()
 
     # ------------------------------------------------------------------ shell
@@ -587,11 +596,11 @@ class MainWindow(QMainWindow):
         wordmark = QLabel("RÉSIVO")
         theme.apply_role(wordmark, "h2")
         wordmark.setStyleSheet(f"color: {C('surface')};")
-        caption = QLabel("Cité Universitaire · Tlemcen")
-        theme.apply_role(caption, "small")
-        caption.setStyleSheet(f"color: {C('text-on-dark-muted')};")
+        self.brand_caption = QLabel(DEFAULT_RESIDENCE_NAME)
+        theme.apply_role(self.brand_caption, "small")
+        self.brand_caption.setStyleSheet(f"color: {C('text-on-dark-muted')};")
         texts_layout.addWidget(wordmark)
-        texts_layout.addWidget(caption)
+        texts_layout.addWidget(self.brand_caption)
         self.brand_layout.addWidget(self.brand_mark, 0, Qt.AlignmentFlag.AlignVCenter)
         self.brand_layout.addWidget(self.brand_texts, 1)
         layout.addWidget(self.brand_block)
@@ -769,6 +778,19 @@ class MainWindow(QMainWindow):
         self.role_banner.setVisible(not bool(self.role))
         layout.addWidget(self.role_banner)
 
+        self.residence_unset_banner = InlineBanner(
+            kind="warning",
+            title=t("residence.unset_banner_title"),
+            message=t("residence.unset_banner_staff"),
+        )
+        self.residence_settings_btn = Button.secondary(t("residence.open_settings_btn"))
+        self.residence_settings_btn.setObjectName("openResidenceSettingsButton")
+        self.residence_settings_btn.clicked.connect(self.on_settings_clicked)
+        self.residence_unset_banner.add_action(self.residence_settings_btn)
+        self.residence_settings_btn.setVisible(self.role == "admin")
+        self.residence_unset_banner.setVisible(False)
+        layout.addWidget(self.residence_unset_banner)
+
         self.stack = QStackedWidget()
         self.stack.currentChanged.connect(self._animate_stack_page)
         layout.addWidget(self.stack, 1)
@@ -808,6 +830,73 @@ class MainWindow(QMainWindow):
             self.official_list_page.set_role(self.role)
         if hasattr(self, "settings_page") and hasattr(self.settings_page, "set_role"):
             self.settings_page.set_role(self.role)
+        if hasattr(self, "residence_settings_btn"):
+            self.residence_settings_btn.setVisible(self.role == "admin")
+
+    def _check_residence_setup(self) -> None:
+        """Check configured residence_gender off the GUI thread right after startup."""
+        if getattr(self, "_closing", False) or not self.role:
+            return
+        if self.tasks.is_busy("residence-setup-check"):
+            return
+        self.tasks.run(
+            "residence-setup-check",
+            lambda: fetch_residence_public(self.client, force=True),
+            on_success=self._on_residence_checked,
+            on_failed=lambda _msg: None,
+        )
+
+    def _apply_residence_banner(self, res: dict | None) -> None:
+        if not isinstance(res, dict) or not res.get("loaded"):
+            return
+        res_name = str(res.get("residence_name") or DEFAULT_RESIDENCE_NAME).strip() or DEFAULT_RESIDENCE_NAME
+        if hasattr(self, "brand_caption"):
+            self.brand_caption.setText(res_name)
+        if hasattr(self, "overview_page") and hasattr(self.overview_page, "set_residence_name"):
+            self.overview_page.set_residence_name(res_name)
+
+        res_gender = res.get("residence_gender")
+        for page_attr in ("pending_page", "residents_page", "rooms_page"):
+            page = getattr(self, page_attr, None)
+            if page is not None and hasattr(page, "set_residence_gender"):
+                page.set_residence_gender(res_gender)
+
+        if res_gender in ("male", "female"):
+            self.residence_unset_banner.setVisible(False)
+            return
+
+        if self.role == "admin":
+            self.residence_unset_banner.set_message(t("residence.unset_banner_admin"))
+            self.residence_settings_btn.setVisible(True)
+        else:
+            self.residence_unset_banner.set_message(t("residence.unset_banner_staff"))
+            self.residence_settings_btn.setVisible(False)
+        self.residence_unset_banner.setVisible(True)
+
+    def _on_residence_checked(self, res: dict) -> None:
+        if getattr(self, "_closing", False):
+            return
+        self._apply_residence_banner(res)
+        if not isinstance(res, dict) or not res.get("loaded"):
+            return
+        if res.get("residence_gender") in ("male", "female"):
+            return
+        if self.role == "admin" and not self._residence_prompt_shown:
+            self._residence_prompt_shown = True
+            dlg = ResidenceSetupDialog(self, client=self.client)
+            if dlg.exec() == QDialog.DialogCode.Accepted and dlg.saved_gender:
+                self._on_residence_settings_changed()
+
+    def _on_residence_settings_changed(self) -> None:
+        cached = get_cached_residence_settings(self.client)
+        if cached:
+            self._apply_residence_banner(cached)
+        else:
+            self._check_residence_setup()
+        if hasattr(self, "pending_page") and hasattr(self.pending_page, "show_detail"):
+            self.pending_page.show_detail()
+        if hasattr(self, "settings_page") and hasattr(self.settings_page, "reload"):
+            self.settings_page.reload()
 
     def _on_roster_changed(self) -> None:
         """Refresh pending student records and badges when official admissions data is updated."""
@@ -1162,6 +1251,8 @@ class MainWindow(QMainWindow):
         if hasattr(self, "settings_btn"):
             self.settings_btn.setChecked(True)
         self.stack.setCurrentWidget(self.settings_page)
+        if hasattr(self.settings_page, "reload_residence"):
+            self.settings_page.reload_residence()
 
     @staticmethod
     def _sign_out_session(client):
@@ -1277,6 +1368,7 @@ class MainWindow(QMainWindow):
         self.close()
 
     def closeEvent(self, event):
+        self._closing = True
         # A sign-out that is still waiting for workers must survive the close:
         # switch it to the no-login variant and keep the shutdown poll running.
         action = getattr(self, "_pending_shutdown_action", None)
@@ -1310,6 +1402,7 @@ class MainWindow(QMainWindow):
                         self.minimize_to_tray()
                         return
                     if code != QDialog.DialogCode.Accepted:
+                        self._closing = False
                         event.ignore()
                         return
 

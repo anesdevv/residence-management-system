@@ -4,7 +4,7 @@ from datetime import datetime
 
 from PySide6.QtCore import QThread, Signal
 
-from ..client import CLIENT_LOCK
+from ..client import CLIENT_LOCK, fetch_residence_public
 from ..timeouts import execute_network_call
 
 _log = logging.getLogger(__name__)
@@ -17,6 +17,7 @@ class LiveSyncWorker(QThread):
     sync_tick = Signal(dict)
     alert_event = Signal(str)
     sync_error = Signal(str)
+    residence_loaded = Signal(dict)
 
     def __init__(self, client, interval_ms: int = 2500):
         super().__init__()
@@ -165,6 +166,12 @@ class LiveSyncWorker(QThread):
                 "timestamp": now_str,
             }
             self.sync_tick.emit(payload)
+            try:
+                res_info = fetch_residence_public(self.client)
+                if isinstance(res_info, dict) and res_info.get("loaded"):
+                    self.residence_loaded.emit(res_info)
+            except Exception:  # noqa: BLE001 - best-effort settings refresh
+                pass
         except Exception as exc:
             self.sync_error.emit(str(exc))
             # Keep the thread running through transient network

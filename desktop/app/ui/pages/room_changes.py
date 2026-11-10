@@ -962,10 +962,10 @@ class RoomChangesPage(QWidget):
         self._end_working()
 
     # ------------------------------------------------------- worker payloads
-    def _load_rooms(self, gender):
+    def _load_rooms(self, *_args):
         rooms = self.client.table("rooms").select(
-            "id, block, number, floor, capacity, gender"
-        ).eq("gender", gender).order("block").order("number").execute().data or []
+            "id, block, number, floor, capacity"
+        ).order("block").order("number").execute().data or []
         return list(rooms), room_occupancy(self.client)
 
     def _fetch_after_decision(self):
@@ -1085,15 +1085,11 @@ class RoomChangesPage(QWidget):
             self.reject_btn.setToolTip("Only pending requests can be rejected.")
         st = _normalise_student(r)
         name = f"{st.get('first_name', '')} {st.get('last_name', '')}".strip() or "Unnamed resident"
-        gender = str(st.get("gender") or "").strip()
 
         # Resident identity.
         self.avatar.set_name(name)
         self.name_label.setText(name)
-        meta_parts = [f"Card ID {st.get('card_id') or '—'}"]
-        if gender:
-            meta_parts.append(gender.capitalize())
-        self.meta_label.setText(" · ".join(meta_parts))
+        self.meta_label.setText(f"Card ID {st.get('card_id') or '—'}")
         self.status_pill.set_kind(status_kind, status_text)
 
         # Rooms: requested-room details come from the cache; a miss schedules a
@@ -1183,7 +1179,7 @@ class RoomChangesPage(QWidget):
         # Plain-text record block (the desk reference for inquiries).
         notes = (
             f"RESIDENT: {name}\n"
-            f"Card ID: {st.get('card_id', '—')} | Gender: {st.get('gender', '—')}\n"
+            f"Card ID: {st.get('card_id', '—')}\n"
             f"Status: {status_text}\n"
             f"Preferred Room: {pref_info}\n"
             f"Submitted: {_fmt_stamp(r.get('created_at'))}\n\n"
@@ -1274,11 +1270,10 @@ class RoomChangesPage(QWidget):
         if not self._require_pending(r):
             return
         request = dict(r)
-        gender = _normalise_student(request).get("gender", "male")
         self._begin_working(t("room_changes.loading_rooms"))
         started = self.tasks.run(
             "approve-rooms",
-            lambda: self._load_rooms(gender),
+            lambda: self._load_rooms(),
             on_success=lambda result: self._on_approve_rooms_loaded(result, request),
             on_failed=self._on_action_failed,
             on_finished=self._finish_approve_rooms_stage,

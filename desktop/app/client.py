@@ -472,3 +472,246 @@ def official_lookup(client: Client, *, force: bool = False) -> dict[str, dict]:
             return dict(result)
         except Exception:
             return {}
+
+
+DEFAULT_RESIDENCE_NAME = "Cité Universitaire · Tlemcen"
+_RESIDENCE_CACHE: dict[int, tuple[float, dict]] = {}
+_RESIDENCE_CACHE_LOCK = threading.RLock()
+_RESIDENCE_CACHE_TTL = 30.0
+
+
+def _normalize_residence_gender(value) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip().lower()
+    return normalized if normalized in ("male", "female") else None
+
+
+def _extract_dict_payload(resp) -> dict | None:
+    data = resp.get("data") if isinstance(resp, dict) else getattr(resp, "data", None)
+    if isinstance(data, list) and data:
+        data = data[0]
+    return data if isinstance(data, dict) else None
+
+
+def invalidate_residence_settings_cache(client: Client | None = None) -> None:
+    """Clear cached single-gender residence settings."""
+    with _RESIDENCE_CACHE_LOCK:
+        if client is not None:
+            _RESIDENCE_CACHE.pop(id(client), None)
+        else:
+            _RESIDENCE_CACHE.clear()
+
+
+def get_cached_residence_settings(client: Client | None) -> dict | None:
+    """Return cached residence settings without issuing any network call."""
+    if client is None:
+        return None
+    now = time.monotonic()
+    with _RESIDENCE_CACHE_LOCK:
+        entry = _RESIDENCE_CACHE.get(id(client))
+        if entry is not None and (now - entry[0]) < _RESIDENCE_CACHE_TTL:
+            return dict(entry[1])
+    return None
+
+
+def _store_residence_cache(client: Client | None, payload: dict) -> None:
+    if client is None or not payload.get("loaded"):
+        return
+    with _RESIDENCE_CACHE_LOCK:
+        _RESIDENCE_CACHE[id(client)] = (time.monotonic(), dict(payload))
+
+
+def fetch_residence_public(client: Client, *, force: bool = False) -> dict:
+    """Read singleton residence name and gender via ``get_residence_public()``."""
+    fallback = {
+        "residence_name": DEFAULT_RESIDENCE_NAME,
+        "residence_gender": None,
+        "loaded": False,
+    }
+    if client is None:
+        return fallback
+
+    if not force:
+        cached = get_cached_residence_settings(client)
+        if cached is not None:
+            return cached
+
+    with CLIENT_LOCK:
+        if not force:
+            cached = get_cached_residence_settings(client)
+            if cached is not None:
+                return cached
+
+        payload_dict = None
+        if hasattr(client, "rpc") and callable(getattr(client, "rpc", None)):
+            try:
+                resp = execute_network_call(
+                    lambda: client.rpc("get_residence_public", {}).execute(),
+                    is_write=False,
+                )
+                cand = _extract_dict_payload(resp)
+                if cand is not None and "residence_gender" in cand:
+                    payload_dict = cand
+            except Exception as exc:  # noqa: BLE001 - fallback below
+                _log.debug("get_residence_public fallback needed: %s", exc)
+
+        if payload_dict is None and hasattr(client, "table") and callable(getattr(client, "table", None)):
+            try:
+                resp = execute_network_call(
+                    lambda: (
+                        client.table("residence_settings")
+                        .select("residence_name, residence_gender")
+                        .eq("id", 1)
+                        .execute()
+                    ),
+                    is_write=False,
+                )
+                cand = _extract_dict_payload(resp)
+                if cand is not None and "residence_gender" in cand:
+                    payload_dict = cand
+            except Exception:  # noqa: BLE001
+                payload_dict = None
+
+        if payload_dict is None:
+            return fallback
+
+        result = {
+            "residence_name": str(payload_dict.get("residence_name") or DEFAULT_RESIDENCE_NAME).strip()
+            or DEFAULT_RESIDENCE_NAME,
+            "residence_gender": _normalize_residence_gender(payload_dict.get("residence_gender")),
+            "loaded": True,
+        }
+        _store_residence_cache(client, result)
+        return dict(result)
+
+
+def fetch_residence_settings_admin(client: Client) -> dict:
+    """Read residence settings and last audit metadata for administrators."""
+    with CLIENT_LOCK:
+        resp = execute_network_call(
+            lambda: client.rpc("get_residence_settings_admin", {}).execute(),
+            is_write=False,
+        )
+        data = _extract_dict_payload(resp)
+        if not isinstance(data, dict) or "residence_gender" not in data:
+            pub = fetch_residence_public(client, force=True)
+            return {
+                "residence_name": pub["residence_name"],
+                "residence_gender": pub["residence_gender"],
+                "last_changed_at": None,
+                "last_changed_by": None,
+                "last_changed_by_name": None,
+                "loaded": pub["loaded"],
+            }
+        normalized = {
+            "residence_name": str(data.get("residence_name") or DEFAULT_RESIDENCE_NAME).strip()
+            or DEFAULT_RESIDENCE_NAME,
+            "residence_gender": _normalize_residence_gender(data.get("residence_gender")),
+            "updated_at": data.get("updated_at"),
+            "updated_by": data.get("updated_by"),
+            "last_changed_at": data.get("last_changed_at"),
+            "last_changed_by": data.get("last_changed_by"),
+            "last_changed_by_name": data.get("last_changed_by_name"),
+            "last_old_gender": _normalize_residence_gender(data.get("last_old_gender")),
+            "last_new_gender": _normalize_residence_gender(data.get("last_new_gender")),
+            "loaded": True,
+        }
+        _store_residence_cache(client, normalized)
+        return dict(normalized)
+
+
+def fetch_residence_gender_impact(client: Client, new_gender: str) -> dict:
+    """Preview impact counts before switching ``residence_gender`` (admin only)."""
+    with CLIENT_LOCK:
+        resp = execute_network_call(
+            lambda: client.rpc(
+                "get_residence_gender_change_impact",
+                {"p_new_gender": new_gender},
+            ).execute(),
+            is_write=False,
+        )
+        data = _extract_dict_payload(resp)
+        if not isinstance(data, dict):
+            raise RuntimeError("Could not read residence impact summary.")
+        return dict(data)
+
+
+def set_residence_gender(
+    client: Client,
+    new_gender: str,
+    *,
+    confirmation: str | None = None,
+) -> dict:
+    """Set or change residence_gender via ``set_residence_gender`` RPC."""
+    with CLIENT_LOCK:
+        resp = execute_network_call(
+            lambda: client.rpc(
+                "set_residence_gender",
+                {"p_gender": new_gender, "p_confirmation": confirmation},
+            ).execute(),
+            is_write=True,
+        )
+        invalidate_residence_settings_cache(client)
+        data = _extract_dict_payload(resp)
+        if isinstance(data, dict):
+            _store_residence_cache(
+                client,
+                {
+                    "residence_name": str(data.get("residence_name") or DEFAULT_RESIDENCE_NAME).strip()
+                    or DEFAULT_RESIDENCE_NAME,
+                    "residence_gender": _normalize_residence_gender(data.get("residence_gender")),
+                    "loaded": True,
+                },
+            )
+            return dict(data)
+        return {
+            "residence_name": DEFAULT_RESIDENCE_NAME,
+            "residence_gender": _normalize_residence_gender(new_gender),
+        }
+
+
+def set_residence_name(client: Client, residence_name: str) -> dict:
+    """Update residence_name via ``set_residence_name`` RPC."""
+    with CLIENT_LOCK:
+        resp = execute_network_call(
+            lambda: client.rpc(
+                "set_residence_name",
+                {"p_name": residence_name},
+            ).execute(),
+            is_write=True,
+        )
+        invalidate_residence_settings_cache(client)
+        data = _extract_dict_payload(resp)
+        if isinstance(data, dict):
+            _store_residence_cache(
+                client,
+                {
+                    "residence_name": str(data.get("residence_name") or residence_name).strip()
+                    or DEFAULT_RESIDENCE_NAME,
+                    "residence_gender": _normalize_residence_gender(data.get("residence_gender")),
+                    "loaded": True,
+                },
+            )
+            return dict(data)
+        return {"residence_name": str(residence_name).strip()}
+
+
+def has_gender_mismatch(
+    residence_gender: str | None,
+    *,
+    student_gender: str | None = None,
+    roster_gender: str | None = None,
+) -> bool:
+    """True when configured residence_gender differs from student or roster gender."""
+    res_g = _normalize_residence_gender(residence_gender)
+    if res_g is None:
+        return False
+    stu_g = _normalize_residence_gender(student_gender)
+    if stu_g is not None and stu_g != res_g:
+        return True
+    ros_g = _normalize_residence_gender(roster_gender)
+    if ros_g is not None and ros_g != res_g:
+        return True
+    return False
+

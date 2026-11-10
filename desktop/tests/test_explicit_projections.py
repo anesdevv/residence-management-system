@@ -127,17 +127,15 @@ def rooms_required_fields() -> set[str]:
         "floor",
         "number",
         "capacity",
-        "gender",
     }
 
 
 @pytest.fixture
 def blocks_required_fields() -> set[str]:
-    """Fields consumed by ManageBlocksDialog and RoomsPage block filters."""
+    """Fields consumed by ManageBlocksDialog and RoomsPage."""
     return {
         "id",
         "name",
-        "gender",
     }
 
 

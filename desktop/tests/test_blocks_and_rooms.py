@@ -36,41 +36,35 @@ def test_block_setup_dialog_validation_and_creation(qapp):
         mock_warn.assert_called_once()
         assert dlg.result_data is None
 
-    # Test valid block creation (Female)
+    # Test valid block creation (single-gender mode: no gender selector)
     dlg.name_edit.setText("D")
-    dlg.gender_combo.setCurrentText("Female")
+    assert not hasattr(dlg, "gender_combo")
     dlg.on_save()
 
-    assert dlg.result_data == {"name": "D", "gender": "female"}
+    assert dlg.result_data == {"name": "D"}
     mock_client.table.assert_called_with("blocks")
-    mock_client.table().insert.assert_called_with({"name": "D", "gender": "female"})
+    mock_client.table().insert.assert_called_with({"name": "D"})
 
 
-def test_room_setup_dialog_automatic_gender_inheritance(qapp):
+def test_room_setup_dialog_single_gender_chip_and_no_gender_combo(qapp):
     blocks = [
-        {"name": "A", "gender": "male"},
-        {"name": "B", "gender": "female"},
-        {"name": "NORTH", "gender": "female"},
+        {"name": "A"},
+        {"name": "B"},
+        {"name": "NORTH"},
     ]
     mock_client = MagicMock()
 
-    dlg = RoomSetupDialog(client=mock_client, blocks=blocks)
+    dlg = RoomSetupDialog(client=mock_client, blocks=blocks, residence_gender="female")
 
-    # Gender combo must be disabled (read-only) because it inherits from block
-    assert not dlg.gender_combo.isEnabled()
+    assert not hasattr(dlg, "gender_combo")
+    assert dlg.residence_type_chip.text() == "Female residence"
 
-    # Default to first block A (Male)
     dlg.block_combo.setCurrentIndex(0)
-    assert dlg.gender_combo.currentText() == "Male"
-    assert "Block A" in dlg.gender_note.text()
+    assert dlg.block_edit.text() == "A"
 
-    # Switch to block B (Female)
     dlg.block_combo.setCurrentIndex(1)
-    assert dlg.gender_combo.currentText() == "Female"
-    assert "Block B" in dlg.gender_note.text()
     assert dlg.block_edit.text() == "B"
 
-    # Fill room number and verify saved result has female gender automatically
     dlg.num_edit.setText("205")
     dlg.floor_spin.setValue(2)
     dlg.cap_spin.setValue(3)
@@ -81,31 +75,29 @@ def test_room_setup_dialog_automatic_gender_inheritance(qapp):
         "floor": 2,
         "number": "205",
         "capacity": 3,
-        "gender": "female",
     }
 
 
-def test_room_setup_dialog_occupied_room_locks_block_and_gender(qapp):
+def test_room_setup_dialog_occupied_room_locks_block(qapp):
     blocks = [
-        {"name": "A", "gender": "male"},
-        {"name": "B", "gender": "female"},
+        {"name": "A"},
+        {"name": "B"},
     ]
-    room = {"id": "r1", "block": "B", "floor": 1, "number": "104", "capacity": 2, "gender": "female"}
+    room = {"id": "r1", "block": "B", "floor": 1, "number": "104", "capacity": 2}
 
     # Room with 1 active occupant
-    dlg = RoomSetupDialog(room=room, current_occupancy=1, blocks=blocks)
+    dlg = RoomSetupDialog(room=room, current_occupancy=1, blocks=blocks, residence_gender="male")
 
     assert not dlg.block_combo.isEnabled()
     assert not dlg.new_block_btn.isEnabled()
-    assert not dlg.gender_combo.isEnabled()
-    assert dlg.gender_combo.currentText() == "Female"
+    assert dlg.residence_type_chip.text() == "Male residence"
 
 
 def test_manage_blocks_dialog_table_and_actions(qapp):
     blocks = [
-        {"id": "b1", "name": "A", "gender": "male"},
-        {"id": "b2", "name": "B", "gender": "female"},
-        {"id": "b3", "name": "EMPTY", "gender": "female"},
+        {"id": "b1", "name": "A"},
+        {"id": "b2", "name": "B"},
+        {"id": "b3", "name": "EMPTY"},
     ]
     rooms = [
         {"id": "r1", "block": "A", "capacity": 2},
@@ -118,20 +110,20 @@ def test_manage_blocks_dialog_table_and_actions(qapp):
     dlg = ManageBlocksDialog(client=mock_client, rooms=rooms, occupancy=occupancy)
     assert dlg.table.rowCount() == 3
 
-    # Check Block A (row 0)
+    # Check Block A (row 0) — 5 columns without Gender Designation
     assert "Block A" in dlg.table.item(0, 0).text()
-    assert dlg.table.item(0, 2).text() == "1"  # 1 room
-    assert dlg.table.item(0, 3).text() == "2"  # 2 beds
-    assert dlg.table.item(0, 4).text() == "1"  # 1 occupied
+    assert dlg.table.item(0, 1).text() == "1"  # 1 room
+    assert dlg.table.item(0, 2).text() == "2"  # 2 beds
+    assert dlg.table.item(0, 3).text() == "1"  # 1 occupied
 
     # Block A has rooms: delete button must be disabled
-    del_holder_a = dlg.table.cellWidget(0, 5)
+    del_holder_a = dlg.table.cellWidget(0, 4)
     del_btn_a = del_holder_a.findChild(type(dlg.add_block_btn))
     assert del_btn_a is not None
     assert not del_btn_a.isEnabled()
 
     # Block EMPTY (row 2) has 0 rooms: delete button must be enabled
-    del_holder_empty = dlg.table.cellWidget(2, 5)
+    del_holder_empty = dlg.table.cellWidget(2, 4)
     del_btn_empty = del_holder_empty.findChild(type(dlg.add_block_btn))
     assert del_btn_empty is not None
     assert del_btn_empty.isEnabled()

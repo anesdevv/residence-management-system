@@ -42,6 +42,11 @@ except ImportError:
     from desktop.i18n import t, tn
 
 try:
+    from ..client import get_cached_residence_settings, has_gender_mismatch
+except ImportError:
+    from desktop.app.client import get_cached_residence_settings, has_gender_mismatch
+
+try:
     from . import theme
     from .components import (
         Avatar,
@@ -142,10 +147,18 @@ class StudentInfoCardDialog(QDialog):
         parent: QWidget | None = None,
         student_data: dict[str, Any] | None = None,
         official_roster_data: dict[str, Any] | None = None,
+        residence_gender: str | None = None,
     ):
         super().__init__(parent)
         self.student_data = student_data or {}
         self.official_roster_data = official_roster_data
+        parent_client = getattr(parent, "client", None) if parent is not None else None
+        cached_res = get_cached_residence_settings(parent_client) if parent_client else None
+        self.residence_gender = (
+            residence_gender
+            or (getattr(parent, "residence_gender", None) if parent is not None else None)
+            or (cached_res or {}).get("residence_gender")
+        )
 
         # ------------------------------------------------------- window setup
         first_name = str(self.student_data.get("first_name", "")).strip()
@@ -206,7 +219,21 @@ class StudentInfoCardDialog(QDialog):
         self.status_pill = StatusPill(status_kind, status_label)
         self.roster_badge = RosterMatchBadge(True if is_verified else False)
         self.roster_badge.setToolTip(t("infocard.roster_tooltip"))
-        profile_card.add_widget(_row(self.status_pill, self.roster_badge))
+        self.gender_warning_badge = StatusPill("warning", t("residence.gender_differs_badge"))
+        self.gender_warning_badge.setToolTip(t("residence.gender_differs_tooltip"))
+        roster_gender = (
+            self.official_roster_data.get("gender")
+            if isinstance(self.official_roster_data, dict)
+            else None
+        )
+        self.gender_warning_badge.setVisible(
+            has_gender_mismatch(
+                self.residence_gender,
+                student_gender=self.student_data.get("gender"),
+                roster_gender=roster_gender,
+            )
+        )
+        profile_card.add_widget(_row(self.status_pill, self.roster_badge, self.gender_warning_badge))
 
         profile_card.add_widget(section_header(t("infocard.section_academic")))
         gender_str = str(self.student_data.get("gender", "—")).strip().capitalize()
@@ -320,7 +347,6 @@ class RoomInfoCardDialog(QDialog):
         block = str(self.room_data.get("block", "—")).strip()
         number = str(self.room_data.get("number") or self.room_data.get("room_number") or "—").strip()
         floor = str(self.room_data.get("floor", "0") if self.room_data.get("floor") is not None else "0").strip()
-        gender = str(self.room_data.get("gender", "male")).strip().capitalize()
         capacity = int(self.room_data.get("capacity") or 1)
 
         self.setWindowTitle(t("infocard.room_title", block=block, number=number))
@@ -379,7 +405,7 @@ class RoomInfoCardDialog(QDialog):
         # ------------------------------------------------------ capacity card
         capacity_card = Card(
             t("infocard.capacity_card_title", block=block, number=number),
-            t("infocard.capacity_card_desc", floor=floor, gender=gender),
+            t("infocard.capacity_card_desc", floor=floor),
             icon="building",
         )
         root.addWidget(capacity_card)
