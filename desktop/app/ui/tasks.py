@@ -19,9 +19,11 @@ from ..client import CLIENT_LOCK, redact_sensitive
 from ..timeouts import (
     NetworkError,
     NetworkTimeoutError,
+    TlsCertificateError,
     is_connection_error,
     is_timeout_exception,
 )
+from ..tls import classify_tls_error
 
 _log = logging.getLogger("resivo.tasks")
 
@@ -50,8 +52,15 @@ def _task_finished() -> None:
 
 def human_error(exc: BaseException) -> str:
     """Return a short, redacted, user-readable error rather than a traceback."""
-    if isinstance(exc, (NetworkTimeoutError, NetworkError)):
+    if isinstance(exc, (TlsCertificateError, NetworkTimeoutError, NetworkError)):
         return str(exc)
+    is_tls, clock_skew = classify_tls_error(exc)
+    if is_tls:
+        return (
+            TlsCertificateError.CLOCK_SKEW_MESSAGE
+            if clock_skew
+            else TlsCertificateError.DEFAULT_MESSAGE
+        )
     if is_timeout_exception(exc):
         return NetworkTimeoutError.READ_MESSAGE
     if is_connection_error(exc):

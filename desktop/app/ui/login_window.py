@@ -53,13 +53,13 @@ from ..client import (
 )
 from .components import BrandMark, Button, GradientHero, InlineBanner
 from .icons import get_icon
+from .resource import get_asset_path
 from .tasks import human_error
 from .theme import C, DESKTOP_STYLESHEET, S, apply_role
 
 # DESIGN.md §7 — hide the hero below this window width (form-only mode).
 _LOGIN_HERO_BREAKPOINT = 760
 _FORM_MAX_WIDTH = 420
-_BRAND_DIR = Path(__file__).resolve().parents[2] / "assets" / "brand"
 _SIGN_IN_TEXT = "Sign in"
 _ROLE_ERROR_TEXT = "Could not verify your role. Check your connection or configuration."
 
@@ -147,7 +147,7 @@ class LoginWindow(QWidget):
         # (email, password digest) for the signed-in session, so an edited
         # credential is treated as a fresh sign-in, not another role retry.
         self._pending_credentials: tuple[str, str] | None = None
-        icon_path = _BRAND_DIR / "resivo.ico"
+        icon_path = get_asset_path("brand/resivo.ico")
         if icon_path.is_file():
             self.setWindowIcon(QIcon(str(icon_path)))
 

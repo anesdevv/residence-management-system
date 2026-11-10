@@ -19,6 +19,7 @@ from PySide6.QtWidgets import QMessageBox
 try:
     from desktop.app.client import RoleLookupError, make_client, remember_role, resolve_role
     from desktop.app.config import config_error
+    from desktop.app.tls import configure_tls_environment
     from desktop.app.logging_setup import (
         SafeApplication,
         app_data_dir,
@@ -34,10 +35,12 @@ try:
     )
     from desktop.app.ui.login_window import LoginWindow
     from desktop.app.ui.main_window import MainWindow
+    from desktop.app.ui.resource import get_asset_path
     from desktop.app.ui.theme import load_fonts
 except ImportError:
     from app.client import RoleLookupError, make_client, remember_role, resolve_role
     from app.config import config_error
+    from app.tls import configure_tls_environment
     from app.logging_setup import (
         SafeApplication,
         app_data_dir,
@@ -53,6 +56,7 @@ except ImportError:
     )
     from app.ui.login_window import LoginWindow
     from app.ui.main_window import MainWindow
+    from app.ui.resource import get_asset_path
     from app.ui.theme import load_fonts
 from desktop.auth.session_store import (
     get_remember_session_setting,
@@ -71,19 +75,7 @@ except ImportError:
 
 
 def _resolve_brand_icon() -> Path:
-    candidates = []
-    if getattr(sys, "frozen", False):
-        exe_dir = Path(sys.executable).parent
-        candidates.append(exe_dir / "assets" / "brand" / "resivo.ico")
-        meipass = getattr(sys, "_MEIPASS", None)
-        if meipass:
-            candidates.append(Path(meipass) / "assets" / "brand" / "resivo.ico")
-            candidates.append(Path(meipass) / "desktop" / "assets" / "brand" / "resivo.ico")
-    candidates.append(Path(__file__).resolve().parent / "assets" / "brand" / "resivo.ico")
-    for c in candidates:
-        if c.is_file():
-            return c
-    return candidates[-1]
+    return get_asset_path("brand/resivo.ico")
 
 
 class _StartupBridge(QObject):
@@ -101,6 +93,7 @@ def main() -> int:
     # Configure the file log before creating any widget: --noconsole builds
     # have no stderr, and startup failures must still be diagnosable.
     setup_logging()
+    configure_tls_environment()
 
     is_autostart = "--autostart" in sys.argv
 

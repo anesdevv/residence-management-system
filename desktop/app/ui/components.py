@@ -107,6 +107,7 @@ from PySide6.QtWidgets import (
 
 from . import theme
 from .icons import get_icon, get_pixmap
+from .resource import get_asset_path
 from .stepper import NumberStepper
 from .theme import C, S, apply_button_style, apply_elevation, font, qcolor
 
@@ -153,19 +154,7 @@ _AVATAR_PALETTE = (
     ("status-danger-bg", "status-danger-ink"),
 )
 def _resolve_brand_dir() -> Path:
-    candidates = []
-    if getattr(sys, "frozen", False):
-        exe_dir = Path(sys.executable).parent
-        candidates.append(exe_dir / "assets" / "brand")
-        meipass = getattr(sys, "_MEIPASS", None)
-        if meipass:
-            candidates.append(Path(meipass) / "assets" / "brand")
-            candidates.append(Path(meipass) / "desktop" / "assets" / "brand")
-    candidates.append(Path(__file__).resolve().parents[2] / "assets" / "brand")
-    for c in candidates:
-        if c.is_dir():
-            return c
-    return candidates[-1]
+    return get_asset_path("brand")
 
 
 _BRAND_DIR = _resolve_brand_dir()

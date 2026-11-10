@@ -29,7 +29,16 @@ sys.modules.setdefault("desktop.i18n", sys.modules[__name__])
 
 _log = logging.getLogger("resivo.i18n")
 
-_I18N_DIR = Path(__file__).resolve().parent
+try:
+    from desktop.app.ui.resource import get_i18n_dir, get_qt_translations_dir
+except ImportError:
+    try:
+        from app.ui.resource import get_i18n_dir, get_qt_translations_dir
+    except ImportError:
+        get_i18n_dir = None  # type: ignore[assignment]
+        get_qt_translations_dir = None  # type: ignore[assignment]
+
+_I18N_DIR = get_i18n_dir() if get_i18n_dir is not None else Path(__file__).resolve().parent
 _DEFAULT_LANG = "en"
 _FALLBACK_LANG = "en"
 
@@ -419,12 +428,21 @@ def _install_qt_translations(app: Any, lang_code: str) -> None:
         translator = QTranslator(app)
         loaded = False
 
-        # 1. Search in PySide6 translations dir
+        # 1. Search via centralized frozen/dev translations locator
         trans_path = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
-        if trans_path and translator.load(f"qtbase_{lang_code}", trans_path):
+        resolved_dir = (
+            get_qt_translations_dir(trans_path)
+            if get_qt_translations_dir is not None
+            else None
+        )
+        if resolved_dir is not None and translator.load(f"qtbase_{lang_code}", str(resolved_dir)):
             loaded = True
 
-        # 2. Search in bundled assets/i18n
+        # 2. Search in PySide6 translations dir directly
+        if not loaded and trans_path and translator.load(f"qtbase_{lang_code}", trans_path):
+            loaded = True
+
+        # 3. Search in bundled assets/i18n
         if not loaded:
             asset_path = _I18N_DIR.parent / "assets" / "i18n"
             if asset_path.is_dir() and translator.load(f"qtbase_{lang_code}", str(asset_path)):

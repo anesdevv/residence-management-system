@@ -14,6 +14,8 @@ from typing import Any, Callable, TypeVar
 
 import httpx
 
+from .tls import classify_tls_error
+
 _log = logging.getLogger("resivo.timeouts")
 
 # ---------------------------------------------------------------------------
@@ -81,6 +83,25 @@ class NetworkTimeoutError(NetworkError):
             message = self.WRITE_MESSAGE if is_write else self.READ_MESSAGE
         super().__init__(message)
         self.is_write = is_write
+
+
+class TlsCertificateError(NetworkError):
+    """Raised when TLS certificate validation fails (expired clock or untrusted CA)."""
+
+    DEFAULT_MESSAGE = (
+        "Secure HTTPS connection failed during certificate verification. "
+        "Check your network proxy or firewall settings."
+    )
+    CLOCK_SKEW_MESSAGE = (
+        "Secure connection failed because the certificate appears expired or not yet valid. "
+        "Please check your PC's system date, time, and time zone."
+    )
+
+    def __init__(self, message: str | None = None, *, clock_skew: bool = False):
+        if message is None:
+            message = self.CLOCK_SKEW_MESSAGE if clock_skew else self.DEFAULT_MESSAGE
+        super().__init__(message)
+        self.clock_skew = clock_skew
 
 
 def is_timeout_exception(exc: BaseException) -> bool:
@@ -155,6 +176,10 @@ def execute_network_call(
                 raise NetworkTimeoutError(is_write=is_write) from exc
 
             if is_connection_error(exc):
+                is_tls, clock_skew = classify_tls_error(exc)
+                if is_tls:
+                    _log.warning("TLS verification error (clock_skew=%s): %s", clock_skew, exc)
+                    raise TlsCertificateError(clock_skew=clock_skew) from exc
                 if retries_left > 0:
                     retries_left -= 1
                     _log.info(

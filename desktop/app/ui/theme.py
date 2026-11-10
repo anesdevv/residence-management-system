@@ -233,19 +233,7 @@ def _em_to_px(tracking: str, font_px: int) -> float:
 # Fonts — bundled static TTFs in desktop/assets/fonts/
 # ---------------------------------------------------------------------------
 def _resolve_fonts_dir() -> Path:
-    candidates = []
-    if getattr(sys, "frozen", False):
-        exe_dir = Path(sys.executable).parent
-        candidates.append(exe_dir / "assets" / "fonts")
-        meipass = getattr(sys, "_MEIPASS", None)
-        if meipass:
-            candidates.append(Path(meipass) / "assets" / "fonts")
-            candidates.append(Path(meipass) / "desktop" / "assets" / "fonts")
-    candidates.append(Path(__file__).resolve().parents[2] / "assets" / "fonts")
-    for c in candidates:
-        if c.is_dir():
-            return c
-    return candidates[-1]
+    return get_asset_path("fonts")
 
 
 _FONTS_DIR = _resolve_fonts_dir()

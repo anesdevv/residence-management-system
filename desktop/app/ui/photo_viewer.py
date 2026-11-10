@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import urllib.request
 from ..timeouts import STORAGE_DOWNLOAD_TIMEOUT_S, NetworkTimeoutError, is_timeout_exception
+from ..tls import classify_tls_error, urlopen_with_tls
 
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -259,7 +260,7 @@ class PhotoFetchWorker(QThread):
         # 3. Download bytes
         try:
             req = urllib.request.Request(self.url, headers={"User-Agent": "Mozilla/5.0 (RÉSIVO Staff Console)"})
-            with urllib.request.urlopen(req, timeout=STORAGE_DOWNLOAD_TIMEOUT_S) as resp:
+            with urlopen_with_tls(req, timeout=STORAGE_DOWNLOAD_TIMEOUT_S) as resp:
                 chunks = []
                 while not self._stopped:
                     chunk = resp.read(65536)

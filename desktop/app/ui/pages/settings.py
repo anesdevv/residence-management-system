@@ -62,6 +62,7 @@ except ImportError:
         set_remember_session_setting,
         session_manager,
     )
+from ...tls import urlopen_with_tls
 from .. import theme
 from ..close_policy import (
     get_confirm_close_setting,
@@ -72,6 +73,7 @@ from ..close_policy import (
 from ..components import Button, Card, ConfirmDialog, InlineBanner, PageHeader, StatusPill
 from ..notifications import NotificationManager
 from ..residence_dialogs import ResidenceGenderChangeDialog, residence_gender_label
+from ..resource import get_asset_path
 from ..tasks import TaskRunner, human_error
 from ..theme import C, S
 
@@ -243,7 +245,7 @@ class McpHealthWorker(QThread):
         while self._running:
             up = False
             try:
-                with urllib.request.urlopen(self.url, timeout=self.timeout_s) as resp:
+                with urlopen_with_tls(self.url, timeout=self.timeout_s) as resp:
                     up = 200 <= resp.status < 300
             except Exception:
                 # Connection refused / timeout / non-HTTP reply = server offline
@@ -1016,9 +1018,7 @@ class SettingsPage(QWidget):
 
         about_logo = QLabel()
         about_logo.setObjectName("aboutLogo")
-        logo_path = Path(__file__).resolve().parents[3] / "assets" / "brand" / "resivo_logo.png"
-        if not logo_path.is_file():
-            logo_path = Path(__file__).parent.parent / "assets" / "resivo_logo.png"
+        logo_path = get_asset_path("brand/resivo_logo.png")
         about_logo_px = QPixmap(str(logo_path))
         about_logo.setPixmap(about_logo_px.scaled(
             S("space-12") * 2, S("space-12") * 2,
