@@ -51,6 +51,7 @@ from ..client import (
     resolve_role,
     sign_in,
 )
+from ..startup_debug import attach_first_paint_probe, mark, reset_timeline
 from .components import BrandMark, Button, GradientHero, InlineBanner
 from .icons import get_icon
 from .resource import get_asset_path
@@ -386,9 +387,13 @@ class LoginWindow(QWidget):
         self.button.setText(t("login.signing_in"))
         self.button.setEnabled(False)
 
+        reset_timeline("sign_in")
+        mark("sign_in_click")
+        mark("auth_start")
         try:
             sign_in(self.client, email_txt, pwd_txt)
         except Exception as exc:  # noqa: BLE001 - authentication failure only
+            mark("auth_failed")
             # Never show a traceback: one concise line for the banner.
             self._show_error(f"{t('login.login_failed')}: {human_error(exc)}")
             self.button.setText(t("login.sign_in"))
@@ -397,6 +402,7 @@ class LoginWindow(QWidget):
         finally:
             self.password.clear()
 
+        mark("auth_end")
         self._pending_credentials = credentials
         self._role_retry_pending = False
         self._verify_role()
@@ -439,17 +445,21 @@ class LoginWindow(QWidget):
         self.button.setText(t("login.checking_role"))
         self.button.setEnabled(False)
 
+        mark("role_check_start")
         try:
             resolved = resolve_role(self.client)
         except RoleLookupError as exc:
+            mark("role_check_failed")
             _log.warning("Role verification failed after sign-in: %s", exc)
             self._show_role_error()
             return
         except Exception as exc:  # noqa: BLE001 - any lookup problem is retryable
+            mark("role_check_failed")
             _log.warning("Role verification failed after sign-in: %s", human_error(exc))
             self._show_role_error()
             return
 
+        mark("role_check_end")
         role = str(resolved).strip().lower() if resolved is not None else ""
         if role not in ("staff", "admin"):
             self._role_retry_pending = False
@@ -478,6 +488,7 @@ class LoginWindow(QWidget):
             self.session_manager.save_current_session(self.client, remember=remember)
         except Exception as exc:
             _log.warning("Could not persist session: %s", exc)
+        mark("session_save_end")
 
         self._role_retry_pending = False
         self._pending_credentials = None
@@ -487,10 +498,12 @@ class LoginWindow(QWidget):
         from .main_window import MainWindow
 
         self.window = MainWindow(self.client, role=role)
+        attach_first_paint_probe(self.window)
         if getattr(self, "_start_minimized", False):
             self.window.showMinimized()
         else:
             self.window.show()
+        mark("main_window_shown")
         self.close()
 
     def _show_role_error(self):

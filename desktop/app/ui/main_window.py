@@ -72,6 +72,7 @@ from ..client import (
     stored_user_email,
     stored_user_id,
 )
+from ..startup_debug import mark, timeline
 from . import components, theme
 from .close_policy import (
     CloseConfirmDialog,
@@ -443,6 +444,8 @@ class _SidebarNav(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self, client, role=None):
         super().__init__()
+        mark("main_window_init_start")
+        self._startup_first_data_marked = False
         self.client = client
         self._role_retry_running = False
         if role is None:
@@ -511,12 +514,19 @@ class MainWindow(QMainWindow):
         # Pages instantiation — order and module-level names unchanged.
         self.pages: dict[str, QWidget] = {}
         self.overview_page = OverviewPage(client)
+        mark("page:OverviewPage")
         self.pending_page = PendingPage(client)
+        mark("page:PendingPage")
         self.residents_page = ResidentsPage(client)
+        mark("page:ResidentsPage")
         self.rooms_page = RoomsPage(client)
+        mark("page:RoomsPage")
         self.maintenance_page = MaintenancePage(client)
+        mark("page:MaintenancePage")
         self.room_changes_page = RoomChangesPage(client)
+        mark("page:RoomChangesPage")
         self.official_list_page = OfficialListPage(client)
+        mark("page:OfficialListPage")
         if hasattr(self.official_list_page, "pending_page"):
             self.official_list_page.pending_page = self.pending_page
         if hasattr(self.official_list_page, "roster_changed"):
@@ -532,9 +542,11 @@ class MainWindow(QMainWindow):
 
         if self.role == "admin":
             self.staff_accounts_page = StaffAccountsPage(client)
+            mark("page:StaffAccountsPage")
             self._add_nav_item(t("nav.staff_accounts"), "staff_accounts", self.staff_accounts_page, canonical_name="Staff accounts")
 
         self.settings_page = SettingsPage(client)
+        mark("page:SettingsPage")
         if hasattr(self.settings_page, "sign_out_requested"):
             self.settings_page.sign_out_requested.connect(self.on_sign_out_clicked)
         if hasattr(self.settings_page, "residence_settings_changed"):
@@ -576,6 +588,8 @@ class MainWindow(QMainWindow):
         self.sync_worker.sync_error.connect(self.on_live_sync_error)
         self.sync_worker.residence_loaded.connect(self._on_residence_checked)
         self.sync_worker.start()
+        mark("workers_started")
+        mark("main_window_init_end")
 
     # ------------------------------------------------------------------ shell
     def _build_sidebar(self) -> QWidget:
@@ -1098,6 +1112,10 @@ class MainWindow(QMainWindow):
         self._set_live_state("reconnecting")
 
     def on_live_sync_tick(self, data: dict):
+        if not getattr(self, "_startup_first_data_marked", False):
+            self._startup_first_data_marked = True
+            mark("first_data_received")
+            timeline().dump_summary()
         pending_students = data.get("pending_students", [])
         reports = data.get("reports", [])
         open_reports_count = data.get("open_reports_count", 0)

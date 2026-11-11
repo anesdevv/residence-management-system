@@ -20,6 +20,12 @@ try:
     from desktop.app.client import RoleLookupError, make_client, remember_role, resolve_role
     from desktop.app.config import config_error, config_error_code
     from desktop.app.selftest import execute_selftest_cli
+    from desktop.app.startup_debug import (
+        attach_first_paint_probe,
+        install_ghost_window_probe,
+        mark,
+        reset_timeline,
+    )
     from desktop.app.tls import configure_tls_environment
     from desktop.app.logging_setup import (
         SafeApplication,
@@ -42,6 +48,12 @@ except ImportError:
     from app.client import RoleLookupError, make_client, remember_role, resolve_role
     from app.config import config_error, config_error_code
     from app.selftest import execute_selftest_cli
+    from app.startup_debug import (
+        attach_first_paint_probe,
+        install_ghost_window_probe,
+        mark,
+        reset_timeline,
+    )
     from app.tls import configure_tls_environment
     from app.logging_setup import (
         SafeApplication,
@@ -175,6 +187,9 @@ def launch_application(
     is_autostart: bool = False,
     exec_loop: bool = True,
 ) -> int:
+    install_ghost_window_probe(app)
+    reset_timeline("launch")
+    mark("launch_application_start")
     start_minimized = is_autostart and autostart.get_start_minimized_setting()
     if client is None:
         client = make_client()
@@ -251,19 +266,25 @@ def launch_application(
 
             if normalized_role in ("staff", "admin"):
                 remember_role(client, normalized_role)
+                mark("restore_role_end")
                 main_win = MainWindow(client, role=normalized_role)
                 app._main_window = main_win
+                attach_first_paint_probe(main_win)
                 if start_minimized:
                     main_win.showMinimized()
                 else:
                     main_win.show()
+                mark("main_window_shown")
             elif role_exc is not None or (role is None and role_exc is None and normalized_role == ""):
+                mark("restore_role_end")
                 main_win = MainWindow(client, role=None)
                 app._main_window = main_win
+                attach_first_paint_probe(main_win)
                 if start_minimized:
                     main_win.showMinimized()
                 else:
                     main_win.show()
+                mark("main_window_shown")
             else:
                 session_manager_instance.clear()
                 login_win = LoginWindow(
