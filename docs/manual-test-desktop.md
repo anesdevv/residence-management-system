@@ -264,3 +264,32 @@ Execute with the rebuilt standalone executable (`dist\RESIVO\RESIVO.exe`):
 - [ ] **19. Amber Warning-Only Gender Badges**:
   1. In **Pending applications**, select a student whose roster entry or stored record has the opposite gender from `residence_gender`: verify the amber `"Gender differs from this residence"` badge displays while **Approve & assign room** stays enabled.
   2. Double-click an active resident stored with the other gender (e.g. after switching residence type): verify `StudentInfoCardDialog` displays the amber `"Gender differs from this residence"` badge.
+
+---
+
+## In-App Update Checks (GitHub Releases)
+
+- [ ] **20. Version and Update Card**:
+  1. Build and install a release (see `docs/releasing.md`). Open **Settings → Updates**.
+  2. **Pass criteria**: *Installed version* matches `desktop/version.py`, *Last checked* is shown, and *Check for updates automatically* is on by default.
+
+- [ ] **21. Up-to-Date and No-Release States**:
+  1. With no newer stable release published, click **Check for updates**.
+  2. **Pass criteria**: The card reports *You have the latest version*; with no releases at all it reports *No updates have been published yet*. No error banner appears for an automatic background check.
+
+- [ ] **22. Available, Skipped and Later**:
+  1. Publish a test release whose tag is strictly newer than the installed version, with both `Setup-RESIVO-<version>.exe` and `SHA256SUMS.txt`.
+  2. Click **Check for updates**: the sidebar shows the *Update available* badge and a single toast appears.
+  3. Click **Skip this version**, then check again: the version is not offered.
+  4. Unskip by changing `updates/skipped_version` in the registry under `HKCU\Software\RESIVO\StaffConsole` (or clear it), check again, then click **Later**: the release notes close and the badge disappears.
+
+- [ ] **23. Download, Cancel and Verification**:
+  1. With an update offered, click **Update now**. **Pass criteria**: progress bar and downloaded/total size update; **Cancel** stops the download and returns to the available state.
+  2. Download fully: the card moves through *Verifying the download…* to *Ready to install*.
+  3. In the updates folder, replace the `.exe` with any other file and retry: the checksum/PE checks must refuse it and delete the file.
+  4. Disconnect the network during a check: *Could not reach the update server* appears only for a manual check.
+
+- [ ] **24. Silent Install and Relaunch**:
+  1. With a verified installer ready, click **Update and restart** and confirm.
+  2. **Pass criteria**: RÉSIVO closes without a second close prompt, Setup runs silently, the new version relaunches with `--updated`, and a *RÉSIVO was updated to version <version>* toast appears. Signed-in session, language, settings and user data are preserved.
+  3. Repeat while a download is running and close the window: the close confirmation still works and the old install stays usable.
