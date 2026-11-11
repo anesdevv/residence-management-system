@@ -42,8 +42,11 @@ try:
     )
     from desktop.app.ui.login_window import LoginWindow
     from desktop.app.ui.main_window import MainWindow
+    from desktop.app.ui.components import show_toast
     from desktop.app.ui.resource import get_asset_path
     from desktop.app.ui.theme import apply_app_stylesheet, load_fonts
+    from desktop.updater import prefs as update_prefs
+    from desktop.version import __version__
 except ImportError:
     from app.client import RoleLookupError, make_client, remember_role, resolve_role
     from app.config import config_error, config_error_code
@@ -70,8 +73,11 @@ except ImportError:
     )
     from app.ui.login_window import LoginWindow
     from app.ui.main_window import MainWindow
+    from app.ui.components import show_toast
     from app.ui.resource import get_asset_path
     from app.ui.theme import apply_app_stylesheet, load_fonts
+    from desktop.updater import prefs as update_prefs
+    from desktop.version import __version__
 from desktop.auth.session_store import (
     default_session_dir,
     get_remember_session_setting,
@@ -102,6 +108,45 @@ class _StartupBridge(QObject):
 
 
 _BRAND_ICON = _resolve_brand_icon()
+_INSTANCE_MUTEX_NAME = "RESIVO.Desktop.SingleInstance"
+
+
+def _announce_startup(app, *, was_updated: bool) -> None:
+    """Show the post-update or failed-install notice once a window is visible."""
+
+    def attempt(remaining: int) -> None:
+        window = getattr(app, "_main_window", None)
+        if window is None or not window.isVisible():
+            if remaining > 0:
+                QTimer.singleShot(500, lambda: attempt(remaining - 1))
+            return
+        if was_updated:
+            show_toast(
+                window,
+                t("updates.updated_toast", version=__version__),
+                kind="success",
+                icon="download",
+                duration_ms=6000,
+            )
+            return
+        try:
+            saved_error = update_prefs.get_install_error()
+        except Exception:  # noqa: BLE001 - notifications are best effort
+            saved_error = ""
+        if saved_error:
+            show_toast(
+                window,
+                t("updates.error_installer"),
+                kind="error",
+                icon="alert-triangle",
+                duration_ms=6000,
+            )
+            try:
+                update_prefs.set_install_error("")
+            except Exception:  # noqa: BLE001
+                pass
+
+    QTimer.singleShot(600, lambda: attempt(20))
 
 
 def main() -> int:
@@ -119,13 +164,17 @@ def main() -> int:
 
     is_autostart = "--autostart" in sys.argv
     is_selftest = "--selftest" in sys.argv
+    is_updated = "--updated" in sys.argv
+    is_relaunch = is_updated or "--restarted" in sys.argv
 
     # Single-instance guard (QLockFile in per-user AppData location)
     lock_file = None
     if not is_selftest:
         lock_path = app_data_dir() / "resivo.lock"
         lock_file, exit_code = autostart.acquire_single_instance(
-            lock_path, is_autostart=is_autostart
+            lock_path,
+            is_autostart=is_autostart,
+            wait_ms=10000 if is_relaunch else 100,
         )
         if exit_code is not None:
             return exit_code
@@ -135,6 +184,8 @@ def main() -> int:
     app = SafeApplication(sys.argv)
     # Store lock_file on app instance so it remains locked until process termination
     app._instance_lock = lock_file
+    # Named mutex watched by Inno Setup's AppMutex directive.
+    app._instance_mutex = win32_compat.create_named_mutex(_INSTANCE_MUTEX_NAME)
     install_exception_hooks()
 
     # Initialize localization (QSettings -> system locale -> English default)
@@ -178,6 +229,7 @@ def main() -> int:
     return launch_application(
         app=app,
         is_autostart=is_autostart,
+        was_updated=is_updated,
     )
 
 
@@ -186,11 +238,23 @@ def launch_application(
     client: Any = None,
     session_manager_instance: Any = None,
     is_autostart: bool = False,
+    was_updated: bool = False,
     exec_loop: bool = True,
 ) -> int:
     install_ghost_window_probe(app)
     reset_timeline("launch")
     mark("launch_application_start")
+    if was_updated:
+        try:
+            update_prefs.set_install_error("")
+        except Exception:  # noqa: BLE001
+            pass
+    try:
+        needs_update_notice = was_updated or bool(update_prefs.get_install_error())
+    except Exception:  # noqa: BLE001
+        needs_update_notice = was_updated
+    if needs_update_notice:
+        _announce_startup(app, was_updated=was_updated)
     start_minimized = is_autostart and autostart.get_start_minimized_setting()
     if client is None:
         client = make_client()

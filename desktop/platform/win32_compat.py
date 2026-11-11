@@ -68,6 +68,45 @@ def get_windows_version_info() -> dict[str, Any]:
     return info
 
 
+def create_named_mutex(name: str):
+    """Create (or open) a process-wide named mutex and return its handle.
+
+    Inno Setup's ``AppMutex`` directive waits for this exact name, so the
+    installer can close a running RÉSIVO before replacing its files.  The
+    handle is intentionally kept for the whole process lifetime; Windows
+    releases it on exit.
+    """
+    if sys.platform != "win32":
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.windll.kernel32
+        create = kernel32.CreateMutexW
+        create.argtypes = [ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR]
+        create.restype = wintypes.HANDLE
+        handle = create(None, False, str(name))
+        if handle:
+            return handle
+        _log.warning("Could not create the named application mutex")
+    except Exception as exc:  # pragma: no cover - exotic Windows runtimes
+        _log.warning("Could not create the named application mutex: %s", exc)
+    return None
+
+
+def release_named_mutex(handle: Any) -> None:
+    """Close a mutex handle returned by :func:`create_named_mutex`."""
+    if not handle or sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.kernel32.CloseHandle(handle)
+    except Exception as exc:  # pragma: no cover
+        _log.debug("CloseHandle failed: %s", exc)
+
+
 def get_dpi_info(app: Any = None) -> dict[str, Any]:
     """Read process DPI awareness and primary screen scale factor safely."""
     result: dict[str, Any] = {

@@ -285,9 +285,13 @@ def bring_pid_to_front(target_pid: int) -> bool:
 
 
 def acquire_single_instance(
-    lock_path: Path, is_autostart: bool
+    lock_path: Path, is_autostart: bool, wait_ms: int = 100
 ) -> tuple[QLockFile | None, int | None]:
     """Single-instance guard using QLockFile in a per-user location.
+
+    ``wait_ms`` is passed to ``QLockFile.tryLock``: update/restart launches use
+    a longer window so a still-exiting previous process cannot make the new
+    build bail out.
 
     Returns (lock_file, None) if lock is successfully acquired.
     If another instance is running:
@@ -302,7 +306,7 @@ def acquire_single_instance(
     lock = QLockFile(str(lock_path))
     lock.setStaleLockTime(30000)
 
-    if not lock.tryLock(100):
+    if not lock.tryLock(int(wait_ms)):
         # Already running!
         if is_autostart:
             _log.info(

@@ -20,6 +20,7 @@ from __future__ import annotations
 import importlib
 import inspect
 import logging
+from pathlib import Path
 import sys
 import time
 
@@ -60,6 +61,10 @@ except ImportError:
     from desktop.i18n import current_language, t, tn
 
 from desktop.auth.session_store import session_manager
+from desktop.updater import prefs as update_prefs
+from desktop.updater.installer import launch_installer
+from desktop.updater.service import UpdateService
+from desktop.updater.state import UpdateState
 
 from ..client import (
     DEFAULT_RESIDENCE_NAME,
@@ -542,6 +547,10 @@ class MainWindow(QMainWindow):
             )
 
         self.tasks = TaskRunner(self)
+        self.update_service = UpdateService(self.tasks, self)
+        self.update_service.available_changed.connect(self._on_update_available)
+        self._update_available = False
+        self._pending_update_path = None
         self._pending_shutdown_action: str | None = None
         self._signing_out = False
         self._sign_out_show_login = True
@@ -654,6 +663,9 @@ class MainWindow(QMainWindow):
         self.sync_worker.start()
         mark("workers_started")
         mark("main_window_init_end")
+
+        # Background update check: at most once every 24 h (persisted).
+        QTimer.singleShot(2500, self._auto_check_updates)
 
     # ------------------------------------------------------------------ shell
     def _build_sidebar(self) -> QWidget:
@@ -768,6 +780,20 @@ class MainWindow(QMainWindow):
         self.settings_btn.clicked.connect(self.on_settings_clicked)
         self.sidebar_footer_layout.addWidget(self.settings_btn)
 
+        # Updates badge (hidden until a newer release is found).
+        self.settings_update_badge = QLabel(t("updates.available_badge"))
+        self.settings_update_badge.setObjectName("settingsUpdateBadge")
+        self.settings_update_badge.setStyleSheet(
+            f"background-color: {C('teal-600')}; color: {C('text-on-dark')};"
+            f" border-radius: {C('radius-input')}; padding: 1px {C('pill-pad-x')};"
+            f" font-size: {C('fs-overline')}; font-weight: {C('fw-semibold')};"
+        )
+        self.settings_update_badge.setToolTip(t("updates.available_badge"))
+        self.settings_update_badge.setVisible(False)
+        self.sidebar_footer_layout.addWidget(
+            self.settings_update_badge, 0, Qt.AlignmentFlag.AlignLeft
+        )
+
         # Live-sync indicator: dot + text label (never colour alone).
         self.live_row_widget = QWidget()
         self.live_row = QHBoxLayout(self.live_row_widget)
@@ -811,6 +837,7 @@ class MainWindow(QMainWindow):
             self.settings_btn.setStyleSheet(
                 _ghost_on_navy_qss("settingsButton", centered=True)
             )
+            self.settings_update_badge.hide()
 
             self.live_label.hide()
             self.live_row.setAlignment(self.live_dot, Qt.AlignmentFlag.AlignCenter)
@@ -840,6 +867,7 @@ class MainWindow(QMainWindow):
             self.settings_btn.setStyleSheet(
                 _ghost_on_navy_qss("settingsButton", centered=False)
             )
+            self.settings_update_badge.setVisible(self._update_available)
 
             self.live_row.setAlignment(self.live_dot, Qt.AlignmentFlag.AlignVCenter)
             self.live_label.show()
@@ -1115,7 +1143,14 @@ class MainWindow(QMainWindow):
                 "StaffAccountsPage",
                 {"defer_initial_load": True, "current_uid": getattr(self, "_current_uid", None)},
             ),
-            "settings": ("SettingsPage", {"defer_initial_load": True, "role": self.role}),
+            "settings": (
+                "SettingsPage",
+                {
+                    "defer_initial_load": True,
+                    "role": self.role,
+                    "update_service": self.update_service,
+                },
+            ),
         }
         if slot_key not in factory_map:
             return self.overview_page
@@ -1163,6 +1198,13 @@ class MainWindow(QMainWindow):
                 widget.sign_out_requested.connect(self.on_sign_out_clicked)
             if hasattr(widget, "residence_settings_changed"):
                 widget.residence_settings_changed.connect(self._on_residence_settings_changed)
+            if hasattr(widget, "update_install_requested"):
+                widget.update_install_requested.connect(self._on_update_install_requested)
+            updates_section = getattr(widget, "updates_section", None)
+            if updates_section is not None:
+                updates_section.set_busy_checker(
+                    lambda: self._signing_out or bool(self._pending_shutdown_action)
+                )
             if hasattr(widget, "set_role") and self.role is not None:
                 widget.set_role(self.role)
 
@@ -1313,6 +1355,113 @@ class MainWindow(QMainWindow):
         else:
             self._set_live_state("offline")
 
+    # --------------------------------------------------------------- updates
+    def _auto_check_updates(self) -> None:
+        """Silent background check, throttled to once per day by preferences."""
+        if getattr(self, "_closing", False):
+            return
+        try:
+            if not update_prefs.should_auto_check():
+                return
+            if self.update_service.is_busy():
+                return
+            self.update_service.check(silent=True)
+        except Exception:  # noqa: BLE001 - never block startup on updates
+            _log.exception("Automatic update check could not start")
+
+    def _on_update_available(self, available: bool) -> None:
+        release = self.update_service.release
+        if available and release is not None and self.update_service.is_skipped(
+            release.version_str
+        ):
+            available = False
+        self._update_available = bool(available)
+        badge = getattr(self, "settings_update_badge", None)
+        if badge is not None:
+            badge.setVisible(self._update_available and not self._sidebar_minimized)
+        if not available or release is None:
+            return
+        if update_prefs.get_notified_version() == release.version_str:
+            return
+        try:
+            update_prefs.set_notified_version(release.version_str)
+        except Exception:  # noqa: BLE001 - notification is best effort
+            pass
+        components.show_toast(
+            self,
+            t("updates.available_toast", version=release.version_str),
+            kind="info",
+            icon="download",
+        )
+
+    def _on_update_install_requested(self, path) -> None:
+        expected = self.update_service.installer_path
+        if expected is None or Path(path) != Path(expected):
+            self.update_service.fail_install("")
+            return
+        if self.update_service.state is not UpdateState.READY:
+            self.update_service.fail_install("")
+            return
+        self._pending_update_path = Path(expected)
+        self.update_service.mark_installing()
+        self._shutdown_confirmed = True
+        self._begin_shutdown("update")
+
+    def _install_pending_update(self) -> None:
+        path = self._pending_update_path
+        if path is None:
+            return
+        self._stop_live_timer()
+        self._shutdown_workers(0)
+        timer = getattr(self, "_shutdown_timer", None)
+        if timer is not None:
+            timer.stop()
+        if getattr(self, "tray_icon", None) is not None:
+            self.tray_icon.hide()
+
+        # The installer relaunches RÉSIVO; the single-instance lock must be
+        # free before that child starts.
+        app = QGuiApplication.instance()
+        lock = getattr(app, "_instance_lock", None) if app is not None else None
+        if lock is not None:
+            try:
+                lock.unlock()
+            except Exception:  # noqa: BLE001 - best effort release
+                _log.warning("Could not release the single-instance lock")
+            app._instance_lock = None
+
+        try:
+            launch_installer(path)
+        except Exception as exc:  # noqa: BLE001 - keep the old install usable
+            _log.error("Could not launch the update installer: %s", exc.__class__.__name__)
+            message = human_error(exc)
+            try:
+                update_prefs.set_install_error(message)
+            except Exception:  # noqa: BLE001
+                pass
+            self._pending_update_path = None
+            self._shutdown_confirmed = False
+            self.update_service.fail_install(message)
+            components.show_toast(
+                self,
+                t("updates.error_installer"),
+                kind="error",
+                icon="alert-triangle",
+            )
+            return
+
+        _log.info("Update installer launched; closing for restart")
+        try:
+            update_prefs.set_install_error("")
+        except Exception:  # noqa: BLE001
+            pass
+        self._pending_update_path = None
+        self._closing = True
+        self.close()
+        if app is not None:
+            QTimer.singleShot(0, app.quit)
+
+    # ----------------------------------------------------------- updates end
     def _setup_tray_icon_deferred(self) -> None:
         if getattr(self, "_closing", False) or self.tray_icon is not None:
             return
@@ -1576,6 +1725,8 @@ class MainWindow(QMainWindow):
         elif action == "close":
             self._stop_live_timer()
             self.close()
+        elif action == "update":
+            self._install_pending_update()
 
     def _stop_live_timer(self) -> None:
         timer = getattr(self, "_live_timer", None)
@@ -1598,6 +1749,8 @@ class MainWindow(QMainWindow):
             self.settings_btn.setChecked(True)
         page = self._ensure_page("settings")
         self.stack.setCurrentWidget(page)
+        if hasattr(page, "on_shown"):
+            page.on_shown()
         if hasattr(page, "reload_residence"):
             page.reload_residence()
 
@@ -1719,6 +1872,11 @@ class MainWindow(QMainWindow):
         # A sign-out that is still waiting for workers must survive the close:
         # switch it to the no-login variant and keep the shutdown poll running.
         action = getattr(self, "_pending_shutdown_action", None)
+        if action == "update":
+            # The update owns the shutdown: ignore extra close requests until
+            # the verified installer has been launched (or failed).
+            event.ignore()
+            return
         if action in ("sign_out", "sign_out_close"):
             self._sign_out_show_login = False
             self._begin_shutdown("sign_out_close")
