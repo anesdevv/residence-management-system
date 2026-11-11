@@ -1,6 +1,6 @@
 ; RÉSIVO Desktop Console — Zero-Prerequisite Windows 10/11 64-bit Installer
 #define MyAppName "RÉSIVO"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.1.1"
 #define MyAppPublisher "Direction des Œuvres Universitaires · Cité Universitaire · Tlemcen"
 #define MyAppURL "https://github.com/anesdevv/residence-management-system"
 #define MyAppExeName "RESIVO.exe"

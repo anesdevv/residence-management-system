@@ -14,6 +14,6 @@
     </MappedFolder>
   </MappedFolders>
   <LogonCommand>
-    <Command>powershell.exe -NoExit -NoProfile -ExecutionPolicy Bypass -Command "Write-Host 'RÉSIVO Clean-PC Sandbox ready. Run preflight then install Setup-RESIVO-0.1.0.exe from Desktop\RESIVO-Release\installer\' -ForegroundColor Cyan"</Command>
+    <Command>powershell.exe -NoExit -NoProfile -ExecutionPolicy Bypass -Command "Write-Host 'RÉSIVO Clean-PC Sandbox ready. Run preflight then install Setup-RESIVO-0.1.1.exe from Desktop\RESIVO-Release\installer\' -ForegroundColor Cyan"</Command>
   </LogonCommand>
 </Configuration>
