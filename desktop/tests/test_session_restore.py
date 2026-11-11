@@ -401,6 +401,7 @@ def test_remember_setting_off(qapp, monkeypatch, test_session_manager):
     login_win.email.setText("staff@univ-tlemcen.dz")
     login_win.password.setText("SecretPass123!")
     login_win.attempt()
+    assert wait_until(qapp, lambda: not login_win._busy)
     qapp.processEvents()
 
     # Session file must NOT be created when remember is False

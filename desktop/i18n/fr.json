@@ -143,6 +143,7 @@
     "hide_password": "Masquer le mot de passe",
     "login_failed": "Échec de la connexion",
     "missing_credentials": "Veuillez saisir votre e-mail et votre mot de passe.",
+    "opening_console": "Ouverture de la console…",
     "password_label": "Mot de passe",
     "password_placeholder": "••••••••",
     "remember_session": "Rester connecté jusqu'au redémarrage de ce PC",

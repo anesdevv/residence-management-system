@@ -220,7 +220,7 @@ WHERE p.role = 'admin';
 | Step / Phase | Status | Summary |
 |---|---|---|
 | **Step 0 — Instrument & Profile** | Complete | Added debug-only `startup_debug.py` (`RESIVO_DEBUG_STARTUP=1`, `RESIVO_DEBUG_WINDOWS=1`). Measured BEFORE baseline on real Windows QPA (`3943.5 ms`–`7366.2 ms` max GUI heartbeat gap, `3645.0 ms`–`6309.7 ms` first paint, `152` unexpected ghost-window events from `PageHeader` and `InlineBanner`, double brand title, initial `"Live sync reconnecting"` text). Documented in `docs/startup-profile.md`. |
-| **Phase 1 — Responsive Sign-In** | Pending | — |
+| **Phase 1 — Responsive Sign-In** | Complete | Moved `sign_in`, `resolve_role`, DPAPI `save_current_session`, and module preload off the GUI thread via `QThreadPool`; added immediate `< 100 ms` busy UI (`Signing in...` / `Checking role...` / `Opening console...` + disabled controls + indeterminate `busy_bar`), double-submit guard, and cancelable idle DNS/TLS/HTTP-pool + module warm-up (`warm_connection`). Added `test_startup_responsive_login.py` + EN/FR `login.opening_console`. |
 | **Phase 2 — No Ghost Windows** | Pending | — |
 | **Phase 3 — Fast Main Window** | Pending | — |
 | **Phase 4 — Measure, Verify & Finalize** | Pending | — |

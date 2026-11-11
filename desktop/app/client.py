@@ -717,3 +717,52 @@ def has_gender_mismatch(
         return True
     return False
 
+
+
+def warm_connection(
+    client: Client | None,
+    *,
+    cancel_event: threading.Event | None = None,
+    timeout: float = 1.5,
+) -> None:
+    """Best-effort idle DNS/TLS/HTTP-pool warmup on the Supabase client.
+
+    Runs only safe unauthenticated read/HEAD pings, ignores all network or
+    configuration errors so offline startup never fails, and exits early if
+    *cancel_event* is set.
+    """
+    if client is None:
+        return
+    if cancel_event is not None and cancel_event.is_set():
+        return
+
+    try:
+        auth = getattr(client, "auth", None)
+        auth_http = getattr(auth, "_http_client", None)
+        auth_url = getattr(auth, "_url", None)
+        if (
+            auth_http is not None
+            and callable(getattr(auth_http, "get", None))
+            and isinstance(auth_url, str)
+            and auth_url.startswith(("http://", "https://"))
+        ):
+            auth_http.get(f"{auth_url.rstrip('/')}/health", timeout=timeout)
+    except Exception:
+        pass
+
+    if cancel_event is not None and cancel_event.is_set():
+        return
+
+    try:
+        pg = getattr(client, "postgrest", None)
+        pg_session = getattr(pg, "session", None)
+        pg_url = getattr(pg, "base_url", None)
+        pg_url_str = str(pg_url) if pg_url is not None else ""
+        if (
+            pg_session is not None
+            and callable(getattr(pg_session, "head", None))
+            and pg_url_str.startswith(("http://", "https://"))
+        ):
+            pg_session.head(f"{pg_url_str.rstrip('/')}/", timeout=timeout)
+    except Exception:
+        pass

@@ -528,6 +528,7 @@ def test_login_role_failure_keeps_window_and_offers_retry(qapp, monkeypatch):
 
     window = _login_setup(monkeypatch, fail)
     window.attempt()
+    assert wait_until(qapp, lambda: not window._busy)
 
     assert window.status.text() == login_mod._ROLE_ERROR_TEXT
     assert window.button.text() == "Retry role check"
@@ -539,6 +540,7 @@ def test_login_role_failure_keeps_window_and_offers_retry(qapp, monkeypatch):
     # Retrying after the connection recovers opens the console with the role.
     monkeypatch.setattr(login_mod, "resolve_role", lambda _client: "admin")
     window.attempt()
+    assert wait_until(qapp, lambda: not window._busy)
     assert len(_FakeMainWindow.instances) == 1
     assert _FakeMainWindow.instances[0].role == "admin"
     assert _FakeMainWindow.instances[0].shown is True
@@ -579,6 +581,7 @@ def _login_retry_env(monkeypatch):
     window.email.setText("old@test.local")
     window.password.setText("old-secret")
     window.attempt()
+    assert wait_until(_qapp, lambda: not window._busy)
     assert window._role_retry_pending is True
     assert not window.switch_account_btn.isHidden()
     return window, client, sign_ins, state
@@ -592,6 +595,7 @@ def test_login_retry_uses_edited_credentials(qapp, monkeypatch):
     window.email.setText("new@test.local")
     window.password.setText("new-secret")
     window.attempt()
+    assert wait_until(qapp, lambda: not window._busy)
 
     # Edited credentials are a new sign-in, not a role retry on the old session.
     assert sign_ins == [
@@ -624,6 +628,7 @@ def test_login_role_retry_offers_account_switch(qapp, monkeypatch):
     window.email.setText("other@test.local")
     window.password.setText("other-secret")
     window.attempt()
+    assert wait_until(qapp, lambda: not window._busy)
 
     assert sign_ins[-1] == ("other@test.local", "other-secret")
     assert len(_FakeMainWindow.instances) == 1
@@ -634,6 +639,7 @@ def test_login_role_retry_offers_account_switch(qapp, monkeypatch):
 def test_login_admin_role_is_passed_to_main_window(qapp, monkeypatch):
     window = _login_setup(monkeypatch, lambda _client: " Admin ")
     window.attempt()
+    assert wait_until(qapp, lambda: not window._busy)
 
     assert len(_FakeMainWindow.instances) == 1
     opened = _FakeMainWindow.instances[0]

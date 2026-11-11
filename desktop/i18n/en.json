@@ -143,6 +143,7 @@
     "hide_password": "Hide password",
     "login_failed": "Sign in failed",
     "missing_credentials": "Please enter both email and password.",
+    "opening_console": "Opening console...",
     "password_label": "Password",
     "password_placeholder": "••••••••",
     "remember_session": "Stay signed in until this PC restarts",

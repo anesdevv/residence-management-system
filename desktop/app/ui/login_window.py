@@ -16,16 +16,20 @@ Attributes kept for callers/tests: ``self.email``, ``self.password``,
 from __future__ import annotations
 
 import hashlib
+import importlib
 import logging
+import os
 from pathlib import Path
+import threading
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, QRunnable, Qt, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QProgressBar,
     QPushButton,
     QToolButton,
     QVBoxLayout,
@@ -50,8 +54,9 @@ from ..client import (
     remember_role,
     resolve_role,
     sign_in,
+    warm_connection,
 )
-from ..startup_debug import attach_first_paint_probe, mark, reset_timeline
+from ..startup_debug import attach_first_paint_probe, mark, reset_timeline, startup_debug_enabled
 from .components import BrandMark, Button, GradientHero, InlineBanner
 from .icons import get_icon
 from .resource import get_asset_path
@@ -60,6 +65,132 @@ from .theme import C, DESKTOP_STYLESHEET, S, apply_role
 
 # DESIGN.md §7 — hide the hero below this window width (form-only mode).
 _LOGIN_HERO_BREAKPOINT = 760
+
+
+def _dynamic_login_attr(name: str):
+    """Look up module-level auth helpers dynamically so tests monkeypatching
+    ``login_window.sign_in`` / ``resolve_role`` / ``remember_role`` work off-thread.
+    """
+    return globals()[name]
+
+
+class _LoginTaskBridge(QObject):
+    """Qt signal carrier delivering background login state onto the GUI thread."""
+
+    phase_changed = Signal(int, str)
+    auth_failed = Signal(int, str)
+    role_error = Signal(int, object)
+    access_denied = Signal(int)
+    succeeded = Signal(int, str)
+
+
+class _LoginWorker(QRunnable):
+    """Runs sign-in, role verification, DPAPI persistence and module preload off GUI."""
+
+    def __init__(
+        self,
+        bridge: _LoginTaskBridge,
+        generation: int,
+        *,
+        client,
+        email: str,
+        password: str,
+        credentials: tuple[str, str],
+        retrying_role: bool,
+        need_sign_out_old: bool,
+        remember: bool,
+        session_manager,
+        package_name: str | None,
+    ):
+        super().__init__()
+        self.bridge = bridge
+        self.generation = generation
+        self.client = client
+        self.email = email
+        self.password = password
+        self.credentials = credentials
+        self.retrying_role = retrying_role
+        self.need_sign_out_old = need_sign_out_old
+        self.remember = remember
+        self.session_manager = session_manager
+        self.package_name = package_name
+
+    def run(self) -> None:
+        log = logging.getLogger("resivo.login")
+        sign_in_fn = _dynamic_login_attr("sign_in")
+        resolve_role_fn = _dynamic_login_attr("resolve_role")
+        remember_role_fn = _dynamic_login_attr("remember_role")
+        forget_role_fn = _dynamic_login_attr("forget_role")
+
+        try:
+            if self.need_sign_out_old:
+                try:
+                    self.client.auth.sign_out()
+                except Exception as exc:
+                    log.warning("Could not sign out previous unverified session: %s", exc)
+                forget_role_fn(self.client)
+
+            if not self.retrying_role:
+                mark("auth_start")
+                try:
+                    sign_in_fn(self.client, self.email, self.password)
+                except Exception as exc:
+                    mark("auth_end")
+                    self.bridge.auth_failed.emit(self.generation, human_error(exc))
+                    return
+                mark("auth_end")
+                self.bridge.phase_changed.emit(self.generation, "checking_role")
+
+            mark("role_check_start")
+            try:
+                resolved = resolve_role_fn(self.client)
+            except RoleLookupError as exc:
+                mark("role_check_end")
+                log.warning("Role verification failed during login: %s", exc)
+                self.bridge.role_error.emit(self.generation, self.credentials)
+                return
+            except Exception as exc:
+                mark("role_check_end")
+                log.warning("Unexpected role lookup error during login: %s", exc)
+                self.bridge.role_error.emit(self.generation, self.credentials)
+                return
+            mark("role_check_end")
+
+            role = (resolved or "").strip().lower()
+            if role not in ("staff", "admin"):
+                try:
+                    self.client.auth.sign_out()
+                except Exception as exc:
+                    log.warning("Could not sign out unauthorized account: %s", exc)
+                forget_role_fn(self.client)
+                if self.session_manager is not None:
+                    try:
+                        self.session_manager.clear()
+                    except Exception:
+                        pass
+                self.bridge.access_denied.emit(self.generation)
+                return
+
+            remember_role_fn(self.client, role)
+            if self.session_manager is not None:
+                try:
+                    self.session_manager.save_current_session(self.client, remember=self.remember)
+                except Exception as exc:
+                    log.warning("Failed to save session securely: %s", exc)
+            mark("session_save_end")
+
+            self.bridge.phase_changed.emit(self.generation, "opening_console")
+            try:
+                if self.package_name:
+                    importlib.import_module(".main_window", package=self.package_name)
+                else:
+                    importlib.import_module("app.ui.main_window")
+            except Exception as exc:
+                log.debug("Background MainWindow preload skipped: %s", exc)
+            self.bridge.succeeded.emit(self.generation, role)
+        except Exception as exc:
+            log.exception("Unhandled error in login worker")
+            self.bridge.auth_failed.emit(self.generation, human_error(exc))
 _FORM_MAX_WIDTH = 420
 _SIGN_IN_TEXT = "Sign in"
 _ROLE_ERROR_TEXT = "Could not verify your role. Check your connection or configuration."
@@ -142,6 +273,18 @@ class LoginWindow(QWidget):
         self.resize(940, 580)
         self.setStyleSheet(DESKTOP_STYLESHEET)
         self.client = client if client is not None else make_client()
+        self._busy = False
+        self._busy_phase = "sign_in"
+        self._auth_generation = 0
+        self._auth_bridge = _LoginTaskBridge(self)
+        self._auth_bridge.phase_changed.connect(self._on_worker_phase)
+        self._auth_bridge.auth_failed.connect(self._on_worker_auth_failed)
+        self._auth_bridge.role_error.connect(self._on_worker_role_error)
+        self._auth_bridge.access_denied.connect(self._on_worker_access_denied)
+        self._auth_bridge.succeeded.connect(self._on_worker_succeeded)
+        self._warmup_cancel = threading.Event()
+        self._warmup_started = False
+        self._warmup_thread: threading.Thread | None = None
         self.session_manager = session_manager or default_session_manager
         self._start_minimized = bool(start_minimized)
         self._role_retry_pending = False
@@ -236,6 +379,7 @@ class LoginWindow(QWidget):
         self.email = QLineEdit()
         self.email.setPlaceholderText(t("login.email_placeholder"))
         self.email.setMinimumHeight(S("size-control"))
+        self.email.returnPressed.connect(self._on_email_return_pressed)
         col.addWidget(self.email_label)
         col.addWidget(self.email)
 
@@ -267,6 +411,14 @@ class LoginWindow(QWidget):
         self.button.setMinimumHeight(S("size-control"))
         self.button.clicked.connect(self.attempt)
         col.addWidget(self.button)
+
+        self.busy_bar = QProgressBar(self)
+        self.busy_bar.setObjectName("loginBusyBar")
+        self.busy_bar.setRange(0, 0)
+        self.busy_bar.setTextVisible(False)
+        self.busy_bar.setFixedHeight(4)
+        self.busy_bar.setVisible(False)
+        col.addWidget(self.busy_bar)
 
         # Only offered when the role check failed (the session exists but its
         # role could not be verified): sign out and enter another account.
@@ -323,7 +475,14 @@ class LoginWindow(QWidget):
         if hasattr(self, "remember_checkbox"):
             self.remember_checkbox.setText(t("login.remember_session"))
         if hasattr(self, "button"):
-            if self._role_retry_pending:
+            if self._busy:
+                phase_keys = {
+                    "signing_in": "login.signing_in",
+                    "checking_role": "login.checking_role",
+                    "opening_console": "login.opening_console",
+                }
+                self.button.setText(t(phase_keys.get(self._busy_phase, "login.signing_in")))
+            elif self._role_retry_pending:
                 self.button.setText(t("login.retry_role_check"))
             elif not self.button.isEnabled():
                 self.button.setText(t("login.checking_role"))
@@ -347,6 +506,15 @@ class LoginWindow(QWidget):
         super().showEvent(event)
         if hasattr(self, "password") and hasattr(self.password, "set_visible"):
             self.password.set_visible(False)
+        self._schedule_idle_warmup()
+
+    def _on_email_return_pressed(self):
+        if self._busy:
+            return
+        if self.password.text():
+            self.attempt()
+        else:
+            self.password.setFocus()
 
     def resizeEvent(self, event):  # noqa: N802 - Qt API
         super().resizeEvent(event)
@@ -363,49 +531,62 @@ class LoginWindow(QWidget):
         self._show_error(message)
 
     def attempt(self):
+        if self._busy:
+            return
+
         email_txt = self.email.text().strip()
         pwd_txt = self.password.text()
         credentials = _credential_key(email_txt, pwd_txt)
 
+        retrying_role = False
+        need_sign_out_old = False
         if self._role_retry_pending:
             if not pwd_txt and self._pending_credentials and email_txt.lower() == self._pending_credentials[0]:
-                self._verify_role()
-                return
-            if credentials == self._pending_credentials:
-                self._verify_role()
-                return
-            # The credentials were edited after the role check failed: this is
-            # a new sign-in for another account, not a retry of the old session.
-            self._leave_failed_session()
-            self.error_banner.setVisible(False)
+                retrying_role = True
+                credentials = self._pending_credentials
+            elif credentials == self._pending_credentials:
+                retrying_role = True
+            else:
+                # The credentials were edited after the role check failed: this is
+                # a new sign-in for another account, not a retry of the old session.
+                need_sign_out_old = True
+                self._role_retry_pending = False
+                self._pending_credentials = None
 
-        if not email_txt or not pwd_txt:
+        if not retrying_role and (not email_txt or not pwd_txt):
             self._show_error(t("login.missing_credentials"))
             return
 
+        self._warmup_cancel.set()
         self.switch_account_btn.setVisible(False)
-        self.button.setText(t("login.signing_in"))
-        self.button.setEnabled(False)
+        self.error_banner.setVisible(False)
 
         reset_timeline("sign_in")
         mark("sign_in_click")
-        mark("auth_start")
-        try:
-            sign_in(self.client, email_txt, pwd_txt)
-        except Exception as exc:  # noqa: BLE001 - authentication failure only
-            mark("auth_failed")
-            # Never show a traceback: one concise line for the banner.
-            self._show_error(f"{t('login.login_failed')}: {human_error(exc)}")
-            self.button.setText(t("login.sign_in"))
-            self.button.setEnabled(True)
-            return
-        finally:
-            self.password.clear()
 
-        mark("auth_end")
-        self._pending_credentials = credentials
-        self._role_retry_pending = False
-        self._verify_role()
+        initial_phase = "checking_role" if retrying_role else "signing_in"
+        initial_text = t("login.checking_role") if retrying_role else t("login.signing_in")
+        self._set_busy(True, phase=initial_phase, button_text=initial_text)
+        mark("busy_ui_set")
+        if startup_debug_enabled():
+            QTimer.singleShot(0, lambda: mark("busy_ui_event_loop_tick"))
+
+        remember = self.remember_checkbox.isChecked() if hasattr(self, "remember_checkbox") else True
+        self._auth_generation += 1
+        worker = _LoginWorker(
+            self._auth_bridge,
+            self._auth_generation,
+            client=self.client,
+            email=email_txt,
+            password=pwd_txt,
+            credentials=credentials,
+            retrying_role=retrying_role,
+            need_sign_out_old=need_sign_out_old,
+            remember=remember,
+            session_manager=self.session_manager,
+            package_name=__package__,
+        )
+        QThreadPool.globalInstance().start(worker)
 
     def _leave_failed_session(self):
         """Drop the unverified session before signing in with new credentials."""
@@ -441,70 +622,160 @@ class LoginWindow(QWidget):
         self.email.selectAll()
 
     def _verify_role(self):
-        """Resolve/cache the role, then open the console for staff and admins."""
-        self.button.setText(t("login.checking_role"))
-        self.button.setEnabled(False)
-
-        mark("role_check_start")
-        try:
-            resolved = resolve_role(self.client)
-        except RoleLookupError as exc:
-            mark("role_check_failed")
-            _log.warning("Role verification failed after sign-in: %s", exc)
-            self._show_role_error()
+        """Trigger async role verification on the current session (compat helper)."""
+        if self._busy:
             return
-        except Exception as exc:  # noqa: BLE001 - any lookup problem is retryable
-            mark("role_check_failed")
-            _log.warning("Role verification failed after sign-in: %s", human_error(exc))
-            self._show_role_error()
-            return
-
-        mark("role_check_end")
-        role = str(resolved).strip().lower() if resolved is not None else ""
-        if role not in ("staff", "admin"):
-            self._role_retry_pending = False
-            self._pending_credentials = None
-            self.switch_account_btn.setVisible(False)
-            try:
-                forget_role(self.client)
-            except Exception:
-                pass
-            try:
-                self.client.auth.sign_out()
-            except Exception:
-                pass
-            try:
-                self.session_manager.clear()
-            except Exception:
-                pass
-            self._show_error(t("login.access_denied"))
-            self.button.setText(t("login.sign_in"))
-            self.button.setEnabled(True)
-            return
-
-        remember_role(self.client, role)
+        self._set_busy(True, phase="checking_role", button_text=t("login.checking_role"))
         remember = self.remember_checkbox.isChecked() if hasattr(self, "remember_checkbox") else True
-        try:
-            self.session_manager.save_current_session(self.client, remember=remember)
-        except Exception as exc:
-            _log.warning("Could not persist session: %s", exc)
-        mark("session_save_end")
+        creds = self._pending_credentials or _credential_key(self.email.text().strip(), "")
+        self._auth_generation += 1
+        worker = _LoginWorker(
+            self._auth_bridge,
+            self._auth_generation,
+            client=self.client,
+            email=self.email.text().strip(),
+            password="",
+            credentials=creds,
+            retrying_role=True,
+            need_sign_out_old=False,
+            remember=remember,
+            session_manager=self.session_manager,
+            package_name=__package__,
+        )
+        QThreadPool.globalInstance().start(worker)
 
+    def _on_worker_phase(self, generation: int, phase: str) -> None:
+        if generation != self._auth_generation:
+            return
+        self._busy_phase = phase
+        key_map = {
+            "signing_in": "login.signing_in",
+            "checking_role": "login.checking_role",
+            "opening_console": "login.opening_console",
+        }
+        self.button.setText(t(key_map.get(phase, "login.signing_in")))
+
+    def _on_worker_auth_failed(self, generation: int, message: str) -> None:
+        if generation != self._auth_generation:
+            return
+        self._set_busy(False)
+        self.password.clear()
+        self._show_error(f"{t('login.login_failed')}: {message}")
+        self.button.setText(t("login.sign_in"))
+
+    def _on_worker_role_error(self, generation: int, credentials) -> None:
+        if generation != self._auth_generation:
+            return
+        self._pending_credentials = credentials
+        self._set_busy(False)
+        self.password.clear()
+        self._show_role_error()
+
+    def _on_worker_access_denied(self, generation: int) -> None:
+        if generation != self._auth_generation:
+            return
+        self._role_retry_pending = False
+        self._pending_credentials = None
+        self._set_busy(False)
+        self._show_error(t("login.access_denied"))
+        self.button.setText(t("login.sign_in"))
+        self.password.clear()
+
+    def _on_worker_succeeded(self, generation: int, role: str) -> None:
+        if generation != self._auth_generation:
+            return
         self._role_retry_pending = False
         self._pending_credentials = None
         self.switch_account_btn.setVisible(False)
         if hasattr(self, "password") and hasattr(self.password, "set_visible"):
             self.password.set_visible(False)
-        from .main_window import MainWindow
+        self.password.clear()
+        self._open_main_window(role)
 
-        self.window = MainWindow(self.client, role=role)
+    def _open_main_window(self, role: str) -> None:
+        mark("main_window_init_start")
+        try:
+            from .main_window import MainWindow
+
+            win = MainWindow(self.client, role=role)
+        except Exception as exc:
+            self._set_busy(False)
+            self._show_error(human_error(exc))
+            return
+        self.window = win
         attach_first_paint_probe(self.window)
         if getattr(self, "_start_minimized", False):
             self.window.showMinimized()
         else:
             self.window.show()
+            if hasattr(self.window, "raise_"):
+                self.window.raise_()
+            if hasattr(self.window, "activateWindow"):
+                self.window.activateWindow()
         mark("main_window_shown")
+        self._warmup_cancel.set()
+        self._auth_generation += 1
+        self._busy = False
         self.close()
+
+    def _set_busy(self, busy: bool, *, phase: str | None = None, button_text: str | None = None) -> None:
+        self._busy = busy
+        if phase is not None:
+            self._busy_phase = phase
+        self.email.setEnabled(not busy)
+        self.password.setEnabled(not busy)
+        if hasattr(self, "toggle_password_btn"):
+            self.toggle_password_btn.setEnabled(not busy)
+        if hasattr(self, "remember_checkbox"):
+            self.remember_checkbox.setEnabled(not busy)
+        if hasattr(self, "lang_btn"):
+            self.lang_btn.setEnabled(not busy)
+        self.button.setEnabled(not busy)
+        if hasattr(self, "busy_bar"):
+            self.busy_bar.setVisible(busy)
+        if button_text is not None:
+            self.button.setText(button_text)
+
+    def _schedule_idle_warmup(self) -> None:
+        if not self._warmup_started and not self._warmup_cancel.is_set():
+            QTimer.singleShot(150, self._start_idle_warmup)
+
+    def _start_idle_warmup(self) -> None:
+        if self._warmup_started or self._warmup_cancel.is_set() or self._busy:
+            return
+        self._warmup_started = True
+        cancel = self._warmup_cancel
+        client = self.client
+        pkg = __package__
+        warm_net = (
+            os.environ.get("QT_QPA_PLATFORM", "") != "offscreen"
+            and "PYTEST_CURRENT_TEST" not in os.environ
+            and os.environ.get("RESIVO_SKIP_NETWORK_WARMUP", "") != "1"
+        )
+
+        def _worker():
+            try:
+                if cancel.is_set():
+                    return
+                if pkg:
+                    importlib.import_module(".main_window", package=pkg)
+                    if cancel.is_set():
+                        return
+                    importlib.import_module(".pages.overview", package=pkg)
+                if warm_net and not cancel.is_set():
+                    warm_connection(client, cancel_event=cancel)
+            except Exception:
+                pass
+
+        t_worker = threading.Thread(target=_worker, name="resivo-login-warmup", daemon=True)
+        self._warmup_thread = t_worker
+        t_worker.start()
+
+    def closeEvent(self, event):  # noqa: N802 - Qt API
+        self._warmup_cancel.set()
+        self._auth_generation += 1
+        self._busy = False
+        super().closeEvent(event)
 
     def _show_role_error(self):
         # Keep the window open and let the same button retry the check.  The
