@@ -18,7 +18,9 @@ interface Props {
 }
 
 const { title, activeNav } = Astro.props;
-const email = Astro.locals.user?.email ?? '';
+const rawEmail = Astro.locals.user?.email ?? '';
+const isSyntheticAuth = rawEmail.toLowerCase().endsWith('@students.residence.local');
+const displayIdentity = isSyntheticAuth ? rawEmail.split('@')[0] : rawEmail;
 const locale: SupportedLocale = Astro.locals.locale || 'en';
 
 const pathname = Astro.url.pathname;
@@ -102,13 +104,13 @@ const navItems = [
           <span class="text-small font-semibold text-ink-2">Cité Universitaire Tlemcen</span>
           <span class="text-small font-normal text-muted">Direction des Œuvres Universitaires (DOU)</span>
         </span>
-        <span class="hidden max-w-[12rem] truncate text-small font-normal text-muted 2xl:block">{email}</span>
+        <span class="hidden max-w-[12rem] truncate text-small font-normal text-muted 2xl:block">{displayIdentity}</span>
         <a
           href={localizePath(locale, '/dashboard/profile')}
           class="shrink-0 rounded-input p-0.5"
-          aria-label={`Signed in as ${email || 'resident'} — open profile`}
+          aria-label={`Signed in as ${displayIdentity || 'resident'} — open profile`}
         >
-          <Avatar name={email || 'Resident'} size={40} />
+          <Avatar name={displayIdentity || 'Resident'} size={40} />
         </a>
         <a href="/logout" class="btn btn-secondary shrink-0" aria-label={t(locale, 'nav.sign_out')}>
           <Icon name="log-out" size={16} />

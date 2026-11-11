@@ -38,22 +38,22 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
 
 <Layout title={locale === 'fr' ? 'Profil Résident — RÉSIVO' : 'Resident Profile — RÉSIVO'} activeNav="profile">
   <PageHeader
-    title="Resident profile & credentials"
-    overline="Cité Universitaire Tlemcen"
-    subtitle="Review your official academic enrollment details and keep your contact info up to date."
+    title={t(locale, 'profile.title')}
+    overline={t(locale, 'profile.overline')}
+    subtitle={t(locale, 'profile.subtitle')}
   >
     <Fragment slot="actions">
       <a href={localizePath(locale, '/dashboard')} class="btn btn-secondary">
         <Icon name="arrow-left" size={16} />
-        <span>Back to dashboard</span>
+        <span>{t(locale, 'room_change.back_to_dashboard')}</span>
       </a>
     </Fragment>
   </PageHeader>
 
   <!-- Feedback Alerts -->
   {updated && (
-    <InlineBanner kind="success" title={t(locale, 'profile.phone_updated')} class="mb-6">
-      {t(locale, 'profile.phone_updated')}
+    <InlineBanner kind="success" title={t(locale, 'common.success')} class="mb-6">
+      {t(locale, 'profile.contact_updated')}
     </InlineBanner>
   )}
 
@@ -64,7 +64,7 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
   )}
 
   {error && (
-    <InlineBanner kind="error" title="Update failed" class="mb-6">
+    <InlineBanner kind="error" title={t(locale, 'common.error')} class="mb-6">
       {error}
     </InlineBanner>
   )}
@@ -122,7 +122,7 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
           </div>
         </header>
 
-        <form method="POST" action="/api/profile" class="flex flex-col gap-4">
+        <form method="POST" action="/api/profile" id="profile-contact-form" data-locale={locale} class="flex flex-col gap-4">
           <div class="flex flex-col gap-2">
             <label class="label" for="phone">
               {t(locale, 'fields.phone')} <span class="text-danger" aria-hidden="true">*</span>
@@ -141,34 +141,48 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
           </div>
 
           <div class="flex flex-col gap-2">
-            <div class="flex items-center justify-between">
-              <label class="label" for="email">
-                {t(locale, 'profile.contact_email_label')}
-              </label>
-              <span class="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 rounded px-2 py-0.5">
-                <Icon name="check-circle" size={12} />
-                <span>{t(locale, 'profile.verified_email_pill')}</span>
-              </span>
-            </div>
+            <label class="label" for="email">
+              {t(locale, 'profile.contact_email_label')} <span class="text-danger" aria-hidden="true">*</span>
+            </label>
             <input
-              class="input bg-subtle text-ink-2 cursor-not-allowed"
+              class="input"
               type="email"
               name="email"
               id="email"
-              readonly
+              required
+              autocomplete="email"
+              inputmode="email"
+              maxlength="254"
               value={s?.email ?? ''}
-              placeholder="e.g. resident@univ-tlemcen.dz"
+              placeholder="student@univ-tlemcen.dz"
             />
-            <div class="flex items-center justify-between pt-1">
-              <p class="field-hint">Housing allocations and maintenance updates are delivered here.</p>
-              <a href="/account/add-email" class="link text-small font-medium shrink-0 ml-2">Change email →</a>
-            </div>
+            <p class="field-hint">{t(locale, 'auth.email_hint')}</p>
           </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="label" for="confirm_email">
+              {t(locale, 'fields.confirm_contact_email')} <span class="text-danger" aria-hidden="true">*</span>
+            </label>
+            <input
+              class="input"
+              type="email"
+              name="confirm_email"
+              id="confirm_email"
+              required
+              autocomplete="email"
+              inputmode="email"
+              maxlength="254"
+              value={s?.email ?? ''}
+              placeholder="student@univ-tlemcen.dz"
+            />
+          </div>
+
+          <p id="email-match-error" class="field-error hidden" role="alert"></p>
 
           <div class="pt-2">
             <button class="btn btn-primary w-full min-h-[44px]" type="submit">
               <Icon name="check-circle" size={18} />
-              <span>{t(locale, 'profile.save_phone_btn')}</span>
+              <span>{t(locale, 'profile.save_contact_btn')}</span>
             </button>
           </div>
         </form>
@@ -183,11 +197,26 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
           <div class="flex flex-col gap-1">
             <h2 class="card-title">Account security</h2>
             <p class="text-small font-normal text-muted">
-              Your account is authenticated via your matriculation card ID or verified email. If you suspect unauthorized access, contact the Cité Universitaire IT desk immediately.
+              {t(locale, 'profile.security_desc')}
             </p>
           </div>
         </div>
       </section>
     </div>
   </div>
+
+  <script>
+    import { attachEmailConfirmValidation } from '../../lib/email-form-client';
+    import type { SupportedLocale } from '../../lib/i18n';
+
+    const form = document.getElementById('profile-contact-form') as HTMLFormElement | null;
+    const emailInput = document.getElementById('email') as HTMLInputElement | null;
+    const confirmInput = document.getElementById('confirm_email') as HTMLInputElement | null;
+    const errorEl = document.getElementById('email-match-error');
+    const locale = ((form?.getAttribute('data-locale') || 'en') as SupportedLocale);
+
+    if (form && emailInput && confirmInput) {
+      attachEmailConfirmValidation({ form, emailInput, confirmInput, errorEl, locale });
+    }
+  </script>
 </Layout>

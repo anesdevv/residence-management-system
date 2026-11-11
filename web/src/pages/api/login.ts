@@ -1,15 +1,22 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { createSupabaseServerClient, cardIdToEmail } from '../../lib/supabase';
+import { isCardId } from '../../lib/validation';
+import { checkUserNeedsContactEmail } from '../../lib/email-gate';
+import { localizePath, resolveRequestLocale, t } from '../../lib/i18n';
 import { TIMEOUT_MESSAGES } from '../../lib/timeouts';
 
 export const POST: APIRoute = async (context) => {
+  const locale = resolveRequestLocale(context.locals?.locale, context.request.headers.get('referer'));
+  const loginPath = localizePath(locale, '/login');
+  const invalidCredsMsg = t(locale, 'errors.invalid_credentials');
+
   const form = await context.request.formData();
-  const identifier = String(form.get('identifier') ?? form.get('card_id') ?? '').trim();
+  const cardId = String(form.get('card_id') ?? form.get('identifier') ?? '').trim();
   const password = String(form.get('password') ?? '');
 
-  if (!identifier || !password) {
-    return context.redirect(`/login?error=${encodeURIComponent('Please enter your card ID or email and password.')}`);
+  if (!cardId || !password || !isCardId(cardId)) {
+    return context.redirect(`${loginPath}?error=${encodeURIComponent(invalidCredsMsg)}`);
   }
 
   const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
@@ -18,9 +25,11 @@ export const POST: APIRoute = async (context) => {
   try {
     const supabase = createSupabaseServerClient(context.request, context.cookies);
     let sessionResult: any = null;
-    let needsRealEmail = false;
+    let signedInUserId = '';
+    let needsEmail: boolean | null = null;
 
-    // Fast-path: Invoke student-login Edge Function for server-side identifier resolution
+    // Primary path (Case B): student-login resolves Card ID -> auth.users.email
+    // (works for both legacy synthetic accounts and existing real-email auth accounts).
     try {
       const edgeRes = await fetch(`${supabaseUrl}/functions/v1/student-login`, {
         method: 'POST',
@@ -28,51 +37,34 @@ export const POST: APIRoute = async (context) => {
           'Content-Type': 'application/json',
           'apikey': anonKey,
         },
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify({ card_id: cardId, password }),
       });
 
       const data = await edgeRes.json().catch(() => ({}));
 
       if (!edgeRes.ok) {
-        if (edgeRes.status === 403 && data.error === 'email_not_verified') {
-          if (data.email) {
-            context.cookies.set('resivo_pending_email', data.email, {
-              path: '/',
-              httpOnly: false,
-              sameSite: 'lax',
-              maxAge: 3600,
-            });
-          }
-          return context.redirect('/verify-email?unverified=1');
-        }
-
-        const errMsg = data.message || 'Invalid card ID/email or password.';
-        return context.redirect(`/login?error=${encodeURIComponent(errMsg)}`);
+        const errMsg = edgeRes.status === 429 && data.message ? data.message : invalidCredsMsg;
+        return context.redirect(`${loginPath}?error=${encodeURIComponent(errMsg)}`);
       }
 
       sessionResult = data.session;
-      needsRealEmail = Boolean(data.needs_real_email);
+      signedInUserId = data.user?.id ?? '';
+      if (typeof data.needs_email === 'boolean') {
+        needsEmail = data.needs_email;
+      }
     } catch {
-      // Fallback path: Direct signInWithPassword if edge function is offline/unreachable in local mock
-      const targetEmail = identifier.includes('@') ? identifier.toLowerCase() : cardIdToEmail(identifier);
+      // Fallback path if Edge Function is offline in local development
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: targetEmail,
+        email: cardIdToEmail(cardId),
         password,
       });
 
-      if (error) {
-        const msg = error.message.toLowerCase();
-        if (msg.includes('email not confirmed')) {
-          if (identifier.includes('@')) {
-            context.cookies.set('resivo_pending_email', identifier.toLowerCase(), { path: '/', maxAge: 3600 });
-          }
-          return context.redirect('/verify-email?unverified=1');
-        }
-        return context.redirect(`/login?error=${encodeURIComponent('Invalid card ID/email or password.')}`);
+      if (error || !data.session) {
+        return context.redirect(`${loginPath}?error=${encodeURIComponent(invalidCredsMsg)}`);
       }
 
       sessionResult = data.session;
-      needsRealEmail = (data.user?.email ?? '').endsWith('@students.residence.local');
+      signedInUserId = data.user?.id ?? '';
     }
 
     if (sessionResult) {
@@ -82,13 +74,18 @@ export const POST: APIRoute = async (context) => {
       });
     }
 
-    if (needsRealEmail) {
-      return context.redirect('/account/add-email');
+    const shouldRedirectToAddEmail =
+      needsEmail !== null
+        ? needsEmail
+        : await checkUserNeedsContactEmail(supabase, signedInUserId);
+
+    if (shouldRedirectToAddEmail) {
+      return context.redirect(localizePath(locale, '/account/add-email'));
     }
 
-    return context.redirect('/dashboard');
+    return context.redirect(localizePath(locale, '/dashboard'));
   } catch (err: any) {
     const message = err?.message || TIMEOUT_MESSAGES.READ;
-    return context.redirect(`/login?error=${encodeURIComponent(message)}`);
+    return context.redirect(`${loginPath}?error=${encodeURIComponent(message)}`);
   }
 };

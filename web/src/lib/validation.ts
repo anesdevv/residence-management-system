@@ -1,4 +1,7 @@
 // web/src/lib/validation.ts
+import { t, type SupportedLocale } from './i18n';
+
+export const MAX_EMAIL_LENGTH = 254;
 
 export interface RegistrationInput {
   card_id: string;
@@ -16,33 +19,118 @@ export interface RegistrationInput {
   confirm_password?: string;
 }
 
+export type EmailErrorCode =
+  | 'email_required'
+  | 'email_invalid'
+  | 'email_mismatch'
+  | 'email_in_use';
+
+export type EmailValidationResult =
+  | { ok: true; email: string }
+  | { ok: false; code: EmailErrorCode; message: string };
+
 const STUDY_LEVELS = ['L1', 'L2', 'L3', 'M1', 'M2', 'Doctorat'];
 
 export function isCardId(identifier: string): boolean {
   return /^\d{4,}$/.test(identifier.trim());
 }
 
-export function isEmail(identifier: string): boolean {
-  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(identifier.trim());
-}
-
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-export function maskEmail(email: string): string {
-  if (!email || !email.includes('@')) return '***@***.***';
-  const [local, domain] = email.split('@');
-  if (local.length <= 2) {
-    return `${local[0]}***@${domain}`;
+export function isEmail(identifier: string): boolean {
+  const clean = normalizeEmail(identifier);
+  if (!clean || clean.length > MAX_EMAIL_LENGTH) return false;
+  if (/\s/.test(clean) || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(clean)) return false;
+  const domain = clean.split('@')[1] ?? '';
+  if (!domain || domain.includes('..') || domain.startsWith('.') || domain.endsWith('.')) {
+    return false;
   }
-  return `${local[0]}***${local[local.length - 1]}@${domain}`;
+  return true;
+}
+
+export function validateContactEmailPair(
+  email: string,
+  confirmEmail?: string,
+  locale: SupportedLocale = 'en',
+): EmailValidationResult {
+  const normalized = normalizeEmail(email ?? '');
+  if (!normalized) {
+    return {
+      ok: false,
+      code: 'email_required',
+      message: t(locale, 'errors.email_required'),
+    };
+  }
+  if (!isEmail(normalized) || normalized.endsWith('@students.residence.local')) {
+    return {
+      ok: false,
+      code: 'email_invalid',
+      message: t(locale, 'errors.email_invalid'),
+    };
+  }
+  if (confirmEmail !== undefined && normalized !== normalizeEmail(confirmEmail ?? '')) {
+    return {
+      ok: false,
+      code: 'email_mismatch',
+      message: t(locale, 'errors.email_mismatch'),
+    };
+  }
+  return { ok: true, email: normalized };
+}
+
+export function mapEmailErrorCode(
+  codeOrMessage: string,
+  locale: SupportedLocale = 'en',
+): string {
+  const raw = (codeOrMessage ?? '').trim();
+  const lower = raw.toLowerCase();
+
+  if (
+    lower === 'email_in_use' ||
+    lower.includes('email_in_use:') ||
+    lower.includes('idx_students_unique_lower_email') ||
+    lower.includes('already registered') ||
+    lower.includes('already exists') ||
+    lower.includes('23505')
+  ) {
+    return t(locale, 'errors.email_in_use');
+  }
+  if (lower === 'email_mismatch' || lower.includes('email_mismatch:') || lower.includes('do not match')) {
+    return t(locale, 'errors.email_mismatch');
+  }
+  if (lower === 'email_required' || lower.includes('email_required:')) {
+    return t(locale, 'errors.email_required');
+  }
+  if (lower === 'email_invalid' || lower.includes('email_invalid:') || lower.includes('invalid email')) {
+    return t(locale, 'errors.email_invalid');
+  }
+
+  return raw || t(locale, 'errors.generic');
 }
 
 export function validatePassword(password: string): string[] {
   const errors: string[] = [];
   if (password.length < 8) {
     errors.push('Password must be at least 8 characters.');
+  }
+  return errors;
+}
+
+export function validateContactUpdate(
+  phone: string,
+  email: string,
+  confirmEmail?: string,
+  locale: SupportedLocale = 'en',
+): string[] {
+  const errors: string[] = [];
+  if (!/^[0-9+\s]{6,}$/.test((phone ?? '').trim())) {
+    errors.push(t(locale, 'errors.invalid_phone'));
+  }
+  const emailRes = validateContactEmailPair(email, confirmEmail, locale);
+  if (!emailRes.ok) {
+    errors.push(emailRes.message);
   }
   return errors;
 }
@@ -70,21 +158,9 @@ export function validateRegistration(d: RegistrationInput): string[] {
   }
   if (!/^[0-9+\s]{6,}$/.test(d.phone)) errors.push('Phone number is invalid.');
 
-  // Email is strictly required and must be a real address
-  const cleanEmail = (d.email ?? '').trim();
-  if (!cleanEmail) {
-    errors.push('Email address is required.');
-  } else if (!isEmail(cleanEmail)) {
-    errors.push('Email is invalid.');
-  } else if (cleanEmail.toLowerCase().endsWith('@students.residence.local')) {
-    errors.push('A valid personal or university email address is required.');
-  }
-
-  // Confirm email matching
-  if (d.confirm_email !== undefined) {
-    if (cleanEmail.toLowerCase() !== d.confirm_email.trim().toLowerCase()) {
-      errors.push('Email confirmation does not match.');
-    }
+  const emailRes = validateContactEmailPair(d.email, d.confirm_email, 'en');
+  if (!emailRes.ok) {
+    errors.push(emailRes.message);
   }
 
   if (!d.university.trim()) errors.push('University is required.');
@@ -92,7 +168,6 @@ export function validateRegistration(d: RegistrationInput): string[] {
   if (!STUDY_LEVELS.includes(d.study_level)) errors.push('Study level is invalid.');
   if (!d.wilaya.trim()) errors.push('Wilaya is required.');
 
-  // Password rules
   errors.push(...validatePassword(d.password));
 
   if (d.confirm_password !== undefined && d.confirm_password !== d.password) {

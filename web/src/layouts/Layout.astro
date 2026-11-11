@@ -383,6 +383,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
 
       /* Double-submit protection & submission timeout watchdog */
       document.addEventListener('submit', function (e) {
+        if (e.defaultPrevented) return;
         var form = e.target;
         if (!(form instanceof HTMLFormElement)) return;
 

@@ -1,16 +1,13 @@
 ---
 /**
- * RÉSIVO — link verified real email (Phase 4).
- * Gating flow for existing accounts with synthetic emails (@students.residence.local).
+ * RÉSIVO — add contact email for existing students without an email.
+ * Saves directly via update_my_contact without codes or verification.
  */
 import Layout from '../../layouts/Layout.astro';
 import Icon from '../../components/Icon.astro';
 import BrandMark from '../../components/BrandMark.astro';
 import InlineBanner from '../../components/InlineBanner.astro';
 import PageHeader from '../../components/PageHeader.astro';
-import OtpInput from '../../components/OtpInput.astro';
-import ResendButton from '../../components/ResendButton.astro';
-import { maskEmail } from '../../lib/validation';
 import { localizePath, t, type SupportedLocale } from '../../lib/i18n';
 
 export const prerender = false;
@@ -21,16 +18,10 @@ if (!user) {
   return Astro.redirect(localizePath(locale, '/login'));
 }
 
-const currentEmail = user.email ?? '';
-const hasFakeEmail = currentEmail.endsWith('@students.residence.local');
-
 const error = Astro.url.searchParams.get('error');
-const codeSent = Astro.url.searchParams.get('code_sent');
-const pendingEmail = Astro.url.searchParams.get('email') || Astro.cookies.get('resivo_pending_email')?.value || '';
-const maskedPending = pendingEmail ? maskEmail(pendingEmail) : '';
 ---
 
-<Layout title={locale === 'fr' ? 'Associer un E-mail Vérifié — RÉSIVO' : 'Link Verified Email — RÉSIVO'} activeNav="">
+<Layout title={locale === 'fr' ? 'Ajouter un E-mail de Contact — RÉSIVO' : 'Add Contact Email — RÉSIVO'}>
   <div class="mx-auto flex w-full max-w-md flex-col gap-6 py-6 sm:py-8">
     <div class="card p-6 sm:p-8">
       <div class="mb-6 flex justify-center">
@@ -43,13 +34,9 @@ const maskedPending = pendingEmail ? maskEmail(pendingEmail) : '';
         subtitle={t(locale, 'auth.add_email_subtitle')}
       />
 
-      {
-        hasFakeEmail && !codeSent && (
-          <InlineBanner kind="warning" title={t(locale, 'auth.add_email_required_title')} class="mb-4">
-            {t(locale, 'auth.add_email_required_desc')}
-          </InlineBanner>
-        )
-      }
+      <InlineBanner kind="warning" title={t(locale, 'auth.add_email_required_title')} class="mb-4">
+        {t(locale, 'auth.add_email_required_desc')}
+      </InlineBanner>
 
       {
         error && (
@@ -59,105 +46,49 @@ const maskedPending = pendingEmail ? maskEmail(pendingEmail) : '';
         )
       }
 
-      {
-        codeSent ? (
-          <div>
-            <InlineBanner kind="info" title={locale === 'fr' ? 'Code de confirmation envoyé' : 'Verification code sent'} class="mb-6">
-              {locale === 'fr'
-                ? 'Un code à 6 chiffres a été expédié à votre nouvelle adresse e-mail.'
-                : 'A 6-digit confirmation code has been dispatched to your new email address.'}
-            </InlineBanner>
+      <form method="POST" action="/api/account/add-email" id="add-email-form" data-locale={locale} class="flex flex-col gap-4">
+        <div class="flex flex-col gap-2">
+          <label class="label" for="email">
+            {t(locale, 'fields.contact_email')} <span class="text-danger" aria-hidden="true">*</span>
+          </label>
+          <input
+            class="input"
+            type="email"
+            name="email"
+            id="email"
+            required
+            autocomplete="email"
+            inputmode="email"
+            maxlength="254"
+            placeholder="student@univ-tlemcen.dz"
+          />
+          <p class="field-hint">{t(locale, 'auth.email_hint')}</p>
+        </div>
 
-            {maskedPending && (
-              <div class="mb-6 rounded-card border border-line bg-subtle p-3 text-center">
-                <span class="text-xs font-medium text-muted uppercase tracking-wider block">{t(locale, 'auth.forgot_target_email')}</span>
-                <span class="font-mono text-small font-bold text-navy-900">{maskedPending}</span>
-              </div>
-            )}
+        <div class="flex flex-col gap-2">
+          <label class="label" for="confirm_email">
+            {t(locale, 'fields.confirm_email')} <span class="text-danger" aria-hidden="true">*</span>
+          </label>
+          <input
+            class="input"
+            type="email"
+            name="confirm_email"
+            id="confirm_email"
+            required
+            autocomplete="email"
+            inputmode="email"
+            maxlength="254"
+            placeholder="student@univ-tlemcen.dz"
+          />
+        </div>
 
-            <form method="POST" action="/api/auth/verify-code" class="flex flex-col gap-6">
-              <input type="hidden" name="email" value={pendingEmail} />
-              <input type="hidden" name="type" value="email_change" />
+        <p id="email-match-error" class="field-error hidden" role="alert"></p>
 
-              <div class="flex flex-col gap-2">
-                <label class="label text-center" for="token">
-                  {locale === 'fr' ? 'Code de confirmation à 6 chiffres' : '6-digit verification code'}{' '}
-                  <span class="text-danger" aria-hidden="true">*</span>
-                </label>
-                <OtpInput length={6} name="token" id="token" required />
-                <p class="field-hint text-center">
-                  {locale === 'fr'
-                    ? 'Saisissez le code reçu par e-mail. Vérifiez vos spams si nécessaire.'
-                    : 'Enter the code from the verification email. Check your spam folder if necessary.'}
-                </p>
-              </div>
-
-              <button class="btn btn-primary w-full" type="submit">
-                <Icon name="check-circle" size={18} />
-                <span>{locale === 'fr' ? 'Confirmer et ouvrir le portail' : 'Confirm email & enter portal'}</span>
-              </button>
-            </form>
-
-            <div class="mt-6 border-t border-line pt-6">
-              <ResendButton
-                endpoint="/api/auth/resend-code"
-                identifierKey="email"
-                identifierValue={pendingEmail}
-                flow="email_change"
-              />
-            </div>
-
-            <div class="mt-6 border-t border-line pt-4 text-center">
-              <a class="link text-small" href={localizePath(locale, '/account/add-email')}>
-                ← {locale === 'fr' ? 'Modifier l’adresse de destination' : 'Change target email address'}
-              </a>
-            </div>
-          </div>
-        ) : (
-          <form method="POST" action="/api/account/add-email" class="flex flex-col gap-4">
-            <div class="flex flex-col gap-2">
-              <label class="label" for="email">
-                {t(locale, 'fields.email')} <span class="text-danger" aria-hidden="true">*</span>
-              </label>
-              <input
-                class="input"
-                type="email"
-                name="email"
-                id="email"
-                required
-                autocomplete="email"
-                placeholder="ex.: etudiant@univ-tlemcen.dz"
-              />
-              <p class="field-hint">
-                {locale === 'fr'
-                  ? 'Un code de confirmation à 6 chiffres sera envoyé à cette adresse.'
-                  : 'A 6-digit verification code will be sent to confirm this address.'}
-              </p>
-            </div>
-
-            <div class="flex flex-col gap-2">
-              <label class="label" for="confirm_email">
-                {locale === 'fr' ? 'Confirmer l’adresse e-mail' : 'Confirm email address'}{' '}
-                <span class="text-danger" aria-hidden="true">*</span>
-              </label>
-              <input
-                class="input"
-                type="email"
-                name="confirm_email"
-                id="confirm_email"
-                required
-                autocomplete="email"
-                placeholder="ex.: etudiant@univ-tlemcen.dz"
-              />
-            </div>
-
-            <button class="btn btn-primary w-full mt-2" type="submit">
-              <Icon name="mail" size={18} />
-              <span>{t(locale, 'auth.add_email_btn')}</span>
-            </button>
-          </form>
-        )
-      }
+        <button class="btn btn-primary w-full mt-2" type="submit">
+          <Icon name="check-circle" size={18} />
+          <span>{t(locale, 'auth.add_email_btn')}</span>
+        </button>
+      </form>
 
       <div class="mt-6 flex flex-col gap-2 border-t border-line pt-6 text-center">
         <p class="text-small font-normal text-muted">
@@ -170,4 +101,19 @@ const maskedPending = pendingEmail ? maskEmail(pendingEmail) : '';
       Direction des Œuvres Universitaires · Cité Universitaire Tlemcen
     </p>
   </div>
+
+  <script>
+    import { attachEmailConfirmValidation } from '../../lib/email-form-client';
+    import type { SupportedLocale } from '../../lib/i18n';
+
+    const form = document.getElementById('add-email-form') as HTMLFormElement | null;
+    const emailInput = document.getElementById('email') as HTMLInputElement | null;
+    const confirmInput = document.getElementById('confirm_email') as HTMLInputElement | null;
+    const errorEl = document.getElementById('email-match-error');
+    const locale = ((form?.getAttribute('data-locale') || 'en') as SupportedLocale);
+
+    if (form && emailInput && confirmInput) {
+      attachEmailConfirmValidation({ form, emailInput, confirmInput, errorEl, locale });
+    }
+  </script>
 </Layout>

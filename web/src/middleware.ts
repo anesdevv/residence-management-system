@@ -1,6 +1,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import { createSupabaseServerClient } from './lib/supabase';
 import { DEFAULT_LOCALE, localizePath, type SupportedLocale } from './lib/i18n';
+import { checkUserNeedsContactEmail } from './lib/email-gate';
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const path = context.url.pathname;
@@ -45,7 +46,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
       context.request.method === 'GET' &&
       !path.startsWith('/api/') &&
       !path.startsWith('/_astro/') &&
-      !path.startsWith('/auth/') &&
       path !== '/logout'
     ) {
       return context.redirect(localizePath('fr', path + context.url.search));
@@ -87,40 +87,48 @@ export const onRequest = defineMiddleware(async (context, next) => {
       ? path.slice(3)
       : path;
 
+  const isDashboardRoute = normalizedPath === '/dashboard' || normalizedPath.startsWith('/dashboard/');
+  const isAddEmailPage = normalizedPath === '/account/add-email';
+  const PROTECTED_API_ROUTES = ['/api/maintenance', '/api/room-change', '/api/profile', '/api/account/add-email'];
+  const isProtectedApi = PROTECTED_API_ROUTES.some(
+    (route) => normalizedPath === route || normalizedPath.startsWith(`${route}/`),
+  );
+
   // Unauthenticated protection
-  if ((normalizedPath === '/dashboard' || normalizedPath.startsWith('/dashboard/')) && !user) {
+  if ((isDashboardRoute || isAddEmailPage) && !user) {
     return context.redirect(localizePath(locale, '/login'));
   }
 
-  if (normalizedPath === '/account/add-email' && !user) {
-    return context.redirect(localizePath(locale, '/login'));
-  }
-
-  const PROTECTED_API_ROUTES = ['/api/maintenance', '/api/room-change', '/api/profile'];
-  if (PROTECTED_API_ROUTES.some((route) => normalizedPath === route || normalizedPath.startsWith(`${route}/`)) && !user) {
+  if (isProtectedApi && !user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  // Legacy synthetic email gating for resident accounts
-  if (user && user.email && user.email.toLowerCase().endsWith('@students.residence.local')) {
-    if (normalizedPath === '/dashboard' || normalizedPath.startsWith('/dashboard/')) {
-      return context.redirect(localizePath(locale, '/account/add-email'));
-    }
+  // Existing students without a contact email must complete /account/add-email first.
+  // Students who already have an email and staff/admin users are never redirected.
+  if (user && (isDashboardRoute || isAddEmailPage || (isProtectedApi && normalizedPath !== '/api/account/add-email'))) {
+    const needsContactEmail = await checkUserNeedsContactEmail(supabase, user.id);
 
-    if (PROTECTED_API_ROUTES.some((route) => normalizedPath === route || normalizedPath.startsWith(`${route}/`))) {
-      return new Response(
-        JSON.stringify({
-          error: 'real_email_required',
-          message: 'Please link and verify a real email address at /account/add-email to access this feature.',
-        }),
-        {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+    if (needsContactEmail) {
+      if (isDashboardRoute) {
+        return context.redirect(localizePath(locale, '/account/add-email'));
+      }
+      if (isProtectedApi && normalizedPath !== '/api/account/add-email') {
+        return new Response(
+          JSON.stringify({
+            error: 'contact_email_required',
+            message: 'Please add a contact email address at /account/add-email to access this feature.',
+          }),
+          {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        );
+      }
+    } else if (isAddEmailPage) {
+      return context.redirect(localizePath(locale, '/dashboard'));
     }
   }
 

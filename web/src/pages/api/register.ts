@@ -1,11 +1,16 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
-import { createSupabaseServerClient } from '../../lib/supabase';
-import { validateRegistration, normalizeEmail } from '../../lib/validation';
+import { createSupabaseServerClient, cardIdToEmail } from '../../lib/supabase';
+import { validateRegistration, normalizeEmail, mapEmailErrorCode } from '../../lib/validation';
 import { checkRegistrationGate, getResidencePublic } from '../../lib/residence';
+import { localizePath, resolveRequestLocale } from '../../lib/i18n';
 import { TIMEOUT_MESSAGES } from '../../lib/timeouts';
 
 export const POST: APIRoute = async (context) => {
+  const locale = resolveRequestLocale(context.locals?.locale, context.request.headers.get('referer'));
+  const registerPath = localizePath(locale, '/register');
+  const loginPath = localizePath(locale, '/login');
+
   const form = await context.request.formData();
   const rawEmail = String(form.get('email') ?? '');
   const data = {
@@ -25,7 +30,7 @@ export const POST: APIRoute = async (context) => {
 
   const errors = validateRegistration(data);
   if (errors.length) {
-    return context.redirect(`/register?error=${encodeURIComponent(errors[0])}`);
+    return context.redirect(`${registerPath}?error=${encodeURIComponent(errors[0])}`);
   }
 
   const cleanEmail = normalizeEmail(data.email);
@@ -34,18 +39,17 @@ export const POST: APIRoute = async (context) => {
   try {
     const supabase = createSupabaseServerClient(context.request, context.cookies);
     const residence = await getResidencePublic(supabase);
-    const gateError = checkRegistrationGate(residence, context.locals?.locale || 'en');
+    const gateError = checkRegistrationGate(residence, locale);
     if (gateError) {
-      return context.redirect(`/register?error=${encodeURIComponent(gateError)}`);
+      return context.redirect(`${registerPath}?error=${encodeURIComponent(gateError)}`);
     }
 
-    const origin = new URL(context.request.url).origin;
-
+    // Contact email is stored only in students.email via handle_new_user() metadata;
+    // auth.users uses the hidden synthetic card-ID address so zero emails are ever sent.
     const { data: signUpData, error } = await supabase.auth.signUp({
-      email: cleanEmail,
+      email: cardIdToEmail(cleanCardId),
       password: data.password,
       options: {
-        emailRedirectTo: `${origin}/auth/confirm?type=email&next=/dashboard`,
         data: {
           card_id: cleanCardId,
           first_name: data.first_name.trim(),
@@ -62,33 +66,37 @@ export const POST: APIRoute = async (context) => {
     });
 
     if (error) {
-      const msg = error.message.toLowerCase();
-      if (msg.includes('already registered') || msg.includes('user already exists') || msg.includes('unique')) {
+      const lower = error.message.toLowerCase();
+      if (
+        lower.includes('email_in_use') ||
+        lower.includes('idx_students_unique_lower_email') ||
+        lower.includes('email_invalid') ||
+        lower.includes('email_required')
+      ) {
+        return context.redirect(`${registerPath}?error=${encodeURIComponent(mapEmailErrorCode(error.message, locale))}`);
+      }
+      if (lower.includes('already registered') || lower.includes('user already exists')) {
         return context.redirect(
-          `/register?error=${encodeURIComponent('An account with this email address or student card ID already exists. Please sign in or reset your password.')}`
+          `${registerPath}?error=${encodeURIComponent('An account with this student card ID already exists. Please sign in.')}`,
         );
       }
-      return context.redirect(`/register?error=${encodeURIComponent(error.message)}`);
+      return context.redirect(`${registerPath}?error=${encodeURIComponent(error.message)}`);
     }
 
     if (signUpData?.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
       return context.redirect(
-        `/register?error=${encodeURIComponent('An account with this student card ID or email already exists. Please log in or reset your password.')}`
+        `${registerPath}?error=${encodeURIComponent('An account with this student card ID already exists. Please sign in.')}`,
       );
     }
 
-    // Set temporary verification cookie with masked email for /verify-email screen
-    context.cookies.set('resivo_pending_email', cleanEmail, {
-      path: '/',
-      httpOnly: false,
-      secure: origin.startsWith('https:'),
-      sameSite: 'lax',
-      maxAge: 3600, // 1 hour
-    });
+    // Sign out if signup created a session so the student returns cleanly to /login
+    if (signUpData?.session) {
+      await supabase.auth.signOut();
+    }
 
-    return context.redirect(`/verify-email`);
+    return context.redirect(`${loginPath}?registered=1`);
   } catch (err: any) {
     const message = err?.message || TIMEOUT_MESSAGES.WRITE;
-    return context.redirect(`/register?error=${encodeURIComponent(message)}`);
+    return context.redirect(`${registerPath}?error=${encodeURIComponent(message)}`);
   }
 };

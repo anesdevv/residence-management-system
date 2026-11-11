@@ -24,6 +24,16 @@ export function normalizeLocale(locale?: string | null): SupportedLocale {
   return 'en';
 }
 
+export function resolveRequestLocale(
+  localsLocale?: string | null,
+  refererHeader?: string | null,
+): SupportedLocale {
+  if (localsLocale === 'fr') return 'fr';
+  const ref = refererHeader || '';
+  if (ref.includes('/fr/') || ref.endsWith('/fr')) return 'fr';
+  return 'en';
+}
+
 /**
  * Traverses nested JSON object with dot-notation key (e.g. "common.save").
  */

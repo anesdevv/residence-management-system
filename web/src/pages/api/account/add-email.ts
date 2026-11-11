@@ -1,65 +1,56 @@
 export const prerender = false;
 import type { APIRoute } from 'astro';
 import { createSupabaseServerClient } from '../../../lib/supabase';
-import { normalizeEmail, isEmail } from '../../../lib/validation';
+import { validateContactEmailPair, mapEmailErrorCode } from '../../../lib/validation';
+import { localizePath, resolveRequestLocale } from '../../../lib/i18n';
+import { TIMEOUT_MESSAGES } from '../../../lib/timeouts';
 
 export const POST: APIRoute = async (context) => {
+  const locale = resolveRequestLocale(context.locals?.locale, context.request.headers.get('referer'));
+  const addEmailPath = localizePath(locale, '/account/add-email');
+  const dashboardPath = localizePath(locale, '/dashboard');
+  const loginPath = localizePath(locale, '/login');
+
   const user = context.locals.user;
   if (!user) {
-    return context.redirect('/login');
+    return context.redirect(loginPath);
   }
 
   const form = await context.request.formData();
-  const email = normalizeEmail(String(form.get('email') ?? ''));
-  const confirmEmail = normalizeEmail(String(form.get('confirm_email') ?? ''));
+  const email = String(form.get('email') ?? '');
+  const confirmEmail = String(form.get('confirm_email') ?? '');
 
-  if (!email || !isEmail(email)) {
-    return context.redirect(`/account/add-email?error=${encodeURIComponent('Please enter a valid email address.')}`);
+  const validation = validateContactEmailPair(email, confirmEmail, locale);
+  if (!validation.ok) {
+    return context.redirect(`${addEmailPath}?error=${encodeURIComponent(validation.message)}`);
   }
-  if (email !== confirmEmail) {
-    return context.redirect(`/account/add-email?error=${encodeURIComponent('Email confirmation does not match.')}`);
-  }
-  if (email.endsWith('@students.residence.local')) {
-    return context.redirect(`/account/add-email?error=${encodeURIComponent('Please enter a real email address outside the residence domain.')}`);
-  }
-
-  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-  const anonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
   try {
     const supabase = createSupabaseServerClient(context.request, context.cookies);
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
 
-    if (!token) {
-      return context.redirect('/login?error=Session+expired');
+    const { data: student, error: studentErr } = await supabase
+      .from('students')
+      .select('phone')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (studentErr || !student) {
+      return context.redirect(dashboardPath);
     }
 
-    const response = await fetch(`${supabaseUrl}/functions/v1/link-real-email`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': anonKey,
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ email }),
+    const { error } = await supabase.rpc('update_my_contact', {
+      p_phone: student.phone,
+      p_email: validation.email,
     });
 
-    const result = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      return context.redirect(`/account/add-email?error=${encodeURIComponent(result.message || 'Failed to update email.')}`);
+    if (error) {
+      const friendly = mapEmailErrorCode(error.message, locale);
+      return context.redirect(`${addEmailPath}?error=${encodeURIComponent(friendly)}`);
     }
 
-    context.cookies.set('resivo_pending_email', email, {
-      path: '/',
-      httpOnly: false,
-      sameSite: 'lax',
-      maxAge: 3600,
-    });
-
-    return context.redirect(`/account/add-email?code_sent=1&email=${encodeURIComponent(email)}`);
+    return context.redirect(dashboardPath);
   } catch (err: any) {
-    return context.redirect(`/account/add-email?error=${encodeURIComponent(err?.message || 'Server error occurred.')}`);
+    const message = err?.message || TIMEOUT_MESSAGES.WRITE;
+    return context.redirect(`${addEmailPath}?error=${encodeURIComponent(message)}`);
   }
 };
