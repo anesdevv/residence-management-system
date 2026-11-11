@@ -255,6 +255,8 @@ class GhostWindowProbe(QObject):
             return False
         try:
             is_win = obj.isWindow()
+            if etype == QEvent.Type.WinIdChange and not obj.internalWinId():
+                return False
         except RuntimeError:
             return False
         if not is_win:
