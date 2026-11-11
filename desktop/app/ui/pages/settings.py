@@ -278,10 +278,10 @@ class SettingsPage(QWidget):
     sign_out_requested = Signal()
     residence_settings_changed = Signal()
 
-    def __init__(self, client):
+    def __init__(self, client, *, defer_initial_load: bool = False, role: str | None = None):
         super().__init__()
         self.client = client
-        self.role = _normalize_role(current_role(client))
+        self.role = _normalize_role(role) if role is not None else _normalize_role(current_role(client))
         self._role_unverified = self.role is None
         self._health_started = False
         self._token = ""
@@ -712,9 +712,10 @@ class SettingsPage(QWidget):
         self.writes_checkbox.setEnabled(False)  # enabled once the setting loads
         self.set_role(self.role)
 
-        self.reload()
-        if self.role == "admin":
-            self._load_residence_sync()
+        if not defer_initial_load:
+            self.reload()
+            if self.role == "admin":
+                self._load_residence_sync()
         self._initializing = False
 
     def _on_language_changed(self, index: int) -> None:

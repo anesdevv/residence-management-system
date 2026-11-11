@@ -61,7 +61,7 @@ from .components import BrandMark, Button, GradientHero, InlineBanner
 from .icons import get_icon
 from .resource import get_asset_path
 from .tasks import human_error
-from .theme import C, DESKTOP_STYLESHEET, S, apply_role
+from .theme import C, DESKTOP_STYLESHEET, S, apply_app_stylesheet, apply_role
 
 # DESIGN.md §7 — hide the hero below this window width (form-only mode).
 _LOGIN_HERO_BREAKPOINT = 760
@@ -271,7 +271,7 @@ class LoginWindow(QWidget):
         self.setWindowTitle(t("login.title"))
         self.setMinimumSize(380, 480)
         self.resize(940, 580)
-        self.setStyleSheet(DESKTOP_STYLESHEET)
+        apply_app_stylesheet(self)
         self.client = client if client is not None else make_client()
         self._busy = False
         self._busy_phase = "sign_in"

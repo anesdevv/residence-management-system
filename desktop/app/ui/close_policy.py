@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from .components import Button, Card, InlineBanner
-from .theme import C, DESKTOP_STYLESHEET, S
+from .theme import C, DESKTOP_STYLESHEET, S, apply_app_stylesheet
 
 try:
     from i18n import t
@@ -87,7 +87,7 @@ class CloseConfirmDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(t("close_dialog.title"))
         self.setMinimumWidth(440)
-        self.setStyleSheet(DESKTOP_STYLESHEET)
+        apply_app_stylesheet(self)
         self.is_busy = is_busy
 
         layout = QVBoxLayout(self)

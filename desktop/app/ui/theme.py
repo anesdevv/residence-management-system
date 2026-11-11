@@ -292,6 +292,11 @@ _ROLE_SPECS: dict[str, tuple[str, str, str, str]] = {
 }
 
 
+_FONT_CACHE: dict[tuple[str, int], QFont] = {}
+_TNUM_TAG: object | None = None
+_TNUM_TAG_INIT: bool = False
+
+
 def font(role: str = "body") -> QFont:
     """QFont for a typography role (``display, h1, h2, h3, body, muted, small, overline, nav-badge``)."""
     spec = _ROLE_SPECS.get(role)
@@ -299,6 +304,10 @@ def font(role: str = "body") -> QFont:
         raise KeyError(
             f"Unknown font role {role!r}. Known roles: {', '.join(_ROLE_SPECS)}."
         )
+    cache_key = (role, len(_LOADED_FONT_FILES))
+    cached = _FONT_CACHE.get(cache_key)
+    if cached is not None:
+        return QFont(cached)
     family_token, size_token, weight_token, tracking_token = spec
     qfont = QFont()
     qfont.setFamilies([C(family_token), *_FALLBACK_FAMILIES])
@@ -308,7 +317,8 @@ def font(role: str = "body") -> QFont:
     tracking = C(tracking_token)
     if tracking not in ("0", "0em", "0px"):
         qfont.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, _em_to_px(tracking, pixel_size))
-    return qfont
+    _FONT_CACHE[cache_key] = qfont
+    return QFont(qfont)
 
 
 def repolish(widget: QWidget) -> QWidget:
@@ -325,16 +335,24 @@ def apply_role(widget: QWidget, role: str) -> QWidget:
     """Set the ``role`` dynamic property *and* the matching QFont, then repolish."""
     widget.setProperty("role", role)
     widget.setFont(font(role))
-    return repolish(widget)
+    if widget.testAttribute(Qt.WidgetAttribute.WA_WState_Polished):
+        return repolish(widget)
+    return widget
 
 
 def _set_tnum(qfont: QFont) -> None:
-    """Enable tabular figures silently; skip when Qt lacks ``setFeature``."""
+    """Enable tabular figures silently; skip when PySide6 lacks Tag.fromString."""
+    global _TNUM_TAG, _TNUM_TAG_INIT
     if not hasattr(qfont, "setFeature"):
         return
     try:
-        tag = QFont.Tag("tnum") if hasattr(QFont, "Tag") else "tnum"
-        qfont.setFeature(tag, 1)
+        if not _TNUM_TAG_INIT:
+            _TNUM_TAG_INIT = True
+            tag_cls = getattr(QFont, "Tag", None)
+            if tag_cls is not None and hasattr(tag_cls, "fromString"):
+                _TNUM_TAG = tag_cls.fromString("tnum")
+        if _TNUM_TAG is not None:
+            qfont.setFeature(_TNUM_TAG, 1)
     except Exception:  # pragma: no cover - platform dependent, skip silently
         return
 
@@ -1007,6 +1025,7 @@ QLabel#liveDotOn { background-color: @teal-500; }
 QLabel#liveDotOff { background-color: @status-danger-ink; }
 QLabel#liveDot { background-color: @status-danger-ink; }
 QLabel#liveDot[state="connected"] { background-color: @teal-500; }
+QLabel#liveDot[state="connecting"] { background-color: @gold-500; }
 QLabel#liveDot[state="reconnecting"] { background-color: @gold-500; }
 QLabel#liveDot[state="offline"] { background-color: @status-danger-ink; }
 
@@ -1083,4 +1102,17 @@ DESKTOP_STYLESHEET: str = (
     "   =========================================================================== */\n"
     + _DESKTOP_VARIANTS
 )
+
+
+def apply_app_stylesheet(target: QWidget | None = None) -> None:
+    """Apply ``DESKTOP_STYLESHEET`` once at QApplication level (no duplicate QSS parse)."""
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    if app is not None:
+        if app.styleSheet() != DESKTOP_STYLESHEET:
+            app.setStyleSheet(DESKTOP_STYLESHEET)
+        return
+    if target is not None and target.styleSheet() != DESKTOP_STYLESHEET:
+        target.setStyleSheet(DESKTOP_STYLESHEET)
 

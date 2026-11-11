@@ -313,7 +313,7 @@ class _QuotedBlock(QFrame):
 class MaintenancePage(QWidget):
     """Facility maintenance & repairs: stage filters, tickets table, inspector."""
 
-    def __init__(self, client):
+    def __init__(self, client, *, defer_initial_load: bool = False):
         super().__init__()
         self.client = client
         self.rows: list[dict] = []
@@ -593,7 +593,10 @@ class MaintenancePage(QWidget):
         layout.addWidget(self.splitter, 1)
 
         self._clear_selection_state()
-        self.reload()
+        if defer_initial_load:
+            self._loaded_once = True
+        else:
+            self.reload()
 
     # --------------------------------------------------------------- styling
     @staticmethod

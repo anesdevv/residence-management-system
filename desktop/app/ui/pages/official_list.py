@@ -61,7 +61,7 @@ from ..components import (
 from ..icons import get_icon, get_pixmap
 from ..infocard import StudentInfoCardDialog
 from ..tasks import TaskRunner, human_error
-from ..theme import C, DESKTOP_STYLESHEET, S
+from ..theme import C, DESKTOP_STYLESHEET, S, apply_app_stylesheet
 
 # Table language: overline headers are uppercased by ``configure_table``.
 _COLUMNS = [
@@ -127,7 +127,7 @@ class OfficialResidentDialog(QDialog):
         self.setWindowTitle(t("official_list.dialog_edit_title") if mode == "edit" else t("official_list.dialog_add_title"))
         self.setMinimumWidth(440)
         self.setModal(True)
-        self.setStyleSheet(DESKTOP_STYLESHEET)
+        apply_app_stylesheet(self)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(S("space-6"), S("space-6"), S("space-6"), S("space-6"))
@@ -320,7 +320,7 @@ class ClearAllRosterDialog(QDialog):
         self.setWindowTitle(t("official_list.clear_dialog_title"))
         self.setModal(True)
         self.setMinimumWidth(440)
-        self.setStyleSheet(DESKTOP_STYLESHEET)
+        apply_app_stylesheet(self)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(S("space-6"), S("space-6"), S("space-6"), S("space-6"))
@@ -455,7 +455,7 @@ class OfficialListPage(QWidget):
 
     roster_changed = Signal()
 
-    def __init__(self, client, pending_page=None):
+    def __init__(self, client, pending_page=None, *, defer_initial_load: bool = False, role: str | None = None):
         super().__init__()
         self.client = client
         self.pending_page = pending_page
@@ -483,7 +483,7 @@ class OfficialListPage(QWidget):
         layout.addWidget(self.header)
 
         from ...client import current_role
-        self.role = _normalize_role(current_role(client))
+        self.role = _normalize_role(role) if role is not None else _normalize_role(current_role(client))
 
         # ------------------------------------------------- import drop zone
         self.drop_zone = _RosterDropZone(self.on_import)
@@ -617,7 +617,8 @@ class OfficialListPage(QWidget):
         self._apply_import_gate()
         self._update_action_states()
 
-        self.reload()
+        if not defer_initial_load:
+            self.reload()
         self._initializing = False
 
     # --------------------------------------------------------------- role & gating

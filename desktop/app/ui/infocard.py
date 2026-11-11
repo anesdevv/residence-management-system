@@ -62,7 +62,7 @@ try:
         configure_table,
     )
     from .icons import get_icon
-    from .theme import DESKTOP_STYLESHEET, S, apply_elevation
+    from .theme import DESKTOP_STYLESHEET, S, apply_app_stylesheet, apply_elevation
 except (ImportError, ValueError):  # pragma: no cover - direct module execution
     from desktop.app.ui import theme
     from desktop.app.ui.components import (
@@ -79,7 +79,7 @@ except (ImportError, ValueError):  # pragma: no cover - direct module execution
         configure_table,
     )
     from desktop.app.ui.icons import get_icon
-    from desktop.app.ui.theme import DESKTOP_STYLESHEET, S, apply_elevation
+    from desktop.app.ui.theme import DESKTOP_STYLESHEET, S, apply_app_stylesheet, apply_elevation
 
 
 # Student status -> (StatusPill kind, label) — the desk vocabulary stays the same.
@@ -168,7 +168,7 @@ class StudentInfoCardDialog(QDialog):
         self.setWindowTitle(t("infocard.student_title", name=full_name))
         self.setModal(True)
         self.setMinimumWidth(580)
-        self.setStyleSheet(DESKTOP_STYLESHEET)
+        apply_app_stylesheet(self)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(S("space-6"), S("space-6"), S("space-6"), S("space-6"))
@@ -352,7 +352,7 @@ class RoomInfoCardDialog(QDialog):
         self.setWindowTitle(t("infocard.room_title", block=block, number=number))
         self.setModal(True)
         self.setMinimumWidth(620)
-        self.setStyleSheet(DESKTOP_STYLESHEET)
+        apply_app_stylesheet(self)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(S("space-6"), S("space-6"), S("space-6"), S("space-6"))

@@ -23,7 +23,7 @@ from . import theme
 from .components import Button, InlineBanner, apply_elevation
 from .icons import get_pixmap
 from .tasks import TaskRunner
-from .theme import C, DESKTOP_STYLESHEET, S
+from .theme import C, DESKTOP_STYLESHEET, S, apply_app_stylesheet
 
 
 def residence_gender_label(value: str | None) -> str:
@@ -61,7 +61,7 @@ class ResidenceSetupDialog(QDialog):
         self.setWindowTitle(t("residence.setup_title"))
         self.setModal(True)
         self.setMinimumWidth(460)
-        self.setStyleSheet(DESKTOP_STYLESHEET)
+        apply_app_stylesheet(self)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(S("space-6"), S("space-6"), S("space-6"), S("space-6"))
@@ -225,7 +225,7 @@ class ResidenceGenderChangeDialog(QDialog):
         self.setWindowTitle(t("settings.residence_change_title"))
         self.setModal(True)
         self.setMinimumWidth(480)
-        self.setStyleSheet(DESKTOP_STYLESHEET)
+        apply_app_stylesheet(self)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(S("space-6"), S("space-6"), S("space-6"), S("space-6"))

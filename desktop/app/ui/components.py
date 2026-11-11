@@ -1484,6 +1484,7 @@ class LiveDot(QLabel):
 
     _STATE_TOKENS = {
         "connected": "teal-500",
+        "connecting": "gold-500",
         "reconnecting": "gold-500",
         "offline": "status-danger-ink",
     }

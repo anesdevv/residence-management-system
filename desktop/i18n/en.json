@@ -1,4 +1,7 @@
 {
+  "app": {
+    "console_title": "Staff Console"
+  },
   "auth": {
     "forgot_password": "Forgot password?",
     "register": "Register",
@@ -128,6 +131,7 @@
   "live_sync": {
     "active": "Live sync active",
     "connected": "Live sync connected",
+    "connecting": "Connecting...",
     "offline": "Live sync offline",
     "reconnecting": "Live sync reconnecting",
     "status_bar": "{status} • Last update: {timestamp} • Pending: {pending} • Open tickets: {open_tickets} • Transfers: {transfers}"

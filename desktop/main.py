@@ -43,7 +43,7 @@ try:
     from desktop.app.ui.login_window import LoginWindow
     from desktop.app.ui.main_window import MainWindow
     from desktop.app.ui.resource import get_asset_path
-    from desktop.app.ui.theme import load_fonts
+    from desktop.app.ui.theme import apply_app_stylesheet, load_fonts
 except ImportError:
     from app.client import RoleLookupError, make_client, remember_role, resolve_role
     from app.config import config_error, config_error_code
@@ -71,7 +71,7 @@ except ImportError:
     from app.ui.login_window import LoginWindow
     from app.ui.main_window import MainWindow
     from app.ui.resource import get_asset_path
-    from app.ui.theme import load_fonts
+    from app.ui.theme import apply_app_stylesheet, load_fonts
 from desktop.auth.session_store import (
     default_session_dir,
     get_remember_session_setting,
@@ -173,6 +173,7 @@ def main() -> int:
     autostart.repair()
 
     load_fonts()  # bundled Outfit/Inter; must run after the QApplication exists
+    apply_app_stylesheet()
 
     return launch_application(
         app=app,
@@ -257,9 +258,6 @@ def launch_application(
         outcome_processed = True
         restore_timer.stop()
 
-        if restoring_window is not None:
-            restoring_window.close()
-
         if success:
             role, role_exc = role_result if role_result else (None, None)
             normalized_role = str(role).strip().lower() if role is not None else ""
@@ -274,7 +272,11 @@ def launch_application(
                     main_win.showMinimized()
                 else:
                     main_win.show()
+                    main_win.raise_()
+                    main_win.activateWindow()
                 mark("main_window_shown")
+                if restoring_window is not None:
+                    restoring_window.close()
             elif role_exc is not None or (role is None and role_exc is None and normalized_role == ""):
                 mark("restore_role_end")
                 main_win = MainWindow(client, role=None)
@@ -284,8 +286,14 @@ def launch_application(
                     main_win.showMinimized()
                 else:
                     main_win.show()
+                    main_win.raise_()
+                    main_win.activateWindow()
                 mark("main_window_shown")
+                if restoring_window is not None:
+                    restoring_window.close()
             else:
+                if restoring_window is not None:
+                    restoring_window.close()
                 session_manager_instance.clear()
                 login_win = LoginWindow(
                     client=client,

@@ -17,7 +17,10 @@ with ``currentRowChanged`` → ``stack.setCurrentIndex``;
 
 from __future__ import annotations
 
+import importlib
+import inspect
 import logging
+import sys
 import time
 
 from PySide6.QtCore import (
@@ -87,16 +90,82 @@ from .icons import get_icon, get_pixmap
 from .live_sync import LiveSyncWorker
 from .photo_viewer import running_photo_fetchers
 from .pages.overview import OverviewPage
-from .pages.pending import PendingPage
-from .pages.residents import ResidentsPage
-from .pages.rooms import RoomsPage
-from .pages.maintenance import MaintenancePage
-from .pages.room_changes import RoomChangesPage
-from .pages.official_list import OfficialListPage
-from .pages.staff_accounts import StaffAccountsPage
-from .pages.settings import SettingsPage
 from .tasks import TaskRunner, active_task_count, human_error
-from .theme import C, DESKTOP_STYLESHEET, S
+from .theme import C, DESKTOP_STYLESHEET, S, apply_app_stylesheet
+
+_LAZY_PAGE_MODULES: dict[str, str] = {
+    "PendingPage": ".pages.pending",
+    "ResidentsPage": ".pages.residents",
+    "RoomsPage": ".pages.rooms",
+    "MaintenancePage": ".pages.maintenance",
+    "RoomChangesPage": ".pages.room_changes",
+    "OfficialListPage": ".pages.official_list",
+    "StaffAccountsPage": ".pages.staff_accounts",
+    "SettingsPage": ".pages.settings",
+}
+
+
+def __getattr__(name: str):
+    """Lazily import secondary page classes on first access (PEP 562)."""
+    rel_mod = _LAZY_PAGE_MODULES.get(name)
+    if rel_mod is not None:
+        mod = importlib.import_module(rel_mod, package=__package__)
+        cls = getattr(mod, name)
+        globals()[name] = cls
+        return cls
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def _page_factory(name: str):
+    """Resolve a page constructor dynamically (honors test monkeypatches)."""
+    return getattr(sys.modules[__name__], name)
+
+
+def _instantiate_page(factory, client, **kwargs):
+    """Call *factory(client, ...)* passing only kwargs accepted by its signature."""
+    try:
+        sig = inspect.signature(factory)
+    except (TypeError, ValueError):
+        return factory(client)
+    accepts_var_kw = any(
+        p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+    )
+    filtered = {}
+    for key, val in kwargs.items():
+        if val is None and key not in ("current_uid",):
+            continue
+        if accepts_var_kw or key in sig.parameters:
+            filtered[key] = val
+    return factory(client, **filtered)
+
+
+class _LazyPagesDict(dict):
+    """Page registry dict preserving O(1) membership checks and lazy lookup."""
+
+    def __init__(self, owner: "MainWindow"):
+        super().__init__()
+        self._owner = owner
+        self._slot_by_title: dict[str, str] = {}
+
+    def bind_slot(self, title: str, slot_key: str) -> None:
+        self._slot_by_title[title] = slot_key
+
+    def __getitem__(self, key):
+        slot_key = self._slot_by_title.get(key)
+        if slot_key is not None and not self._owner._is_page_built(slot_key):
+            return self._owner._ensure_page(slot_key)
+        return dict.__getitem__(self, key)
+
+    def get(self, key, default=None):
+        if key in self:
+            return self[key]
+        return default
+
+    def values(self):
+        return [self[k] for k in self.keys()]
+
+    def items(self):
+        return [(k, self[k]) for k in self.keys()]
 
 _log = logging.getLogger("resivo.ui.main_window")
 
@@ -444,7 +513,10 @@ class _SidebarNav(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self, client, role=None):
         super().__init__()
-        mark("main_window_init_start")
+        if not any(e.name == "main_window_init_start" for e in timeline().entries):
+            mark("main_window_init_start")
+        else:
+            mark("main_window_ctor_start")
         self._startup_first_data_marked = False
         self.client = client
         self._role_retry_running = False
@@ -487,7 +559,7 @@ class MainWindow(QMainWindow):
         self._prev_window_state = self.windowState()
         self._minimize_shortcut = QShortcut(QKeySequence("Ctrl+M"), self)
         self._minimize_shortcut.activated.connect(self._on_minimize_shortcut)
-        self.setWindowTitle("RÉSIVO — Staff Console")
+        self.setWindowTitle(t("app.console_title"))
         self.setMinimumSize(980, 640)
         init_w, init_h = 1180, 760
         try:
@@ -500,7 +572,7 @@ class MainWindow(QMainWindow):
         except Exception:  # pragma: no cover - headless fallback
             pass
         self.resize(init_w, init_h)
-        self.setStyleSheet(DESKTOP_STYLESHEET)
+        apply_app_stylesheet(self)
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -511,49 +583,39 @@ class MainWindow(QMainWindow):
         root_layout.addWidget(self._build_sidebar())
         root_layout.addWidget(self._build_content(), 1)
 
-        # Pages instantiation — order and module-level names unchanged.
-        self.pages: dict[str, QWidget] = {}
-        self.overview_page = OverviewPage(client)
-        mark("page:OverviewPage")
-        self.pending_page = PendingPage(client)
-        mark("page:PendingPage")
-        self.residents_page = ResidentsPage(client)
-        mark("page:ResidentsPage")
-        self.rooms_page = RoomsPage(client)
-        mark("page:RoomsPage")
-        self.maintenance_page = MaintenancePage(client)
-        mark("page:MaintenancePage")
-        self.room_changes_page = RoomChangesPage(client)
-        mark("page:RoomChangesPage")
-        self.official_list_page = OfficialListPage(client)
-        mark("page:OfficialListPage")
-        if hasattr(self.official_list_page, "pending_page"):
-            self.official_list_page.pending_page = self.pending_page
-        if hasattr(self.official_list_page, "roster_changed"):
-            self.official_list_page.roster_changed.connect(self._on_roster_changed)
+        # Pages instantiation — OverviewPage + shell build immediately; all
+        # secondary pages are deferred until first visit/access.
+        self._in_init = True
+        self._current_uid = _session_user_id(client)
+        self._built_pages: dict[str, QWidget] = {}
+        self._placeholders: dict[str, QWidget] = {}
+        self._nav_slot_keys: list[str] = []
+        self._cached_live_data: dict | None = None
+        self._sync_error_seen: bool = False
+        self.pages: dict[str, QWidget] = _LazyPagesDict(self)
 
-        self._add_nav_item(t("nav.overview"), "overview", self.overview_page, canonical_name="Overview")
-        self._add_nav_item(t("nav.pending"), "pending", self.pending_page, canonical_name="Pending accounts")
-        self._add_nav_item(t("nav.residents"), "residents", self.residents_page, canonical_name="Residents")
-        self._add_nav_item(t("nav.rooms"), "rooms", self.rooms_page, canonical_name="Rooms")
-        self._add_nav_item(t("nav.maintenance"), "maintenance", self.maintenance_page, canonical_name="Maintenance")
-        self._add_nav_item(t("nav.room_changes"), "room_changes", self.room_changes_page, canonical_name="Room changes")
-        self._add_nav_item(t("nav.official_list"), "official_list", self.official_list_page, canonical_name="Official list")
+        self.overview_page = _instantiate_page(_page_factory("OverviewPage"), client)
+        self._built_pages["overview"] = self.overview_page
+        mark("page:OverviewPage")
+
+        self._add_nav_item(t("nav.overview"), "overview", self.overview_page, canonical_name="Overview", slot_key="overview")
+        self._add_lazy_nav_item(t("nav.pending"), "pending", "pending", canonical_name="Pending accounts")
+        self._add_lazy_nav_item(t("nav.residents"), "residents", "residents", canonical_name="Residents")
+        self._add_lazy_nav_item(t("nav.rooms"), "rooms", "rooms", canonical_name="Rooms")
+        self._add_lazy_nav_item(t("nav.maintenance"), "maintenance", "maintenance", canonical_name="Maintenance")
+        self._add_lazy_nav_item(t("nav.room_changes"), "room_changes", "room_changes", canonical_name="Room changes")
+        self._add_lazy_nav_item(t("nav.official_list"), "official_list", "official_list", canonical_name="Official list")
 
         if self.role == "admin":
-            self.staff_accounts_page = StaffAccountsPage(client)
-            mark("page:StaffAccountsPage")
-            self._add_nav_item(t("nav.staff_accounts"), "staff_accounts", self.staff_accounts_page, canonical_name="Staff accounts")
+            self._add_lazy_nav_item(t("nav.staff_accounts"), "staff_accounts", "staff_accounts", canonical_name="Staff accounts")
 
-        self.settings_page = SettingsPage(client)
-        mark("page:SettingsPage")
-        if hasattr(self.settings_page, "sign_out_requested"):
-            self.settings_page.sign_out_requested.connect(self.on_sign_out_clicked)
-        if hasattr(self.settings_page, "residence_settings_changed"):
-            self.settings_page.residence_settings_changed.connect(self._on_residence_settings_changed)
-        self.pages[t("nav.settings")] = self.settings_page
-        self.pages["Settings"] = self.settings_page
-        self.stack.addWidget(self.settings_page)
+        settings_placeholder = QWidget(self.stack)
+        self._placeholders["settings"] = settings_placeholder
+        self.pages[t("nav.settings")] = settings_placeholder
+        self.pages["Settings"] = settings_placeholder
+        self.pages.bind_slot(t("nav.settings"), "settings")
+        self.pages.bind_slot("Settings", "settings")
+        self.stack.addWidget(settings_placeholder)
 
         self.nav.currentRowChanged.connect(self._on_nav_row_changed)
         self.nav.setCurrentRow(0)
@@ -574,12 +636,14 @@ class MainWindow(QMainWindow):
         self._live_timer.setInterval(2000)
         self._live_timer.timeout.connect(self._refresh_live_state)
         self._live_timer.start()
-        self._set_live_state("reconnecting")
+        self._set_live_state("connecting")
+        self._in_init = False
 
-        # System tray icon and desktop notifications
+        # System tray icon and desktop notifications (tray created right after
+        # first paint so MainWindow appears faster).
         self.tray_icon = None
-        self._setup_tray_icon()
-        self.notification_manager = NotificationManager(self, tray_icon=self.tray_icon)
+        self.notification_manager = NotificationManager(self, tray_icon=None)
+        QTimer.singleShot(0, self._setup_tray_icon_deferred)
 
         # Start live background sync worker (unchanged behaviour).
         self.sync_worker = LiveSyncWorker(client, interval_ms=2000)
@@ -836,24 +900,32 @@ class MainWindow(QMainWindow):
             # Late promotion happens inside the retry success slot: defer the
             # page's synchronous identity/list round-trip and let its existing
             # async reload run on the worker pool.
-            self.staff_accounts_page = StaffAccountsPage(
+            staff_cls = _page_factory("StaffAccountsPage")
+            staff_page = _instantiate_page(
+                staff_cls,
                 self.client,
                 defer_initial_load=True,
-                current_uid=_session_user_id(self.client),
+                current_uid=getattr(self, "_current_uid", None) or _session_user_id(self.client),
             )
+            self._built_pages["staff_accounts"] = staff_page
             self._add_nav_item(
                 t("nav.staff_accounts"),
                 "staff_accounts",
-                self.staff_accounts_page,
+                staff_page,
                 canonical_name="Staff accounts",
+                slot_key="staff_accounts",
             )
 
-        # Pages exposing set_role() apply late verification without rebuilding
-        # themselves or performing another synchronous lookup.
-        if hasattr(self, "official_list_page") and hasattr(self.official_list_page, "set_role"):
-            self.official_list_page.set_role(self.role)
-        if hasattr(self, "settings_page") and hasattr(self.settings_page, "set_role"):
-            self.settings_page.set_role(self.role)
+        # Forward role updates ONLY to already-built pages; lazy pages receive
+        # the effective role when constructed on first visit.
+        if self._is_page_built("official_list"):
+            ol_page = self._built_pages["official_list"]
+            if hasattr(ol_page, "set_role"):
+                ol_page.set_role(self.role)
+        if self._is_page_built("settings"):
+            st_page = self._built_pages["settings"]
+            if hasattr(st_page, "set_role"):
+                st_page.set_role(self.role)
         if hasattr(self, "residence_settings_btn"):
             self.residence_settings_btn.setVisible(self.role == "admin")
 
@@ -880,10 +952,12 @@ class MainWindow(QMainWindow):
             self.overview_page.set_residence_name(res_name)
 
         res_gender = res.get("residence_gender")
-        for page_attr in ("pending_page", "residents_page", "rooms_page"):
-            page = getattr(self, page_attr, None)
-            if page is not None and hasattr(page, "set_residence_gender"):
-                page.set_residence_gender(res_gender)
+        self._cached_residence_gender = res_gender
+        for slot_key in ("pending", "residents", "rooms"):
+            if self._is_page_built(slot_key):
+                page = self._built_pages[slot_key]
+                if hasattr(page, "set_residence_gender"):
+                    page.set_residence_gender(res_gender)
 
         if res_gender in ("male", "female"):
             self.residence_unset_banner.setVisible(False)
@@ -917,16 +991,22 @@ class MainWindow(QMainWindow):
             self._apply_residence_banner(cached)
         else:
             self._check_residence_setup()
-        if hasattr(self, "pending_page") and hasattr(self.pending_page, "show_detail"):
-            self.pending_page.show_detail()
-        if hasattr(self, "settings_page") and hasattr(self.settings_page, "reload"):
-            self.settings_page.reload()
+        if self._is_page_built("pending"):
+            p_page = self._built_pages["pending"]
+            if hasattr(p_page, "show_detail"):
+                p_page.show_detail()
+        if self._is_page_built("settings"):
+            s_page = self._built_pages["settings"]
+            if hasattr(s_page, "reload"):
+                s_page.reload()
 
     def _on_roster_changed(self) -> None:
         """Refresh pending student records and badges when official admissions data is updated."""
         invalidate_official_lookup_cache(self.client)
-        if hasattr(self, "pending_page") and hasattr(self.pending_page, "reload"):
-            self.pending_page.reload()
+        if self._is_page_built("pending"):
+            p_page = self._built_pages["pending"]
+            if hasattr(p_page, "reload"):
+                p_page.reload()
 
     def _retry_role_check(self) -> None:
         """Re-check the role off the GUI thread, then apply the gating."""
@@ -973,14 +1053,223 @@ class MainWindow(QMainWindow):
         self.role_retry_btn.setText(t("common.retry"))
         self.role_retry_btn.setEnabled(True)
 
-    # -------------------------------------------------------------- navigation
-    def _add_nav_item(self, title: str, icon_name: str, widget: QWidget, canonical_name: str | None = None):
+    # -------------------------------------------------------------- navigation & lazy pages
+    def _is_page_built(self, slot_key: str) -> bool:
+        return slot_key in self._built_pages
+
+    def _add_nav_item(
+        self,
+        title: str,
+        icon_name: str,
+        widget: QWidget,
+        canonical_name: str | None = None,
+        *,
+        slot_key: str | None = None,
+    ):
+        resolved_slot = slot_key or icon_name
+        self._built_pages.setdefault(resolved_slot, widget)
         self.pages[title] = widget
         if canonical_name and canonical_name != title:
             self.pages[canonical_name] = widget
         self.stack.addWidget(widget)
+        self._nav_slot_keys.append(resolved_slot)
         # Badge keys reuse the legacy icon keys (pending / maintenance / room_changes).
         self.nav.add_row(title, icon_name, key=icon_name)
+
+    def _add_lazy_nav_item(
+        self,
+        title: str,
+        icon_name: str,
+        slot_key: str,
+        *,
+        canonical_name: str | None = None,
+    ) -> QWidget:
+        placeholder = QWidget(self.stack)
+        self._placeholders[slot_key] = placeholder
+        self.pages[title] = placeholder
+        if isinstance(self.pages, _LazyPagesDict):
+            self.pages.bind_slot(title, slot_key)
+        if canonical_name and canonical_name != title:
+            self.pages[canonical_name] = placeholder
+            if isinstance(self.pages, _LazyPagesDict):
+                self.pages.bind_slot(canonical_name, slot_key)
+        self.stack.addWidget(placeholder)
+        self._nav_slot_keys.append(slot_key)
+        self.nav.add_row(title, icon_name, key=icon_name)
+        return placeholder
+
+    def _ensure_page(self, slot_key: str) -> QWidget:
+        """Build and wire a secondary page on first visit or programmatic access."""
+        built = self._built_pages.get(slot_key)
+        if built is not None:
+            return built
+
+        factory_map = {
+            "pending": ("PendingPage", {"defer_initial_load": True}),
+            "residents": ("ResidentsPage", {"defer_initial_load": True}),
+            "rooms": ("RoomsPage", {"defer_initial_load": True}),
+            "maintenance": ("MaintenancePage", {"defer_initial_load": True}),
+            "room_changes": ("RoomChangesPage", {"defer_initial_load": True}),
+            "official_list": ("OfficialListPage", {"defer_initial_load": True, "role": self.role}),
+            "staff_accounts": (
+                "StaffAccountsPage",
+                {"defer_initial_load": True, "current_uid": getattr(self, "_current_uid", None)},
+            ),
+            "settings": ("SettingsPage", {"defer_initial_load": True, "role": self.role}),
+        }
+        if slot_key not in factory_map:
+            return self.overview_page
+
+        cls_name, kwargs = factory_map[slot_key]
+        cls = _page_factory(cls_name)
+        widget = _instantiate_page(cls, self.client, **kwargs)
+        self._built_pages[slot_key] = widget
+        mark(f"page:{cls_name}")
+
+        # Swap out placeholder at the exact stack index & update self.pages map.
+        placeholder = self._placeholders.pop(slot_key, None)
+        if placeholder is not None:
+            idx = self.stack.indexOf(placeholder)
+            was_current = self.stack.currentWidget() is placeholder
+            if idx >= 0:
+                self.stack.insertWidget(idx, widget)
+                self.stack.removeWidget(placeholder)
+            else:
+                self.stack.addWidget(widget)
+            if was_current:
+                self.stack.setCurrentWidget(widget)
+            placeholder.deleteLater()
+            for title, mapped in list(dict.items(self.pages)):
+                if mapped is placeholder:
+                    dict.__setitem__(self.pages, title, widget)
+        elif self.stack.indexOf(widget) < 0:
+            self.stack.addWidget(widget)
+
+        # Wire cross-page links and signals.
+        if slot_key == "pending":
+            if self._is_page_built("official_list"):
+                ol = self._built_pages["official_list"]
+                if hasattr(ol, "pending_page"):
+                    ol.pending_page = widget
+        elif slot_key == "official_list":
+            if hasattr(widget, "pending_page"):
+                widget.pending_page = self._built_pages.get("pending")
+            if hasattr(widget, "roster_changed"):
+                widget.roster_changed.connect(self._on_roster_changed)
+            if hasattr(widget, "set_role") and self.role is not None:
+                widget.set_role(self.role)
+        elif slot_key == "settings":
+            if hasattr(widget, "sign_out_requested"):
+                widget.sign_out_requested.connect(self.on_sign_out_clicked)
+            if hasattr(widget, "residence_settings_changed"):
+                widget.residence_settings_changed.connect(self._on_residence_settings_changed)
+            if hasattr(widget, "set_role") and self.role is not None:
+                widget.set_role(self.role)
+
+        # Hydrate immediately with cached live-sync snapshot or kick off async reload.
+        live = getattr(self, "_cached_live_data", None) or {}
+        if slot_key == "pending":
+            if "pending_students" in live and hasattr(widget, "apply_live_data"):
+                widget.apply_live_data(live["pending_students"])
+            elif hasattr(widget, "reload"):
+                widget.reload()
+        elif slot_key == "maintenance":
+            if "reports" in live and hasattr(widget, "apply_live_data"):
+                widget.apply_live_data(live["reports"])
+            elif hasattr(widget, "reload"):
+                widget.reload()
+        elif slot_key == "room_changes":
+            rows = live.get("room_change_requests") or live.get("pending_requests")
+            if rows is not None and hasattr(widget, "apply_live_data"):
+                widget.apply_live_data(rows)
+            elif hasattr(widget, "reload"):
+                widget.reload()
+        elif slot_key in ("residents", "rooms", "official_list"):
+            if hasattr(widget, "reload"):
+                widget.reload()
+
+        cached_gender = getattr(self, "_cached_residence_gender", None)
+        if cached_gender is not None and slot_key in ("pending", "residents", "rooms") and hasattr(widget, "set_residence_gender"):
+            widget.set_residence_gender(cached_gender)
+        elif slot_key == "settings":
+            if hasattr(widget, "reload"):
+                widget.reload()
+            if hasattr(widget, "reload_residence"):
+                widget.reload_residence()
+
+        return widget
+
+    def _set_custom_page(self, slot_key: str, value: QWidget) -> None:
+        self._built_pages[slot_key] = value
+        placeholder = self._placeholders.pop(slot_key, None)
+        if placeholder is not None:
+            for title, mapped in list(dict.items(self.pages)):
+                if mapped is placeholder:
+                    dict.__setitem__(self.pages, title, value)
+
+    @property
+    def pending_page(self) -> QWidget:
+        return self._ensure_page("pending")
+
+    @pending_page.setter
+    def pending_page(self, value: QWidget) -> None:
+        self._set_custom_page("pending", value)
+
+    @property
+    def residents_page(self) -> QWidget:
+        return self._ensure_page("residents")
+
+    @residents_page.setter
+    def residents_page(self, value: QWidget) -> None:
+        self._set_custom_page("residents", value)
+
+    @property
+    def rooms_page(self) -> QWidget:
+        return self._ensure_page("rooms")
+
+    @rooms_page.setter
+    def rooms_page(self, value: QWidget) -> None:
+        self._set_custom_page("rooms", value)
+
+    @property
+    def maintenance_page(self) -> QWidget:
+        return self._ensure_page("maintenance")
+
+    @maintenance_page.setter
+    def maintenance_page(self, value: QWidget) -> None:
+        self._set_custom_page("maintenance", value)
+
+    @property
+    def room_changes_page(self) -> QWidget:
+        return self._ensure_page("room_changes")
+
+    @room_changes_page.setter
+    def room_changes_page(self, value: QWidget) -> None:
+        self._set_custom_page("room_changes", value)
+
+    @property
+    def official_list_page(self) -> QWidget:
+        return self._ensure_page("official_list")
+
+    @official_list_page.setter
+    def official_list_page(self, value: QWidget) -> None:
+        self._set_custom_page("official_list", value)
+
+    @property
+    def staff_accounts_page(self) -> QWidget:
+        return self._ensure_page("staff_accounts")
+
+    @staff_accounts_page.setter
+    def staff_accounts_page(self, value: QWidget) -> None:
+        self._set_custom_page("staff_accounts", value)
+
+    @property
+    def settings_page(self) -> QWidget:
+        return self._ensure_page("settings")
+
+    @settings_page.setter
+    def settings_page(self, value: QWidget) -> None:
+        self._set_custom_page("settings", value)
 
     def _animate_stack_page(self, index: int) -> None:
         """Fade the incoming page (150 ms) — table rows are never animated."""
@@ -1003,6 +1292,7 @@ class MainWindow(QMainWindow):
         """Live indicator: dot state + matching text label + tooltip."""
         text = {
             "connected": t("live_sync.connected"),
+            "connecting": t("live_sync.connecting"),
             "reconnecting": t("live_sync.reconnecting"),
             "offline": t("live_sync.offline"),
         }.get(state, t("live_sync.offline"))
@@ -1016,10 +1306,19 @@ class MainWindow(QMainWindow):
         elapsed = time.monotonic() - reference
         if self._last_tick_at is not None and elapsed <= _LIVE_CONNECTED_WINDOW_S:
             self._set_live_state("connected")
+        elif self._last_tick_at is None and elapsed < 4.0 and not getattr(self, "_sync_error_seen", False):
+            self._set_live_state("connecting")
         elif elapsed <= _LIVE_OFFLINE_WINDOW_S:
             self._set_live_state("reconnecting")
         else:
             self._set_live_state("offline")
+
+    def _setup_tray_icon_deferred(self) -> None:
+        if getattr(self, "_closing", False) or self.tray_icon is not None:
+            return
+        self._setup_tray_icon()
+        if hasattr(self, "notification_manager") and self.notification_manager is not None:
+            self.notification_manager.tray_icon = self.tray_icon
 
     def _setup_tray_icon(self) -> None:
         if not QSystemTrayIcon.isSystemTrayAvailable():
@@ -1030,7 +1329,7 @@ class MainWindow(QMainWindow):
             tray.setIcon(app_icon)
         tray.setToolTip(t("tray.tooltip"))
 
-        tray_menu = QMenu()
+        tray_menu = QMenu(self)
         open_action = tray_menu.addAction(t("tray.open"))
         open_action.triggered.connect(self._restore_from_tray)
         min_action = tray_menu.addAction(t("tray.minimize"))
@@ -1109,6 +1408,7 @@ class MainWindow(QMainWindow):
 
     def on_live_sync_error(self, _err_msg: str):
         """Worker timed out or lost connection: show reconnecting in amber."""
+        self._sync_error_seen = True
         self._set_live_state("reconnecting")
 
     def on_live_sync_tick(self, data: dict):
@@ -1116,6 +1416,8 @@ class MainWindow(QMainWindow):
             self._startup_first_data_marked = True
             mark("first_data_received")
             timeline().dump_summary()
+        self._sync_error_seen = False
+        self._cached_live_data = dict(data)
         pending_students = data.get("pending_students", [])
         reports = data.get("reports", [])
         open_reports_count = data.get("open_reports_count", 0)
@@ -1155,11 +1457,22 @@ class MainWindow(QMainWindow):
         self._last_tick_at = time.monotonic()
         self._set_live_state("connected")
 
-        # 4. Deliver live data to pages.
-        self.overview_page.apply_live_data(p_count, m_count, r_count, active_count)
-        self.pending_page.apply_live_data(pending_students)
-        self.maintenance_page.apply_live_data(reports)
-        self.room_changes_page.apply_live_data(request_rows)
+        # 4. Deliver live data ONLY to built pages (lazy pages hydrate when opened).
+        if hasattr(self.overview_page, "apply_live_data"):
+            self.overview_page.apply_live_data(p_count, m_count, r_count, active_count)
+        built_pages = getattr(self, "_built_pages", None)
+        for slot_key, attr_name, payload in (
+            ("pending", "pending_page", pending_students),
+            ("maintenance", "maintenance_page", reports),
+            ("room_changes", "room_changes_page", request_rows),
+        ):
+            page = (
+                built_pages.get(slot_key)
+                if built_pages is not None
+                else getattr(self, attr_name, None)
+            )
+            if page is not None and hasattr(page, "apply_live_data"):
+                page.apply_live_data(payload)
 
     # ------------------------------------------------------------------- flow
     def _long_lived_workers(self) -> list:
@@ -1168,7 +1481,7 @@ class MainWindow(QMainWindow):
         sync = getattr(self, "sync_worker", None)
         if sync is not None:
             workers.append(sync)
-        settings = getattr(self, "settings_page", None)
+        settings = self._built_pages.get("settings") if hasattr(self, "_built_pages") else None
         health = getattr(settings, "health_worker", None) if settings is not None else None
         if health is not None:
             workers.append(health)
@@ -1272,15 +1585,21 @@ class MainWindow(QMainWindow):
     def _on_nav_row_changed(self, index: int) -> None:
         if hasattr(self, "settings_btn") and self.settings_btn.isChecked():
             self.settings_btn.setChecked(False)
-        self.stack.setCurrentIndex(index)
+        slot_key = self._nav_slot_keys[index] if 0 <= index < len(self._nav_slot_keys) else None
+        if slot_key is not None:
+            page = self._ensure_page(slot_key)
+            self.stack.setCurrentWidget(page)
+        else:
+            self.stack.setCurrentIndex(index)
 
     def on_settings_clicked(self) -> None:
         self.nav.clear_selection()
         if hasattr(self, "settings_btn"):
             self.settings_btn.setChecked(True)
-        self.stack.setCurrentWidget(self.settings_page)
-        if hasattr(self.settings_page, "reload_residence"):
-            self.settings_page.reload_residence()
+        page = self._ensure_page("settings")
+        self.stack.setCurrentWidget(page)
+        if hasattr(page, "reload_residence"):
+            page.reload_residence()
 
     @staticmethod
     def _sign_out_session(client):

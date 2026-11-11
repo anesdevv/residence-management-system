@@ -1,4 +1,7 @@
 {
+  "app": {
+    "console_title": "Console du personnel"
+  },
   "auth": {
     "forgot_password": "Mot de passe oublié ?",
     "register": "S’inscrire",
@@ -128,6 +131,7 @@
   "live_sync": {
     "active": "Synchronisation active",
     "connected": "Synchronisation en direct connectée",
+    "connecting": "Connexion en cours…",
     "offline": "Synchronisation en direct hors ligne",
     "reconnecting": "Reconnexion de la synchronisation en direct…",
     "status_bar": "{status} • Dernière mise à jour : {timestamp} • En attente : {pending} • Tickets ouverts : {open_tickets} • Transferts : {transfers}"

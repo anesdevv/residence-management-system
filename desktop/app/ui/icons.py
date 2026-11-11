@@ -303,6 +303,10 @@ def svg(name: str) -> str:
     return SVG_CATALOG.get(name) or SVG_CATALOG["dashboard"]
 
 
+_PIXMAP_CACHE: dict[tuple[str, int, str, float], QPixmap] = {}
+_ICON_CACHE: dict[tuple[str, int, str, float], QIcon] = {}
+
+
 def _device_pixel_ratio() -> float:
     app = QGuiApplication.instance()
     if app is None:
@@ -320,8 +324,15 @@ def get_pixmap(name: str, size: int = 20, color: str | None = None) -> QPixmap:
     rendering issue fall back to the dashboard icon (never raises).
     """
     paint_color = color or str(TOKENS["text-secondary"])
-    markup = svg(name).replace(_STROKE_COLOR, paint_color)
     ratio = _device_pixel_ratio()
+    cache_key = (str(name), int(size), str(paint_color), round(float(ratio), 3))
+    can_cache = QGuiApplication.instance() is not None
+    if can_cache:
+        cached = _PIXMAP_CACHE.get(cache_key)
+        if cached is not None:
+            return QPixmap(cached)
+
+    markup = svg(name).replace(_STROKE_COLOR, paint_color)
     side = max(1, int(round(size * ratio)))
     pixmap = QPixmap(side, side)
     pixmap.fill(Qt.GlobalColor.transparent)
@@ -334,9 +345,30 @@ def get_pixmap(name: str, size: int = 20, color: str | None = None) -> QPixmap:
     finally:
         painter.end()
     pixmap.setDevicePixelRatio(ratio)
+    if can_cache:
+        _PIXMAP_CACHE[cache_key] = pixmap
+        return QPixmap(pixmap)
     return pixmap
 
 
 def get_icon(name: str, size: int = 20, color: str | None = None) -> QIcon:
     """``QIcon`` for ``name`` (recoloured ``QSvgRenderer`` pixmap, HiDPI aware)."""
-    return QIcon(get_pixmap(name, size=size, color=color))
+    paint_color = color or str(TOKENS["text-secondary"])
+    ratio = _device_pixel_ratio()
+    cache_key = (str(name), int(size), str(paint_color), round(float(ratio), 3))
+    can_cache = QGuiApplication.instance() is not None
+    if can_cache:
+        cached = _ICON_CACHE.get(cache_key)
+        if cached is not None:
+            return QIcon(cached)
+    icon = QIcon(get_pixmap(name, size=size, color=paint_color))
+    if can_cache:
+        _ICON_CACHE[cache_key] = icon
+        return QIcon(icon)
+    return icon
+
+
+def clear_icon_cache() -> None:
+    """Clear rendered SVG caches (useful in tests or after DPI/theme changes)."""
+    _PIXMAP_CACHE.clear()
+    _ICON_CACHE.clear()

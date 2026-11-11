@@ -72,7 +72,7 @@ from ..icons import get_icon
 from ..infocard import RoomInfoCardDialog
 from ..residence_dialogs import residence_gender_label
 from ..tasks import GatherResult, TaskRunner, human_error
-from ..theme import C, S, DESKTOP_STYLESHEET
+from ..theme import C, S, DESKTOP_STYLESHEET, apply_app_stylesheet
 
 # Table language: overline headers are uppercased by ``configure_table``.
 def _columns() -> list[str]:
@@ -137,7 +137,7 @@ class BlockSetupDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(t("rooms.block_setup_title"))
         self.setMinimumWidth(380)
-        self.setStyleSheet(DESKTOP_STYLESHEET)
+        apply_app_stylesheet(self)
         self.client = client
         self.existing_names = {str(n).strip().upper() for n in (existing_names or [])}
         self.tasks = TaskRunner(self)
@@ -280,7 +280,7 @@ class ManageBlocksDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(t("rooms.manage_blocks_title"))
         self.setMinimumSize(660, 440)
-        self.setStyleSheet(DESKTOP_STYLESHEET)
+        apply_app_stylesheet(self)
         self.client = client
         self.rooms = list(rooms or [])
         self.occupancy = dict(occupancy or {})
@@ -567,7 +567,7 @@ class RoomSetupDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(t("rooms.edit_room_dialog_title") if room else t("rooms.add_room_dialog_title"))
         self.setMinimumWidth(480)
-        self.setStyleSheet(DESKTOP_STYLESHEET)
+        apply_app_stylesheet(self)
         self.client = client or getattr(parent, "client", None)
         self.room = room
         self.current_occupancy = current_occupancy
@@ -844,7 +844,7 @@ class RoomSetupDialog(QDialog):
 class RoomsPage(QWidget):
     """Dormitory rooms: toolbar, DataTable and the room info card dialog."""
 
-    def __init__(self, client):
+    def __init__(self, client, *, defer_initial_load: bool = False):
         super().__init__()
         self.client = client
         self.rows: list[dict] = []
@@ -992,7 +992,10 @@ class RoomsPage(QWidget):
         tip = _small_label(t("rooms.double_click_tip"))
         layout.addWidget(tip)
 
-        self.reload()
+        if defer_initial_load:
+            self._loaded_once = True
+        else:
+            self.reload()
 
     # --------------------------------------------------- background plumbing
     def _show_banner(self, kind: str, title: str, message: str) -> None:

@@ -335,7 +335,7 @@ class _QuotedBlock(QFrame):
 class RoomChangesPage(QWidget):
     """Room change requests: status views, search and the transfer inspector."""
 
-    def __init__(self, client):
+    def __init__(self, client, *, defer_initial_load: bool = False):
         super().__init__()
         self.client = client
         self.all_rows: list[dict] = []
@@ -609,7 +609,8 @@ class RoomChangesPage(QWidget):
         layout.addWidget(self.splitter, 1)
 
         self._clear_selection_state()
-        self.reload()
+        if not defer_initial_load:
+            self.reload()
         self._initializing = False
 
     # --------------------------------------------------------------- styling
