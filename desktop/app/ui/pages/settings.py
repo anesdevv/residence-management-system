@@ -76,6 +76,7 @@ from ..residence_dialogs import ResidenceGenderChangeDialog, residence_gender_la
 from ..resource import get_asset_path
 from ..tasks import TaskRunner, human_error
 from ..theme import C, S
+from ..updates_ui import UpdatesSection
 
 try:
     from desktop.platform import autostart
@@ -277,10 +278,19 @@ def _role_label(role: str | None) -> str:
 class SettingsPage(QWidget):
     sign_out_requested = Signal()
     residence_settings_changed = Signal()
+    update_install_requested = Signal(object)
 
-    def __init__(self, client, *, defer_initial_load: bool = False, role: str | None = None):
+    def __init__(
+        self,
+        client,
+        *,
+        defer_initial_load: bool = False,
+        role: str | None = None,
+        update_service=None,
+    ):
         super().__init__()
         self.client = client
+        self.update_service = update_service
         self.role = _normalize_role(role) if role is not None else _normalize_role(current_role(client))
         self._role_unverified = self.role is None
         self._health_started = False
@@ -541,6 +551,16 @@ class SettingsPage(QWidget):
 
         layout.addWidget(self.security_card)
 
+        # Updates — shared service owned by the main window so the sidebar
+        # badge and this card always show the same release.
+        self.updates_section = None
+        if self.update_service is not None:
+            self.updates_section = UpdatesSection(self.update_service, self)
+            self.updates_section.install_requested.connect(
+                self.update_install_requested.emit
+            )
+            layout.addWidget(self.updates_section)
+
         # Notifications settings card
         self.notif_card = Card(
             t("settings.notifications_title"),
@@ -717,6 +737,11 @@ class SettingsPage(QWidget):
             if self.role == "admin":
                 self._load_residence_sync()
         self._initializing = False
+
+    def on_shown(self) -> None:
+        """Called every time the page becomes visible."""
+        if self.updates_section is not None:
+            self.updates_section.on_shown()
 
     def _on_language_changed(self, index: int) -> None:
         lang_code = self.lang_combo.itemData(index)
