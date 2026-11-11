@@ -52,7 +52,7 @@ flowchart TB
     subgraph Backend["Unified Supabase Cloud Infrastructure"]
         Auth["🔐 Supabase Auth<br/><i>(Role claims: student, staff, admin)</i>"]
         Storage["📦 Supabase Storage<br/><i>(maintenance-photos bucket)</i>"]
-        Edge["⚡ Edge Functions<br/><i>(admin-users: provision & delete staff)</i>"]
+        Edge["⚡ Edge Functions<br/><i>(admin-users, student-login)</i>"]
         DB[("🗄️ PostgreSQL Database<br/><i>(RLS Policies, Triggers, RPCs)</i>")]
     end
 
@@ -73,7 +73,7 @@ flowchart TB
 ## 4. Functional Requirements (FR)
 
 ### Module 1: Student Application & Roster Verification
-- **FR-1.1 Student Registration**: Students register with official university Card ID (`card_id`), Full Name, Birth Date, Wilaya of origin, University, Faculty, Academic Study Level, Phone, Email, and Password. The residence is single-gender (`residence_settings.residence_gender`), so registration does not ask for gender; a database trigger fills `students.gender` automatically and keeps registration closed while unset.
+- **FR-1.1 Student Registration & Simple Contact Email**: Students register with official university Card ID (`card_id`), Full Name, Birth Date, Wilaya of origin, University, Faculty, Academic Study Level, Phone, required unique Email + Confirm Email (stored as contact information only — zero emails, OTPs, or links are ever sent), and Password. The residence is single-gender (`residence_settings.residence_gender`), so registration does not ask for gender; a database trigger fills `students.gender` automatically and keeps registration closed while unset. Students sign in with Card ID + password (`student-login`), and forgotten passwords are handled directly by the housing office.
 - **FR-1.2 Identity Verification**: The system cross-references the student's `card_id` against the `official_residents` roster table.
   - Matches display a `Matched` emerald badge; missing records display a `Not in Roster` rose badge.
   - If an official roster entry or stored record has another gender than the configured `residence_gender`, the desktop detail panel displays an amber `"Gender differs from this residence"` warning badge (informational only; does not block approval).

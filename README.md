@@ -33,7 +33,7 @@
 
 RÉSIVO (*Résidence Universitaire*) provides an operations system for university student housing across four components:
 
-1. **Resident Web Portal (`web/`)**: responsive web application built with Astro 5 and Tailwind CSS v4. Enrolled students register with their university card ID, check housing approval status, access digital resident passes, report dormitory maintenance issues with photos, and submit room transfer requests.
+1. **Resident Web Portal (`web/`)**: responsive web application built with Astro 5 and Tailwind CSS v4. Enrolled students register with their university card ID and a required contact-only email address (zero emails sent), sign in with card ID + password, check housing approval status, access digital resident passes, report dormitory maintenance issues with photos, and submit room transfer requests. See [docs/auth-simple.md](./docs/auth-simple.md).
 2. **Staff Operations Console (`desktop/`)**: administrative desktop workstation built with Python 3.11 and PySide6 (Qt 6). Housing staff review pending applications, verify students against university rosters, assign room blocks, manage maintenance tickets with an asynchronous photo viewer, adjudicate room swaps, and configure staff accounts.
 3. **AI Facility Assistant (`mcp-worker/` and `mcp/`)**: Model Context Protocol (MCP) server deployed to Cloudflare Workers. Enables authorized staff to query occupancy statistics, pending tickets, and dormitory status through ChatGPT or compatible MCP clients.
 4. **Backend Infrastructure (`supabase/`)**: Supabase (PostgreSQL 15, Auth, Storage) configured with Row Level Security (RLS) policies, versioned migrations, and transactional PL/pgSQL stored procedures.
@@ -52,7 +52,7 @@ flowchart TD
 
     subgraph Backend["Supabase Cloud Platform"]
         Auth["Supabase Auth<br/><i>(Role-based JWT: student, staff, admin)</i>"]
-        Edge["Edge Functions<br/><i>(admin-users: secure user provisioning)</i>"]
+        Edge["Edge Functions<br/><i>(admin-users, student-login)</i>"]
         Storage["Supabase Storage<br/><i>(maintenance-photos bucket)</i>"]
         Postgres[("PostgreSQL Database<br/><i>(RLS Policies + SECURITY DEFINER RPCs)</i>")]
     end
@@ -75,7 +75,7 @@ flowchart TD
 
 ### Student resident web portal
 
-- Academic verification: registration requires student card ID matching against official university records.
+- Academic verification: registration requires student card ID matching against official university records, plus a required normalized contact-only email (confirmed on entry; never used for login, verification codes, or password recovery—forgotten passwords are handled by the housing office).
 - Digital resident pass: displays assigned building block, room number, floor, and official resident pass.
 - Maintenance triage: students submit issues by category with photos and descriptions, tracking status across Pending, In Progress, and Resolved stages.
 - Room transfers: transfer requests include written justifications and enforce gender-segregated block matching.
@@ -282,6 +282,7 @@ residence-management-system/
 ├── scripts/                            # Database seed and maintenance scripts
 ├── supabase/                           # Database migrations, seed data, Edge Functions
 │   ├── functions/admin-users/          # Edge Function for staff user management
+│   ├── functions/student-login/        # Edge Function resolving student Card ID login
 │   └── migrations/                     # Version-controlled SQL migrations
 ├── web/                                # Student Resident Portal (Astro 5 + Tailwind v4)
 │   ├── src/

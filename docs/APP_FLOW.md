@@ -51,10 +51,10 @@ sequenceDiagram
     participant DB as PostgreSQL DB
     participant Staff as Staff Desktop Console
 
-    Student->>Web: Submits Registration Form (Card ID, Name, Wilaya, Phone)
-    Web->>Auth: createUser(email, password)
-    Auth-->>Web: Returns Auth User UID
-    Web->>DB: Inserts into public.students (status = 'pending')
+    Student->>Web: Submits Registration Form (Card ID, Name, Wilaya, Phone, Contact Email + Confirm Email)
+    Web->>Auth: signUp(syntheticCardEmail, password, metadata + real contact email)
+    Auth-->>Web: Returns Auth User UID (no email sent; immediate signOut)
+    Web->>DB: handle_new_user validates/saves students.email & inserts status = 'pending'
     DB->>DB: Cross-references card_id in official_residents roster
     alt Match found in Official University Roster
         DB-->>Staff: Flagged as "✓ Matched"

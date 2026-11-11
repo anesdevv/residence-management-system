@@ -8,124 +8,55 @@ Prereqs: Supabase local running (`npx supabase status`); `web/.env` set; `npm --
 - [ ] Unauthenticated visit to `/dashboard` → redirected to `/login`.
 - [ ] Submit a maintenance report with a photo → appears as `pending`; photo renders via signed URL.
 - [ ] Submit a room-change request → appears as `pending`; preferred rooms match gender.
-- [ ] Edit phone on `/dashboard/profile` → success banner; phone persists; email is verified read-only.
+- [ ] Edit phone and/or contact email on `/dashboard/profile` → success banner; values persist; **Contact email** shows no "Verified" badge.
 
 ---
 
-## 2. Real Verified Email & Auth Flows (Local Mailpit Testing)
+## 2. Simple Contact-Email & Zero-Email Auth Flows
 
-Supabase local includes an in-memory mail catcher (Mailpit) running at **`http://localhost:54324`**. All verification emails, OTP codes, recovery messages, and magic links are caught here without needing a Brevo account or external SMTP credentials.
+Prerequisites: `supabase start` (or linked dev DB with migrations applied) and `npm --prefix web run dev`. Zero emails are ever sent by Supabase Auth or any Edge Function.
 
-### Scenario A: New Student Registration & Email Verification
+### Scenario A: Registration Email Validation (Mismatch & Duplicate Case-Insensitive)
 1. Navigate to `http://localhost:4321/register`.
-2. Fill in enrollment and personal data:
-   - Student card ID: `202338077777` (at least 4 digits, not yet registered)
-   - Real email: `newstudent@univ-tlemcen.dz`
-   - Confirm email: `newstudent@univ-tlemcen.dz`
-   - Password: `Password123!` (at least 8 chars, strength meter updates to Good/Strong)
+2. Fill in valid personal details, enter `student@univ-tlemcen.dz` in **Email**, and enter `other@univ-tlemcen.dz` in **Confirm email**.
+3. Verify pasting into **Confirm email** works (not blocked), then submit.
+4. **Expected**: Submission is blocked client-side with *"The emails do not match"* (no network request sent).
+5. Try registering with an email already belonging to a seed student in different letter case (e.g. `Karim.Benali@UNIV-TLEMCEN.DZ`) and matching confirm field.
+6. **Expected**: Friendly error banner (`email_in_use`), account is NOT created.
+
+### Scenario B: Valid Registration (Zero Emails Sent)
+1. Fill in valid registration fields for an unregistered enrolled student card ID (`202338077777`) and a unique email (`NewStudent@Univ-Tlemcen.dz` / matching confirm email).
+2. Observe inline hint: *"Use an email address you can still access in the future. It is only used as contact information."*
 3. Submit registration dossier.
-4. **Expected**: Redirected to `http://localhost:4321/verify-email`. The page displays:
-   - Account activation header
-   - Masked target address (e.g., `n***t@univ-tlemcen.dz`)
-   - 6-slot numeric OTP code input
-   - "Resend code" button with countdown
-5. Open Mailpit at `http://localhost:54324`. A branded RÉSIVO email titled *"Confirm your RÉSIVO account"* should be present.
-6. Copy the 6-digit verification code from the email (e.g., `123456`).
-7. Enter or paste the digits into `/verify-email`.
-8. Click **Verify and continue**.
-9. **Expected**: Redirected to `http://localhost:4321/login?verified=1` with banner *"Email verified! Your email address has been confirmed."*
-10. Check database: `students.email` is now populated with `newstudent@univ-tlemcen.dz`, and `auth.users.email_confirmed_at` is set.
+4. **Expected**:
+   - Redirected immediately to `http://localhost:4321/login?registered=1` with banner *"Account created. Wait for the housing office to review it."*
+   - No verification screen, no code input, no resend button.
+   - `public.students.email` stores `newstudent@univ-tlemcen.dz` (trimmed & lowercased) and `status = 'pending'`.
+   - Zero emails sent anywhere (confirm in Supabase Auth logs).
 
-### Scenario B: Verification Link Click (Secondary Flow)
-1. Register another student with email `student.link@univ-tlemcen.dz`.
-2. Open Mailpit at `http://localhost:54324`.
-3. In the email, click the blue button **"Verify your email"** (pointing to `http://localhost:4321/auth/confirm?token_hash=...&type=email`).
-4. **Expected**: The browser validates the hash server-side and redirects to `/dashboard` or `/login?verified=1`.
-
-### Scenario C: Unverified Email Login Attempt
-1. Register a student with email `unconfirmed@univ-tlemcen.dz` but do **not** verify the code.
-2. Go to `/login` and attempt to sign in with `unconfirmed@univ-tlemcen.dz` and the correct password.
-3. **Expected**: Redirected back to `/verify-email?unverified=1` with banner *"Your university housing dossier has been submitted, but your email address has not been verified yet."*
-
-### Scenario D: Wrong & Expired OTP Codes
-1. On `/verify-email`, enter an invalid code (e.g. `000000`).
-2. Submit.
-3. **Expected**: Error banner *"Invalid verification code. Please check your digits and try again."* Input slots remain accessible.
-
-### Scenario E: "Resend Code" Cooldown & Session Cap
-1. On `/verify-email`, click **Resend code**.
+### Scenario C: Student & Staff Login Without Verification or Email Recovery
+1. Visit `/login`.
 2. **Expected**:
-   - Fresh email received in Mailpit.
-   - Button immediately disables, changing label to *"Resend in 60s"*.
-   - Countdown decrements every second: `59s`, `58s`, ... `0s`.
-   - Once counter hits `0s`, button re-enables with label *"Resend code"*.
-   - Rapidly requesting codes reaches the 5 sends/hour session cap with banner *"Hourly send limit reached (5/5). Try again in ... minutes."*
+   - No **"Forgot password?"** link and no **"Email me a sign-in link"** option.
+   - Plain-text notice displayed: *"Forgot your password? Please contact the housing office."*
+3. Sign in with Student Card ID + password (`202338012345`).
+4. **Expected**: Signed in directly to `/dashboard` (students with `students.email` present are never redirected to `/account/add-email`).
+5. Verify a staff account (email + password) can still authenticate normally and is never redirected to `/account/add-email`.
 
-### Scenario F: Sign in with Card ID vs Email (Dual Identifier Support)
-1. Sign in with Card ID:
-   - Identifier: `202338012345`
-   - Password: `Password123!`
-   - **Expected**: Successful sign-in to dashboard.
-2. Sign out.
-3. Sign in with Email:
-   - Identifier: `karim.benali@univ-tlemcen.dz`
-   - Password: `Password123!`
-   - **Expected**: Successful sign-in to dashboard.
-4. Try invalid credentials:
-   - Identifier: `nonexistent@univ-tlemcen.dz` (or card ID `999999999999`)
-   - Password: `WrongPassword!`
-   - **Expected**: Generic message *"Invalid card ID/email or password."* (No account enumeration).
+### Scenario D: Legacy Student Without Email Redirect Gate
+1. Sign in as legacy seed student without an email (e.g., Card ID `202138099888` with `students.email IS NULL`).
+2. **Expected**:
+   - Redirected automatically to `/account/add-email`.
+   - Direct navigation to `/dashboard` redirects back to `/account/add-email` until a contact email is saved.
+3. Submit Email + Confirm email (`tariq.meghazi@univ-tlemcen.dz`).
+4. **Expected**: Saved directly via `update_my_contact` (no code sent), and user is redirected to `/dashboard`. Subsequent visits to `/dashboard` work directly.
 
-### Scenario G: Password Recovery Flow (Card ID & Email)
-1. Go to `/login` and click **"Forgot password?"**.
-2. Enter Card ID `202338012345` (or email `karim.benali@univ-tlemcen.dz`).
-3. Click **Send recovery code**.
-4. **Expected**: Transition to recovery OTP step with generic notification *"If an account exists for that identifier, instructions and a 6-digit recovery code have been dispatched to the email on file."*
-5. Open Mailpit (`http://localhost:54324`).
-6. Notice the email titled *"Reset your RÉSIVO portal password"*.
-7. Copy the 6-digit recovery code and enter it on the recovery screen.
-8. Click **Verify code & continue**.
-9. **Expected**: Redirected to `/reset-password`.
-10. Enter a new password (e.g., `NewStrongPassword123!`), view the strength meter update to Strong, and submit.
-11. **Expected**: Redirected to `/login?reset=1` with banner *"Your password has been updated. Please sign in with your new password."*
-12. Sign in with the new password.
-
-### Scenario H: Magic Link / Passwordless One-Time Code
-1. On `/login`, expand **"Email me a sign-in code or link"**.
-2. Enter `202338012345` or `karim.benali@univ-tlemcen.dz`.
-3. Submit.
-4. **Expected**: Generic notice *"If an account matches that identifier, we sent a one-time sign-in code and magic link..."*.
-5. Open Mailpit, open the sign-in email, and click the magic link button.
-6. **Expected**: Authenticated directly into `/dashboard`.
-
-### Scenario I: Student Profile & Changing Email
-1. Sign in as resident `karim.benali@univ-tlemcen.dz`.
-2. Go to `/dashboard/profile`.
-3. Observe:
-   - Mobile phone number is editable.
-   - Contact email is read-only with a green **Verified** status badge.
-   - Link **"Change email →"** is present.
-4. Click **"Change email →"** (routes to `/account/add-email`).
-5. Enter a new email (e.g., `karim.new@univ-tlemcen.dz`) and confirm.
-6. Submit.
-7. Open Mailpit, grab confirmation OTP, and enter it.
-8. **Expected**: Redirected back to `/dashboard/profile?updated=1`. The contact email is now `karim.new@univ-tlemcen.dz` with the Verified badge.
-
-### Scenario J: Legacy Student Account Migration Flow
-1. In `/login`, enter legacy student credentials:
-   - Card ID: `202138099888`
-   - Password: `Password123!`
-2. Submit.
-3. **Expected**: `student-login` detects the synthetic `@students.residence.local` email and middleware automatically redirects the student to **`/account/add-email`**.
-4. Attempt to navigate directly to `/dashboard` or `/dashboard/maintenance`.
-5. **Expected**: Automatically intercepted and redirected back to `/account/add-email`.
-6. Fill in a real email:
-   - Email: `tariq.meghazi@univ-tlemcen.dz`
-   - Confirm email: `tariq.meghazi@univ-tlemcen.dz`
-7. Click **Send verification code**.
-8. In Mailpit, find the verification email sent exclusively to `tariq.meghazi@univ-tlemcen.dz` (zero email sent to `@students.residence.local`).
-9. Enter the 6-digit code and submit.
-10. **Expected**: Real email is confirmed and mirrored into `students.email`. User is now permitted into `/dashboard`!
+### Scenario E: Profile Contact Email & Phone Editing
+1. Sign in as resident (`202338012345`) and visit `/dashboard/profile`.
+2. **Expected**:
+   - Email field is labeled **Contact email** (no "Verified" badge).
+   - Updating phone and/or Contact email (with Confirm email field matching) saves cleanly via `update_my_contact`.
+   - Entering a duplicate email used by another student returns the friendly `email_in_use` error.
 
 ---
 

@@ -111,7 +111,6 @@ Tableau de correspondance strict entre les termes sources anglais et la terminol
 | **Sign out** | **Se déconnecter** | `nav.sign_out`, `auth.sign_out` | Clôture de la session active |
 | **Register** | **S’inscrire** | `auth.register` | Création de compte étudiant |
 | **Password** | **Mot de passe** | `login.password_label`, `fields.password`| Identifiant secret |
-| **Forgot password?** | **Mot de passe oublié\u00A0?** | `auth.forgot_password` | Lien de réinitialisation avec ponctuation haute |
 | **Card ID** | **N° de carte étudiant** | `fields.card_id` | Identifiant national / universitaire unique |
 | **Email** | **E-mail** | `fields.email`, `login.email_label` | Adresse électronique |
 | **Phone** | **Téléphone** | `fields.phone` | Numéro de téléphone portable |
@@ -136,8 +135,8 @@ Tableau de correspondance strict entre les termes sources anglais et la terminol
 | **Digital resident pass** | **Carte de résident numérique** | `terms.digital_pass` | Pass virtuel avec QR code pour l’accès à la cité |
 | **Roster match** | **Correspondance avec la liste officielle** | `status.matched` | Étudiant vérifié sur la liste universitaire |
 | **Not in roster** | **Absent de la liste officielle** | `status.not_in_roster` | Étudiant non répertorié sur le listing officiel |
-| **Verified** | **Vérifié** | `common.verified` | Donnée ou compte confirmé conforme |
-| **Resend code** | **Renvoyer le code** | `auth.resend_code` | Envoi d’un nouveau code OTP |
+| **Contact email** | **E-mail de contact** | `fields.contact_email` | Adresse de contact étudiant (non vérifiée) |
+| **Forgot your password? Please contact the housing office.** | **Mot de passe oublié\u00A0? Veuillez contacter le bureau des résidences.** | `auth.forgot_password_office` | Consigne en texte simple sur `/login` |
 
 ---
 
