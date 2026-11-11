@@ -221,8 +221,17 @@ hiddenimports = [
     "desktop.updater.versioning",
     "desktop.version",
 ]
+for _path_entry in (str(ROOT), str(DESKTOP_DIR)):
+    if _path_entry not in sys.path:
+        sys.path.insert(0, _path_entry)
+
+hiddenimports.extend(collect_submodules("desktop.app"))
+hiddenimports.extend(collect_submodules("desktop.ui"))
+hiddenimports.extend(collect_submodules("desktop.auth"))
+hiddenimports.extend(collect_submodules("desktop.platform"))
 hiddenimports.extend(collect_submodules("pydantic_core"))
 hiddenimports.extend(collect_submodules("websockets"))
+hiddenimports = list(dict.fromkeys(hiddenimports))
 
 excludes = [
     # Standard library unused modules

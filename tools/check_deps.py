@@ -92,6 +92,42 @@ def is_windows_system_dll(name_lower: str) -> bool:
     return name_lower in _WINDOWS_SYSTEM_DLLS or name_lower.startswith(_SYSTEM_PREFIXES)
 
 
+def expected_desktop_modules(repo_root: Path | None = None) -> set[str]:
+    """Return every importable ``desktop.*`` module name in the source tree."""
+    root = repo_root if repo_root is not None else Path(__file__).resolve().parents[1]
+    desktop_root = root / "desktop"
+    expected: set[str] = set()
+    if desktop_root.is_dir():
+        for subpkg in ("app", "ui", "auth", "i18n", "platform", "updater"):
+            pkg_dir = desktop_root / subpkg
+            for py_file in pkg_dir.rglob("*.py"):
+                if "__pycache__" in py_file.parts:
+                    continue
+                rel = py_file.relative_to(root).with_suffix("")
+                parts = list(rel.parts)
+                if parts[-1] == "__init__":
+                    parts = parts[:-1]
+                expected.add(".".join(parts))
+        expected.add("desktop.version")
+    return expected
+
+
+def find_missing_desktop_modules(bundle_dir: Path) -> list[str]:
+    """Return any desktop.* source modules missing from RESIVO.exe's embedded PYZ.pyz."""
+    exe_path = bundle_dir / "RESIVO.exe"
+    if not exe_path.is_file():
+        return ["RESIVO.exe missing"]
+    try:
+        from PyInstaller.archive.readers import CArchiveReader
+    except ImportError:
+        return []
+
+    arch = CArchiveReader(str(exe_path))
+    pyz = arch.open_embedded_archive("PYZ.pyz")
+    bundled = set(pyz.toc.keys())
+    return sorted(expected_desktop_modules() - bundled)
+
+
 def scan_bundle(bundle_dir: Path) -> dict:
     if not bundle_dir.is_dir():
         raise FileNotFoundError(f"Bundle directory not found: {bundle_dir}")
@@ -144,6 +180,7 @@ def scan_bundle(bundle_dir: Path) -> dict:
             pe.close()
 
     internal = bundle_dir / "_internal"
+    missing_desktop_modules = find_missing_desktop_modules(bundle_dir)
     checks = {
         "qwindows": (internal / "PySide6" / "plugins" / "platforms" / "qwindows.dll").is_file(),
         "styles": (internal / "PySide6" / "plugins" / "styles" / "qmodernwindowsstyle.dll").is_file(),
@@ -159,12 +196,14 @@ def scan_bundle(bundle_dir: Path) -> dict:
         "fonts_outfit": (internal / "assets" / "fonts" / "Outfit-Bold.ttf").is_file(),
         "fonts_inter": (internal / "assets" / "fonts" / "Inter-Regular.ttf").is_file(),
         "env_next_to_exe": (bundle_dir / ".env").is_file(),
+        "desktop_modules_bundled": not missing_desktop_modules,
     }
 
     return {
         "pe_files_scanned": len(pe_files),
         "non_64bit": non_64bit,
         "missing_non_system_deps": {k: sorted(v) for k, v in sorted(missing_deps.items())},
+        "missing_desktop_modules": missing_desktop_modules,
         "vc_runtime_bundled": vc_runtime_found,
         "api_crt_forwarders_bundled": api_crt_count,
         "checks": checks,
