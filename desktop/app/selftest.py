@@ -41,6 +41,11 @@ try:
 except ImportError:
     from desktop.i18n import current_language, t
 
+try:
+    from desktop.version import __version__ as APP_VERSION
+except ImportError:  # pragma: no cover - direct package import fallback
+    from version import __version__ as APP_VERSION
+
 _log = logging.getLogger("resivo.selftest")
 
 
@@ -180,7 +185,17 @@ def run_selftest(app: Any = None, *, timeout_s: float = 5.0) -> list[SelfTestChe
     """Execute all zero-prerequisite readiness checks without logging secrets or PII."""
     checks: list[SelfTestCheck] = []
 
-    # 1. Config check
+    # 1. Application version (single source of truth: desktop/version.py)
+    checks.append(
+        SelfTestCheck(
+            "version",
+            t("portability.selftest_check_version"),
+            bool(APP_VERSION) and APP_VERSION.count(".") == 2,
+            f"RÉSIVO {APP_VERSION}",
+        )
+    )
+
+    # 2. Config check
     cfg_code = config_mod.config_error_code()
     cfg_host = urllib.parse.urlparse(config_mod.SUPABASE_URL or "").netloc or "(none)"
     checks.append(
@@ -192,7 +207,7 @@ def run_selftest(app: Any = None, *, timeout_s: float = 5.0) -> list[SelfTestChe
         )
     )
 
-    # 2. Writable per-user directories
+    # 3. Writable per-user directories
     ok_logs, log_detail = _probe_writable_dir(log_dir())
     ok_sess, sess_detail = _probe_writable_dir(default_session_dir())
     checks.append(
@@ -204,7 +219,7 @@ def run_selftest(app: Any = None, *, timeout_s: float = 5.0) -> list[SelfTestChe
         )
     )
 
-    # 3. Fonts + translations
+    # 4. Fonts + translations
     families = load_fonts()
     fonts_ok = all(f in families for f in ("Outfit", "Inter"))
     i18n_dir = get_i18n_dir()
@@ -220,7 +235,7 @@ def run_selftest(app: Any = None, *, timeout_s: float = 5.0) -> list[SelfTestChe
         )
     )
 
-    # 4. Qt plugins check
+    # 5. Qt plugins check
     plugins_root = _locate_qt_plugins_root()
     missing_plugins: list[str] = []
     if plugins_root is None:
@@ -245,7 +260,7 @@ def run_selftest(app: Any = None, *, timeout_s: float = 5.0) -> list[SelfTestChe
         )
     )
 
-    # 5. Certifi CA bundle
+    # 6. Certifi CA bundle
     bundle = ca_bundle_path()
     ca_ok = False
     if bundle is not None and bundle.is_file():
@@ -263,12 +278,12 @@ def run_selftest(app: Any = None, *, timeout_s: float = 5.0) -> list[SelfTestChe
         )
     )
 
-    # 6 & 7. Network reachability + clock skew
+    # 7 & 8. Network reachability + clock skew
     net_check, clock_check = _check_network_and_clock(config_mod.SUPABASE_URL, timeout_s=timeout_s)
     checks.append(net_check)
     checks.append(clock_check)
 
-    # 8. DPI & 64-bit runtime check
+    # 9. DPI & 64-bit runtime check
     dpi_info = win32_compat.get_dpi_info(app)
     is_64 = win32_compat.is_64bit_process()
     checks.append(

@@ -1,6 +1,15 @@
 ; RÉSIVO Desktop Console — Zero-Prerequisite Windows 10/11 64-bit Installer
+;
+; The application version is NOT defined in this file. Build the installer
+; through tools\release\make_release.ps1, which reads desktop\version.py and
+; passes /DMyAppVersion=<version> to ISCC.exe.
+;
+; Silent self-update command line (used by the in-app updater):
+;   "Setup-RESIVO-<version>.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /SP- /UPDATE=1
+#ifndef MyAppVersion
+  #error "MyAppVersion is not defined. Run tools\release\make_release.ps1 to build this installer."
+#endif
 #define MyAppName "RÉSIVO"
-#define MyAppVersion "0.1.1"
 #define MyAppPublisher "Direction des Œuvres Universitaires · Cité Universitaire · Tlemcen"
 #define MyAppURL "https://github.com/anesdevv/residence-management-system"
 #define MyAppExeName "RESIVO.exe"
@@ -28,6 +37,12 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
+; Must match the named mutex created by desktop/main.py.
+AppMutex=RESIVO.Desktop.SingleInstance
+; Ask the running app to close before updating and reuse the existing install dir.
+CloseApplications=yes
+RestartApplications=no
+UsePreviousAppDir=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -61,9 +76,18 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: 
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"; ValueName: "RESIVO"; Flags: dontcreatekey uninsdeletevalue
 
 [Run]
+; Interactive install: offer the usual launch checkbox (skipped in silent runs).
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+; Silent self-update: relaunch the freshly updated app (RestartApplications=no,
+; so the updater owns the restart). --updated lets main.py skip first-run work.
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--updated"; Flags: nowait runhidden; Check: IsUpdateInstall
 
 [Code]
+function IsUpdateInstall: Boolean;
+begin
+  Result := (ExpandConstant('{param:UPDATE|0}') = '1') and WizardSilent;
+end;
+
 function InitializeSetup(): Boolean;
 begin
   if not IsWin64 then

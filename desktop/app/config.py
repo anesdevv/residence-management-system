@@ -5,7 +5,12 @@ from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
-APP_VERSION = "0.1.1"
+# The version lives in exactly one place: desktop/version.py. It is re-exported
+# here as ``APP_VERSION`` so existing callers keep working unchanged.
+try:
+    from desktop.version import __version__ as APP_VERSION
+except ImportError:  # pragma: no cover - direct package import fallback
+    from version import __version__ as APP_VERSION
 
 
 def _env_candidates() -> list[Path]:

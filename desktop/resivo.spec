@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import re
 import sys
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
@@ -12,6 +13,7 @@ ROOT = Path(SPECPATH).resolve().parent
 DESKTOP_DIR = ROOT / "desktop"
 ASSETS_DIR = DESKTOP_DIR / "assets"
 I18N_DIR = DESKTOP_DIR / "i18n"
+VERSION_INFO_TEMPLATE = DESKTOP_DIR / "version_info.txt"
 
 # ---------------------------------------------------------------------------
 # Build-time sanitized .env (ONLY public SUPABASE_URL + SUPABASE_ANON_KEY)
@@ -49,6 +51,39 @@ def _write_sanitized_env(target_dir: Path) -> Path | None:
 
 _BUILD_STAGE_DIR = Path(workpath)
 _SANITIZED_ENV = _write_sanitized_env(_BUILD_STAGE_DIR)
+
+# ---------------------------------------------------------------------------
+# Windows version resource: render the @PLACEHOLDER@ template from
+# desktop/version.py (the single source of truth) into the PyInstaller workpath.
+# ---------------------------------------------------------------------------
+def _read_app_version() -> tuple[str, tuple[int, int, int, int]]:
+    """Read ``__version__`` from desktop/version.py without importing it."""
+    version_py = DESKTOP_DIR / "version.py"
+    text = version_py.read_text(encoding="utf-8")
+    match = re.search(r'__version__\s*=\s*"(\d+)\.(\d+)\.(\d+)"', text)
+    if match is None:
+        raise SystemExit(
+            'desktop/version.py must define __version__ = "MAJOR.MINOR.PATCH"'
+        )
+    major, minor, patch = (int(part) for part in match.groups())
+    return f"{major}.{minor}.{patch}", (major, minor, patch, 0)
+
+
+def _render_version_info() -> Path:
+    version_text, version_quad = _read_app_version()
+    rendered = VERSION_INFO_TEMPLATE.read_text(encoding="utf-8")
+    for placeholder, value in zip(
+        ("@MAJOR@", "@MINOR@", "@PATCH@", "@BUILD@"), version_quad
+    ):
+        rendered = rendered.replace(placeholder, str(value))
+    target = Path(workpath) / "version_info_rendered.txt"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(rendered, encoding="utf-8")
+    print(f"[resivo.spec] Windows version resource: {version_text} -> {target}")
+    return target
+
+
+_VERSION_INFO_FILE = _render_version_info()
 
 # ---------------------------------------------------------------------------
 # Data files: brand assets, fonts, i18n JSON catalogs, certifi CA, Qt i18n
@@ -172,6 +207,19 @@ hiddenimports = [
     "desktop.i18n",
     "desktop.platform.autostart",
     "desktop.platform.win32_compat",
+    "desktop.updater",
+    "desktop.updater.checker",
+    "desktop.updater.config",
+    "desktop.updater.downloader",
+    "desktop.updater.http",
+    "desktop.updater.installer",
+    "desktop.updater.prefs",
+    "desktop.updater.release",
+    "desktop.updater.service",
+    "desktop.updater.state",
+    "desktop.updater.verify",
+    "desktop.updater.versioning",
+    "desktop.version",
 ]
 hiddenimports.extend(collect_submodules("pydantic_core"))
 hiddenimports.extend(collect_submodules("websockets"))
@@ -304,7 +352,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=str(ASSETS_DIR / "brand" / "resivo.ico"),
-    version=str(DESKTOP_DIR / "version_info.txt"),
+    version=str(_VERSION_INFO_FILE),
 )
 
 coll = COLLECT(

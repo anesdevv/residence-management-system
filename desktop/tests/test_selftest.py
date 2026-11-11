@@ -44,7 +44,8 @@ def test_selftest_passes_offline_mocked_https(tmp_path: Path, monkeypatch, caplo
     with caplog.at_level(logging.INFO, logger="resivo.selftest"):
         checks = selftest.run_selftest(app=_qapp, timeout_s=2.0)
 
-    assert len(checks) == 8
+    assert len(checks) == 9
+    assert checks[0].key == "version"
     assert all(c.passed for c in checks), [c for c in checks if not c.passed]
     report = selftest.format_selftest_report(checks)
     assert "[PASS]" in report
