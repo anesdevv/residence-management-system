@@ -7,8 +7,8 @@
 -- 3. Official university admissions roster records for cross-verification
 -- 4. Staff & Administrator accounts (real emails, confirmed)
 -- 5. Active & Pending student accounts (single-gender 'male')
--- 6. Legacy student account with synthetic @students.residence.local email
---    for testing the legacy migration /account/add-email gating flow
+-- 6. Legacy student account without contact email (students.email = NULL)
+--    for testing the /account/add-email gating flow
 -- 7. Sample maintenance reports
 -- ============================================================================
 
@@ -158,7 +158,7 @@ begin
   set status = 'active', room_id = '11111111-0000-0000-0000-000000000002'
   where id = s3_id;
 
-  -- S4: Tariq Meghazi (LEGACY FAKE EMAIL USER FOR TESTING /account/add-email)
+  -- S4: Tariq Meghazi (LEGACY STUDENT WITHOUT EMAIL FOR TESTING /account/add-email)
   insert into auth.users (
     id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
     raw_app_meta_data, raw_user_meta_data, created_at, updated_at
@@ -166,7 +166,7 @@ begin
     s4_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
     '202138099888@students.residence.local', pw_hash, now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
-    '{"card_id":"202138099888","first_name":"Tariq","last_name":"Meghazi","birth_date":"2001-01-15","phone":"0555334455","university":"Université Abou Bekr Belkaïd","faculty":"Faculté de Médecine","study_level":"Doctorat","wilaya":"Mostaganem"}'::jsonb,
+    '{"card_id":"202138099888","first_name":"Tariq","last_name":"Meghazi","birth_date":"2001-01-15","phone":"0555334455","email":"tariq.seed.temp@univ-tlemcen.dz","university":"Université Abou Bekr Belkaïd","faculty":"Faculté de Médecine","study_level":"Doctorat","wilaya":"Mostaganem"}'::jsonb,
     now(), now()
   ) on conflict (id) do update set email = excluded.email;
 
