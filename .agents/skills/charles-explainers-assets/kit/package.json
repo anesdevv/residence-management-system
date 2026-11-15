@@ -1,0 +1,9 @@
+{
+  "name": "charles-explainers-assets-kit",
+  "private": true,
+  "type": "module",
+  "description": "Frame-stepped renderer and phone check for charles-explainers-assets. Runs on Bun with Google Chrome.",
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

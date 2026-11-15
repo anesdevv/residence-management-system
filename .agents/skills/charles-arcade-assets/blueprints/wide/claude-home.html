@@ -1,0 +1,90 @@
+<!-- BLUEPRINT claude-home, wide frame (laid out at 1280x630, fills the frame edge to edge): the rebuilt Claude
+     desktop home. On the cut: sidebar with Recents, "✳ Good afternoon, Charles", the big input with its caret,
+     +, the Chat/Cowork toggle, the Opus 5.5 picker, mic and voice; the Write / Learn / Code / Life stuff /
+     Claude's choice chips. The prompt types (the voice button turns into the coral send), the cursor glides to
+     send and clicks, and the window cuts to the new conversation: the question bubble and Claude's spark.
+     Use for: "just ask Claude", "open Claude and type...", "paste this link and say install skill", the first
+     step of any Claude flow. For a dark desktop add cl-dark to the .cl-app.
+     Edit: the greeting name (the creator's own), Recents, PROMPT (the composer call; under ~45 characters
+     reads best), the conversation title, and the T times. Without the sidebar: delete the .cl-side block.
+     Ids start with SCENE; mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #f5f4ef; }
+    #SCENE-app { inset: 0; }
+    #SCENE-home { font-size: 1.04em; padding: 0 1em 1.3em; gap: 0.85em; }
+    #SCENE-home .cl-chips { font-size: 0.9em; gap: 0.45em; }
+    #SCENE-convo { position: absolute; left: 0; right: 0; top: 2.8em; bottom: 0; opacity: 0; }
+    #SCENE-ctitle { opacity: 0; }
+    #SCENE-cursor { left: 1130px; top: 560px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div class="cl-app" id="SCENE-app">
+      <div class="cl-side">
+        <div class="cl-side-top"><div class="cl-lights"><i></i><i></i><i></i></div></div>
+        <div class="cl-new"><span class="cl-plus"><i data-cl-icon="plus"></i></span>New chat</div>
+        <div class="cl-nav"><i data-cl-icon="chats"></i>Chats</div>
+        <div class="cl-nav"><i data-cl-icon="folder"></i>Projects</div>
+        <div class="cl-nav"><i data-cl-icon="code"></i>Code</div>
+        <h6>Recents</h6>
+        <div class="cl-recents">
+          <div class="cl-recent">Insider buys recap</div>
+          <div class="cl-recent">What's a 13F?</div>
+          <div class="cl-recent">Tokyo on $1,500</div>
+          <div class="cl-recent">Viral reel script</div>
+          <div class="cl-recent">Clone this video</div>
+        </div>
+        <div class="cl-me"><span class="cl-ava"><i class="cl-logo"></i></span><span>Charles Liu<small>Max plan</small></span></div>
+      </div>
+      <div class="cl-main">
+        <div class="cl-top"><i class="cl-sideico" data-cl-icon="sidebar" style="margin-left:0"></i>
+          <div class="cl-title" id="SCENE-ctitle">This week's insider buys <i data-cl-icon="chev-down"></i></div></div>
+        <div class="cl-home" id="SCENE-home">
+          <div class="cl-greet"><i class="cl-spark"></i><span>Good afternoon, <span data-name="creator">Charles</span></span></div>
+          <div class="cl-composer" id="SCENE-box">
+            <div class="cl-field"><span class="cl-ph">How can I help you today?</span></div>
+            <div class="cl-crow">
+              <span class="cl-sq"><i data-cl-icon="plus"></i></span>
+              <span class="cl-seg"><span class="on">Chat</span><span>Cowork</span></span>
+              <span class="cl-model">Opus 5.5 <i data-cl-icon="chev-down"></i></span>
+              <span class="cl-cico"><i data-cl-icon="mic"></i></span>
+              <span class="cl-sendslot"><span class="cl-voice"><i data-cl-icon="wave"></i></span><span class="cl-send" id="SCENE-send"><i data-cl-icon="up"></i></span></span>
+            </div>
+          </div>
+          <div class="cl-chips">
+            <span class="cl-chip"><i data-cl-icon="pencil"></i>Write</span><span class="cl-chip"><i data-cl-icon="cap"></i>Learn</span>
+            <span class="cl-chip"><i data-cl-icon="code"></i>Code</span><span class="cl-chip"><i data-cl-icon="cup"></i>Life stuff</span>
+            <span class="cl-chip"><i data-cl-icon="bulb"></i>Claude's choice</span>
+          </div>
+        </div>
+        <div class="cl-flow" id="SCENE-convo">
+          <div class="cl-user" id="SCENE-sent">Find this week's biggest insider buys</div>
+          <i class="cl-spark cl-asterisk" id="SCENE-spark"></i>
+        </div>
+      </div>
+    </div>
+    <div class="cl-cursor" id="SCENE-cursor"></div>
+  </div>
+  <script>
+    // T: type = the prompt starts typing; move = the cursor sets off for send; click = send is clicked;
+    // sent = the cut to the conversation
+    const T = { type: 0.25, move: 1.3, click: 1.78, sent: 1.92, end: 2.7 };
+    const PROMPT = "Find this week's biggest insider buys";
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    AR.clIcons();
+    document.querySelector("#SCENE-sent").textContent = PROMPT;
+    AR.composer(tl, "#SCENE-box", T.type, PROMPT, { cps: 34, focus: 0 });
+    const aim = AR.clAim("#SCENE-cursor", "#SCENE-send");
+    AR.cursor(tl, "#SCENE-cursor", T.move, T.click - T.move - 0.06, aim.x, aim.y);
+    AR.click(tl, "#SCENE-cursor", T.click);
+    AR.press(tl, "#SCENE-send", T.click);
+    // the cut to the new conversation
+    tl.set("#SCENE-home", { opacity: 0 }, T.sent);
+    tl.set(["#SCENE-convo", "#SCENE-ctitle"], { opacity: 1 }, T.sent);
+    tl.fromTo("#SCENE-sent", { y: 18 }, { y: 0, duration: 0.24, ease: "power3.out", immediateRender: false }, T.sent);
+    tl.set("#SCENE-cursor", { opacity: 0 }, T.sent);
+    AR.clSpark(tl, "#SCENE-spark", T.sent, T.end - T.sent, { turns: 0.3 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

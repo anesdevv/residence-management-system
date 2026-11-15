@@ -1,0 +1,62 @@
+<!-- BLUEPRINT browser-page, wide (1280x630, the 2:1 card; fills the frame edge to edge): a real page in Chrome.
+     The page cuts in already zoomed in; the cursor glides onto a link, the link underlines and the cursor turns
+     into a hand, it clicks, the tab spins and the next page cuts in; the page then pushes in onto one field.
+     Use for: "go to their site", "click pricing", "open the docs", any moment on a real website.
+     Edit: the two screenshots (each img.wb-shot: a capture of the page 1280 px wide; give it width/height
+     attributes in px and delete data-ph), the tab titles and URLs (the data-page spans: one per page), the
+     hotspot over the link on the first capture (#SCENE-hot, in capture px: it gets the underline), the box on the
+     second capture the push frames (#SCENE-key), the zoom of each page (AR.pageTo), the T times.
+     T: move (cursor sets off), hover (on the link), click, key (push onto the field; the word it names).
+     mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #fff; }
+    #SCENE-br { left: 0; top: 0; width: 1280px; height: 630px; }
+    #SCENE-hot { left: 751px; top: 31px; width: 60px; height: 21px; }
+    #SCENE-key { position: absolute; left: 470px; top: 330px; width: 340px; height: 250px; }
+    #SCENE-cur { left: 1060px; top: 470px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div class="wb-browser" id="SCENE-br">
+      <div class="wb-tabs">
+        <div class="wb-lights"><i></i><i></i><i></i></div>
+        <div class="wb-tab wb-on"><span class="wb-fav"><img class="wb-favicon" data-ph="logo:Scout" alt=""></span>
+          <span class="wb-swap"><span data-page="SCENE-p1">Scout · Viral hooks</span><span data-page="SCENE-p2">Pricing – Scout</span></span><i data-i="x"></i></div>
+        <div class="wb-tab"><span class="wb-fav"><img class="wb-favicon" data-ph="logo:github" alt=""></span><span class="wb-ell">GitHub</span></div>
+        <i class="wb-newtab" data-i="plus"></i>
+      </div>
+      <div class="wb-bar"><i data-i="back"></i><i data-i="fwd"></i><i data-i="reload"></i>
+        <div class="wb-omni"><i data-i="tune"></i>
+          <span class="wb-url wb-swap"><span data-page="SCENE-p1"><b>scout.so</b></span><span data-page="SCENE-p2"><b>scout.so</b><span>/pricing</span></span></span>
+          <i data-i="star"></i></div>
+        <i data-i="puzzle"></i><img class="wb-avatar wb-prof" data-ph="avatar:Charles" alt=""><i data-i="kebab"></i></div>
+      <div class="wb-view">
+        <div class="wb-page wb-on" id="SCENE-p1"><div class="wb-scroll" id="SCENE-s1">
+          <img class="wb-shot" data-ph="shot:landing" alt="">
+          <span class="wb-hot" id="SCENE-hot" data-layout-ignore></span>
+        </div></div>
+        <div class="wb-page" id="SCENE-p2"><div class="wb-scroll" id="SCENE-s2">
+          <img class="wb-shot" data-ph="shot:pricing" alt="">
+          <span id="SCENE-key"></span>
+        </div></div>
+        <div class="wb-cursor" id="SCENE-cur" data-layout-ignore></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const T = { move: 0.2, hover: 0.78, click: 1.0, key: 1.65 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fills [data-name] text, icons and image placeholders
+    // both pages are framed at the cut (no camera drift): x/y are capture px at the viewport's top-left
+    AR.pageTo(tl, "#SCENE-s1", 0, { zoom: 1.45, x: 199, y: 0, dur: 0 });
+    AR.pageTo(tl, "#SCENE-s2", 0, { zoom: 1.45, x: 199, y: 0, dur: 0 });
+    AR.cursorTo(tl, "#SCENE-cur", "#SCENE-hot", T.move, T.hover - T.move, { ax: 0.45, ay: 0.55 });
+    AR.hoverLink(tl, "#SCENE-hot", T.hover, { cursor: "#SCENE-cur", until: T.click + 0.2, thick: 2 });
+    AR.click(tl, "#SCENE-cur", T.click);
+    AR.navigate(tl, "#SCENE-p1", "#SCENE-p2", T.click + 0.04, { load: 0.14 });
+    // the page pushes in onto the field the voice names, and the cursor drifts to it
+    AR.pageTo(tl, "#SCENE-s2", T.key - 0.3, { focus: "#SCENE-key", zoom: 1.85, dur: 0.36 });
+    AR.cursorTo(tl, "#SCENE-cur", "#SCENE-key", T.key - 0.3, 0.5, { ax: 0.8, ay: 0.42 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

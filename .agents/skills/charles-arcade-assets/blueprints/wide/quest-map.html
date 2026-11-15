@@ -1,0 +1,190 @@
+<!-- BLUEPRINT quest-map, wide (1280x630, the 2:1 card; fills the frame edge to edge): an overworld map of a journey with
+     N traps, mistakes or steps. A dashed route runs from START to the goal (a chest) through numbered nodes on a pixel
+     island drawn in code (AR.questMap); a banner names the world. One beat plays one moment, and the map's state carries
+     across beats (set where the player stands and which nodes are already crossed or fixed):
+       intro  the whole route: the host throws each trap onto it on its word, then red X marks cascade on "mistakes";
+       hop    "number N": the player hops onto node N on the word, the node lights, a giant N lands with a shake, and
+              the camera, framing the two nodes from the cut, pushes onto it;
+       fix    "fix them": the host hops node to node and hammers each one on its word, every X flips to a check, the
+              player cheers at START;
+       goal   the player hops onto the goal and the chest bursts open.
+     Use for: "N onboarding mistakes", "3 steps to...", "where users drop off", "the checkout has 4 traps", any list
+     that is a path. One beat per item ("number one" ... "number three"), with intro before and fix after.
+     Edit: MAP (title; the nodes, one per item: icon = a pixel glyph flag chest wall lock star bulb, an image such as
+     assets/cast/props/bell.png, or an emoji; tag = its label, under ~12 characters; start and goal the same; plate =
+     a generated map image instead of the code-drawn island, with pts placed on its spots), PLAYER and HOST (shape
+     "pal" or "critter" with color, role, hold, wear and u, or sprite: {dir, w, h} for a cast.py character with idle,
+     jump, shock and cheer poses), BEAT (mode, where the player stands, what is already marked, and the T times from
+     the words), T.end. A title or tag written "@key" reads NAMES.key from names.js.
+     Ids start with SCENE; mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #3d7fd6; }
+    #SCENE-cam, #SCENE-shake, #SCENE-world { position: absolute; left: 0; top: 0; width: 1280px; height: 630px; }
+    #SCENE-title { left: 0; right: 0; margin: 0 auto; width: fit-content; top: 22px; font-size: 30px; z-index: 5; }
+    #SCENE-big { font-size: 128px; z-index: 6; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div id="SCENE-cam" data-layout-allow-overflow><div id="SCENE-shake"><div id="SCENE-world">
+      <b class="wb-qm-big px2" id="SCENE-big">1</b>
+    </div></div></div>
+    <div class="wb-qm-title" id="SCENE-title"></div>
+  </div>
+  <script>
+    const T = { end: 1.4 };
+    const MAP = {
+      title: "WORLD 1-1: ONBOARDING",                    // "" for none
+      start: { tag: "START", icon: "flag" },
+      goal: { tag: "AHA!", icon: "chest" },
+      nodes: [                                           // 1-6 nodes, in order
+        { icon: "wall", tag: "SIGN-UP" },
+        { icon: "assets/cast/props/bell.png", tag: "PING!" },
+        { icon: "assets/cast/props/moneybag.png", tag: "PAYWALL" },
+      ],
+      bad: true,                                         // traps (red discs); false for plain steps
+      pts: null,                                         // [[x, y], ...] START, each node, the goal; null lays them out
+      plate: null,                                       // "assets/art/map.png" instead of the code-drawn island
+      top: null,                                         // px kept clear at the top for the banner (null: under it)
+      bottom: 0,                                         // px kept clear at the bottom (470 at 1080x1920: captions and UI)
+      seed: 4,
+    };
+    const PLAYER = { shape: "pal", color: "blue", u: 8, sprite: null };
+    // a cast.py character instead: sprite: { dir: "assets/cast/user/poses/", w: 84, h: 130 }
+    const HOST = { shape: "pal", role: "builder", u: 9, sprite: null };   // null for no host
+    // mode "intro": drop (one time per node: it lands on the route), marks (the X cascade), cutin (true: push onto the nodes at marks)
+    // mode "hop":   to (the node), hop (its number word: the landing), push (the push onto it; null to stay)
+    // mode "fix":   fix (one time per node, in order: its check lands)
+    // mode "goal":  goal (the landing on the goal)
+    // every mode: at (where the player stands at the cut: 0 = START, 1..N), crossed / fixed (nodes already marked),
+    // title (the banner: on by default for intro and fix, the whole-map beats). The host appears in intro and fix.
+    const BEAT = { mode: "hop", at: 0, crossed: [], fixed: [], to: 1, hop: 0.5, push: 0.84 };
+
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    const $ = (id) => document.getElementById("SCENE-" + id);
+    const rootEl = $("cam").parentElement, W = +rootEl.dataset.width || 1280, H = +rootEl.dataset.height || 630;
+    const word = (v) => (typeof v === "string" && v[0] === "@" ? String((window.NAMES || {})[v.slice(1)] ?? v.slice(1)) : v);
+    [$("cam"), $("shake"), $("world")].forEach((e) => Object.assign(e.style, { width: W + "px", height: H + "px" }));
+    // the banner shows on the whole-map beats (intro, fix); the close hop and goal beats leave it off unless BEAT.title
+    const titled = !!MAP.title && (BEAT.title ?? (BEAT.mode === "intro" || BEAT.mode === "fix"));
+    $("title").textContent = word(MAP.title || "");
+    const top = MAP.top ?? (MAP.title ? $("title").offsetTop + $("title").offsetHeight + 8 : 0);   // the route stays under the banner
+    if (!titled) $("title").remove();
+    const M = AR.questMap($("world"), { id: "SCENE-map", w: W, h: H, top, bottom: MAP.bottom, nodes: MAP.nodes, start: MAP.start, goal: MAP.goal,
+      pts: MAP.pts, plate: MAP.plate, bad: MAP.bad, seed: MAP.seed });
+    M.el.after($("big"));                                // the numeral above the map
+    AR.questSet(M, { crossed: BEAT.crossed, fixed: BEAT.fixed });
+    const N = MAP.nodes.length, GOAL = N + 1, S = M.size;
+
+    // ---- the cast: a pal or critter (AR.crit) or a cast.py sprite, feet at (x, y) ----
+    const actor = (spec, id, x, y) => {
+      if (spec.sprite) {
+        const P = spec.sprite, d = document.createElement("div");
+        d.className = "sprite";
+        d.id = id;
+        Object.assign(d.style, { width: P.w + "px", height: P.h + "px", left: x - P.w / 2 + "px", top: y - P.h + "px" });
+        d.innerHTML = (P.poses || ["idle", "jump", "shock", "cheer", "sad", "point"]).map((p, i) => `<img class="pose${i ? "" : " on"}" data-pose="${p}" src="${P.dir}${p}.png" alt="" />`).join("");
+        $("world").appendChild(d);
+        return d;
+      }
+      const o = { id, x, y, u: spec.u || 9 };
+      ["color", "role", "hold", "wear", "eyes"].forEach((k) => { if (spec[k]) o[k] = spec[k]; });
+      if (spec.shape && spec.shape !== "critter") o.shape = spec.shape;
+      return AR.crit.make($("world"), o);
+    };
+    const isSprite = (e) => e.classList.contains("sprite");
+    const pose = (e, name, t) => { if (!isSprite(e) || Array.from(e.querySelectorAll(".pose")).some((p) => p.dataset.pose === name)) AR.pose(tl, e, name, t); };
+    const react = (e, t, kind) => {                      // "shock" / "cheer" for a sprite, the face and an emote for a critter
+      if (isSprite(e)) { pose(e, kind, t); return; }
+      AR.crit.eyes(tl, e, t, kind === "cheer" ? "happy" : "wide");
+      if (kind === "shock") AR.crit.emote(tl, e, t + 0.04, "!", { dur: 0.5 });
+    };
+    const player = actor(PLAYER, "SCENE-player", 0, 0);
+    AR.questStand(M, player, BEAT.at);
+    const spot = (k, side) => {                          // where the host stands beside node k (feet)
+      const [x, y] = M.pts[k], s = side ?? (x > W * 0.7 ? -1 : 1);
+      return [Math.round(x + s * S * 0.86), Math.round(Math.min(H - 30, y + S * 0.36))];   // beside the disc, clear of its tag
+    };
+    const ghostAt = (k) => {                             // a stand-in for the player on node k, so a framing keeps her head in view
+      const pw = player.offsetWidth, ph = player.offsetHeight, [lx, ly] = AR.questSpot(M, k), g = document.createElement("i");
+      Object.assign(g.style, { position: "absolute", left: lx - pw / 2 + "px", top: ly - ph + "px", width: pw + "px", height: ph + "px" });
+      g.setAttribute("data-layout-ignore", "");
+      $("world").appendChild(g);
+      return g;
+    };
+    const tagOf = (k) => M.nodes[k].querySelector(".wb-qm-tag") || M.nodes[k];
+    const host = HOST && (BEAT.mode === "intro" || BEAT.mode === "fix") ? actor(HOST, "SCENE-host", ...spot(BEAT.mode === "fix" ? (BEAT.nodes || [1])[0] : GOAL, BEAT.mode === "fix" ? -1 : undefined)) : null;
+
+    if (BEAT.mode === "hop") {
+      // "number N": she hops along the route and lands on node N on the word; the numeral lands beside it
+      const from = BEAT.at, to = BEAT.to, tH = BEAT.hop, big = $("big");
+      big.textContent = String(to);
+      const side = Math.sign(M.pts[to][0] - M.pts[from][0]) || (M.pts[to][0] < W / 2 ? -1 : 1), gap = S * 0.62 + 16;
+      const fs = parseFloat(getComputedStyle(big).fontSize);
+      big.style.top = Math.round(M.pts[to][1] - fs / 2) + "px";
+      if (side > 0) big.style.left = Math.round(M.pts[to][0] + gap) + "px"; else big.style.right = Math.round(W - M.pts[to][0] + gap) + "px";
+      const ghost = ghostAt(to);
+      AR.zoomCut(tl, "#SCENE-cam", [M.nodes[from], M.nodes[to], big, ghost, player], 0, { pad: [130, 40], at: [0.5, titled ? 0.56 : 0.5], max: 1.45 });
+      if (isSprite(player)) AR.bob(tl, player, 0, Math.max(0, tH - 0.3), { fps: 3, amp: 4 });
+      pose(player, "jump", tH - 0.28);
+      AR.questHop(tl, M, player, to, tH, { dur: 0.28 });
+      pose(player, "idle", tH);
+      AR.questLight(tl, M, to, tH);
+      AR.pop(tl, big, tH - 0.06, { from: 0.3, dur: 0.22, fade: true });
+      AR.shake(tl, "#SCENE-shake", tH, { amp: 6, dur: 0.18 });
+      if (MAP.bad !== false) react(player, tH + 0.32, "shock");
+      if (BEAT.push != null) {
+        if (titled) tl.to("#SCENE-title", { opacity: 0, duration: 0.12 }, BEAT.push);
+        AR.frame(tl, "#SCENE-cam", [M.nodes[to], big, ghost, tagOf(to)], BEAT.push, 0.4, { pad: [110, 36], max: 2.1 });
+      }
+    }
+
+    if (BEAT.mode === "intro") {
+      // "here are three": the host throws each trap onto the route; the X marks cascade on "mistakes"
+      const from = host ? [host.offsetLeft + host.offsetWidth * 0.3, host.offsetTop + host.offsetHeight * 0.3] : [W / 2, -200];
+      (BEAT.drop || []).forEach((t, i) => {
+        if (host && !isSprite(host) && i === 0) AR.crit.swing(tl, host, t - 0.36, { n: 1 });
+        if (host && isSprite(host) && i === 0) pose(host, "point", t - 0.3);
+        AR.questDrop(tl, M, i + 1, t, { from, h: 150, dur: 0.24 });
+      });
+      if (BEAT.marks != null) {
+        if (BEAT.cutin) AR.frame(tl, "#SCENE-cam", M.nodes.slice(1, GOAL), BEAT.marks - 0.12, 0.24, { pad: [90, 60], max: 1.4 });
+        for (let k = 1; k <= N; k++) AR.questMark(tl, M, k, "x", BEAT.marks + (k - 1) * 0.07);
+        react(player, BEAT.marks + 0.1, "shock");
+        if (host && !isSprite(host)) { AR.crit.eyes(tl, host, BEAT.marks + 0.1, "wide"); AR.crit.emote(tl, host, BEAT.marks + 0.15, "sweat", { dur: 0.5 }); }
+      }
+    }
+
+    if (BEAT.mode === "fix") {
+      // "fix them": the host hops node to node and whacks each one; the X turns into a check
+      const ks = BEAT.nodes || Array.from({ length: N }, (_, i) => i + 1);
+      ks.forEach((k, i) => {
+        const t = BEAT.fix[i];
+        if (i && host) AR.toss(tl, host, t - 0.22, { to: spot(k, -1), anchor: [0.5, 1], h: 70, dur: 0.14, squash: true });
+        if (host && !isSprite(host)) AR.crit.swing(tl, host, t - 0.2, { n: 1 });
+        if (host && isSprite(host)) pose(host, "point", t - 0.1);
+        AR.questMark(tl, M, k, "ok", t);
+        AR.shake(tl, M.nodes[k], t, { amp: 5, dur: 0.14 });
+      });
+      const last = BEAT.fix[ks.length - 1];
+      if (host && !isSprite(host)) AR.crit.victory(tl, host, last + 0.16);
+      react(player, last + 0.06, "cheer");
+      AR.hop(tl, player, last + 0.06, { h: S * 0.25, dur: 0.3 });
+    }
+
+    if (BEAT.mode === "goal") {
+      // the way is clear: she hops onto the goal and the chest bursts open
+      const from = BEAT.at, tG = BEAT.goal;
+      AR.zoomCut(tl, "#SCENE-cam", [M.nodes[from], M.nodes[GOAL], player, ghostAt(GOAL), tagOf(GOAL)], 0, { pad: [150, 40], at: [0.5, titled ? 0.56 : 0.5], max: 1.45 });
+      pose(player, "jump", tG - 0.3);
+      AR.questHop(tl, M, player, GOAL, tG, { dur: 0.3 });
+      pose(player, "cheer", tG);
+      AR.questWin(tl, M, tG + 0.04);
+      react(player, tG + 0.05, "cheer");
+    }
+
+    // the cast is alive while nothing else moves it (critters blink; call last)
+    [player, host].filter((e) => e && !isSprite(e)).forEach((e, i) => AR.crit.alive(tl, e, 0, T.end, { bob: false, seed: 3 + i }));
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

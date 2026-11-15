@@ -50,18 +50,18 @@
   --status-neutral-line: var(--border);
 
   /* ---------------------------------------------------------------------
-     Brand gradient — allowed ONLY on: landing/login hero, resident pass,
-     the 3px strip at the top of a shell, and the landing hero primary CTA.
+     Brand gradient — subtle tone shift within navy neutral (unslop pass 2).
+     No hue gradient across surfaces.
      --------------------------------------------------------------------- */
-  --grad-brand: linear-gradient(135deg, var(--navy-800), var(--teal-600), var(--green-500));
+  --grad-brand: linear-gradient(135deg, #0A2342 0%, #0E355F 100%);
 
   /* ---------------------------------------------------------------------
-     Radii — 8 inputs/buttons/badges · 12 cards/dialogs · 20 hero · pills
+     Radii — 8 inputs/buttons/badges · 12 cards/dialogs · 16 hero (nested math)
      --------------------------------------------------------------------- */
   --r-input: 8px;
   --r-card: 12px;
-  --r-hero: 20px;
-  --r-pill: 9999px;
+  --r-hero: 16px;
+  --r-pill: 8px;
 
   /* ---------------------------------------------------------------------
      Spacing — DESIGN.md scale 4 / 8 / 12 / 16 / 24 / 32 / 48 (seven steps).
@@ -100,11 +100,15 @@
   --shadow-e2: 0 8px 24px -8px rgba(10, 35, 66, .14);
 
   /* ---------------------------------------------------------------------
-     Motion — 150–200ms ease-out; reduced-motion is honoured in global.css.
+     Motion — authentic curves & timings (charles-ux-animation)
      --------------------------------------------------------------------- */
   --dur-fast: 150ms;
   --dur: 200ms;
+  --dur-toast: 220ms;
   --ease: cubic-bezier(.2, .7, .3, 1);
+  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
   /* ---------------------------------------------------------------------
      Focus — 2px teal ring, 2px offset. Never remove focus indicators.

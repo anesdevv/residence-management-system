@@ -1,0 +1,207 @@
+<!-- BLUEPRINT tier-list, wide frame (laid out at 1280x630, the 2:1 card; it lays itself out for the tall card too): a
+     ranking. A tier board fills the frame: rows (GOD, S, A, B, C or your own) with a coloured label and a dark track.
+     The items already ranked sit in their rows from the cut; on its word each new item drops from above into its row,
+     lands with a squash, the row label flashes and a stamp slams onto the tile. A head tile (pixel Charles, or any
+     image) can rocket from the bottom row to the top on the word, through every row with speed ghosts, gold rays
+     behind it, and a crown can drop onto it.
+     Use for: "ranked", "S tier", "god tier", "the best", "from clueless to...", resources dropped into their tier (the
+     real cover, logo or app icon from source.py), a list said item by item.
+     Edit: ROWS (key, label, colour; 3-6 rows), ITEMS (row, and img: "assets/real/x.jpg", or emoji: "📕", or cast:
+     "charles" for a head tile, or text; at: the word time it drops, or null when it is already in its row; stamp: the
+     word that slams on it, true for the row's label, false for none; fit: "cover" for a photo), ROCKET (the tile, from
+     and to rows, at: the word it lands on, crown: the word the crown drops on, or null; null for no rocket), CUT
+     (cut-ins: [{t, row}] frames that row; row null cuts back to the whole board), T.end. Key text: row labels and
+     stamps (43 px or more on the card). Needs cast.js for head tiles. mount.py copies it to compositions/<id>.html
+     with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #0e0c16; }
+    #SCENE-cam { position: absolute; left: 0; top: 0; }
+    #SCENE-board { position: absolute; background: #121019; border: 6px solid #ffffff; box-shadow: 0 0 0 6px #121019, 0 14px 0 6px rgba(0, 0, 0, 0.3); }
+    .SCENE-row { position: absolute; }
+    .SCENE-label { position: absolute; left: 0; top: 0; bottom: 0; display: grid; place-items: center; color: #1a1712; line-height: 1; text-align: center; white-space: nowrap; }
+    .SCENE-track { position: absolute; top: 0; bottom: 0; right: 0; background: #2a2838; }
+    .SCENE-tile { position: absolute; background: #f4f1ea; border: 4px solid #ffffff; box-shadow: 0 0 0 3px #121019; display: grid; place-items: center; overflow: hidden; }
+    .SCENE-tile > img { position: absolute; left: 6%; top: 6%; width: 88%; height: 88%; object-fit: contain; }
+    .SCENE-tile > .cast-portrait { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+    .SCENE-tile > b { font-family: var(--sans); font-weight: 800; color: #1a1712; text-align: center; line-height: 1; }
+    .SCENE-stamp { position: absolute; padding: 0.12em 0.32em 0.08em; color: #ffffff; background: #d42c32; border: 4px solid #ffffff; box-shadow: 0 0 0 3px #121019; white-space: nowrap; line-height: 1; opacity: 0; z-index: 8; }
+    .SCENE-ghost { position: absolute; opacity: 0; z-index: 9; }
+    #SCENE-rays { position: absolute; opacity: 0; pointer-events: none; z-index: 7; }
+    #SCENE-rays svg { width: 100%; height: 100%; overflow: visible; }
+    #SCENE-crown { position: absolute; z-index: 12; image-rendering: pixelated; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div id="SCENE-cam" data-layout-allow-overflow>
+      <div id="SCENE-board"></div>
+    </div>
+    <div class="flash" id="SCENE-flash" data-layout-ignore></div>
+  </div>
+  <script>
+    const T = { end: 1.6 };
+    const ROWS = [
+      { key: "god", label: "GOD", color: "#f7c531" },
+      { key: "s", label: "S", color: "#ff7f7f" },
+      { key: "a", label: "A", color: "#ffbf7f" },
+      { key: "b", label: "B", color: "#ffdf7f" },
+      { key: "c", label: "C", color: "#bfff7f" },
+    ];
+    const ITEMS = [
+      { row: "god", emoji: "📕", at: null },
+      { row: "s", emoji: "🔥", at: 0.35, stamp: true },
+      { row: "a", emoji: "💡", at: 0.75, stamp: true },
+    ];
+    const ROCKET = { tile: { emoji: "🙂" }, from: "c", to: "god", at: 1.1, crown: 1.35 };   // tile: {cast: "charles"} for a head tile; null: no rocket
+    const CUT = [];                                    // e.g. [{ t: 0, row: "c" }, { t: 0.45, row: null }]
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    const $ = (id) => document.getElementById("SCENE-" + id);
+    const rootEl = document.querySelector('[data-composition-id="SCENE"][data-width]');
+    const W = +(rootEl && rootEl.dataset.width) || 1280, H = +(rootEl && rootEl.dataset.height) || 630, tall = H > W * 0.9;
+    Object.assign($("cam").style, { width: W + "px", height: H + "px" });
+    // ---- the board: rows split the height; tiles fill a row ----
+    const m = tall ? 40 : 26, bx = m, by = tall ? 60 : 26, bw = W - 2 * m, bh = H - by - (tall ? 60 : 26);
+    const board = $("board");
+    Object.assign(board.style, { left: bx + "px", top: by + "px", width: bw + "px", height: bh + "px" });
+    const gap = tall ? 8 : 5, n = ROWS.length, rowH = (bh - 12 - gap * (n + 1)) / n, labelW = tall ? 300 : 230;
+    const tile = Math.floor(rowH - (tall ? 24 : 14)), tgap = tall ? 18 : 12;
+    const rows = {};
+    ROWS.forEach((R, i) => {
+      const row = document.createElement("div");
+      row.className = "SCENE-row";
+      row.id = `SCENE-row-${R.key}`;
+      Object.assign(row.style, { left: gap + "px", top: gap + i * (rowH + gap) + "px", width: bw - 12 - 2 * gap + "px", height: rowH + "px" });
+      const lab = document.createElement("div");
+      lab.className = "SCENE-label px";
+      lab.id = `SCENE-lab-${R.key}`;
+      lab.textContent = R.label;
+      const fs = Math.min(rowH * (tall ? 0.5 : 0.56), (labelW * 0.86) / Math.max(1, R.label.length * 0.82));
+      Object.assign(lab.style, { width: labelW + "px", background: R.color, fontSize: fs + "px" });
+      const track = document.createElement("div");
+      track.className = "SCENE-track";
+      track.id = `SCENE-track-${R.key}`;
+      track.style.left = labelW + gap + "px";
+      row.appendChild(lab);
+      row.appendChild(track);
+      board.appendChild(row);
+      rows[R.key] = { row, lab, track, used: 0, color: R.color, label: R.label };
+    });
+    // where slot k of a row is, in the board's px
+    const slotXY = (key, k) => { const r = rows[key]; return [r.row.offsetLeft + r.track.offsetLeft + tgap + k * (tile + tgap), r.row.offsetTop + (rowH - tile) / 2]; };
+    const makeTile = (it, id) => {
+      const el = document.createElement("div");
+      el.className = "SCENE-tile";
+      el.id = id;
+      Object.assign(el.style, { width: tile + "px", height: tile + "px" });
+      if (it.cast) AR.cast.portrait(el, it.cast, { size: tile - 8, fill: it.fill ?? 0.86, pose: it.pose });
+      else if (it.img) {
+        const im = document.createElement("img");
+        im.src = it.img;
+        im.alt = "";
+        if (it.pixel) im.className = "pixel";
+        if (it.fit === "cover") Object.assign(im.style, { left: 0, top: 0, width: "100%", height: "100%", objectFit: "cover" });
+        el.appendChild(im);
+      } else {
+        const b = document.createElement("b");
+        b.textContent = it.emoji || it.text || "";
+        b.style.fontSize = (it.emoji ? tile * 0.62 : Math.min(tile * 0.3, (tile * 1.6) / Math.max(1, String(it.text || "").length))) + "px";
+        el.appendChild(b);
+      }
+      board.appendChild(el);
+      return el;
+    };
+    // ---- the items: ranked ones sit in their rows; each new one drops on its word, then its stamp slams ----
+    const fall = H + 200;
+    ITEMS.forEach((it, i) => {
+      const r = rows[it.row];
+      if (!r) return;
+      const [x, y] = slotXY(it.row, r.used++);
+      const el = makeTile(it, `SCENE-it${i}`);
+      Object.assign(el.style, { left: x + "px", top: y + "px" });
+      if (it.at == null) return;
+      const d = 0.2, t0 = Math.max(0, it.at - d);
+      tl.fromTo(el, { y: -fall - y, rotation: -8 }, { y: 0, rotation: 0, duration: it.at - t0, ease: "power3.in" }, t0);
+      tl.set(el, { scaleX: 1.18, scaleY: 0.82, transformOrigin: "50% 100%" }, it.at);
+      tl.to(el, { scaleX: 1, scaleY: 1, duration: 0.2, ease: "back.out(3)" }, it.at);
+      tl.set(r.lab, { backgroundColor: "#ffffff" }, it.at);
+      tl.to(r.lab, { backgroundColor: r.color, duration: 0.25 }, it.at + 0.06);
+      AR.shake(tl, board, it.at, { amp: tall ? 8 : 5, dur: 0.18 });
+      if (it.stamp !== false && it.stamp != null) {
+        const st = document.createElement("div");
+        st.className = "SCENE-stamp px";
+        st.id = `SCENE-st${i}`;
+        st.setAttribute("data-layout-allow-overlap", "");          // it lands on its tile on purpose
+        st.textContent = it.stamp === true ? r.label : String(it.stamp);
+        st.style.fontSize = Math.max(tall ? 52 : 34, tile * 0.24) + "px";
+        board.appendChild(st);
+        if (st.offsetWidth > tile * 1.08) st.style.fontSize = parseFloat(st.style.fontSize) * tile * 1.08 / st.offsetWidth + "px";
+        Object.assign(st.style, { left: x + (tile - st.offsetWidth) / 2 + "px", top: y + tile * 0.62 - st.offsetHeight / 2 + "px" });
+        AR.stamp(tl, st, it.at + 0.02, { rot: -10, from: 2.6, dur: 0.1 });
+      }
+    });
+    // ---- the rocket: a tile from the bottom row shoots up through every row into the top one ----
+    if (ROCKET && rows[ROCKET.from] && rows[ROCKET.to]) {
+      const R = ROCKET, a = rows[R.from], b = rows[R.to];
+      const [x0, y0] = slotXY(R.from, a.used), [x1, y1] = slotXY(R.to, b.used++);
+      const me = makeTile(R.tile || {}, "SCENE-me");
+      Object.assign(me.style, { left: x0 + "px", top: y0 + "px", zIndex: 10, background: "#fdf6e3" });
+      const go = Math.max(0.05, R.at - (R.dur ?? 0.22));
+      tl.to(me, { y: 6, scaleY: 0.86, transformOrigin: "50% 100%", duration: 0.07, ease: "power2.out" }, go - 0.07);
+      tl.to(me, { x: x1 - x0, y: y1 - y0, scaleY: 1.18, scaleX: 0.9, duration: R.at - go, ease: "power2.in" }, go);
+      tl.set(me, { scaleX: 1.2, scaleY: 0.8 }, R.at);
+      tl.to(me, { scaleX: 1, scaleY: 1, duration: 0.2, ease: "back.out(3)" }, R.at);
+      [0.35, 0.55, 0.75].forEach((k, i) => {
+        const g = me.cloneNode(true);
+        g.removeAttribute("id");
+        g.querySelectorAll("[id]").forEach((e) => e.removeAttribute("id"));
+        g.className = "SCENE-tile SCENE-ghost";
+        g.setAttribute("data-layout-ignore", "");
+        board.insertBefore(g, me);
+        const tk = go + (R.at - go) * (0.4 + i * 0.18);
+        tl.set(g, { x: (x1 - x0) * k, y: (y1 - y0) * k, opacity: 0.45 - i * 0.1 }, tk);
+        tl.to(g, { opacity: 0, duration: 0.12 }, tk + 0.02);
+      });
+      // every row it passes flashes
+      ROWS.map((r) => rows[r.key]).filter((r) => r.row.offsetTop < a.row.offsetTop && r.row.offsetTop >= b.row.offsetTop).reverse().forEach((r, i, arr) => {
+        const tk = go + ((R.at - go) * (i + 1)) / (arr.length + 1);
+        tl.set(r.lab, { backgroundColor: "#ffffff" }, tk);
+        tl.set(r.lab, { backgroundColor: r.color }, tk + 0.07);
+      });
+      tl.set(b.lab, { backgroundColor: "#ffffff" }, R.at);
+      tl.to(b.lab, { backgroundColor: b.color, duration: 0.25 }, R.at + 0.05);
+      AR.shake(tl, board, R.at, { amp: tall ? 12 : 8, dur: 0.22 });
+      // gold rays behind it
+      const rays = document.createElement("div"), rr = tile * 1.6;
+      rays.id = "SCENE-rays";
+      rays.setAttribute("data-layout-ignore", "");
+      Object.assign(rays.style, { left: x1 + tile / 2 - rr + "px", top: y1 + tile / 2 - rr + "px", width: 2 * rr + "px", height: 2 * rr + "px" });
+      let svg = '<svg viewBox="-100 -100 200 200"><defs><radialGradient id="SCENE-rg" cx="0" cy="0" r="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff2b0"/><stop offset="0.45" stop-color="#ffd34d" stop-opacity="0.75"/><stop offset="1" stop-color="#ffd34d" stop-opacity="0"/></radialGradient></defs>';
+      for (let i = 0; i < 14; i++) {
+        const an = (i / 14) * Math.PI * 2, w = (Math.PI / 14) * 0.55;
+        svg += `<polygon points="0,0 ${Math.cos(an - w) * 100},${Math.sin(an - w) * 100} ${Math.cos(an + w) * 100},${Math.sin(an + w) * 100}" fill="url(#SCENE-rg)"/>`;
+      }
+      rays.innerHTML = svg + '<circle cx="0" cy="0" r="30" fill="url(#SCENE-rg)"/></svg>';
+      board.insertBefore(rays, board.firstChild);
+      tl.fromTo(rays, { opacity: 0, scale: 0.3 }, { opacity: 0.95, scale: 1, duration: 0.22, ease: "back.out(2)" }, R.at + 0.02);
+      tl.fromTo(rays, { rotation: 0 }, { rotation: 40, duration: Math.max(0.3, T.end - R.at), ease: "none", immediateRender: false }, R.at + 0.02);
+      if (R.crown != null) {
+        const def = AR.crit.PROPS["hat-crown"], cw = tile * 0.92, ch = (cw * def.size[1]) / def.size[0];
+        const crown = document.createElement("img");
+        crown.id = "SCENE-crown";
+        crown.src = "assets/cast/props/" + def.file;
+        crown.alt = "";
+        Object.assign(crown.style, { left: x1 + (tile - cw) / 2 + "px", top: y1 - ch * 0.72 + "px", width: cw + "px", height: ch + "px" });
+        board.appendChild(crown);
+        tl.fromTo(crown, { y: -(y1 + ch + 120) }, { y: 0, duration: Math.max(0.12, R.crown - R.at - 0.04), ease: "power3.in" }, R.at + 0.04);
+        tl.set(crown, { scaleX: 1.25, scaleY: 0.75, transformOrigin: "50% 100%" }, R.crown);
+        tl.to(crown, { scaleX: 1, scaleY: 1, duration: 0.22, ease: "back.out(3)" }, R.crown);
+        tl.set(me, { scaleY: 0.88 }, R.crown);
+        tl.to(me, { scaleY: 1, duration: 0.18, ease: "back.out(3)" }, R.crown);
+        AR.flash(tl, "#SCENE-flash", R.crown, { peak: 0.5, dur: 0.18 });
+      }
+    }
+    // ---- cut-ins on a row (the camera jumps, never drifts) ----
+    CUT.forEach((c) => (c.row ? AR.zoomCut(tl, "#SCENE-cam", rows[c.row].row, c.t, { pad: [40, 30] }) : AR.frameReset(tl, "#SCENE-cam", c.t, 0)));
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

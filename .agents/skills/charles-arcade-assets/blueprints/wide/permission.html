@@ -1,0 +1,60 @@
+<!-- BLUEPRINT permission, wide frame (laid out at 1280x630, fills the frame edge to edge): Claude asks before it
+     acts. On the cut: the tool-permission dialog in the chat ("Claude wants to use Place Stock Order", the call's
+     JSON, "Allow once ↵" and "Deny esc") with the cursor waiting below. The cursor glides to Allow once and clicks,
+     the button presses, the dialog folds away and the result line takes its place, then Claude's answer streams.
+     Use for: "it asks before it buys / sends / deletes", "you stay in control", "one click and it's done".
+     Edit: the tool name, the logo slot (put the app's logo in <img class="cl-slot" src="assets/...">), the JSON
+     lines, the result line, the reply, and the T times. For a refusal, use AR.clAllow(..., { deny: true }) and
+     aim the cursor at #SCENE-deny.
+     Ids start with SCENE; mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #f5f4ef; }
+    #SCENE-app { inset: 0; font-size: 32px; }
+    #SCENE-perm .cl-json { font-size: 0.86em; }
+    #SCENE-stack { position: absolute; left: 40px; right: 40px; top: 30px; bottom: 30px; align-items: center; }
+    #SCENE-perm { align-self: start; }
+    #SCENE-after { display: flex; flex-direction: column; gap: 0.8em; padding: 0 0.4em; opacity: 0; }
+    #SCENE-result { font-size: 1.1em; }
+    #SCENE-cursor { left: 880px; top: 548px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div class="cl-app" id="SCENE-app">
+      <div class="cl-swapstack" id="SCENE-stack">
+        <div class="cl-perm" id="SCENE-perm">
+          <div class="cl-perm-head"><span class="cl-plogo"><span class="cl-mark" style="background:#1d1d1b;border-radius:50%">P</span></span>
+            <span>Claude wants to use <b>Place Stock Order</b></span><i data-cl-icon="chev-down"></i></div>
+          <div class="cl-json">{
+  "symbol": "AAPL",
+  "side": "buy",
+  "notional": "1250",
+  "type": "market",
+  "time_in_force": "day"
+}</div>
+          <div class="cl-perm-btns"><span class="cl-allow" id="SCENE-allow">Allow once <i data-cl-icon="enter"></i></span>
+            <span class="cl-deny" id="SCENE-deny">Deny <small>esc</small></span></div>
+        </div>
+        <div id="SCENE-after">
+          <div class="cl-result" id="SCENE-result"><span class="cl-okc"><i data-cl-icon="check"></i></span>
+            <span><b>Place Stock Order</b> · Bought $1,250.00 of AAPL<br><span class="cl-rsub">filled 5.41 shares @ $231.06 · 10:42 AM</span></span></div>
+          <div class="cl-reply" id="SCENE-reply">Done. You now own 5.41 shares of Apple, bought at market.</div>
+        </div>
+      </div>
+    </div>
+    <div class="cl-cursor" id="SCENE-cursor"></div>
+  </div>
+  <script>
+    // T: move = the cursor sets off; click = Allow once is clicked; reply = the answer streams
+    const T = { move: 0.3, click: 0.82, reply: 1.32, end: 2.5 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    AR.clIcons();
+    const aim = AR.clAim("#SCENE-cursor", "#SCENE-allow", { ax: 0.42 });
+    AR.cursor(tl, "#SCENE-cursor", T.move, T.click - T.move - 0.05, aim.x, aim.y);
+    AR.click(tl, "#SCENE-cursor", T.click);
+    AR.clAllow(tl, "#SCENE-perm", T.click, { result: "#SCENE-after" });
+    tl.to("#SCENE-cursor", { opacity: 0, duration: 0.15 }, T.click + 0.3);
+    AR.stream(tl, "#SCENE-reply", T.reply, { wps: 15 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

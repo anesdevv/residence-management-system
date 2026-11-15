@@ -1,0 +1,72 @@
+<!-- BLUEPRINT github-repo, wide (1280x630, the 2:1 card; fills the frame edge to edge): a rebuilt GitHub repo
+     page, complete on the cut, then a green FREE pill stamps into the bottom-right corner on the word (oversized and
+     blurred for two frames, lands rotated, the page bumps) and the MIT license line gets a marker.
+     Use for: "it's completely free", "it's open source", "here's the repo", "it has 19k stars".
+     Edit: owner and repo (data-name="owner" / "repo" in names.js, or the text), the counts, the commit line, the
+     file rows (name, last commit message, time; .wb-file icons for files), the About text and topics, the
+     stamp text, T.free (the word "free"), T.mit. Six file rows fit; a seventh runs off the bottom edge like a real page.
+     mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #fff; }
+    #SCENE-page { left: 0; top: 0; width: 1280px; height: 630px; }
+    #SCENE-free { right: 46px; bottom: 44px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div class="wb-gh" id="SCENE-page">
+      <div class="wb-gh-head">
+        <img class="wb-avatar" data-ph="avatar:Charles Liu" alt="">
+        <a class="wb-gh-owner" data-name="owner">charlesliu</a><span class="wb-gh-sl">/</span><b class="wb-gh-repo" data-name="repo">scout-skill</b>
+        <span class="wb-gh-pub">Public</span>
+        <div class="wb-gh-acts">
+          <span class="wb-gh-btn"><i data-i="eye"></i>Watch<em>48</em></span>
+          <span class="wb-gh-btn"><i data-i="fork"></i>Fork<em>2.2k</em></span>
+          <span class="wb-gh-btn"><i data-i="star"></i>Star<em>19.4k</em></span>
+        </div>
+      </div>
+      <div class="wb-gh-tabs">
+        <span class="wb-on"><i data-i="code"></i>Code</span>
+        <span><i data-i="issue"></i>Issues<em>13</em></span>
+        <span><i data-i="pr"></i>Pull requests<em>4</em></span>
+        <span><i data-i="actions"></i>Actions</span>
+        <span><i data-i="book"></i>Wiki</span>
+      </div>
+      <div class="wb-gh-main">
+        <div class="wb-gh-files">
+          <div class="wb-gh-commit"><img class="wb-avatar" data-ph="avatar:Charles Liu" alt=""><b>charlesliu</b>
+            <span class="wb-ell">Add the hook finder and weekly brief</span><span class="wb-gh-n"><i data-i="history"></i>128 Commits</span></div>
+          <div class="wb-gh-row"><i data-i="folder"></i><span class="wb-gh-name">.claude-plugin</span><span class="wb-gh-msg">Plugin marketplace manifest</span><span class="wb-gh-time">2 days ago</span></div>
+          <div class="wb-gh-row"><i data-i="folder"></i><span class="wb-gh-name">skills/scout</span><span class="wb-gh-msg">Read Reels captions too</span><span class="wb-gh-time">5 hours ago</span></div>
+          <div class="wb-gh-row"><i data-i="folder"></i><span class="wb-gh-name">examples</span><span class="wb-gh-msg">Three creator playbooks</span><span class="wb-gh-time">last week</span></div>
+          <div class="wb-gh-row"><i data-i="folder"></i><span class="wb-gh-name">scripts</span><span class="wb-gh-msg">Faster transcript fetch</span><span class="wb-gh-time">yesterday</span></div>
+          <div class="wb-gh-row"><i data-i="file" class="wb-file"></i><span class="wb-gh-name">README.md</span><span class="wb-gh-msg">Install in one line</span><span class="wb-gh-time">2 days ago</span></div>
+          <div class="wb-gh-row"><i data-i="file" class="wb-file"></i><span class="wb-gh-name">LICENSE</span><span class="wb-gh-msg">MIT</span><span class="wb-gh-time">last month</span></div>
+          <div class="wb-gh-row"><i data-i="file" class="wb-file"></i><span class="wb-gh-name">SKILL.md</span><span class="wb-gh-msg">Hook finder steps</span><span class="wb-gh-time">5 hours ago</span></div>
+        </div>
+        <div class="wb-gh-about">
+          <h4>About</h4>
+          <p>A Claude skill that reads any creator's top posts and writes you the playbook behind them.</p>
+          <div class="wb-gh-topics"><span>claude</span><span>claude-skills</span><span>instagram</span><span>creators</span><span>ai-agents</span></div>
+          <div class="wb-gh-meta">
+            <span><i data-i="book"></i>Readme</span>
+            <span><i data-i="law"></i><span class="mark" id="SCENE-mit">MIT license</span></span>
+            <span><i data-i="star"></i><b>19.4k</b>stars</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wb-free" id="SCENE-free" data-layout-allow-overlap>FREE</div>
+  </div>
+  <script>
+    const T = { free: 0.9, mit: 1.35 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fills [data-name] text, icons and image placeholders
+    // the stamp: oversized and blurred for two frames, lands rotated; the page bumps on impact
+    tl.fromTo("#SCENE-free", { scale: 2.3, rotation: -8, opacity: 0, filter: "blur(10px)" },
+      { scale: 1, rotation: -8, opacity: 1, filter: "blur(0px)", duration: 0.1, ease: "power4.in" }, T.free - 0.1);
+    tl.to("#SCENE-page", { y: 5, duration: 0.034, ease: "none" }, T.free);
+    tl.to("#SCENE-page", { y: 0, duration: 0.12, ease: "power2.out" }, T.free + 0.067);
+    AR.marker(tl, "#SCENE-mit", T.mit);
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

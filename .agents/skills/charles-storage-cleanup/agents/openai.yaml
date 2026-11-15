@@ -1,0 +1,4 @@
+interface:
+  display_name: "Storage Cleanup"
+  short_description: "Find overlooked Mac storage and clean disposable files"
+  default_prompt: "Use $charles-storage-cleanup to thoroughly inspect Mac storage, review unused apps and overlooked caches, and complete authorized cleanup while protecting active work."

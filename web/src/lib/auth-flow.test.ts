@@ -142,6 +142,68 @@ describe('Register form & client email validation blocking', () => {
     expect(okRes.headers.get('Location')).toBe('/login?registered=1');
   });
 
+  it('API /api/register blocks a duplicate contact email before calling signUp', async () => {
+    mockRpc.mockImplementation((fn: string) =>
+      fn === 'contact_email_available'
+        ? Promise.resolve({ data: false, error: null })
+        : Promise.resolve({ data: { residence_name: 'RÉSIVO', residence_gender: 'male' }, error: null }),
+    );
+
+    const res = await registerPost(
+      makeFormContext({
+        card_id: '20240002',
+        first_name: 'Karim',
+        last_name: 'Benali',
+        birth_date: '2003-04-12',
+        phone: '0555123456',
+        email: 'karim@univ-tlemcen.dz',
+        confirm_email: 'karim@univ-tlemcen.dz',
+        university: 'Université de Tlemcen',
+        faculty: 'Sciences',
+        study_level: 'L2',
+        wilaya: 'Tlemcen',
+        password: 'Password123!',
+      }),
+    );
+
+    expect(mockRpc).toHaveBeenCalledWith('contact_email_available', { p_email: 'karim@univ-tlemcen.dz' });
+    expect(mockSignUp).not.toHaveBeenCalled();
+    expect(res.headers.get('Location')).toContain('already%20registered');
+  });
+
+  it('API /api/register never shows the raw GoTrue database error', async () => {
+    mockRpc.mockImplementation((fn: string) =>
+      fn === 'contact_email_available'
+        ? Promise.resolve({ data: true, error: null })
+        : Promise.resolve({ data: { residence_name: 'RÉSIVO', residence_gender: 'male' }, error: null }),
+    );
+    mockSignUp.mockResolvedValue({
+      data: { user: null, session: null },
+      error: { message: 'Database error saving new user' },
+    });
+
+    const res = await registerPost(
+      makeFormContext({
+        card_id: '20240003',
+        first_name: 'Karim',
+        last_name: 'Benali',
+        birth_date: '2003-04-12',
+        phone: '0555123456',
+        email: 'karim2@univ-tlemcen.dz',
+        confirm_email: 'karim2@univ-tlemcen.dz',
+        university: 'Université de Tlemcen',
+        faculty: 'Sciences',
+        study_level: 'L2',
+        wilaya: 'Tlemcen',
+        password: 'Password123!',
+      }),
+    );
+
+    const location = res.headers.get('Location') ?? '';
+    expect(location).not.toContain('Database%20error');
+    expect(location).toContain('unexpected%20error');
+  });
+
   it('API /api/register maps email_in_use to friendly error', async () => {
     mockRpc.mockResolvedValue({ data: { residence_name: 'RÉSIVO', residence_gender: 'male' }, error: null });
     mockSignUp.mockResolvedValue({

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Explainer asset</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/kit/style.css">
+</head>
+<body>
+<div id="panel"></div>
+<script src="/kit/lib.js"></script>
+<script>
+/* One page for every asset of a project. render.mjs and check.mjs serve the kit at /kit/ and the project at /, then
+   open /kit/index.html?asset=<id>. ?t=4.6 freezes a frame, ?play loops it in real time, ?band marks the band's
+   edges, ?tag draws the state tag the list kit adds in the reel (for the phone check). The asset's scene is
+   scenes/<id>.js (or the asset's "scene"), which registers itself with H$.scene({...}). */
+window.ready = (async () => {
+  const q = new URLSearchParams(location.search);
+  const id = q.get('asset');
+  const ex = await (await fetch('/explain.json')).json();
+  const assets = (ex.lines || []).flatMap((l) => (l.assets || []).map((a) => ({ ...a, line: l })));
+  const asset = assets.find((a) => a.id === id);
+  if (!asset) throw new Error(`no asset "${id}" in explain.json`);
+  const slot = ex.slot || {};
+  H$.setSlot({ w: slot.w || 1080, h: slot.h || 960, band: slot.band, scale: slot.scale || 1 });
+  H$.setAgents(ex.agents);
+  const panel = document.getElementById('panel');
+  Object.assign(panel.style, { width: H$.W + 'px', height: H$.H + 'px' });
+  Object.assign(document.body.style, { width: H$.W + 'px', height: H$.H + 'px' });
+  const root = document.documentElement;
+  if (ex.ground) root.style.setProperty('--ground', ex.ground);
+  if (asset.alpha) root.classList.add('alpha');
+  H$.DUR = asset.dur ?? 9.0;
+  H$.T_FIX = asset.tFix ?? (asset.form === 'flip' ? 4.5 : null);
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = `/scenes/${asset.scene || asset.id}.js`; s.onload = res; s.onerror = () => rej(new Error(`missing scenes/${asset.scene || asset.id}.js`));
+    document.body.appendChild(s);
+  });
+  const sc = window.SCENE || Object.values(window.HACKS || {})[0];
+  if (!sc) throw new Error('the scene file must call H$.scene({...})');
+  const stage = H$.el('div', { id: 'stage' }, panel);
+  const block = sc.code ? H$.codeBlock(panel, sc.code) : null;
+  const area = { top: H$.BAND.top + 16, bottom: block ? block.top - 24 : H$.BAND.bottom - 16 };
+  area.mid = (area.top + area.bottom) / 2;
+  const ctx = { panel, block, area, asset, line: asset.line, ex, T: H$.T_FIX, DUR: H$.DUR };
+  const draw = sc.build(stage, area, ctx);
+  // A scene can ask for the slow push-in on its stage: push: { rate, origin: [x, y] } (SKILL.md, Never stale).
+  const pushOpt = sc.push === true ? {} : sc.push;
+  if (pushOpt) stage.style.transformOrigin = `${(pushOpt.origin || [H$.W / 2, area.mid])[0]}px ${(pushOpt.origin || [H$.W / 2, area.mid])[1]}px`;
+  // The state tag the list kit draws in the reel, for the phone check.
+  let tagEl = null;
+  if (q.has('tag') && (asset.form === 'flip' || asset.form === 'after-only')) {
+    const f = H$.fpx;
+    tagEl = H$.el('div', { class: 'state-tag', style: { left: '0px', top: H$.BAND.top + 'px', height: f(44) + 'px', padding: `0 ${f(16)}px 0 ${f(14)}px`, gap: f(10) + 'px', font: `700 ${f(26)}px "Helvetica Neue", Helvetica, sans-serif` } }, panel);
+    tagEl.dot = H$.el('i', { style: { width: f(12) + 'px', height: f(12) + 'px' } }, tagEl);
+    tagEl.txt = H$.el('span', {}, tagEl);
+  }
+  window.DUR = H$.DUR;
+  window.T_FIX = H$.T_FIX;
+  window.ASSET = { id, form: asset.form, alpha: !!asset.alpha, stills: sc.stills || asset.stills, check: sc.check || asset.check, win: sc.win || asset.win };
+  window.seek = (t) => {
+    if (pushOpt) stage.style.transform = `scale(${H$.push(t, pushOpt.rate)})`;
+    draw(t);
+    if (block) block.render(t);
+    if (tagEl) {
+      const after = asset.form === 'after-only' || t >= H$.T_FIX;
+      tagEl.txt.textContent = after ? 'After' : 'Before';
+      tagEl.dot.style.background = after ? '#30a46c' : '#e5484d';
+    }
+  };
+  if (q.has('band')) for (const y of [H$.BAND.top, H$.BAND.bottom]) H$.el('div', { class: 'band-guide', style: { top: y + 'px' } }, panel);
+  const faces = ['400 20px Inter', '500 20px Inter', '600 20px Inter', '700 20px Inter', '400 20px JBM', '700 20px JBM'];
+  await Promise.all(faces.map((f) => document.fonts.load(f)));
+  await document.fonts.ready;
+  if (block) block.measure();
+  if (sc.measure) sc.measure(ctx);
+  window.seek(0);
+  if (q.has('t')) window.seek(Number(q.get('t')));
+  if (q.has('play')) {
+    const t0 = performance.now();
+    const loop = () => { window.seek(((performance.now() - t0) / 1000) % window.DUR); requestAnimationFrame(loop); };
+    loop();
+  }
+  return true;
+})();
+</script>
+</body>
+</html>

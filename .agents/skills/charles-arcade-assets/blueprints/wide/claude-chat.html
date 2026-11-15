@@ -1,0 +1,100 @@
+<!-- BLUEPRINT claude-chat, wide frame (laid out at 1280x630, fills the frame edge to edge): a rebuilt Claude
+     desktop chat that answers and makes an artifact. On the cut: the question bubble and "✳ Building your
+     business plan". Then "Used Business Planner skill ›" and the serif answer streams (each new word grey, then
+     dark); the artifact chip lands; Open is pressed and the window cuts to the split view: chat on the left at
+     desktop density, the doc on the right, where Claude writes the summary with its orange collaborator cursor
+     and the table rows populate. Last, the chat slides out, the camera zooms onto the doc and a green underline
+     draws under the key phrase.
+     Use for: "you ask Claude to...", "it builds you a plan / a report / a doc", "it writes it for you", any chat
+     whose answer is a document. For a chart instead of a table, put .cl-bars or a dataviz chart in the doc.
+     Edit: the window title, USER text, the status and Used lines (skill name), the REPLY, the chip title, the
+     doc (title, meta chips, sections, table rows; wrap the phrase to underline in <span class="cl-ul">, one
+     line), and the T times. Delete a phase by deleting its lines in the script (each is marked).
+     Ids start with SCENE; mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #f5f4ef; }
+    #SCENE-app { inset: 0; --cl-chat-w: 100%; }
+    #SCENE-user { max-width: 78%; }
+    #SCENE-doc { font-size: 23px; padding: 0.7em 2.2em 1em; }
+    #SCENE-doc .cl-ul { white-space: nowrap; }
+    #SCENE-table td:nth-child(1) { width: 32%; }
+    #SCENE-table td:nth-child(2) { width: 36%; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div class="cl-app cl-split" id="SCENE-app">
+      <div class="cl-main" id="SCENE-chat">
+        <div class="cl-top"><div class="cl-lights"><i></i><i></i><i></i></div><i class="cl-sideico" data-cl-icon="sidebar"></i>
+          <div class="cl-title">Raise a seed for Leashly <i data-cl-icon="chev-down"></i></div>
+          <div class="cl-right" id="SCENE-share"><span class="cl-btn">Share</span></div></div>
+        <div class="cl-thread"><div class="cl-flow" id="SCENE-flow">
+          <div class="cl-user" id="SCENE-user">Turn my idea into a business plan: a dog-walking app with flat prices.</div>
+          <div class="cl-swapstack">
+            <div class="cl-statusrow" id="SCENE-working"><i class="cl-spark" id="SCENE-spark"></i>Building your business plan</div>
+            <div class="cl-used" id="SCENE-used" style="opacity:0">Used Business Planner skill <i data-cl-icon="chev-right"></i></div>
+          </div>
+          <div class="cl-reply" id="SCENE-reply">Here's your business plan for Leashly:</div>
+          <div class="cl-art" id="SCENE-chip" style="opacity:0">
+            <div class="cl-art-ico"><i data-cl-icon="doc"></i></div>
+            <div class="cl-art-txt"><div class="cl-art-t">Leashly business plan</div>
+              <div class="cl-art-s">Document · <i data-cl-icon="lock"></i> Only you</div></div>
+            <span class="cl-btn" id="SCENE-open">Open</span>
+          </div>
+          <i class="cl-spark cl-asterisk" id="SCENE-spark2" style="opacity:0"></i>
+        </div></div>
+      </div>
+      <div class="cl-pane" id="SCENE-pane">
+        <div class="cl-pane-top"><div class="cl-title">Leashly business plan <i data-cl-icon="chev-down"></i></div>
+          <div class="cl-right"><i data-cl-icon="comment"></i><span class="cl-btn">Share</span><i data-cl-icon="expand"></i><i data-cl-icon="close"></i></div></div>
+        <div class="cl-pane-tools"><i data-cl-icon="doc"></i>Tabs <i data-cl-icon="chev-down" style="width:.7em"></i><i class="cl-sep"></i>
+          <i data-cl-icon="table"></i><i data-cl-icon="image"></i><i data-cl-icon="checks"></i><i data-cl-icon="plus"></i></div>
+        <div class="cl-pane-body">
+          <div class="cl-doc" id="SCENE-doc">
+            <div class="cl-doc-title">Leashly business plan</div>
+            <div class="cl-docmeta"><span class="cl-mchip"><i data-cl-icon="calendar"></i>Oct 26, 2026</span><span class="cl-mdot">·</span>
+              <span class="cl-mchip"><i data-cl-icon="sprout"></i>Seed round · $1.5M</span></div>
+            <div class="cl-h">Executive summary</div>
+            <div class="cl-p" id="SCENE-p1">Flat $25 walks with a backup walker on every booking. We're raising a <span class="cl-ul" id="SCENE-key">$1.5M seed to launch in 3 cities.</span></div>
+            <div id="SCENE-comp" style="opacity:0">
+              <div class="cl-h">Competition</div>
+              <table class="cl-table" id="SCENE-table">
+                <tr><th>App</th><th>App Store rating</th><th>Weak point</th></tr>
+                <tr class="cl-row"><td><span class="cl-cellico"><span class="cl-tslot"><span class="cl-mark" style="background:#1fa77a">R</span></span>Rover</span></td><td>4.9 <span class="cl-star">★</span> <span class="cl-grey">515,771</span></td><td>Fees on top of fees</td></tr>
+                <tr class="cl-row"><td><span class="cl-cellico"><span class="cl-tslot"><span class="cl-mark" style="background:#2fb36b">W</span></span>Wag!</span></td><td>4.8 <span class="cl-star">★</span> <span class="cl-grey">67,447</span></td><td>Last-minute cancels</td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // T: used = the skill line + answer start; chip = artifact chip; open = cut to the split view; write = Claude
+    // writes the summary; rows = the table; focus = zoom onto the doc; line = the underline
+    const T = { used: 0.5, chip: 1.0, open: 1.45, write: 1.6, rows: 2.75, focus: 3.0, line: 3.55, end: 4.3 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    AR.clIcons();
+    // phase 1: the chat answers
+    AR.clSpark(tl, "#SCENE-spark", 0, T.used);
+    tl.set("#SCENE-working", { opacity: 0 }, T.used);
+    tl.set("#SCENE-used", { opacity: 1 }, T.used);
+    AR.stream(tl, "#SCENE-reply", T.used + 0.05, { wps: 14 });
+    tl.fromTo("#SCENE-chip", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.22, ease: "power3.out" }, T.chip);
+    AR.press(tl, "#SCENE-open", T.open - 0.12);
+    // phase 2: cut to the split view (desktop density), Claude writes the doc
+    tl.set("#SCENE-app", { fontSize: 22, "--cl-chat-w": "37%" }, T.open);
+    tl.set("#SCENE-share", { opacity: 0 }, T.open);
+    tl.set("#SCENE-open", { textContent: "Hide" }, T.open);
+    tl.set("#SCENE-spark2", { opacity: 1 }, T.open);
+    AR.clSpark(tl, "#SCENE-spark2", T.open, T.end - T.open);
+    tl.fromTo("#SCENE-pane", { x: 70, opacity: 0 }, { x: 0, opacity: 1, duration: 0.2, ease: "power3.out" }, T.open);
+    AR.stream(tl, "#SCENE-p1", T.write, { wps: 17, tag: "Claude" });
+    tl.fromTo("#SCENE-comp", { opacity: 0 }, { opacity: 1, duration: 0.12 }, T.rows - 0.12);
+    AR.clRows(tl, "#SCENE-table .cl-row", T.rows, { gap: 0.07 });
+    // phase 3: zoom onto the doc, underline the key phrase
+    AR.clFocus(tl, "#SCENE-app", T.focus, { scale: 1.5, x: -18, y: -18, dur: 0.5 });
+    AR.clUnderline(tl, "#SCENE-key", T.line);
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

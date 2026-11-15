@@ -1,0 +1,50 @@
+<!-- BLUEPRINT chat-ui, short frame (laid out at 1080x960; the start for any frame under 1400 px tall): a rebuilt AI chat (Claude-style)
+     that acts on the words: the question appears, the answer lands, a phrase gets selected and marked as
+     doubtful, then tool steps run; the mascot reacts from the window's corner.
+     Use for: "you ask Claude...", "Claude's response", "anytime you don't trust...", showing a workflow step.
+     Edit: the window title, USER and AI text (wrap the phrase to doubt in .sel.doubt, under ~28 characters;
+     the AI answer at most 2 lines here), tool rows, the T times, T.end (the beat length). Delete what a beat
+     does not need. Text stays between y 170 and y 880.
+     mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    #SCENE-cam { position: absolute; inset: 0; transform-origin: 50% 45%; }
+    #SCENE-app { left: 50px; top: 160px; width: 980px; height: 700px; }
+    #SCENE-tools { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
+    #SCENE-mascot { left: 820px; top: 690px; width: 190px; height: 158px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1080" data-height="960">
+    <div class="stage" data-layout-ignore></div>
+    <div id="SCENE-cam" data-layout-allow-overflow>
+      <div class="app" id="SCENE-app">
+        <div class="app-bar"><div class="dots"><i></i><i></i><i></i></div><span>Weekend trip plan</span><span class="chip" style="margin-left:auto">Share</span></div>
+        <div class="chat">
+          <div class="msg-user" id="SCENE-user">Find me the cheapest flight to Tokyo in May.</div>
+          <div class="msg-ai" id="SCENE-ai">Booked it: <span class="sel doubt" id="SCENE-phrase">$212 round trip<svg class="squiggle" viewBox="0 0 100 10" preserveAspectRatio="none"><path pathLength="1" d="M0 5 Q 6 0 12 5 T 25 5 T 37 5 T 50 5 T 62 5 T 75 5 T 87 5 T 100 5" /></svg></span><b class="q" id="SCENE-q">?</b> on May 3rd.</div>
+          <div id="SCENE-tools">
+            <div class="tool-row" id="SCENE-tool1"><svg class="asterisk" viewBox="0 0 40 40"><g stroke="#d97757" stroke-width="5" stroke-linecap="round"><path d="M20 4v32M4 20h32M8.7 8.7l22.6 22.6M31.3 8.7 8.7 31.3"/></g></svg>Searching flights</div>
+            <div class="tool-row" id="SCENE-tool2"><svg class="asterisk" viewBox="0 0 40 40"><rect x="8" y="6" width="24" height="28" rx="4" fill="none" stroke="#8a867e" stroke-width="3"/><path d="M14 15h12M14 21h12M14 27h7" stroke="#8a867e" stroke-width="3"/></svg>Using the travel skill</div>
+          </div>
+        </div>
+      </div>
+      <div class="sprite" id="SCENE-mascot"><img class="pose on" data-pose="idle" src="assets/cast/claude/poses/idle.png" /><img class="pose" data-pose="sad" src="assets/cast/claude/poses/sad.png" /></div>
+    </div>
+  </div>
+  <script>
+    const T = { user: 0.05, ai: 0.4, sel: 1.0, doubt: 1.35, tool1: 1.9, tool2: 2.25, end: 2.6 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] elements from assets/names.js
+    AR.settle(tl, "#SCENE-app", 0, { dy: 18 });
+    tl.fromTo("#SCENE-user", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.22, ease: "power3.out" }, T.user);
+    AR.words(tl, "#SCENE-ai", T.ai, { gap: 0.045 });
+    AR.sweep(tl, "#SCENE-phrase", T.sel, 0.3);
+    AR.draw(tl, "#SCENE-phrase .squiggle path", T.doubt, 0.35);
+    AR.pop(tl, "#SCENE-q", T.doubt + 0.25, { from: 0.3 });
+    AR.poses(tl, "#SCENE-mascot", [[T.doubt + 0.25, "sad"]]);
+    AR.hop(tl, "#SCENE-mascot", T.doubt + 0.25, { h: 26, dur: 0.26 });
+    tl.fromTo("#SCENE-tool1", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.2, ease: "power3.out" }, T.tool1);
+    tl.fromTo("#SCENE-tool2", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.2, ease: "power3.out" }, T.tool2);
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

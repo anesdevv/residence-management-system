@@ -115,6 +115,17 @@ BEGIN
     RAISE EXCEPTION 'TEST FAILED: case-insensitive duplicate email was not rejected';
   END IF;
 
+  -- 5b. Availability helper used by the web registration pre-check
+  IF public.contact_email_available('alice.test@univ-tlemcen.dz') THEN
+    RAISE EXCEPTION 'TEST FAILED: contact_email_available() should be false for a registered email';
+  END IF;
+  IF public.contact_email_available('ALICE.TEST@UNIV-TLEMCEN.DZ') THEN
+    RAISE EXCEPTION 'TEST FAILED: contact_email_available() must compare case-insensitively';
+  END IF;
+  IF NOT public.contact_email_available('free.email@univ-tlemcen.dz') THEN
+    RAISE EXCEPTION 'TEST FAILED: contact_email_available() should be true for an unused email';
+  END IF;
+
   -- 6. Second valid student, then test update_my_contact validation & uniqueness
   INSERT INTO auth.users (
     id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,

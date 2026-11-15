@@ -1,0 +1,101 @@
+<!-- BLUEPRINT compare, wide frame (laid out at 1280x630, the 2:1 card): a before/after slider. Two versions of the
+     same page sit on top of each other; the mascot pushes the handle across, the "after" version wipes in behind it,
+     a match counter climbs, and a stamp lands with a page bump.
+     Use for: "it cloned the app pixel for pixel", "before and after", "it redesigned it", "same page, half the
+     price", any claim that one thing became (or matches) another.
+     Edit: the two pages (#SCENE-before and #SCENE-after: same layout, different skin), the pill texts (the two
+     names and the counter's label), the counter's end value and decimals (counter in the script), the stamp text,
+     and the T times: T.push (the mascot starts pushing), T.dur (how long the sweep takes), T.stamp (the stamp
+     lands; put it on the word), T.end (the beat length). The camera is locked; only the page bumps on the stamp.
+     mount.py copies it to compositions/<id>.html with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #ffffff; }
+    #SCENE-shake { position: absolute; inset: 0; }
+    #SCENE-pills { position: absolute; left: 0; top: 0; width: 1280px; height: 82px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; background: #f6f4ef; border-bottom: 2px solid #e6e2d9; }
+    .SCENE-pill { display: flex; align-items: center; gap: 12px; font-family: var(--sans); font-weight: 700; font-size: 30px; color: #fff; background: #1f1e1c; border-radius: 14px; padding: 8px 18px; }
+    .SCENE-pill svg { width: 30px; height: 30px; }
+    #SCENE-meter { font-family: var(--mono); font-weight: 700; font-size: 30px; color: #2fa35b; background: #fff; border: 3px solid #2fa35b; border-radius: 12px; padding: 6px 16px; letter-spacing: 0.04em; }
+    #SCENE-meter b { display: inline-block; min-width: 108px; text-align: right; font-size: 36px; }
+    #SCENE-pages { position: absolute; left: 0; top: 82px; width: 1280px; height: 548px; overflow: hidden; }
+    .SCENE-page { position: absolute; left: 0; top: 0; width: 1280px; height: 548px; font-family: var(--sans); color: #1f1e1c; }
+    #SCENE-before { background: #f3f5f9; --acc: #3f6fe0; --soft: #e3eafc; --deep: #2148b8; }
+    #SCENE-after { background: #fbf8f3; --acc: #d97757; --soft: #f8e4dc; --deep: #a8472a; }
+    .SCENE-side { position: absolute; left: 44px; top: 36px; width: 360px; }
+    .SCENE-logo { width: 64px; height: 64px; border-radius: 16px; background: var(--acc); }
+    .SCENE-side h2 { margin-top: 18px; font-size: 40px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; }
+    .SCENE-side p { margin-top: 12px; font-size: 26px; line-height: 1.35; color: #5c5a55; }
+    .SCENE-side .SCENE-price { margin-top: 18px; display: inline-block; font-size: 30px; font-weight: 800; color: var(--deep); background: var(--soft); border-radius: 12px; padding: 6px 14px; }
+    .SCENE-cal { position: absolute; left: 450px; top: 36px; width: 470px; height: 470px; background: #fff; border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,.06); padding: 22px; }
+    .SCENE-cal h3 { font-size: 28px; font-weight: 700; }
+    .SCENE-days { margin-top: 16px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; font-size: 22px; text-align: center; }
+    .SCENE-days span { height: 50px; line-height: 50px; border-radius: 50%; color: #3d3b37; }
+    .SCENE-days span.SCENE-on { background: var(--soft); color: var(--deep); font-weight: 700; }
+    .SCENE-days span.SCENE-pick { background: var(--acc); color: #fff; font-weight: 700; }
+    .SCENE-slots { position: absolute; left: 950px; top: 36px; width: 290px; display: flex; flex-direction: column; gap: 14px; }
+    .SCENE-slots div { height: 66px; border: 3px solid var(--acc); border-radius: 14px; font-size: 28px; font-weight: 700; color: var(--deep); display: flex; align-items: center; justify-content: center; background: #fff; }
+    .SCENE-slots div.SCENE-pick { background: var(--acc); color: #fff; }
+    #SCENE-handle { position: absolute; left: 0; top: 82px; width: 56px; height: 548px; }
+    #SCENE-handle i { position: absolute; left: 26px; top: 0; width: 4px; height: 548px; background: #1f1e1c; }
+    #SCENE-handle svg { position: absolute; left: 0; top: 438px; width: 56px; height: 56px; }
+    #SCENE-hero { left: 0; top: 448px; width: 186px; height: 155px; }
+    #SCENE-stamp { position: absolute; left: 330px; top: 214px; display: flex; align-items: center; gap: 18px; font-family: var(--sans); font-weight: 900; font-size: 104px; letter-spacing: 0.02em; color: #2fa35b; border: 12px solid #2fa35b; border-radius: 26px; padding: 6px 34px 6px 24px; background: rgba(255,255,255,.88); opacity: 0; }
+    #SCENE-stamp svg { width: 96px; height: 96px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div id="SCENE-shake">
+      <div id="SCENE-pills">
+        <div class="SCENE-pill"><svg viewBox="0 0 30 30"><rect x="3" y="3" width="24" height="24" rx="7" fill="#3f6fe0" /></svg>Original</div>
+        <div id="SCENE-meter">MATCH <b id="SCENE-pct">0.0%</b></div>
+        <div class="SCENE-pill"><svg viewBox="0 0 30 30"><rect x="3" y="3" width="24" height="24" rx="7" fill="#d97757" /></svg>Clone</div>
+      </div>
+      <div id="SCENE-pages" data-layout-allow-overlap>
+        <div class="SCENE-page" id="SCENE-before">
+          <div class="SCENE-side"><div class="SCENE-logo"></div><h2>Dog nail trim &amp; wash</h2><p>Small breeds, 30 minutes, at the Grooming Salon.</p><div class="SCENE-price">$53</div></div>
+          <div class="SCENE-cal"><h3>October 2026</h3><div class="SCENE-days">
+            <span>1</span><span>2</span><span class="SCENE-on">3</span><span>4</span><span>5</span><span class="SCENE-on">6</span><span>7</span>
+            <span>8</span><span class="SCENE-on">9</span><span>10</span><span>11</span><span class="SCENE-pick">12</span><span>13</span><span>14</span>
+            <span class="SCENE-on">15</span><span>16</span><span>17</span><span class="SCENE-on">18</span><span>19</span><span>20</span><span>21</span>
+            <span>22</span><span class="SCENE-on">23</span><span>24</span><span>25</span><span class="SCENE-on">26</span><span>27</span><span>28</span>
+            <span>29</span><span>30</span><span class="SCENE-on">31</span></div></div>
+          <div class="SCENE-slots"><div>9:00am</div><div class="SCENE-pick">9:15am</div><div>9:30am</div><div>9:45am</div><div>10:00am</div></div>
+        </div>
+        <div class="SCENE-page" id="SCENE-after">
+          <div class="SCENE-side"><div class="SCENE-logo"></div><h2>Dog nail trim &amp; wash</h2><p>Small breeds, 30 minutes, at the Grooming Salon.</p><div class="SCENE-price">$53</div></div>
+          <div class="SCENE-cal"><h3>October 2026</h3><div class="SCENE-days">
+            <span>1</span><span>2</span><span class="SCENE-on">3</span><span>4</span><span>5</span><span class="SCENE-on">6</span><span>7</span>
+            <span>8</span><span class="SCENE-on">9</span><span>10</span><span>11</span><span class="SCENE-pick">12</span><span>13</span><span>14</span>
+            <span class="SCENE-on">15</span><span>16</span><span>17</span><span class="SCENE-on">18</span><span>19</span><span>20</span><span>21</span>
+            <span>22</span><span class="SCENE-on">23</span><span>24</span><span>25</span><span class="SCENE-on">26</span><span>27</span><span>28</span>
+            <span>29</span><span>30</span><span class="SCENE-on">31</span></div></div>
+          <div class="SCENE-slots"><div>9:00am</div><div class="SCENE-pick">9:15am</div><div>9:30am</div><div>9:45am</div><div>10:00am</div></div>
+        </div>
+      </div>
+      <div id="SCENE-handle"><i></i>
+        <svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="25" fill="#fff" stroke="#1f1e1c" stroke-width="4" /><path d="M23 18 L13 28 L23 38 Z M33 18 L43 28 L33 38 Z" fill="#1f1e1c" /></svg>
+      </div>
+      <div class="sprite" id="SCENE-hero">
+        <img class="pose on" data-pose="idle" src="assets/cast/claude/poses/idle.png" />
+        <img class="pose" data-pose="walk_a" src="assets/cast/claude/poses/walk_a.png" />
+        <img class="pose" data-pose="walk_b" src="assets/cast/claude/poses/walk_b.png" />
+        <img class="pose" data-pose="cheer" src="assets/cast/claude/poses/cheer.png" />
+      </div>
+      <div id="SCENE-stamp"><svg viewBox="0 0 96 96"><path d="M14 52 L38 76 L84 22" fill="none" stroke="#2fa35b" stroke-width="16" stroke-linecap="square" /></svg>PERFECT</div>
+    </div>
+  </div>
+  <script>
+    const T = { push: 0.2, dur: 0.62, stamp: 1.0, end: 1.9 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] / [data-fact] elements from assets/names.js
+    // the handle starts at the right edge and the mascot drags it left; the clone wipes in to its right
+    AR.compare(tl, { before: "#SCENE-before", after: "#SCENE-after", handle: "#SCENE-handle", rider: "#SCENE-hero" }, T.push, T.dur, {
+      dir: "left", from: 0.97, to: 0.16, riderDx: -112, counter: { sel: "#SCENE-pct", from: 0, to: 99.2, decimals: 1, suffix: "%" },
+    });
+    AR.walk(tl, "#SCENE-hero", T.push, T.dur, { fps: 10, end: "idle" });
+    AR.stamp(tl, "#SCENE-stamp", T.stamp - 0.12, { rot: -8, from: 2.2, dur: 0.12 });
+    AR.shake(tl, "#SCENE-shake", T.stamp, { amp: 5, dur: 0.14, n: 4 });
+    AR.pose(tl, "#SCENE-hero", "cheer", T.stamp + 0.05);
+    AR.hop(tl, "#SCENE-hero", T.stamp + 0.05, { h: 36, dur: 0.3 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

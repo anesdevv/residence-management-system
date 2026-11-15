@@ -1,0 +1,112 @@
+<!-- BLUEPRINT receipt, wide frame (laid out at 1280x630 for the 2:1 card; fills the frame edge to edge): a subscription
+     receipt hangs out of a printer in a pixel room. Its lines print one by one and the total counts up; then a pixel
+     marker strikes each line, the total rolls down after every strike, and the marker loops a circle round $0.00
+     while the mascot cheers.
+     Use for: "you never pay for X again", cancelling subscriptions, any bill that drops to zero (or any list that
+     gets crossed off).
+     Edit: the rows (icon tile, name, sub line, price; data-price on each row is what a strike takes off), the header,
+     T.print (first line; lines print T.gap apart), T.strike (first strike; the others follow T.strikeGap apart),
+     T.circle, the mascot poses. Fewer rows: delete rows, the strikes follow the rows that remain. The room, receipt
+     header and mascot are on screen, locked, from the first frame.
+     mount.py copies it to compositions/<id>.html with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    #SCENE-room {
+      position: absolute; inset: 0;
+      background:
+        linear-gradient(180deg, transparent 0 61%, #121b86 61% 62.3%, #2c3bd0 62.3% 64.6%, #121b86 64.6% 66%, transparent 66%),
+        repeating-linear-gradient(90deg, transparent 0 34px, #2330bb 34px 37px, transparent 37px 214px),
+        linear-gradient(180deg, #2735c4 0 61%, transparent 61%),
+        linear-gradient(180deg, transparent 0 66%, #1b27a6 66%);
+    }
+    #SCENE-wainscot {
+      position: absolute; left: 0; right: 0; top: 46%; height: 14%;
+      background: repeating-linear-gradient(90deg, #1f2cb2 0 8px, #2a39cb 8px 170px, #1f2cb2 170px 178px, transparent 178px 214px);
+      opacity: 0.85;
+    }
+    #SCENE-floor {
+      position: absolute; left: 0; right: 0; top: 66%; bottom: 0;
+      background:
+        repeating-linear-gradient(32deg, transparent 0 58px, rgba(70, 92, 230, 0.55) 58px 61px),
+        repeating-linear-gradient(-32deg, transparent 0 58px, rgba(70, 92, 230, 0.55) 58px 61px);
+    }
+    #SCENE-shadow { position: absolute; left: 150px; top: 566px; width: 280px; height: 26px; border-radius: 50%; background: rgba(5, 10, 60, 0.35); }
+    #SCENE-hero { left: 150px; top: 340px; width: 280px; height: 234px; }
+    #SCENE-slot { position: absolute; left: 672px; top: -10px; width: 540px; height: 42px; border-radius: 0 0 10px 10px; background: #efe6cf; box-shadow: 0 6px 0 #c9bd9e, 0 14px 20px rgba(0, 0, 20, 0.35); }
+    #SCENE-slot::after { content: ""; position: absolute; left: 22px; right: 22px; top: 17px; height: 9px; border-radius: 4px; background: #24211c; }
+    #SCENE-paperwrap { position: absolute; left: 700px; top: 22px; width: 484px; height: 586px; filter: drop-shadow(0 12px 16px rgba(0, 0, 30, 0.35)); }
+    #SCENE-paper {
+      position: absolute; inset: 0; background: #fbfaf6; font-family: var(--mono); color: #1f1e1c;
+      -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 13px) no-repeat, conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 26px 13px repeat-x;
+      mask: linear-gradient(#000 0 0) top / 100% calc(100% - 13px) no-repeat, conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 26px 13px repeat-x;
+    }
+    #SCENE-head { position: absolute; left: 0; right: 0; top: 30px; text-align: center; font-size: 28px; font-weight: 700; letter-spacing: 0.14em; }
+    .SCENE-dash { position: absolute; left: 28px; right: 28px; height: 0; border-top: 3px dashed #c9c4b8; }
+    #SCENE-rows { position: absolute; left: 28px; right: 28px; top: 100px; display: flex; flex-direction: column; gap: 22px; }
+    .SCENE-row { display: flex; align-items: flex-start; gap: 14px; height: 70px; }
+    .SCENE-row > i { width: 48px; height: 48px; border-radius: 11px; flex: none; display: grid; place-items: center; font-family: var(--sans); font-style: normal; font-weight: 800; font-size: 22px; }
+    .SCENE-main { flex: 1; display: flex; justify-content: space-between; align-items: baseline; font-size: 30px; font-weight: 700; line-height: 1.1; }
+    .SCENE-sub { font-size: 20px; color: #77726a; margin-top: 4px; font-weight: 400; }
+    #SCENE-totalrow { position: absolute; left: 28px; right: 28px; top: 500px; display: flex; justify-content: space-between; align-items: center; }
+    #SCENE-totalrow span { font-size: 28px; font-weight: 700; letter-spacing: 0.08em; }
+    #SCENE-total { font-size: 58px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div id="SCENE-room" data-layout-ignore></div>
+    <div id="SCENE-wainscot" data-layout-ignore></div>
+    <div id="SCENE-floor" data-layout-ignore></div>
+    <div id="SCENE-shadow" data-layout-ignore></div>
+    <div class="sprite" id="SCENE-hero">
+      <img class="pose on" data-pose="idle" src="assets/cast/claude/poses/idle.png" />
+      <img class="pose" data-pose="point" src="assets/cast/claude/poses/point.png" />
+      <img class="pose" data-pose="cheer" src="assets/cast/claude/poses/cheer.png" />
+    </div>
+    <div id="SCENE-paperwrap">
+      <div id="SCENE-paper">
+        <div id="SCENE-head">MONTHLY CHARGES</div>
+        <div class="SCENE-dash" style="top: 80px"></div>
+        <div id="SCENE-rows">
+          <div class="SCENE-row" data-price="22.99"><i style="background:#001e36; color:#31a8ff">Ps</i>
+            <div style="flex:1"><div class="SCENE-main"><span>Photoshop</span><span>$22.99</span></div><div class="SCENE-sub">Adobe · single app</div></div></div>
+          <div class="SCENE-row" data-price="18.00"><i style="background:linear-gradient(135deg,#00c4cc,#7d2ae8); color:#fff">C</i>
+            <div style="flex:1"><div class="SCENE-main"><span>Canva Pro</span><span>$18.00</span></div><div class="SCENE-sub">billed monthly</div></div></div>
+          <div class="SCENE-row" data-price="12.99"><i style="background:#1ed760; color:#121212">S</i>
+            <div style="flex:1"><div class="SCENE-main"><span>Spotify</span><span>$12.99</span></div><div class="SCENE-sub">Premium Individual</div></div></div>
+          <div class="SCENE-row" data-price="12.00"><i style="background:#fff; color:#111; box-shadow: inset 0 0 0 3px #111">N</i>
+            <div style="flex:1"><div class="SCENE-main"><span>Notion</span><span>$12.00</span></div><div class="SCENE-sub">Plus · billed monthly</div></div></div>
+        </div>
+        <div class="SCENE-dash" style="top: 480px"></div>
+        <div id="SCENE-totalrow"><span>TOTAL / MO</span><b id="SCENE-total">$0.00</b></div>
+      </div>
+    </div>
+    <div id="SCENE-slot" data-layout-ignore></div>
+    <div class="an-pen" id="SCENE-pen"></div>
+  </div>
+  <script>
+    const T = { print: 0.12, gap: 0.17, strike: 1.62, strikeGap: 0.3, circle: 2.86 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] / [data-fact] elements from assets/names.js
+    const rows = Array.from(document.querySelectorAll("#SCENE-rows .SCENE-row"));
+    const prices = rows.map((r) => parseFloat(r.dataset.price));
+    let total = prices.reduce((a, b) => a + b, 0);
+    // the receipt prints: each line drops in T.gap apart, then the total line, which counts up
+    rows.forEach((r, i) => tl.fromTo(r, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.08, ease: "power2.out" }, T.print + i * T.gap));
+    const tTotal = T.print + rows.length * T.gap;
+    tl.fromTo("#SCENE-totalrow", { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.08, ease: "power2.out" }, tTotal);
+    AR.countTo(tl, "#SCENE-total", tTotal, 0.4, { from: 0, to: total, format: "usd", fps: 24 });
+    // the marker pops in, strikes each line left to right, the total rolls down after each strike
+    AR.pop(tl, "#SCENE-pen", T.strike - 0.22, { dur: 0.18 });
+    AR.poses(tl, "#SCENE-hero", [[T.strike, "point"], [T.circle + 0.2, "cheer"]]);
+    rows.forEach((r, i) => {
+      const t = T.strike + i * T.strikeGap * Math.pow(0.92, i);
+      AR.underline(tl, r.querySelector(".SCENE-main"), t, { at: "through", pen: "#SCENE-pen", dur: 0.17, ext: [68, 16], width: 6, seed: 40 + i });
+      tl.to(r, { opacity: 0.42, duration: 0.12, ease: "power1.out" }, t + 0.1);
+      AR.countTo(tl, "#SCENE-total", t + 0.04, 0.22, { from: total, to: total - prices[i], format: "usd", fps: 30 });
+      total -= prices[i];
+    });
+    AR.circle(tl, "#SCENE-total", T.circle, { pen: "#SCENE-pen", pad: 12, dur: 0.32, start: 30, seed: 9 });
+    AR.hop(tl, "#SCENE-hero", T.circle + 0.2, { h: 50, dur: 0.32 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

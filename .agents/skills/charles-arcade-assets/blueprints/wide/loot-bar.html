@@ -1,0 +1,105 @@
+<!-- BLUEPRINT loot-bar, wide frame (laid out at 1280x630, the 2:1 card; it lays itself out for the tall card too): "here
+     are the 5 resources", "number three", "that's all five". An inventory of N slots, big across the frame on a pixel
+     backdrop. The host holds up the item it just found (it pops into its hand), and on its word the item flies in an
+     arc into the next empty slot: the slot bumps, its ring flashes, the counter ticks k/N and the host cheers. When
+     the last slot fills, LOOT COMPLETE! stamps under the bar. The slots already filled show their items from the cut.
+     The bar is also a HUD for any other scene: AR.loot.bar(parent, {n, have, items, size, x, y}) and
+     AR.loot.fill(tl, bar, t, {from}) (cast.js); book-reveal and author-card show it.
+     Use for: a listicle's running count ("five resources", "three fixes"), collecting things one per beat, the payoff
+     when the set is complete.
+     Edit: LOOT (n slots, have: the slots filled on the cut, items: the slot pictures in order, each "src" or {src,
+     size: [w, h] (for an item that is not square), pixel, text}; keep them in FACTS.loot in names.js so every beat
+     and every size of the video shows the same, and set have per beat: 0 on "here are five", 2 on "number three",
+     here or in FACTS.lootAt = { b05: 0, b09: 2 }, keyed by scene id),
+     FILL (the items that land in this beat: at = the word, show = when it pops into the host's hand, or null to fly
+     in from above), HOST ("critter", "pal", a cast.py character's folder such as "charles", or null), LOOK (role,
+     colour; h for a generated character), T.end. The bar's label and counter are key text (43 px or more on the
+     card). Needs cast.js. mount.py copies it to compositions/<id>.html with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #241f3d; }
+    #SCENE-bg { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 60% at 50% 42%, #3b3166 0%, #241f3d 70%);
+      background-image: radial-gradient(ellipse 70% 60% at 50% 42%, rgba(120, 100, 200, 0.45) 0%, rgba(36, 31, 61, 0) 70%),
+        linear-gradient(rgba(255, 255, 255, 0.04) 2px, transparent 2px), linear-gradient(90deg, rgba(255, 255, 255, 0.04) 2px, transparent 2px);
+      background-size: 100% 100%, 48px 48px, 48px 48px; }
+    #SCENE-floor { position: absolute; left: 0; right: 0; bottom: 0; background: #2e2752; border-top: 6px solid #4b4772; }
+    #SCENE-stage { position: absolute; left: 0; top: 0; }
+    #SCENE-title { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; color: #f7c531; white-space: nowrap; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div id="SCENE-bg" data-layout-ignore></div>
+    <div id="SCENE-floor" data-layout-ignore></div>
+    <div id="SCENE-stage"><div class="px" id="SCENE-title">INVENTORY</div></div>
+  </div>
+  <script>
+    const T = { end: 1.6 };
+    const F = window.FACTS || {};
+    // the slots filled on the cut: FACTS.lootAt[this scene's id] when names.js keeps the count, else this number
+    const LOOT = { n: 5, have: (F.lootAt || {})["SCENE"] ?? 2, items: F.loot || [{ text: "📕" }, { text: "💡" }, { text: "🔥" }, { text: "📁" }, { text: "💰" }] };
+    const FILL = [{ at: 0.55, show: 0.12 }];         // one per item that lands this beat (at: its word)
+    const HOST = "critter";                          // "critter", "pal", a cast.py character ("charles"), or null
+    const LOOK = { role: null, color: null, h: 250 };
+    const TITLE = "INVENTORY";                       // a line over the bar, or null
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    const $ = (id) => document.getElementById("SCENE-" + id);
+    const rootEl = document.querySelector('[data-composition-id="SCENE"][data-width]');
+    const W = +(rootEl && rootEl.dataset.width) || 1280, H = +(rootEl && rootEl.dataset.height) || 630, tall = H > W * 0.9;
+    Object.assign($("stage").style, { width: W + "px", height: H + "px" });
+    const floorY = tall ? H - 150 : H - 70;
+    $("floor").style.top = floorY + "px";
+    // ---- the bar, big, across the frame ----
+    const n = LOOT.n, size = Math.floor(Math.min(tall ? 200 : 118, (W - 2 * (tall ? 60 : 50) - (tall ? 420 : 300)) / (n * 1.17)));
+    const bar = AR.loot.bar($("stage"), { id: "SCENE-bar", n, have: LOOT.have, items: LOOT.items, size, x: W / 2, center: true, y: tall ? 400 : 120, z: 20 });
+    const title = $("title");
+    if (TITLE) { title.textContent = TITLE; Object.assign(title.style, { top: (tall ? 250 : 34) + "px", fontSize: (tall ? 80 : 46) + "px" }); }
+    else title.style.display = "none";
+    // ---- the host under the bar ----
+    const host = HOST ? AR.cast.host($("stage"), HOST, Object.assign({ id: "SCENE-host", u: tall ? 44 : 17, x: W / 2, y: floorY + 8, eyes: "look-up" },
+      LOOK.color ? { color: LOOK.color } : {}, LOOK.role ? { role: LOOK.role } : {},
+      HOST === "critter" || HOST === "pal" ? {} : { h: tall ? LOOK.h * 2.3 : LOOK.h })) : null;
+    if (host) AR.crit.alive(tl, host, 0, T.end, { bob: true, amp: 0.15 });
+    // ---- each item: found (it pops into the host's hand), then it flies into its slot on the word ----
+    let k = LOOT.have;
+    FILL.forEach((f, i) => {
+      const slot = f.slot ?? k + 1, it = LOOT.items[slot - 1] || {}, d = typeof it === "string" ? { src: it } : it;
+      k = slot;
+      let from = null;
+      if (host && f.show != null) {
+        // found it: a critter holds the picture up in its raised hand; a generated character cheers with it held over
+        // its head (an emoji or a word flies from there itself). It leaves for the slot 0.3 s before the word
+        const name = `SCENE-item${i}`, go = Math.max(f.show + 0.26, f.at - 0.3);
+        AR.crit.arms(tl, host, f.show, "hold-up");
+        AR.crit.eyes(tl, host, f.show, "happy");
+        AR.cast.act(tl, host, f.show, "cheer");
+        if (AR.cast.isCast(host)) {
+          const head = AR.cast.headAt(host, "cheer"), w0 = head.w * 0.56, hh0 = d.size ? (w0 * d.size[1]) / d.size[0] : w0;
+          const k = Math.min(1, (head.w * 0.8) / hh0), w = w0 * k, h = hh0 * k;      // no taller than 0.8 of the head
+          const found = document.createElement(d.src ? "img" : "div");
+          found.id = `SCENE-found${i}`;
+          if (d.src) found.src = d.src; else { found.textContent = d.text || ""; found.style.fontSize = w * 0.8 + "px"; found.style.lineHeight = 1; found.style.textAlign = "center"; }
+          // held up beside the head, by the raised right hand
+          const fx = head.x + head.w * 0.78, fy = head.y + head.w * 0.12;
+          Object.assign(found.style, { position: "absolute", left: fx - w / 2 + "px", top: fy - h / 2 + "px", width: w + "px", height: h + "px", zIndex: 4 });
+          $("stage").insertBefore(found, bar);
+          tl.fromTo(found, { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.22, ease: "back.out(2.6)" }, f.show);
+          tl.set(found, { opacity: 0 }, go);
+          from = [fx, fy];
+        } else {
+          if (d.src) {
+            AR.crit.prop(name, { src: d.src, size: d.size || [1, 1], w: 4.2, grip: [0.5, 0.92], flip: false });
+            AR.crit.give(tl, host, name, f.show);
+          }
+          const hand = AR.cast.hand(host, "right", "hold-up");
+          const held = d.src ? AR.cast.item(host, name) : null, img = held && held.querySelector("img");
+          from = [hand.x, hand.y - (img ? parseFloat(img.style.height) * 0.45 : size * 0.5)];
+          if (held) tl.set(held, { opacity: 0 }, go);
+        }
+      }
+      AR.loot.call(tl, bar, f.at - 0.5, { slot, dur: 0.45 });
+      AR.loot.fill(tl, bar, f.at, { slot, from: from || [W / 2, -size], dur: 0.3, scale: from ? 1.6 : 1 });
+      if (host) { AR.crit.victory(tl, host, f.at + 0.05); AR.crit.arms(tl, host, f.at + 0.5, "down"); }
+    });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

@@ -1,0 +1,109 @@
+<!-- BLUEPRINT cta-follow, tall card (laid out at 1280x1550, the card that covers the face; fills it edge to edge): the
+     comment-a-keyword ending, "follow me and comment X and I'll DM you Y". The creator's card across the top two thirds:
+     avatar (a real image, or initials when there is none), name and handle, a big Follow button under them that flips
+     to Following on "follow"; the comment box lights up and the keyword types into it; under it "I'll DM you ..." with
+     a paper plane that flies off on "shoot it over" (or "send"). The host stands under the card and reacts to each
+     step (a generated character, such as pixel Charles, points at the box and cheers); the beat holds to the end.
+     Use for: the last beat of a reel or an asset set.
+     Edit: names.js (NAMES.creator, NAMES.handle, NAMES.keyword, NAMES.dm "I'll DM you the checklist"; NAMES.avatar = an
+     image path, else initials), HOST ("critter", "pal", or a cast.py character's folder in assets/cast: "charles"),
+     LOOK (role, colour, and for a generated character its height h and anything it wears: ["crown"]), ACCENT (the
+     step numbers), and the T times: T.follow, T.comment (the box lights up), T.keyword (it types), T.shoot (the plane
+     flies off, or null), T.end. Key text 60 px or more. Needs cast.js. mount.py copies it to compositions/<id>.html
+     with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    #SCENE-card { left: 60px; top: 70px; width: 1160px; height: 980px; padding: 66px 70px 56px; font-family: var(--sans); }
+    .SCENE-line { display: flex; align-items: center; gap: 36px; }
+    .SCENE-n { width: 92px; height: 92px; border-radius: 50%; color: #fff; font-weight: 700; font-size: 52px; display: grid; place-items: center; flex: none; }
+    #SCENE-avatar { width: 180px; height: 180px; border-radius: 50%; object-fit: cover; flex: none; box-shadow: 0 0 0 6px #fff, 0 0 0 10px var(--app-line); }
+    .SCENE-big { font-weight: 700; font-size: 92px; color: var(--ink); line-height: 1.05; white-space: nowrap; }
+    .SCENE-who { min-width: 0; flex: 1; }
+    .SCENE-handle { font-size: 48px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #SCENE-btns { position: relative; width: 892px; height: 128px; margin: 40px 0 0 128px; }
+    #SCENE-btns span { position: absolute; inset: 0; border-radius: 26px; display: grid; place-items: center; font-weight: 700; font-size: 60px; }
+    #SCENE-follow { background: #0095f6; color: #fff; }
+    #SCENE-following { background: #efefef; color: var(--ink); opacity: 0; }
+    #SCENE-box { position: relative; width: 892px; height: 160px; margin: 34px 0 0 128px; border: 4px solid var(--app-line); border-radius: 28px; background: #f7f6f3; }
+    #SCENE-ph { position: absolute; left: 40px; top: 50px; font-size: 52px; color: #b0aca4; white-space: nowrap; }
+    #SCENE-kw { position: absolute; left: 40px; top: 26px; font-size: 96px; font-weight: 700; color: var(--ink); letter-spacing: 0.04em; white-space: nowrap; }
+    #SCENE-sep { height: 3px; background: var(--app-line); margin: 52px 0 48px; }
+    #SCENE-dm { position: relative; display: flex; align-items: center; gap: 30px; margin: 54px 0 0 128px; font-size: 54px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+    #SCENE-slot { width: 126px; height: 86px; flex: none; }
+    #SCENE-plane { position: absolute; width: 126px; height: 86px; z-index: 5; }
+    #SCENE-plane img { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+    #SCENE-cast { position: absolute; left: 0; top: 0; width: 1280px; height: 1550px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="1550">
+    <div class="stage" data-layout-ignore></div>
+    <div class="card" id="SCENE-card">
+      <div class="SCENE-line">
+        <span class="SCENE-n">1</span>
+        <img id="SCENE-avatar" alt="" />
+        <div class="SCENE-who"><div class="SCENE-big" data-name="creator"></div><div class="SCENE-handle" data-name="handle"></div></div>
+      </div>
+      <div id="SCENE-btns"><span id="SCENE-follow">Follow</span><span id="SCENE-following">Following</span></div>
+      <div id="SCENE-sep"></div>
+      <div class="SCENE-line">
+        <span class="SCENE-n">2</span>
+        <div class="SCENE-big">Comment</div>
+      </div>
+      <div id="SCENE-box"><span id="SCENE-ph">Add a comment…</span><span id="SCENE-kw" data-name="keyword"></span></div>
+      <div id="SCENE-dm"><div id="SCENE-slot"></div><span id="SCENE-dmtext" data-name="dm"></span></div>
+    </div>
+    <div id="SCENE-cast"><div id="SCENE-plane"><img src="assets/cast/props/paperplane.png" alt="" /></div></div>
+  </div>
+  <script>
+    const T = { follow: 0.35, comment: 0.85, keyword: 1.1, shoot: 1.75, end: 2.6 };
+    const HOST = "critter";                                  // "critter", "pal", or a cast.py character ("charles")
+    const LOOK = { role: null, color: null, h: 340, wear: null };   // h and wear: a generated character
+    const ACCENT = "#2B2A28";
+    const tl = gsap.timeline({ paused: true });
+    const N = window.NAMES || {};
+    const DEFAULTS = { creator: "Your Name", handle: "@yourhandle", keyword: "KEYWORD", dm: "I'll DM you the full setup" };
+    document.querySelectorAll("#SCENE-card [data-name]").forEach((e) => { if (!(e.dataset.name in N)) e.textContent = DEFAULTS[e.dataset.name] || ""; });
+    AR.names();
+    document.querySelectorAll(".SCENE-n").forEach((e) => (e.style.background = ACCENT));
+    // the avatar: the creator's photo, or initials from their name
+    const av = document.getElementById("SCENE-avatar");
+    av.src = N.avatar || AR.ph("avatar:" + (N.creator || "Me"));
+    AR.settle(tl, "#SCENE-card", 0);
+    // a long keyword shrinks to stay inside its box
+    const kw = document.getElementById("SCENE-kw");
+    if (kw.offsetWidth > 812) kw.style.fontSize = 96 * 812 / kw.offsetWidth + "px";
+    const host = AR.cast.host("#SCENE-cast", HOST, Object.assign({ id: "SCENE-host", u: 30, x: 1020, y: 1500, eyes: "look-up" },
+      LOOK.color ? { color: LOOK.color } : {}, LOOK.role ? { role: LOOK.role } : {},
+      HOST === "critter" || HOST === "pal" ? {} : { h: LOOK.h, x: 1120, face: "left", wear: LOOK.wear }));
+    // "follow": the button presses and flips
+    AR.press(tl, "#SCENE-btns", T.follow);
+    tl.set("#SCENE-follow", { opacity: 0 }, T.follow + 0.07);
+    tl.set("#SCENE-following", { opacity: 1 }, T.follow + 0.07);
+    AR.crit.victory(tl, host, T.follow + 0.05);
+    // "comment": the box lights up, the keyword types in
+    tl.to("#SCENE-box", { borderColor: "#0095f6", backgroundColor: "#ffffff", duration: 0.12 }, T.comment);
+    AR.crit.arms(tl, host, T.comment, "up");
+    AR.crit.eyes(tl, host, T.comment, "look-up");
+    AR.cast.act(tl, host, T.comment, "point");             // a generated character points at the box (it faces left)
+    tl.set("#SCENE-ph", { opacity: 0 }, T.keyword - 0.05);
+    AR.type(tl, "#SCENE-kw", T.keyword - 0.05, { cps: 16 });
+    AR.crit.arms(tl, host, T.keyword + 0.35, "down");
+    AR.crit.eyes(tl, host, T.keyword + 0.3, "happy");
+    AR.cast.act(tl, host, T.keyword + 0.35, "idle");
+    // the plane sits in its slot at the start of the DM line (it lives on the cast layer so it can leave the card)
+    const p = document.getElementById("SCENE-plane"), slot = document.getElementById("SCENE-slot"), ref = p.offsetParent;
+    let sx = -ref.offsetLeft, sy = -ref.offsetTop;   // offsets inside the scene only: up to the layers' common parent
+    for (let e = slot; e && e !== ref.offsetParent; e = e.offsetParent) { sx += e.offsetLeft; sy += e.offsetTop; }
+    Object.assign(p.style, { left: sx + "px", top: sy + "px" });
+    // "shoot it over": the paper plane takes off and flies out of the frame, the host waves it off
+    if (T.shoot != null) {
+      tl.to(p, { y: 6, rotation: 6, duration: 0.08, ease: "power2.out" }, T.shoot - 0.08);
+      tl.to(p, { x: 1100, y: -1100, rotation: -18, scale: 0.8, duration: 0.55, ease: "power2.in" }, T.shoot);
+      tl.to("#SCENE-dmtext", { color: "#0095f6", duration: 0.1 }, T.shoot);
+      AR.crit.arms(tl, host, T.shoot - 0.05, "wave", { dur: 0.5 });
+      AR.cast.act(tl, host, T.shoot - 0.05, "cheer", { dur: 0.5 });
+    }
+    AR.crit.alive(tl, host, T.follow + 0.45, Math.max(0.3, T.end - T.follow - 0.45), { bob: true, amp: 0.2 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

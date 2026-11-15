@@ -1,0 +1,51 @@
+<!-- BLUEPRINT install-steps, short frame (laid out at 1080x960; the start for any frame under 1400 px tall): setup in one beat. A repo
+     card, an arrow down into Claude, the link and the command typed into the box, send pressed, a toast.
+     Use for: "to set it up", "paste this link", "install", "connect", any 2-3 step how-to.
+     Edit: REPO, FILES (two fit here), the greeting name (the creator's own name), the typed text (one line
+     reads best), the T times, T.end. Text stays between y 170 and y 880.
+     mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    #SCENE-cam { position: absolute; inset: 0; transform-origin: 50% 50%; }
+    #SCENE-repo { left: 60px; top: 160px; width: 960px; padding: 26px 38px 10px; }
+    #SCENE-arrow { position: absolute; left: 500px; top: 392px; width: 80px; height: 100px; overflow: visible; }
+    #SCENE-arrow path { fill: none; stroke: var(--claude); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+    #SCENE-home { left: 40px; top: 500px; width: 1000px; height: 370px; padding-top: 34px; }
+    #SCENE-home .greeting { font-size: 56px; }
+    #SCENE-box { margin-top: 28px; }
+    #SCENE-typed { font-size: 38px; }
+    #SCENE-toast { left: 0; right: 0; margin: 0 auto; width: fit-content; top: 770px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1080" data-height="960">
+    <div class="stage" data-layout-ignore></div>
+    <div id="SCENE-cam" data-layout-allow-overflow>
+      <div class="card repo" id="SCENE-repo">
+        <div class="path">yourname / scout-skill</div>
+        <div class="file" style="margin-top:12px"><svg width="34" height="34" viewBox="0 0 24 24"><path d="M2 6a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z" fill="#54aeff"/></svg>skills/scout</div>
+        <div class="file"><svg width="34" height="34" viewBox="0 0 24 24"><path d="M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="none" stroke="#59636e" stroke-width="2"/></svg>SKILL.md</div>
+      </div>
+      <svg id="SCENE-arrow" viewBox="0 0 80 100" data-layout-ignore><path pathLength="1" d="M40 6 V88 M14 62 L40 90 L66 62" /></svg>
+      <div class="app" id="SCENE-home">
+        <div class="greeting"><svg class="asterisk" style="width:52px;height:52px" viewBox="0 0 40 40"><g stroke="#d97757" stroke-width="5" stroke-linecap="round"><path d="M20 4v32M4 20h32M8.7 8.7l22.6 22.6M31.3 8.7 8.7 31.3"/></g></svg>Evening, Charles</div>
+        <div class="composer" id="SCENE-box">
+          <div class="typed" id="SCENE-typed">github.com/yourname/scout-skill</div>
+          <div class="row"><span class="chip">+</span><span class="chip">Chat</span><span style="margin-left:auto;font-size:30px">Opus 5.5</span><span class="send" id="SCENE-send">↑</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="toast" id="SCENE-toast"><span class="tick">✓</span>Skill installed</div>
+  </div>
+  <script>
+    const T = { repo: 0, arrow: 0.3, type: 0.6, send: 1.75, done: 2.0, end: 2.6 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] elements from assets/names.js
+    AR.settle(tl, "#SCENE-repo", T.repo, { dy: 18 });
+    AR.draw(tl, "#SCENE-arrow path", T.arrow, 0.25);
+    AR.settle(tl, "#SCENE-home", 0.04, { dy: 18 }); // both cards are on screen from the cut
+    AR.type(tl, "#SCENE-typed", T.type, { cps: 36 });
+    AR.press(tl, "#SCENE-send", T.send);
+    AR.pop(tl, "#SCENE-toast", T.done, { from: 0.6 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

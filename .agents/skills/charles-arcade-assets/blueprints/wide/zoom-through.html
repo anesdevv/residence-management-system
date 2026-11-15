@@ -1,0 +1,197 @@
+<!-- BLUEPRINT zoom-through, wide frame (laid out at 1280x630, the 2:1 card): the camera goes through a pixel monitor
+     into the real app and back out. A pixel room (drawn in code: a blue gaming den, a big monitor, two side screens)
+     with the live app already running on the monitor; the mascot rolls in on a chair; the camera pushes onto the
+     monitor, zooms through the screen until the app fills the frame, something happens in the app, the camera pushes
+     onto it, then pulls back out of the app into the room with parallax (the mascot in front moves faster) and the
+     mascot reacts.
+     Use for: "you can now do X inside Claude", "it runs on your computer", any line that goes from a world to the
+     app doing the thing. Trim it: a beat can start inside the app (drop T.push and T.through; the pull-back still
+     works) or end inside it (drop T.back).
+     Edit: the app (#SCENE-win: chat text, the order card, the chart), the side screens, the mascot poses, and the
+     T times: T.slide (the mascot rolls in), T.push (push onto the monitor), T.through (into the app), T.words /
+     T.order / T.stamp (the app acts), T.close (push onto the order card), T.back (pull back into the room),
+     T.react (the mascot's "!"), T.end (the beat length). The camera is locked between moves (no drift).
+     Keep key text 43 px or more and app text 26 px or more at full size (the card shows at about 0.7).
+     mount.py copies it to compositions/<id>.html with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #0d1340; }
+    #SCENE-cam, #SCENE-app, #SCENE-appcam, #SCENE-fg { position: absolute; left: 0; top: 0; width: 1280px; height: 630px; }
+    #SCENE-room { position: absolute; left: 0; top: 0; width: 1280px; height: 630px; }
+    #SCENE-monitor { position: absolute; left: 432px; top: 120px; width: 416px; height: 224px; }
+    #SCENE-screen { position: absolute; left: 448px; top: 136px; width: 384px; height: 192px; }
+    /* the app, laid out at the full frame size; it rides the monitor's screen until the camera goes through */
+    #SCENE-win { position: absolute; inset: 0; background: #faf9f5; font-family: var(--sans); color: var(--ink); overflow: hidden; }
+    #SCENE-bar { height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 22px; border-bottom: 2px solid #e6e2d9; font-size: 22px; color: #6f6b64; }
+    #SCENE-bar i { width: 16px; height: 16px; border-radius: 50%; background: #ff5f57; }
+    #SCENE-bar i:nth-child(2) { background: #febc2e; }
+    #SCENE-bar i:nth-child(3) { background: #28c840; margin-right: 10px; }
+    #SCENE-bar b { margin-left: auto; font-weight: 600; color: #fff; background: #1f1e1c; border-radius: 10px; padding: 6px 16px; font-size: 20px; }
+    #SCENE-chat { position: absolute; left: 36px; top: 82px; width: 560px; display: flex; flex-direction: column; gap: 20px; }
+    #SCENE-user { align-self: flex-end; background: #f0ede6; border-radius: 22px; padding: 14px 22px; font-size: 26px; line-height: 1.3; max-width: 470px; }
+    #SCENE-ai { font-family: var(--serif); font-size: 30px; line-height: 1.32; }
+    #SCENE-order { position: relative; width: 520px; height: 196px; background: #fff; border: 2px solid #e6e2d9; border-radius: 22px; padding: 18px 24px; box-shadow: 0 6px 18px rgba(0,0,0,.06); }
+    #SCENE-tool { font-size: 22px; font-weight: 600; color: #3d3b37; display: flex; gap: 10px; align-items: center; }
+    #SCENE-tool em { font-style: normal; font-weight: 400; color: #6f6b64; }
+    #SCENE-buy { margin-top: 14px; font-size: 64px; font-weight: 800; letter-spacing: -0.02em; color: #1f8f4e; line-height: 1; }
+    #SCENE-at { margin-top: 10px; font-size: 28px; font-weight: 600; color: #3d3b37; }
+    #SCENE-paper { position: absolute; right: 26px; top: 66px; font-family: var(--mono); font-weight: 700; font-size: 34px; color: #2f5fd0; border: 5px solid #2f5fd0; border-radius: 10px; padding: 4px 12px; letter-spacing: 0.06em; opacity: 0; }
+    #SCENE-chart { position: absolute; left: 630px; top: 82px; width: 612px; height: 512px; background: #fff; border: 2px solid #e6e2d9; border-radius: 22px; }
+    #SCENE-chart h4 { position: absolute; left: 24px; top: 18px; font-size: 26px; font-weight: 700; }
+    #SCENE-chart small { position: absolute; left: 24px; top: 56px; font-size: 20px; color: #6f6b64; font-family: var(--mono); }
+    #SCENE-chart svg { position: absolute; left: 0; top: 0; }
+    #SCENE-chart .SCENE-px { font-family: var(--mono); font-size: 18px; font-weight: 700; fill: #fff; }
+    /* foreground: the mascot on its chair, in front of the camera's world */
+    #SCENE-chair { position: absolute; left: 176px; top: 318px; width: 264px; height: 312px; }
+    #SCENE-chairart { position: absolute; left: 0; top: 0; width: 264px; height: 312px; }
+    #SCENE-hero { left: 30px; top: 66px; width: 204px; height: 170px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div id="SCENE-cam" data-layout-allow-overflow>
+      <svg id="SCENE-room" viewBox="0 0 160 78.75" shape-rendering="crispEdges" data-layout-ignore>
+        <defs>
+          <pattern id="SCENE-weave" width="10" height="10" patternUnits="userSpaceOnUse">
+            <rect width="10" height="10" fill="#1e2d88" />
+            <rect x="0" y="1" width="5" height="1" fill="#2a3ba3" /><rect x="0" y="3" width="5" height="1" fill="#2a3ba3" />
+            <rect x="6" y="0" width="1" height="5" fill="#2a3ba3" /><rect x="8" y="0" width="1" height="5" fill="#2a3ba3" />
+            <rect x="1" y="5" width="1" height="5" fill="#2a3ba3" /><rect x="3" y="5" width="1" height="5" fill="#2a3ba3" />
+            <rect x="5" y="6" width="5" height="1" fill="#2a3ba3" /><rect x="5" y="8" width="5" height="1" fill="#2a3ba3" />
+            <rect x="0" y="0" width="10" height="0.5" fill="#16226e" /><rect x="0" y="0" width="0.5" height="10" fill="#16226e" />
+          </pattern>
+        </defs>
+        <!-- wall, ceiling shade, floor -->
+        <rect x="0" y="0" width="160" height="53" fill="url(#SCENE-weave)" />
+        <rect x="0" y="0" width="160" height="2" fill="#141e63" />
+        <rect x="0" y="52" width="160" height="27" fill="#121a4c" />
+        <rect x="0" y="52" width="160" height="1" fill="#0c1238" />
+        <rect x="0" y="60" width="160" height="0.5" fill="#0f1642" /><rect x="0" y="68" width="160" height="0.5" fill="#0f1642" />
+        <!-- shelf with books, top left -->
+        <rect x="5" y="17" width="20" height="1.5" fill="#6b4529" />
+        <rect x="7" y="10" width="2" height="7" fill="#e5483b" /><rect x="9" y="11" width="2" height="6" fill="#f7c531" />
+        <rect x="11" y="9" width="2" height="8" fill="#2fa35b" /><rect x="13.5" y="12" width="3" height="5" fill="#d97757" />
+        <rect x="19" y="13" width="4" height="4" fill="#cfd3e6" /><rect x="20" y="14" width="2" height="2" fill="#9aa0bd" />
+        <!-- poster, top right -->
+        <rect x="135" y="6" width="18" height="18" fill="#e9e4d6" /><rect x="136" y="7" width="16" height="16" fill="#ffffff" />
+        <rect x="137" y="8" width="8" height="1" fill="#1f1e1c" />
+        <rect x="137" y="19" width="2" height="2" fill="#2fa35b" /><rect x="139" y="17" width="2" height="2" fill="#2fa35b" />
+        <rect x="141" y="18" width="2" height="2" fill="#2fa35b" /><rect x="143" y="15" width="2" height="2" fill="#2fa35b" />
+        <rect x="145" y="13" width="2" height="2" fill="#2fa35b" /><rect x="147" y="10" width="3" height="2" fill="#2fa35b" />
+        <!-- plant on the floor, far left -->
+        <rect x="6" y="50" width="9" height="9" fill="#b85f35" /><rect x="6" y="50" width="9" height="1" fill="#d47a4c" />
+        <rect x="9" y="34" width="3" height="16" fill="#2e7d3a" /><rect x="5" y="38" width="5" height="3" fill="#3fa34d" />
+        <rect x="11" y="36" width="6" height="3" fill="#3fa34d" /><rect x="6" y="44" width="4" height="3" fill="#3fa34d" />
+        <rect x="12" y="42" width="5" height="3" fill="#3fa34d" /><rect x="8" y="31" width="4" height="4" fill="#3fa34d" />
+        <!-- desk, LED strip, legs, drawers -->
+        <rect x="16" y="46" width="128" height="2" fill="#2c3048" /><rect x="16" y="46" width="128" height="0.5" fill="#474c6e" />
+        <rect x="18" y="48" width="124" height="5" fill="#1b1e30" />
+        <rect x="18" y="48" width="124" height="0.75" fill="#39f28a" />
+        <rect x="20" y="53" width="3" height="11" fill="#15172a" /><rect x="137" y="53" width="3" height="11" fill="#15172a" />
+        <rect x="24" y="53" width="16" height="9" fill="#1b1e30" /><rect x="30" y="55" width="4" height="0.75" fill="#3b4060" /><rect x="30" y="59" width="4" height="0.75" fill="#3b4060" />
+        <!-- side screens -->
+        <rect x="30" y="20" width="21" height="21" fill="#0c0e18" /><rect x="31.5" y="21.5" width="18" height="18" fill="#0d1630" />
+        <rect x="33" y="33" width="2" height="4" fill="#2fa35b" /><rect x="36" y="31" width="2" height="5" fill="#e5483b" /><rect x="39" y="29" width="2" height="5" fill="#2fa35b" />
+        <rect x="42" y="26" width="2" height="6" fill="#2fa35b" /><rect x="45" y="24" width="2" height="5" fill="#2fa35b" />
+        <rect x="38" y="41" width="5" height="5" fill="#23263a" />
+        <rect x="109" y="20" width="21" height="21" fill="#0c0e18" /><rect x="110.5" y="21.5" width="18" height="18" fill="#0d1630" />
+        <rect x="112" y="24" width="14" height="1" fill="#3b4f9c" /><rect x="112" y="27" width="10" height="1" fill="#3b4f9c" />
+        <rect x="112" y="30" width="12" height="1" fill="#3b4f9c" /><rect x="112" y="33" width="8" height="1" fill="#2fa35b" /><rect x="112" y="36" width="11" height="1" fill="#3b4f9c" />
+        <rect x="117" y="41" width="5" height="5" fill="#23263a" />
+        <!-- the big monitor: bezel 54..106 x 15..43, screen 56..104 x 17..41 (2:1) -->
+        <rect x="54" y="15" width="52" height="28" fill="#0c0e18" /><rect x="54" y="15" width="52" height="0.5" fill="#2a2f45" />
+        <rect x="56" y="17" width="48" height="24" fill="#0a0c16" />
+        <rect x="79.5" y="42" width="1" height="0.5" fill="#3b4060" />
+        <rect x="77" y="43" width="6" height="3" fill="#23263a" /><rect x="71" y="45.5" width="18" height="0.75" fill="#2d3047" />
+        <!-- keyboard, mouse, mug, lamp -->
+        <rect x="62" y="45" width="34" height="1.25" fill="#3a3f5c" />
+        <rect x="63" y="45.25" width="1" height="0.5" fill="#5a6088" /><rect x="66" y="45.25" width="1" height="0.5" fill="#5a6088" /><rect x="69" y="45.25" width="1" height="0.5" fill="#5a6088" />
+        <rect x="72" y="45.25" width="1" height="0.5" fill="#5a6088" /><rect x="75" y="45.25" width="8" height="0.5" fill="#5a6088" /><rect x="86" y="45.25" width="1" height="0.5" fill="#5a6088" />
+        <rect x="89" y="45.25" width="1" height="0.5" fill="#5a6088" /><rect x="92" y="45.25" width="1" height="0.5" fill="#5a6088" />
+        <rect x="99" y="44.75" width="3" height="1.5" fill="#3a3f5c" />
+        <rect x="104" y="41" width="4" height="5" fill="#e8e8f0" /><rect x="108" y="42" width="1" height="2.5" fill="#e8e8f0" /><rect x="104" y="41" width="4" height="0.75" fill="#5a3a22" />
+        <rect x="133" y="45" width="8" height="1" fill="#cfd3e6" /><rect x="136" y="33" width="1.5" height="12" fill="#9aa0bd" />
+        <rect x="128" y="31" width="9" height="3" fill="#cfd3e6" /><rect x="128" y="34" width="7" height="0.75" fill="#fff6c8" />
+      </svg>
+      <div id="SCENE-monitor"></div>
+      <div id="SCENE-screen"></div>
+    </div>
+    <div id="SCENE-app" data-layout-allow-overflow>
+      <div id="SCENE-appcam" data-layout-allow-overflow>
+        <div id="SCENE-win">
+          <div id="SCENE-bar"><i></i><i></i><i></i><span>TSLA breakout · paper trade</span><b>Share</b></div>
+          <div id="SCENE-chat">
+            <div id="SCENE-user">Trade TSLA's breakout for me. Paper only.</div>
+            <div id="SCENE-ai">Closed above $362.18 at 10:15 AM, so I placed a paper order:</div>
+            <div id="SCENE-order">
+              <div id="SCENE-tool">Order Executor <em>trader skill</em></div>
+              <div id="SCENE-buy">BUY TSLA</div>
+              <div id="SCENE-at">10:15 AM · $364.18</div>
+              <div id="SCENE-paper">PAPER</div>
+            </div>
+          </div>
+          <div id="SCENE-chart">
+            <svg width="612" height="512" viewBox="0 0 612 512">
+              <rect x="40" y="250" width="480" height="70" fill="rgba(47,163,91,.12)" />
+              <line x1="40" y1="250" x2="560" y2="250" stroke="#2fa35b" stroke-width="3" stroke-dasharray="10 8" />
+              <line x1="40" y1="320" x2="560" y2="320" stroke="#8a867e" stroke-width="2" stroke-dasharray="6 8" />
+              <g stroke-width="3">
+                <line x1="70" y1="352" x2="70" y2="410" stroke="#e5483b" /><rect x="62" y="362" width="16" height="36" fill="#e5483b" />
+                <line x1="110" y1="340" x2="110" y2="398" stroke="#2fa35b" /><rect x="102" y="350" width="16" height="38" fill="#2fa35b" />
+                <line x1="150" y1="346" x2="150" y2="392" stroke="#e5483b" /><rect x="142" y="352" width="16" height="30" fill="#e5483b" />
+                <line x1="190" y1="330" x2="190" y2="384" stroke="#2fa35b" /><rect x="182" y="338" width="16" height="40" fill="#2fa35b" />
+                <line x1="230" y1="324" x2="230" y2="372" stroke="#2fa35b" /><rect x="222" y="330" width="16" height="34" fill="#2fa35b" />
+                <line x1="270" y1="316" x2="270" y2="360" stroke="#e5483b" /><rect x="262" y="322" width="16" height="28" fill="#e5483b" />
+                <line x1="310" y1="296" x2="310" y2="350" stroke="#2fa35b" /><rect x="302" y="302" width="16" height="40" fill="#2fa35b" />
+                <line x1="350" y1="276" x2="350" y2="326" stroke="#2fa35b" /><rect x="342" y="282" width="16" height="36" fill="#2fa35b" />
+                <line x1="390" y1="262" x2="390" y2="306" stroke="#2fa35b" /><rect x="382" y="268" width="16" height="30" fill="#2fa35b" />
+              </g>
+              <rect x="520" y="236" width="80" height="30" rx="6" fill="#17773f" /><text x="530" y="257" class="SCENE-px">370.04</text>
+              <rect x="520" y="306" width="80" height="30" rx="6" fill="#6f6b64" /><text x="530" y="327" class="SCENE-px">362.18</text>
+            </svg>
+            <h4>TSLA · 5-minute candles</h4>
+            <small>O 361.69  H 364.59  L 361.37</small>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="SCENE-fg" data-layout-allow-overflow>
+      <div id="SCENE-chair">
+        <svg id="SCENE-chairart" viewBox="0 0 33 39" shape-rendering="crispEdges" data-layout-ignore>
+          <rect x="6" y="0" width="21" height="22" fill="#14151f" /><rect x="8" y="2" width="17" height="18" fill="#1d1f2c" />
+          <rect x="8" y="2" width="1" height="18" fill="#2bd47a" /><rect x="24" y="2" width="1" height="18" fill="#2bd47a" />
+          <rect x="11" y="4" width="11" height="4" fill="#262938" />
+          <rect x="3" y="27" width="27" height="4" fill="#14151f" /><rect x="3" y="27" width="27" height="1" fill="#2b2e40" />
+          <rect x="15" y="31" width="3" height="4" fill="#2b2e40" />
+          <rect x="5" y="35" width="23" height="1.5" fill="#2b2e40" />
+          <rect x="4" y="36.5" width="3" height="2.5" fill="#14151f" /><rect x="15" y="36.5" width="3" height="2.5" fill="#14151f" /><rect x="26" y="36.5" width="3" height="2.5" fill="#14151f" />
+        </svg>
+        <div class="sprite" id="SCENE-hero">
+          <img class="pose on" data-pose="idle" src="assets/cast/claude/poses/idle.png" />
+          <img class="pose" data-pose="point" src="assets/cast/claude/poses/point.png" />
+          <img class="pose" data-pose="jump" src="assets/cast/claude/poses/jump.png" />
+          <img class="pose" data-pose="cheer" src="assets/cast/claude/poses/cheer.png" />
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const T = { slide: 0.1, push: 0.7, through: 1.4, words: 1.9, order: 2.35, stamp: 2.55, close: 2.75, back: 3.45, react: 3.82, end: 4.7 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] / [data-fact] elements from assets/names.js
+    const cam = "#SCENE-cam";
+    AR.camLayers(tl, cam, [{ sel: "#SCENE-fg", depth: 1.35 }]);      // the foreground moves faster than the room
+    tl.fromTo("#SCENE-chair", { x: -420 }, { x: 0, duration: 0.18, ease: "expo.out" }, T.slide);   // rolls in on the chair
+    AR.poses(tl, "#SCENE-hero", [[T.push, "point"]]);
+    AR.frame(tl, cam, "#SCENE-monitor", T.push, 0.26, { scale: 1.5, at: [0.54, 0.4] });            // push onto the monitor (1.5x)
+    AR.zoomThrough(tl, { cam, screen: "#SCENE-screen", next: "#SCENE-app", t: T.through, dur: 0.42 }); // into the app
+    AR.words(tl, "#SCENE-ai", T.words, { gap: 0.04 });
+    AR.pop(tl, "#SCENE-order", T.order, { from: 0.85, dur: 0.22 });
+    AR.stamp(tl, "#SCENE-paper", T.stamp, { rot: -8, from: 2.4, dur: 0.1 });
+    AR.frame(tl, "#SCENE-appcam", "#SCENE-order", T.close, 0.25, { pad: 34 });                   // push onto the order
+    AR.frameReset(tl, "#SCENE-appcam", T.back, 0.34, { ease: "power3.out" });
+    AR.zoomThrough(tl, { cam, screen: "#SCENE-screen", next: "#SCENE-app", t: T.back, dur: 0.34, dir: "out" }); // back into the room
+    AR.poses(tl, "#SCENE-hero", [[T.back, "idle"], [T.react, "jump"], [T.react + 0.32, "cheer"]]);
+    AR.emote(tl, "#SCENE-hero", "!", T.react, { dur: 0.8 });
+    AR.hop(tl, "#SCENE-hero", T.react, { h: 44, dur: 0.3 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

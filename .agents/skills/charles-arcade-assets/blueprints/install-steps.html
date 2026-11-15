@@ -1,0 +1,61 @@
+<!-- BLUEPRINT install-steps: setup in one beat. A repo card, an arrow down into Claude, the link and the
+     command typed into the box, send pressed, a success toast, the mascot cheering.
+     Use for: "to set it up", "paste this link", "install", "connect", any 2-3 step how-to.
+     Edit: REPO, DESC, FILES, the greeting name (the creator's own name), the typed text, the T times, T.end. Both
+     cards are on screen from the cut; the arrow, the typing and the toast carry the beat.
+     Length 2-4 s. mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    #SCENE-cam { position: absolute; inset: 0; transform-origin: 50% 50%; }
+    #SCENE-repo { left: 60px; top: 280px; width: 960px; padding: 34px 40px 20px; }
+    #SCENE-repo .desc { font-size: 32px; color: #59636e; margin: 10px 0 14px; }
+    #SCENE-arrow { position: absolute; left: 500px; top: 650px; width: 80px; height: 150px; overflow: visible; }
+    #SCENE-arrow path { fill: none; stroke: var(--claude); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+    #SCENE-home { left: 40px; top: 820px; width: 1000px; height: 500px; padding-top: 64px; }
+    #SCENE-home .greeting { font-size: 68px; }
+    #SCENE-box { margin-top: 48px; }
+    #SCENE-typed { font-size: 40px; }
+    #SCENE-toast { left: 0; right: 0; margin: 0 auto; width: fit-content; top: 1350px; }
+    #SCENE-mascot { left: 770px; top: 1330px; width: 260px; height: 217px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1080" data-height="1920">
+    <div class="stage" data-layout-ignore></div>
+    <div id="SCENE-cam" data-layout-allow-overflow>
+      <div class="card repo" id="SCENE-repo">
+        <div class="path">yourname / scout-skill</div>
+        <div class="desc">Find, compare and book the cheapest trips.</div>
+        <div class="file"><svg width="34" height="34" viewBox="0 0 24 24"><path d="M2 6a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z" fill="#54aeff"/></svg>skills/scout</div>
+        <div class="file"><svg width="34" height="34" viewBox="0 0 24 24"><path d="M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="none" stroke="#59636e" stroke-width="2"/></svg>SKILL.md</div>
+        <div class="file"><svg width="34" height="34" viewBox="0 0 24 24"><path d="M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="none" stroke="#59636e" stroke-width="2"/></svg>README.md</div>
+      </div>
+      <svg id="SCENE-arrow" viewBox="0 0 80 150" data-layout-ignore><path pathLength="1" d="M40 6 V136 M12 106 L40 138 L68 106" /></svg>
+      <div class="app" id="SCENE-home">
+        <div class="greeting"><svg class="asterisk" style="width:60px;height:60px" viewBox="0 0 40 40"><g stroke="#d97757" stroke-width="5" stroke-linecap="round"><path d="M20 4v32M4 20h32M8.7 8.7l22.6 22.6M31.3 8.7 8.7 31.3"/></g></svg>Evening, Charles</div>
+        <div class="composer" id="SCENE-box">
+          <div class="typed" id="SCENE-typed">github.com/yourname/scout-skill install skill</div>
+          <div class="row"><span class="chip">+</span><span class="chip">Chat</span><span style="margin-left:auto;font-size:30px">Opus 5.5</span><span class="send" id="SCENE-send">↑</span></div>
+        </div>
+      </div>
+      <div class="sprite" id="SCENE-mascot">
+        <img class="pose on" data-pose="idle" src="assets/cast/claude/poses/idle.png" />
+        <img class="pose" data-pose="cheer" src="assets/cast/claude/poses/cheer.png" />
+      </div>
+    </div>
+    <div class="toast" id="SCENE-toast"><span class="tick">✓</span>Skill installed</div>
+  </div>
+  <script>
+    const T = { repo: 0, arrow: 0.35, type: 0.8, send: 2.05, done: 2.3, end: 2.8 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] elements from assets/names.js
+    AR.settle(tl, "#SCENE-repo", T.repo);
+    AR.draw(tl, "#SCENE-arrow path", T.arrow, 0.3);
+    AR.settle(tl, "#SCENE-home", 0.04); // both cards are on screen from the cut; the arrow and the typing carry it
+    AR.type(tl, "#SCENE-typed", T.type, { cps: 36 });
+    AR.press(tl, "#SCENE-send", T.send);
+    AR.pop(tl, "#SCENE-toast", T.done, { from: 0.6 });
+    AR.poses(tl, "#SCENE-mascot", [[T.done, "cheer"]]);
+    AR.hop(tl, "#SCENE-mascot", T.done, { h: 60, dur: 0.32 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

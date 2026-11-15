@@ -104,11 +104,11 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
               </span>
 
               <!-- Language switcher -->
-              <nav aria-label={t(locale, 'nav.language')} class="flex items-center rounded-pill border border-line bg-subtle p-0.5 text-xs font-semibold">
+              <nav aria-label={t(locale, 'nav.language')} class="flex items-center rounded-input border border-line bg-subtle p-0.5 text-xs font-semibold">
                 <a
                   href={targetFrPath}
                   data-locale-switch="fr"
-                  class={`rounded-pill px-2.5 py-1 transition-colors ${
+                  class={`rounded-input px-2.5 py-1 transition-colors ${
                     locale === 'fr' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
                   }`}
                   aria-current={locale === 'fr' ? 'true' : undefined}
@@ -118,7 +118,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
                 <a
                   href={targetEnPath}
                   data-locale-switch="en"
-                  class={`rounded-pill px-2.5 py-1 transition-colors ${
+                  class={`rounded-input px-2.5 py-1 transition-colors ${
                     locale === 'en' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
                   }`}
                   aria-current={locale === 'en' ? 'true' : undefined}

@@ -1,0 +1,44 @@
+<!-- BLUEPRINT stat-hit, short frame (laid out at 1080x960; the start for any frame under 1400 px tall): a number said out loud becomes a
+     game counter: a pixel panel counts up and a stepped bar fills to the value, landing on the word, while a
+     cast member reacts.
+     Use for: percentages, money, counts, "X times faster", "over 50% of links".
+     Edit: LABEL, the number (to, suffix), the bar's end and colour (--ok good, --hp-hurt bad), the reaction
+     pose (cheer for good news, sad for bad), T.count / T.land. Three or more digits: lower #SCENE-num's
+     font-size so it fits in the panel.
+     Text stays between y 170 and y 880. mount.py copies it to compositions/<id>.html with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    #SCENE-panel { left: 70px; top: 170px; width: 640px; height: 620px; padding: 44px 46px; }
+    #SCENE-label { font-size: 44px; letter-spacing: 0.08em; color: #a9a4ff; }
+    #SCENE-num { margin-top: 34px; font-size: 200px; color: #fff; }
+    #SCENE-num small { font-size: 100px; }
+    #SCENE-track { position: absolute; left: 46px; right: 46px; bottom: 46px; height: 56px; border: 6px solid #fff; background: #0e0d24; }
+    #SCENE-fill { position: absolute; inset: 0; background: var(--ok); transform-origin: 0 50%; }
+    #SCENE-hero { left: 730px; top: 480px; width: 320px; height: 267px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1080" data-height="960">
+    <div class="stage" data-layout-ignore></div>
+    <div class="panel-pixel" id="SCENE-panel">
+      <div id="SCENE-label">TIME SAVED</div>
+      <div id="SCENE-num" class="num-xl"><span id="SCENE-n">0</span><small>%</small></div>
+      <div id="SCENE-track"><div id="SCENE-fill"></div></div>
+    </div>
+    <div class="sprite" id="SCENE-hero">
+      <img class="pose on" data-pose="idle" src="assets/cast/claude/poses/idle.png" />
+      <img class="pose" data-pose="cheer" src="assets/cast/claude/poses/cheer.png" />
+    </div>
+  </div>
+  <script>
+    const T = { count: 0.25, land: 1.0 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] elements from assets/names.js
+    AR.settle(tl, "#SCENE-panel", 0);
+    AR.count(tl, "#SCENE-n", T.count, T.land - T.count, { to: 73, ease: "power1.in" });
+    AR.steppedBar(tl, "#SCENE-fill", T.count, T.land - T.count, { from: 0, to: 0.73, steps: 10 });
+    AR.shake(tl, "#SCENE-panel", T.land, { amp: 12, dur: 0.25 });
+    AR.poses(tl, "#SCENE-hero", [[T.land, "cheer"]]);
+    AR.hop(tl, "#SCENE-hero", T.land, { h: 60, dur: 0.3 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

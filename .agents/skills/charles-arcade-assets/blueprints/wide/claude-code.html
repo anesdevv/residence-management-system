@@ -1,0 +1,77 @@
+<!-- BLUEPRINT claude-code, wide frame (laid out at 1280x630, fills the frame edge to edge): a skill runs in the
+     rebuilt Claude Code terminal. The welcome header (pixel critter, version, model, folder) is on screen from the
+     cut; the slash command types, tool calls stream in with └ results, the spinner status line ticks its seconds
+     and tokens while a checklist ticks row by row, then a result with inline bars grows and counts, and the
+     camera snaps onto it. Output scrolls up as lines land.
+     Use for: "I ran /skill", "it pulls the filings", "it checks everything", any Claude Code run or skill demo.
+     Edit: the title (skill name), the folder, the prompt (the .cl-slash span is the command), tool lines
+     (● Name(args) + └ result), the status verb, the todos, the bar rows (data-v = value, the <em> label keeps its
+     format), the summary line, and the T times. Delete groups a beat does not need (each group is marked).
+     Ids start with SCENE; mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: var(--cl-t-bg); }
+    #SCENE-cam { position: absolute; inset: 0; transform-origin: 1% 84%; } /* the push keeps the bullets' margin */
+    #SCENE-term { inset: 0; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div id="SCENE-cam" data-layout-allow-overflow>
+      <div class="cl-term" id="SCENE-term">
+        <div class="cl-term-bar"><div class="cl-lights"><i></i><i></i><i></i></div>
+          <div class="cl-term-title"><i class="cl-spark"></i><span data-name="skill">sec-scout</span></div></div>
+        <div class="cl-term-body">
+          <div class="cl-scroll" id="SCENE-scroll" data-layout-allow-occlusion>
+            <!-- welcome header: on screen from the cut -->
+            <div class="cl-welcome"><i class="cl-logo"></i>
+              <div class="cl-hdr"><b>Claude Code</b> <span>v2.1.175</span><br><span>Opus 5.5 · Claude Max</span><br><span>/Users/charles/sec-scout</span></div></div>
+            <div class="cl-prompt cl-l" id="SCENE-prompt"><span class="cl-field"><span class="cl-text"><span class="cl-slash">/scout</span> insider buys this week</span></span></div>
+            <div class="cl-gap"></div>
+            <!-- tool calls -->
+            <div class="cl-l cl-tool cl-in" id="SCENE-t1"><i class="cl-dot"></i><b>Skill</b>(scout)</div>
+            <div class="cl-l cl-out cl-in">Loaded 3 sources <span class="cl-dim">· EDGAR, 13F, news</span></div>
+            <div class="cl-l cl-tool cl-in" data-dt="0.16"><i class="cl-dot"></i><b>Fetch</b>(sec.gov/…/browse-edgar?type=4)</div>
+            <div class="cl-l cl-out cl-in">214 Form 4 filings <span class="cl-dim">· 2.1 MB</span></div>
+            <div class="cl-gap cl-in2"></div>
+            <!-- status line + checklist -->
+            <div class="cl-l cl-status cl-in2" id="SCENE-status"><i class="cl-glyph"></i>Ranking… <span class="cl-meta">(esc to interrupt · <b class="cl-secs">0</b>s · ↓ <b class="cl-tok">0.0</b>k tokens)</span></div>
+            <div class="cl-todos cl-in2" id="SCENE-todos">
+              <div class="cl-todo" data-state="active"><i class="cl-cb"></i><span class="cl-tt">Pull this week's Form 4 filings</span></div>
+              <div class="cl-todo"><i class="cl-cb"></i><span class="cl-tt">Keep open-market buys only</span></div>
+              <div class="cl-todo"><i class="cl-cb"></i><span class="cl-tt">Rank by dollar size</span></div>
+              <div class="cl-todo"><i class="cl-cb"></i><span class="cl-tt">Check each insider's record</span></div>
+              <div class="cl-todo"><i class="cl-cb"></i><span class="cl-tt">Write the brief</span></div>
+            </div>
+            <div class="cl-gap cl-in3"></div>
+            <!-- result with inline bars -->
+            <div class="cl-l cl-in3"><i class="cl-dot"></i>Biggest insider buys this week</div>
+            <div class="cl-bars cl-in3" id="SCENE-bars">
+              <div class="cl-brow"><b>NVDA</b><span class="cl-bar" data-v="48.2"><i></i><em>$48.2M</em></span></div>
+              <div class="cl-brow"><b>JPM</b><span class="cl-bar" data-v="21.7"><i></i><em>$21.7M</em></span></div>
+              <div class="cl-brow"><b>LLY</b><span class="cl-bar" data-v="14.9"><i></i><em>$14.9M</em></span></div>
+              <div class="cl-brow"><b>KO</b><span class="cl-bar" data-v="9.4"><i></i><em>$9.4M</em></span></div>
+            </div>
+            <div class="cl-l cl-sum cl-in4"><b>5 buys flagged · 1 prompt</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // T: scene seconds. type = the command starts typing; tools = first tool line; status = the spinner line;
+    // checks = first tick (then every T.gap); result = the bars' line; done = the summary; push = camera snap
+    const T = { type: 0.1, tools: 1.05, status: 1.6, checks: 1.9, gap: 0.16, result: 2.75, done: 3.45, push: 3.5, end: 4.3 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    AR.clIcons();
+    AR.composer(tl, "#SCENE-prompt", T.type, null, { cps: 34, blur: T.tools - 0.05 });
+    AR.termLines(tl, "#SCENE-scroll > .cl-in", T.tools, { gap: 0.12 });            // tool calls
+    AR.termLines(tl, "#SCENE-scroll > .cl-in2", T.status, { gap: 0.04 });           // status + todos
+    AR.status(tl, "#SCENE-status", T.status, T.result - T.status, { secs: [1, 6], tokens: [0.2, 1.8] });
+    AR.checklist(tl, "#SCENE-todos", T.checks, { gap: T.gap });
+    AR.termLines(tl, "#SCENE-scroll > .cl-in3", T.result, { gap: 0.08 });           // result + bars
+    AR.clBars(tl, "#SCENE-bars", T.result + 0.12, { len: 360, gap: 0.06 });
+    AR.termLines(tl, "#SCENE-scroll > .cl-in4", T.done);                            // summary
+    tl.to("#SCENE-cam", { scale: 1.16, duration: 0.14, ease: "power3.out" }, T.push); // snap onto the result
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

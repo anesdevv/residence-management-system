@@ -1,0 +1,180 @@
+<!-- BLUEPRINT setup-flow, wide (1280x630, the 2:1 card; every shot fills the frame): the install beat a skill reel ends
+     with, "to set it up, paste this link inside of Claude and say install skill". Shot 1: the real repo page, readable
+     from the cut (owner / name at 48 px, the About line, stars, the green Code button). The cursor clicks Code, the
+     clone menu drops open, it clicks copy: the icon turns into a check and "Copied!" pops. The link lifts off as a chip.
+     Shot 2: the camera whips across to Claude's home screen while the chip arcs into the input and lands on "Claude";
+     "install skill" types on its word, the cursor clicks send. Shot 3: the conversation, Claude reads the repo and
+     installs it, the green "Skill installed" card lands and the camera pushes onto it.
+     Use for: "to set it up", "paste this link into Claude", "install it in one line", any copy-a-link-into-Claude step.
+     Edit: REPO (owner and name, or "@owner" / "@repo" from names.js; the About line, the counts), the file rows in the
+     HTML, PROMPT (what is typed after the link), RESULT, the greeting name (data-name="creator"), and the T times:
+     code (the click on Code), copy (the click on copy, "Copied!"), claude (the whip to Claude and the chip's flight; it
+     lands DUR.fly later, on "Claude"), install (typing starts), send (the click on send), done (the success card), end.
+     Ids start with SCENE; mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #d8d3c8; }
+    #SCENE-cam { position: absolute; left: 0; top: 0; width: 2640px; height: 630px; }
+    #SCENE-gh { left: 0; top: 0; width: 1280px; height: 630px; }
+    #SCENE-gh .wb-gh-head { height: auto; padding: 26px 40px 0; font-size: 48px; gap: 16px; }
+    #SCENE-gh .wb-gh-head > img.wb-avatar { width: 58px; height: 58px; }
+    #SCENE-gh .wb-gh-pub { font-size: 22px; }
+    #SCENE-about { margin: 14px 40px 0; font-size: 31px; line-height: 1.34; color: #1f2328; }
+    #SCENE-meta { margin: 12px 40px 0; display: flex; gap: 30px; font-size: 24px; color: #59636e; }
+    #SCENE-meta span { display: flex; align-items: center; gap: 9px; }
+    #SCENE-meta b { color: #1f2328; font-weight: 600; }
+    #SCENE-gh .wb-gh-bar { margin-top: 22px; padding: 0 40px; }
+    #SCENE-gh .wb-gh-bbtn, #SCENE-gh .wb-gh-find { height: 58px; font-size: 25px; }
+    #SCENE-code { height: 62px; font-size: 29px; padding: 0 22px; }
+    #SCENE-gh .wb-gh-files { margin: 18px 40px 0; }
+    #SCENE-gh .wb-gh-row { height: 60px; font-size: 26px; }
+    #SCENE-menu { width: 660px; }
+    #SCENE-clwin { position: absolute; left: 1360px; top: 0; width: 1280px; height: 630px; overflow: hidden; }
+    #SCENE-clcam { position: absolute; left: 0; top: 0; width: 1280px; height: 630px; }
+    #SCENE-app { left: 0; top: 0; width: 1280px; height: 630px; font-size: 38px; }
+    #SCENE-app .cl-top .cl-lights { margin: 0 0.4em 0 0.1em; }
+    #SCENE-home { padding-bottom: 0.7em; gap: 0.8em; }
+    #SCENE-home .cl-greet { font-size: 1.95em; }
+    #SCENE-home .cl-chips { font-size: 0.82em; }
+    #SCENE-box { width: 100%; }
+    #SCENE-box .cl-field { font-size: 1.18em; min-height: 1.4em; }
+    #SCENE-inchip, #SCENE-chip { font-size: 35px; }
+    #SCENE-inchip { opacity: 0; }
+    #SCENE-convo { position: absolute; left: 0; right: 0; top: 2.8em; bottom: 0; opacity: 0; padding-top: 0.5em; }
+    #SCENE-sent .wb-urlchip { font-size: 0.86em; }
+    #SCENE-done { align-self: flex-start; font-size: 1.12em; padding: 0.55em 1.1em 0.6em 0.8em; gap: 0.65em; }
+    #SCENE-done .cl-okc { width: 1.6em; height: 1.6em; }
+    #SCENE-done > span:last-child { display: flex; flex-direction: column; line-height: 1.25; }
+    #SCENE-ctitle { opacity: 0; }
+    #SCENE-cur { left: 1080px; top: 590px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div id="SCENE-cam" data-layout-allow-overflow>
+      <!-- shot 1: the repo page -->
+      <div class="wb-gh" id="SCENE-gh">
+        <div class="wb-gh-head">
+          <img class="wb-avatar" data-ph="avatar:Charles Liu" alt="">
+          <a class="wb-gh-owner" id="SCENE-owner">charlesliu</a><span class="wb-gh-sl">/</span><b class="wb-gh-repo" id="SCENE-repo">scout-skill</b>
+          <span class="wb-gh-pub">Public</span>
+        </div>
+        <p id="SCENE-about">A Claude skill that reads any creator's top posts and writes you the playbook behind them.</p>
+        <div id="SCENE-meta"><span><i data-i="star"></i><b id="SCENE-stars">19.4k</b>stars</span><span><i data-i="fork"></i><b id="SCENE-forks">2.2k</b>forks</span><span><i data-i="law"></i>MIT license</span></div>
+        <div class="wb-gh-bar">
+          <span class="wb-gh-bbtn"><i data-i="branch"></i>main<i data-i="caret"></i></span>
+          <span class="wb-gh-find"><i data-i="search"></i>Go to file<kbd>t</kbd></span>
+          <span class="wb-gh-bbtn">Add file<i data-i="caret"></i></span>
+          <span class="wb-gh-code" id="SCENE-code"><i data-i="code"></i>Code<i data-i="caret"></i></span>
+        </div>
+        <div class="wb-gh-files">
+          <div class="wb-gh-row"><i data-i="folder"></i><span class="wb-gh-name" id="SCENE-dir">skills/scout</span><span class="wb-gh-msg">Read Reels captions too</span><span class="wb-gh-time">5 hours ago</span></div>
+          <div class="wb-gh-row"><i data-i="file" class="wb-file"></i><span class="wb-gh-name">SKILL.md</span><span class="wb-gh-msg">Hook finder steps</span><span class="wb-gh-time">5 hours ago</span></div>
+          <div class="wb-gh-row"><i data-i="file" class="wb-file"></i><span class="wb-gh-name">README.md</span><span class="wb-gh-msg">Install in one line</span><span class="wb-gh-time">2 days ago</span></div>
+          <div class="wb-gh-row"><i data-i="file" class="wb-file"></i><span class="wb-gh-name">LICENSE</span><span class="wb-gh-msg">MIT</span><span class="wb-gh-time">last month</span></div>
+        </div>
+        <div class="wb-gh-clone" id="SCENE-menu">
+          <div class="wb-gh-ctabs"><span class="wb-on">Local</span><span>Codespaces</span></div>
+          <div class="wb-gh-cbody">
+            <div class="wb-gh-ch"><i data-i="terminal"></i>Clone<i data-i="help"></i></div>
+            <div class="wb-gh-proto"><span class="wb-on">HTTPS</span><span>SSH</span><span>GitHub CLI</span></div>
+            <div class="wb-gh-url"><span id="SCENE-url">https://github.com/charlesliu/scout-skill.git</span><span class="wb-gh-copy" id="SCENE-copy"><i data-i="copy"></i><i data-i="check" class="wb-ok"></i></span></div>
+            <div class="wb-gh-hint">Clone using the web URL.</div>
+          </div>
+          <div class="wb-gh-crow"><i data-i="desktop"></i>Open with GitHub Desktop</div>
+          <div class="wb-gh-crow"><i data-i="zip"></i>Download ZIP</div>
+        </div>
+      </div>
+      <!-- shots 2 and 3: Claude, in its own window with its own camera for the push at the end -->
+      <div id="SCENE-clwin"><div id="SCENE-clcam" data-layout-allow-overflow><div class="cl-app" id="SCENE-app">
+        <div class="cl-main">
+          <div class="cl-top"><div class="cl-lights"><i></i><i></i><i></i></div><i class="cl-sideico" data-cl-icon="sidebar"></i>
+            <div class="cl-title" id="SCENE-ctitle">Install a skill <i data-cl-icon="chev-down"></i></div></div>
+          <div class="cl-home" id="SCENE-home">
+            <div class="cl-greet"><i class="cl-spark"></i><span>Good afternoon, <span data-name="creator">Charles</span></span></div>
+            <div class="cl-composer" id="SCENE-box">
+              <div class="cl-field"><span class="cl-ph" id="SCENE-ph">How can I help you today?</span><span class="wb-urlchip" id="SCENE-inchip"><i data-i="link"></i><span class="SCENE-link">github.com/charlesliu/scout-skill</span></span><span class="cl-text"></span></div>
+              <div class="cl-crow">
+                <span class="cl-sq"><i data-cl-icon="plus"></i></span>
+                <span class="cl-seg"><span class="on">Chat</span><span>Cowork</span></span>
+                <span class="cl-model">Opus 5.5 <i data-cl-icon="chev-down"></i></span>
+                <span class="cl-cico"><i data-cl-icon="mic"></i></span>
+                <span class="cl-sendslot"><span class="cl-voice"><i data-cl-icon="wave"></i></span><span class="cl-send" id="SCENE-send"><i data-cl-icon="up"></i></span></span>
+              </div>
+            </div>
+            <div class="cl-chips">
+              <span class="cl-chip"><i data-cl-icon="pencil"></i>Write</span><span class="cl-chip"><i data-cl-icon="cap"></i>Learn</span>
+              <span class="cl-chip"><i data-cl-icon="code"></i>Code</span><span class="cl-chip"><i data-cl-icon="cup"></i>Life stuff</span>
+            </div>
+          </div>
+          <div class="cl-flow" id="SCENE-convo">
+            <div class="cl-user" id="SCENE-sent"><span class="wb-urlchip"><i data-i="link"></i><span class="SCENE-link">github.com/charlesliu/scout-skill</span></span><span id="SCENE-sentp"> install skill</span></div>
+            <div class="cl-steps" id="SCENE-steps">
+              <div class="cl-step"><span class="cl-sico"><i class="cl-spark" id="SCENE-spark"></i></span><span id="SCENE-s1">Reading charlesliu/scout-skill</span></div>
+              <div class="cl-step"><span class="cl-sico"><i data-cl-icon="download"></i></span><span id="SCENE-s2">Installing the skill</span><i class="cl-rail"></i></div>
+            </div>
+            <div class="cl-result" id="SCENE-done"><span class="cl-okc"><i data-cl-icon="check"></i></span><span><b id="SCENE-rt">Skill installed</b><span class="cl-rsub" id="SCENE-rs">scout · ready to use</span></span></div>
+          </div>
+        </div>
+      </div></div></div>
+      <span class="wb-urlchip wb-fly" id="SCENE-chip"><i data-i="link"></i><span class="SCENE-link">github.com/charlesliu/scout-skill</span></span>
+      <div class="wb-cursor wb-big" id="SCENE-cur" data-layout-ignore></div>
+    </div>
+  </div>
+  <script>
+    const T = { code: 0.45, copy: 0.95, claude: 1.35, install: 2.15, send: 2.75, done: 3.2, end: 3.9 };
+    const DUR = { whip: 0.36, fly: 0.5 };
+    const REPO = { owner: "@owner", name: "@repo", about: "A Claude skill that reads any creator's top posts and writes you the playbook behind them.",
+      stars: "19.4k", forks: "2.2k" };
+    const PROMPT = " install skill";                    // typed after the pasted link (keep the leading space)
+    const RESULT = { title: "Skill installed", sub: "{name} · ready to use", reading: "Reading {owner}/{name}", installing: "Installing the skill" };
+
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    AR.clIcons();
+    const $ = (id) => document.getElementById("SCENE-" + id);
+    const word = (v) => (typeof v === "string" && v[0] === "@" ? String((window.NAMES || {})[v.slice(1)] ?? v.slice(1)) : v);
+    const owner = word(REPO.owner), name = word(REPO.name), fill = (s) => s.replace("{owner}", owner).replace("{name}", name);
+    $("owner").textContent = owner; $("repo").textContent = name; $("about").textContent = REPO.about;
+    $("stars").textContent = REPO.stars; $("forks").textContent = REPO.forks;
+    $("url").textContent = `https://github.com/${owner}/${name}.git`;
+    document.querySelectorAll(".SCENE-link").forEach((e) => { e.textContent = `github.com/${owner}/${name}`; });
+    $("sentp").textContent = PROMPT;
+    $("s1").textContent = fill(RESULT.reading); $("s2").textContent = fill(RESULT.installing);
+    $("rt").textContent = RESULT.title; $("rs").textContent = fill(RESULT.sub);
+    // the clone menu hangs under the Code button, right edges aligned
+    const code = $("code"), menu = $("menu");
+    Object.assign(menu.style, { left: code.offsetLeft + code.offsetWidth - menu.offsetWidth + "px", top: code.offsetTop + code.offsetHeight + 8 + "px" });
+
+    // shot 1: the cursor clicks Code; the menu drops open; it clicks copy: "Copied!"
+    const cur = "#SCENE-cur";
+    AR.cursorTo(tl, cur, code, T.code - 0.36, 0.3, { ax: 0.42, ay: 0.55 });
+    AR.cursorShape(tl, cur, "hand", T.code - 0.1);
+    AR.click(tl, cur, T.code - 0.05);
+    AR.wbMenu(tl, menu, T.code, { button: code, pressed: "#1a7f37" });
+    AR.cursorTo(tl, cur, "#SCENE-copy", T.copy - 0.32, 0.26);
+    AR.click(tl, cur, T.copy - 0.05);
+    AR.wbCopied(tl, "#SCENE-copy", T.copy, { parent: "#SCENE-gh", hold: 0.9 });
+    // shot 2: whip across to Claude while the link flies into the input, landing on "Claude"
+    AR.wbChip(tl, "#SCENE-chip", "#SCENE-url", "#SCENE-inchip", T.claude + 0.02, DUR.fly, { lift: T.copy + 0.08, arc: 120 });
+    tl.set("#SCENE-ph", { opacity: 0 }, T.claude + 0.02 + DUR.fly);
+    AR.frame(tl, "#SCENE-cam", "#SCENE-clwin", T.claude, DUR.whip, { pad: 0, ease: "power3.inOut" });
+    AR.cursorShape(tl, cur, "arrow", T.claude);
+    AR.cursorTo(tl, cur, "#SCENE-box", T.claude, DUR.whip + 0.12, { ax: 0.86, ay: 1.18 });
+    // "install skill" types on its word; the cursor clicks send
+    AR.composer(tl, "#SCENE-box", T.install, PROMPT, { cps: 26 });
+    AR.cursorTo(tl, cur, "#SCENE-send", T.send - 0.3, 0.24);
+    AR.cursorShape(tl, cur, "hand", T.send - 0.08);
+    AR.click(tl, cur, T.send - 0.05);
+    AR.press(tl, "#SCENE-send", T.send - 0.04);
+    // shot 3: the conversation; Claude reads the repo, installs it; the success card lands and the camera pushes in
+    const tc = T.send + 0.12;
+    tl.set("#SCENE-home", { opacity: 0 }, tc);
+    tl.set(["#SCENE-convo", "#SCENE-ctitle"], { opacity: 1 }, tc);
+    tl.set(cur, { opacity: 0 }, tc);
+    tl.fromTo("#SCENE-sent", { y: 24 }, { y: 0, duration: 0.24, ease: "power3.out", immediateRender: false }, tc);
+    AR.clSteps(tl, "#SCENE-steps", tc + 0.08, { times: [tc + 0.08, Math.max(tc + 0.3, T.done - 0.25)] });
+    AR.clSpark(tl, "#SCENE-spark", tc + 0.08, T.end - tc - 0.08, { turns: 0.6 });
+    tl.fromTo("#SCENE-done", { opacity: 0, scale: 0.86, y: 14 }, { opacity: 1, scale: 1, y: 0, duration: 0.26, ease: "back.out(2.4)" }, T.done);
+    AR.frame(tl, "#SCENE-clcam", ["#SCENE-done", "#SCENE-s1", "#SCENE-s2"], T.done + 0.06, 0.32, { pad: [70, 60], max: 1.35 });   // the text, not the full-width rows
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

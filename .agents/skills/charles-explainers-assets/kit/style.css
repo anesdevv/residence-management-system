@@ -1,0 +1,85 @@
+@font-face { font-family: Inter; src: url(fonts/Inter-400.woff2); font-weight: 400; }
+@font-face { font-family: Inter; src: url(fonts/Inter-500.woff2); font-weight: 500; }
+@font-face { font-family: Inter; src: url(fonts/Inter-600.woff2); font-weight: 600; }
+@font-face { font-family: Inter; src: url(fonts/Inter-700.woff2); font-weight: 700; }
+@font-face { font-family: JBM; src: url(fonts/JetBrainsMono-400.woff2); font-weight: 400; }
+@font-face { font-family: JBM; src: url(fonts/JetBrainsMono-700.woff2); font-weight: 700; }
+
+/* A calm light ground (the hack reels' #e6e9ee); explain.json's "ground" overrides it. The UI in a demo gets one
+   accent; red is only for the flaw and green only for the fix. Agents bring their own colours (lib.js AGENT_COLORS). */
+:root {
+  --ground: #e6e9ee;
+  --ink: #16171a;
+  --muted: #6b7079;
+  --faint: #9a9ea6;
+  --card: #ffffff;
+  --line: #e2e4e9;
+  --accent: #2f6ae6;
+  --accent-ink: #ffffff;
+  --red: #e5484d;
+  --red-ink: #ce2c31;    /* red and green text that passes 4.5:1 on white (a side by side's value labels) */
+  --green-ink: #218358;
+  --well: #f3f4f6;       /* a side by side's wells and their dot grid (lib.js pair) */
+  --well-dot: #d4d7dd;
+  --shadow: 0 1px 2px rgb(16 18 24 / 0.06), 0 10px 28px -10px rgb(16 18 24 / 0.22);
+  --code-bg: #16171a;
+  --code-ink: #ecebe7;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--ground); }
+body { overflow: hidden; -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; }
+#panel { position: relative; overflow: hidden; background: var(--ground); color: var(--ink); font-family: Inter, sans-serif; }
+#stage { position: absolute; inset: 0; }
+.abs { position: absolute; }
+.zoom { position: absolute; transform-origin: 0 0; }
+
+/* the code block */
+.cblock { position: absolute; left: 50%; transform: translateX(-50%); padding: 18px 30px; border-radius: 22px; background: var(--code-bg); color: var(--code-ink); z-index: 40; overflow: hidden;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.08), 0 14px 32px -14px rgb(0 0 0 / 0.42); font: 400 var(--code-px, 34px)/var(--code-lh, 44px) JBM, monospace; letter-spacing: -0.02em; }
+.cblock .cl { position: relative; height: var(--code-lh, 44px); z-index: 1; overflow-x: visible; overflow-y: clip; }
+.cblock .cl-in { position: relative; display: inline-flex; align-items: center; height: var(--code-lh, 44px); white-space: pre; vertical-align: top; }
+.cblock .slot { position: relative; display: block; height: var(--code-lh, 44px); overflow: clip; overflow-clip-margin: 10px; }
+.cblock .slot .v0, .cblock .slot .v1 { position: absolute; left: 0; top: 50%; transform: translateY(-50%); white-space: pre; }
+.cblock .slot .hi { position: absolute; left: -6px; right: -6px; top: 3px; bottom: 3px; border-radius: 9px; background: rgb(61 214 140 / 0.16); box-shadow: inset 0 0 0 1px rgb(61 214 140 / 0.34); opacity: 0; }
+.cblock .tint { position: absolute; left: -30px; right: -30px; top: 0; bottom: 0; background: rgb(61 214 140 / 0.11); opacity: 0; z-index: -1; }
+.cblock i { font-style: normal; }
+.cblock .caret { position: absolute; z-index: 3; opacity: 0; border-radius: 1px; }
+.cblock .k { color: #9fb6ff; }   /* property, object key */
+.cblock .s { color: #ecebe7; }   /* selector, identifier */
+.cblock .x { color: #8e8a83; }   /* punctuation */
+.cblock .n { color: #f6bd84; }   /* value, number, string */
+.cblock .f { color: #85dfc0; }   /* function */
+.cblock .a { color: #e7a6f0; }   /* at-rule, keyword, JSX attribute */
+.cblock .t { color: #f08c8c; }   /* JSX tag */
+.cblock .c { color: #8a8780; }   /* comment */
+
+/* pointers */
+.cursor { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
+.cursor .arrow { position: absolute; left: -4px; top: -3px; transform-origin: 4px 3px; filter: drop-shadow(0 3px 5px rgb(0 0 0 / 0.28)); }
+.cursor .arrow svg { display: block; }
+.finger { position: absolute; left: 0; top: 0; pointer-events: none; }
+.finger b { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 2.5px rgb(255 255 255 / 0.9), 0 6px 18px rgb(0 0 0 / 0.22); }
+
+/* checking aid: ?band draws the edges of what the reel's card shows */
+.band-guide { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed rgb(229 72 77 / 0.7); z-index: 99; }
+
+/* the agent's selection on a code token: drawn under the text, like the green highlight */
+.cblock .slot .sel { position: absolute; left: -6px; right: -6px; top: 3px; bottom: 3px; border-radius: 9px; opacity: 0; }
+
+/* the agent cursor (Figma's multiplayer cursor) */
+.agent { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
+.agent-arrow { position: absolute; }
+.agent-chip { position: absolute; color: #fff; white-space: nowrap; letter-spacing: -0.01em; }
+.agent-sel { position: absolute; box-sizing: content-box; pointer-events: none; transform: translate(-1px, -1px); }
+.agent-sel i { position: absolute; background: #fff; box-sizing: border-box; }
+
+/* the definition tab, for slots whose clip draws its own */
+.tab { position: absolute; background: #000; color: #fff; white-space: nowrap; letter-spacing: -0.005em; }
+
+/* the phone check's state tag (check.mjs draws it on, as the list kit does in the reel) */
+.state-tag { position: absolute; display: flex; align-items: center; background: #000; color: #fff; z-index: 90; white-space: nowrap; }
+.state-tag i { display: block; border-radius: 50%; }
+
+/* an asset with a transparent background (explain.json "alpha": true) */
+html.alpha, html.alpha body, html.alpha #panel { background: transparent !important; }

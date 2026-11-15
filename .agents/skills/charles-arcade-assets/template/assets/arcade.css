@@ -1,0 +1,163 @@
+/* arcade kit: tokens, surfaces, game HUD, rebuilt app UI. Scene files link this and add their own layout. */
+
+@font-face { font-family: "Silkscreen"; src: url("fonts/Silkscreen-400.woff2") format("woff2"); font-weight: 400; }
+@font-face { font-family: "Silkscreen"; src: url("fonts/Silkscreen-700.woff2") format("woff2"); font-weight: 700; }
+@font-face { font-family: "Press Start 2P"; src: url("fonts/PressStart2P-400.woff2") format("woff2"); font-weight: 400; }
+@font-face { font-family: "Inter"; src: url("fonts/Inter-400.woff2") format("woff2"); font-weight: 400; }
+@font-face { font-family: "Inter"; src: url("fonts/Inter-500.woff2") format("woff2"); font-weight: 500; }
+@font-face { font-family: "Inter"; src: url("fonts/Inter-600.woff2") format("woff2"); font-weight: 600; }
+@font-face { font-family: "Inter"; src: url("fonts/Inter-700.woff2") format("woff2"); font-weight: 700; }
+@font-face { font-family: "JetBrains Mono"; src: url("fonts/JetBrainsMono-400.woff2") format("woff2"); font-weight: 400; }
+@font-face { font-family: "JetBrains Mono"; src: url("fonts/JetBrainsMono-700.woff2") format("woff2"); font-weight: 700; }
+@font-face { font-family: "Source Serif 4"; src: url("fonts/SourceSerif4-400.woff2") format("woff2"); font-weight: 400; }
+@font-face { font-family: "Source Serif 4"; src: url("fonts/SourceSerif4-600.woff2") format("woff2"); font-weight: 600; }
+@font-face { font-family: "Pixelify Sans"; src: url("fonts/PixelifySans-400.woff2") format("woff2"); font-weight: 400; }
+@font-face { font-family: "Pixelify Sans"; src: url("fonts/PixelifySans-700.woff2") format("woff2"); font-weight: 700; }
+
+:root {
+  --stage: #f0eeea;
+  --stage-line: rgba(31, 30, 28, 0.035);
+  --grid: 90px;          /* Jake's graph paper: 1 px lines every 60 px at 720, i.e. 90 px at 1080 */
+  --grid-line: 1.5px;
+  --paper: #ffffff;
+  --ink: #1f1e1c;
+  --charcoal: #2b2a28;
+  --muted: #8a867e;
+  --claude: #d97757;
+  --claude-deep: #b65b3d;
+  --gpt: #3f6fe0;
+  --gpt-deep: #23409a;
+  --gold: #f7c531;
+  --hp: #f6c938;
+  --hp-hurt: #e5483b;
+  --ok: #2fa35b;
+  --bad: #d9473a;
+  --select: rgba(66, 133, 244, 0.30);
+  --marker: rgba(255, 214, 10, 0.55);
+  --app-bg: #faf9f5;
+  --app-line: #e6e2d9;
+  --app-bubble: #f0ede6;
+  --shadow: 0 24px 60px rgba(31, 30, 28, 0.16), 0 4px 14px rgba(31, 30, 28, 0.08);
+  --pixel: "Silkscreen", "Press Start 2P", monospace;
+  --pixel-text: "Pixelify Sans", "Silkscreen", monospace;   /* mixed-case pixel text: bubbles, monitors, labels */
+  --mono: "JetBrains Mono", monospace;
+  --sans: "Inter", sans-serif;
+  --serif: "Source Serif 4", serif;
+}
+
+/* ---------- surfaces ---------- */
+.stage {
+  position: absolute; inset: 0; background-color: var(--stage);
+  background-image: linear-gradient(var(--stage-line) var(--grid-line), transparent var(--grid-line)),
+                    linear-gradient(90deg, var(--stage-line) var(--grid-line), transparent var(--grid-line));
+  background-size: var(--grid) var(--grid);
+}
+.fill { position: absolute; inset: 0; }
+.bg-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.card {
+  position: absolute; background: var(--paper); border-radius: 36px; box-shadow: var(--shadow); overflow: hidden;
+}
+.pixel, .pixel img, img.pixel { image-rendering: pixelated; }
+
+/* ---------- sprites: a .sprite moves; its .pose children swap ---------- */
+.sprite { position: absolute; transform-origin: 50% 100%; }
+.sprite .flip { position: absolute; inset: 0; transform: scaleX(-1); }
+.sprite .pose { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; opacity: 0; image-rendering: pixelated; }
+.sprite .pose.on { opacity: 1; }
+.shadow-blob { position: absolute; height: 22px; border-radius: 50%; background: rgba(0, 0, 0, 0.18); }
+
+/* ---------- text ---------- */
+.px { font-family: var(--pixel); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1; }
+.pxt { font-family: var(--pixel-text); font-weight: 400; line-height: 1.1; font-variant-ligatures: none; }   /* mixed-case pixel text; Pixelify's "fi" ligature is broken */
+.px-outline { color: #fff; text-shadow: -5px 0 0 #000, 5px 0 0 #000, 0 -5px 0 #000, 0 5px 0 #000, 6px 8px 0 rgba(0,0,0,.35); }
+.label {
+  position: absolute; font-family: var(--mono); font-weight: 700; font-size: 40px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: #fff; background: var(--charcoal); border-radius: 14px; padding: 10px 22px; white-space: nowrap;
+}
+.title-xl { font-family: var(--sans); font-weight: 900; letter-spacing: -0.03em; color: var(--ink); line-height: 0.95; }
+
+/* ---------- game HUD ---------- */
+.hud { position: absolute; left: 60px; right: 60px; display: flex; align-items: center; gap: 18px; }
+.hp {
+  position: relative; flex: 1; height: 46px; background: #3a1d12; border: 6px solid #120a06; box-shadow: 0 6px 0 rgba(0,0,0,.35);
+}
+.hp i { position: absolute; inset: 0; background: linear-gradient(var(--hp) 60%, #e0a521 60%); transform-origin: 0 50%; }
+.hp.rtl i { transform-origin: 100% 50%; }
+.hp b { position: absolute; inset: 0; background: var(--hp-hurt); transform-origin: 0 50%; }
+.hp.rtl b { transform-origin: 100% 50%; }
+.hud-icon {
+  width: 92px; height: 92px; border: 6px solid #120a06; background: #fff; display: grid; place-items: center;
+  box-shadow: 0 6px 0 rgba(0,0,0,.35);
+}
+.hud-icon img { width: 76%; height: 76%; object-fit: contain; image-rendering: pixelated; }
+.banner {
+  position: absolute; font-family: var(--pixel); font-weight: 700; font-size: 44px; color: #fff; background: #1d1b2e;
+  border: 6px solid #fff; padding: 12px 28px; letter-spacing: 0.08em; box-shadow: 0 8px 0 rgba(0,0,0,.4); white-space: nowrap;
+}
+.center-x { left: 0; right: 0; margin-left: auto; margin-right: auto; width: fit-content; }
+.nameplate {
+  position: absolute; font-family: var(--pixel); font-weight: 700; font-size: 52px; padding: 10px 26px; color: #fff;
+  background: var(--charcoal); letter-spacing: 0.05em; white-space: nowrap;
+}
+.vs {
+  position: absolute; font-family: "Press Start 2P", var(--pixel); font-size: 190px; color: var(--gold);
+  text-shadow: -10px 0 0 #3a1d00, 10px 0 0 #3a1d00, 0 -10px 0 #3a1d00, 0 10px 0 #3a1d00, 12px 16px 0 rgba(0,0,0,.35);
+}
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.spark { position: absolute; width: 220px; height: 220px; opacity: 0; }
+.panel-pixel {
+  position: absolute; background: #1d1b45; border: 8px solid #fff; box-shadow: 0 0 0 8px #1d1b45, 0 18px 0 8px rgba(0,0,0,.35);
+  color: #fff; font-family: var(--pixel); font-weight: 700;
+}
+
+/* ---------- rebuilt app UI (chat apps, browsers, repos) ---------- */
+.app {
+  position: absolute; background: var(--app-bg); border-radius: 30px; box-shadow: var(--shadow); overflow: hidden;
+  font-family: var(--sans); color: var(--ink); border: 2px solid var(--app-line);
+}
+.app-bar { height: 74px; display: flex; align-items: center; gap: 14px; padding: 0 28px; border-bottom: 2px solid var(--app-line); font-size: 30px; color: var(--muted); }
+.dots { display: flex; gap: 12px; }
+.dots i { width: 20px; height: 20px; border-radius: 50%; background: #ff5f57; }
+.dots i:nth-child(2) { background: #febc2e; }
+.dots i:nth-child(3) { background: #28c840; }
+.chat { padding: 34px 40px; display: flex; flex-direction: column; gap: 26px; }
+.msg-user { align-self: flex-end; max-width: 82%; background: var(--app-bubble); border-radius: 28px; padding: 22px 30px; font-size: 42px; line-height: 1.3; }
+.msg-ai { font-family: var(--serif); font-size: 52px; line-height: 1.28; color: var(--ink); }
+.tool-row { display: flex; align-items: center; gap: 16px; font-size: 38px; color: var(--muted); }
+.asterisk { width: 40px; height: 40px; flex: none; }
+.composer {
+  margin: 0 30px 30px; border: 2px solid var(--app-line); border-radius: 28px; background: #fff; padding: 22px 26px;
+  font-size: 34px; color: var(--muted); display: flex; flex-direction: column; gap: 22px; box-shadow: 0 6px 18px rgba(0,0,0,.05);
+}
+.composer .row { display: flex; align-items: center; gap: 16px; }
+.composer .typed { color: var(--ink); min-height: 40px; }
+.chip { border: 2px solid var(--app-line); border-radius: 14px; padding: 6px 14px; font-size: 30px; color: var(--muted); }
+.send { margin-left: auto; width: 54px; height: 54px; border-radius: 14px; background: var(--claude); display: grid; place-items: center; color: #fff; font-size: 30px; font-weight: 700; }
+.greeting { font-family: var(--serif); font-size: 64px; color: var(--ink); display: flex; align-items: center; justify-content: center; gap: 18px; }
+.sel { background: linear-gradient(var(--select), var(--select)) no-repeat 0 0 / 0% 100%; }
+.mark { background: linear-gradient(var(--marker), var(--marker)) no-repeat 0 85% / 0% 45%; }
+.cursor { position: absolute; width: 46px; height: 46px; z-index: 50; }
+.pill { display: inline-flex; align-items: center; gap: 10px; border-radius: 999px; padding: 6px 20px; font-size: 32px; font-weight: 700; white-space: nowrap; }
+.pill.wait { background: #eeece6; color: var(--muted); }
+.pill.ok { background: #e3f4e8; color: var(--ok); }
+.pill.bad { background: #fbe6e3; color: var(--bad); }
+.strike { position: absolute; left: -4px; right: -4px; top: 52%; height: 5px; background: var(--bad); transform-origin: 0 50%; opacity: 0; }
+.repo { font-family: var(--sans); }
+.repo .path { font-size: 40px; color: #0969da; font-weight: 600; }
+.repo .file { display: flex; align-items: center; gap: 16px; font-size: 34px; padding: 14px 0; border-top: 2px solid #eaeef2; color: #1f2328; }
+.badge { position: absolute; font-family: var(--mono); font-weight: 700; color: #fff; background: var(--ok); border-radius: 16px; padding: 12px 24px; font-size: 40px; letter-spacing: 0.06em; }
+
+/* doubt marks on a short phrase (one line, under ~28 characters):
+   <span class="sel doubt">phrase<svg class="squiggle">..</svg></span><b class="q">?</b> */
+.doubt { position: relative; display: inline-block; white-space: nowrap; }
+.squiggle { position: absolute; left: 0; bottom: -14px; width: 100%; height: 18px; overflow: visible; }
+.squiggle path { fill: none; stroke: var(--bad); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.q { position: relative; display: inline-block; top: -26px; margin-left: 6px; font-family: var(--sans); font-weight: 900; font-size: 68px; line-height: 0; color: var(--bad); opacity: 0; }
+.toast {
+  position: absolute; display: flex; align-items: center; gap: 16px; background: var(--charcoal); color: #fff;
+  font-family: var(--sans); font-weight: 700; font-size: 38px; border-radius: 22px; padding: 22px 34px; box-shadow: var(--shadow); white-space: nowrap;
+}
+.toast .tick { width: 44px; height: 44px; border-radius: 50%; background: var(--ok); display: grid; place-items: center; font-size: 28px; }
+/* the second pixel font. Name fonts through these classes only: a font-family naming a pixel font inside a
+   scene's own style fails hf check, which cannot see this file's @font-face */
+.num-xl, .px2 { font-family: "Press Start 2P", var(--pixel); line-height: 1.1; }

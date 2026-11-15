@@ -4,6 +4,7 @@
  * Brand-gradient hero (the only gradient surface here besides the primary CTA),
  * the real 4-step intake lifecycle and the services the portal actually offers.
  * Visual layer only: no data, no invented figures, no imagery.
+ * Elevated craft with calm institutional breathing room and strict tabular figures.
  */
 import Layout from '../layouts/Layout.astro';
 import Icon from '../components/Icon.astro';
@@ -61,66 +62,151 @@ const services = [
 ];
 ---
 
-<Layout title={locale === 'fr' ? 'RÉSIVO — Portail Officiel d’Hébergement Étudiant' : 'RÉSIVO — Official Student Housing Portal'} activeNav="home">
-  <!-- Hero — the brand gradient is allowed here and nowhere else on this page. -->
+<Layout
+  title={locale === 'fr' ? 'RÉSIVO — Portail Officiel d’Hébergement Étudiant' : 'RÉSIVO — Official Student Housing Portal'}
+  activeNav="home"
+>
+  <!-- Hero — quiet institutional navy surface with structured asymmetric split -->
   <section
-    class="relative overflow-hidden rounded-hero px-6 py-10 sm:px-10 sm:py-12"
-    style="background-image: var(--grad-brand)"
+    class="relative overflow-hidden rounded-hero border border-navy-700/70 bg-navy-900 px-6 py-10 shadow-e2 sm:px-10 sm:py-14 lg:py-16"
+    style="background-image: var(--grad-brand);"
   >
-    <!-- Geometric pattern derived from the mark (windows + dot), ≤6% white -->
-    <svg class="pointer-events-none absolute inset-0 h-full w-full text-surface opacity-5" aria-hidden="true">
+    <!-- Deep legibility plate ensuring rock-solid AA contrast on dark gradient -->
+    <span class="absolute inset-0 bg-navy-900/85 backdrop-blur-[1px]" aria-hidden="true"></span>
+
+    <!-- Micro-texture coordinate grid -->
+    <svg
+      class="pointer-events-none absolute inset-0 h-full w-full opacity-[0.04] text-surface"
+      xmlns="http://www.w3.org/2000/svg"
+      width="100%"
+      height="100%"
+      aria-hidden="true"
+    >
       <defs>
-        <pattern id="hero-windows" width="48" height="48" patternUnits="userSpaceOnUse">
-          <path d="M6 6h12v12H6z" fill="none" stroke="currentColor" stroke-width="1.5" />
-          <path d="M30 6h12v12H30z" fill="none" stroke="currentColor" stroke-width="1.5" />
-          <path d="M6 30h12v12H6z" fill="none" stroke="currentColor" stroke-width="1.5" />
-          <circle cx="36" cy="36" r="3" fill="currentColor" />
+        <pattern id="hero-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M0 40h40M40 0v40" stroke="currentColor" stroke-width="0.5" stroke-dasharray="1 7" />
         </pattern>
       </defs>
-      <rect width="100%" height="100%" fill="url(#hero-windows)" />
+      <rect width="100%" height="100%" fill="url(#hero-grid)" />
     </svg>
 
-    <div class="relative flex flex-col gap-6">
-      <BrandMark variant="logo" tone="white" size={112} alt="RÉSIVO" />
+    <!-- Top hairline highlight -->
+    <div class="absolute inset-x-0 top-0 h-px bg-white/15" aria-hidden="true"></div>
 
-      <div class="flex flex-col gap-3">
-        <p class="overline text-on-dark">{t(locale, 'landing.hero_overline')}</p>
-        <h1 class="measure font-display text-h1 text-surface sm:text-display">
-          {t(locale, 'landing.hero_title')}
-        </h1>
-        <p class="measure text-body text-on-dark">
-          {t(locale, 'landing.hero_desc')}
-        </p>
+    <div class="relative grid gap-10 lg:grid-cols-12 lg:items-center">
+      <!-- Left Column: Hero Narrative & Primary Direct Actions -->
+      <div class="flex flex-col gap-6 lg:col-span-7">
+        <BrandMark variant="logo" tone="white" size={112} alt="RÉSIVO" />
+
+        <div class="flex flex-col gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 rounded-input border border-teal-500/30 bg-teal-500/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-teal-300">
+              <span class="h-1.5 w-1.5 rounded-full bg-teal-400" aria-hidden="true"></span>
+              <span>{t(locale, 'landing.hero_overline')}</span>
+            </span>
+            <span class="text-xs font-mono text-on-dark-2">·</span>
+            <span class="font-mono text-xs uppercase tracking-wider text-on-dark-2 font-medium">DOU TLEMCEN</span>
+          </div>
+
+          <h1 class="measure font-display text-h1 text-surface sm:text-display tracking-tight leading-tight">
+            {t(locale, 'landing.hero_title')}
+          </h1>
+          <p class="measure text-body text-on-dark leading-relaxed">
+            {t(locale, 'landing.hero_desc')}
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <a class="btn btn-gradient shadow-sm" href={localizePath(locale, '/register')}>
+            <Icon name="user" size={18} />
+            <span>{t(locale, 'landing.hero_register_cta')}</span>
+          </a>
+          <a
+            class="btn border border-navy-600 bg-navy-800/90 text-on-dark hover:border-navy-500 hover:bg-navy-700 transition-colors"
+            href={localizePath(locale, '/login')}
+          >
+            <Icon name="log-in" size={18} />
+            <span>{t(locale, 'landing.hero_signin_cta')}</span>
+          </a>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 pt-1 text-small text-on-dark-2">
+          <p class="flex items-center gap-2 rounded-input border border-navy-700/80 bg-navy-800/80 px-3 py-1.5 text-xs text-on-dark font-medium shadow-sm">
+            <Icon name="map-pin" size={14} class="text-teal-400 shrink-0" />
+            <span>Direction des Œuvres Universitaires · Cité Universitaire · Tlemcen</span>
+          </p>
+          <p class="tnum flex items-center gap-2 rounded-input border border-navy-700/80 bg-navy-800/80 px-3 py-1.5 text-xs text-on-dark-2 font-medium shadow-sm">
+            <Icon name="clock" size={14} class="text-gold-300 shrink-0" />
+            <span>{t(locale, 'landing.desk_hours')}</span>
+          </p>
+        </div>
       </div>
 
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <a class="btn btn-gradient" href={localizePath(locale, '/register')}>
-          <Icon name="user" size={18} />
-          <span>{t(locale, 'landing.hero_register_cta')}</span>
-        </a>
-        <a
-          class="btn border-on-dark/50 text-on-dark hover:border-on-dark hover:bg-surface/10"
-          href={localizePath(locale, '/login')}
-        >
-          <Icon name="log-in" size={18} />
-          <span>{t(locale, 'landing.hero_signin_cta')}</span>
-        </a>
-      </div>
+      <!-- Right Column: Institutional Verification & Live Session Card -->
+      <div class="lg:col-span-5">
+        <div class="relative overflow-hidden rounded-card border border-white/15 bg-navy-800/95 p-6 text-on-dark shadow-e2 backdrop-blur-sm">
+          <!-- Top accent line -->
+          <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-teal-500 via-teal-400 to-green-500" aria-hidden="true"></div>
 
-      <p class="w-fit rounded-pill bg-navy-900/60 px-3 py-1 text-small font-normal text-on-dark">
-        <span class="flex flex-wrap items-center gap-2">
-          <Icon name="map-pin" size={14} />
-          <span>Direction des Œuvres Universitaires · Cité Universitaire · Tlemcen</span>
-        </span>
-      </p>
+          <!-- Academic Session Header -->
+          <div class="flex items-center justify-between border-b border-navy-700 pb-3.5">
+            <span class="flex items-center gap-2 text-small font-medium text-teal-400">
+              <span class="live-dot live-dot--connected"></span>
+              <span class="tnum tracking-wide">{locale === 'fr' ? 'Session Universitaire 2026–2027' : 'Academic Session 2026–2027'}</span>
+            </span>
+            <span class="rounded-input border border-navy-600 bg-navy-900/90 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-on-dark-2 uppercase">
+              DOU TLEMCEN
+            </span>
+          </div>
+
+          <!-- Dossier Verification Matrix -->
+          <div class="mt-5 flex flex-col gap-4">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="overline text-on-dark-2">{locale === 'fr' ? 'Dossier d’hébergement' : 'Housing application'}</p>
+                <p class="font-display text-h3 text-surface font-semibold">{locale === 'fr' ? 'Vérification du dossier' : 'Intake verification'}</p>
+              </div>
+              <span class="inline-flex items-center gap-1.5 rounded-input border border-teal-500/30 bg-teal-500/15 px-2.5 py-1 text-xs font-semibold text-teal-300 shadow-sm">
+                <Icon name="check" size={14} />
+                <span>{locale === 'fr' ? 'Inscriptions ouvertes' : 'Intake active'}</span>
+              </span>
+            </div>
+
+            <div class="rounded-input border border-navy-700/80 bg-navy-900/70 p-3.5 text-xs text-on-dark-2 shadow-inner">
+              <div class="flex items-center justify-between py-2 border-b border-navy-700/60">
+                <span class="font-medium">{locale === 'fr' ? 'Contrôle fichier' : 'Roster check'}</span>
+                <span class="tnum font-mono text-surface font-semibold bg-navy-800 px-2 py-0.5 rounded-input border border-navy-700">MATRICULE DOU</span>
+              </div>
+              <div class="flex items-center justify-between py-2 border-b border-navy-700/60">
+                <span class="font-medium">{locale === 'fr' ? 'Attribution chambre' : 'Room allocation'}</span>
+                <span class="tnum font-mono text-surface font-semibold bg-navy-800 px-2 py-0.5 rounded-input border border-navy-700">PAVILLON A · B · C</span>
+              </div>
+              <div class="flex items-center justify-between pt-2">
+                <span class="font-medium">{locale === 'fr' ? 'Badge résident' : 'Resident pass'}</span>
+                <span class="inline-flex items-center gap-1 text-xs font-semibold text-teal-300">
+                  <Icon name="shield-check" size={14} />
+                  <span>{locale === 'fr' ? 'Badge officiel' : 'Official pass'}</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Micro-dispatch status note -->
+            <div class="flex items-center justify-between border-t border-navy-700/80 pt-3 text-[11px] font-mono text-on-dark-2">
+              <span>DISPATCH DESK</span>
+              <span class="tnum text-gold-300 font-semibold">{t(locale, 'landing.hotline')}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- How it works — the four real stages of the intake lifecycle -->
-  <section class="mt-12">
-    <div class="flex flex-col gap-1">
-      <h2 class="font-display text-h1 text-ink">{t(locale, 'landing.steps_title')}</h2>
-      <p class="measure text-small font-normal text-muted">
+  <section class="mt-14 sm:mt-16">
+    <div class="flex flex-col gap-1.5">
+      <p class="overline text-muted">{t(locale, 'landing.steps_overline')}</p>
+      <h2 class="font-display text-h1 sm:text-display text-ink tracking-tight">{t(locale, 'landing.steps_title')}</h2>
+      <p class="measure text-small font-normal text-muted leading-relaxed">
         {t(locale, 'landing.steps_desc')}
       </p>
     </div>
@@ -128,13 +214,22 @@ const services = [
     <ol class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {
         steps.map((step, index) => (
-          <li class="card flex flex-col gap-3 p-4 sm:p-6">
-            <span class="flex h-10 w-10 items-center justify-center rounded-input bg-subtle text-teal-600">
-              <Icon name={step.icon} size={20} />
-            </span>
-            <span class="overline">{locale === 'fr' ? `Étape ${index + 1}` : `Step ${index + 1}`}</span>
-            <h3 class="text-h3 text-ink">{step.label}</h3>
-            <p class="text-small font-normal text-muted">{step.copy}</p>
+          <li class="card group flex flex-col justify-between gap-4 p-5 sm:p-6 transition-all duration-200 hover:border-teal-600 hover:shadow-e2">
+            <div class="flex flex-col gap-4">
+              <div class="flex items-center justify-between">
+                <span class="flex h-11 w-11 items-center justify-center rounded-input border border-border bg-subtle text-teal-600 shadow-sm transition-transform duration-200 group-hover:scale-105">
+                  <Icon name={step.icon} size={20} />
+                </span>
+                <span class="tnum font-mono text-xs font-semibold text-teal-600 border border-teal-600/20 bg-teal-500/10 px-2 py-0.5 rounded-input">
+                  0{index + 1}
+                </span>
+              </div>
+              <div>
+                <p class="overline text-muted">{locale === 'fr' ? `Étape 0${index + 1}` : `Step 0${index + 1}`}</p>
+                <h3 class="text-h3 font-semibold text-ink transition-colors group-hover:text-teal-600">{step.label}</h3>
+              </div>
+            </div>
+            <p class="text-small font-normal text-muted leading-relaxed">{step.copy}</p>
           </li>
         ))
       }
@@ -142,23 +237,26 @@ const services = [
   </section>
 
   <!-- What you can do — the services that exist in the portal today -->
-  <section class="mt-12">
-    <div class="flex flex-col gap-1">
-      <h2 class="font-display text-h1 text-ink">{t(locale, 'landing.services_title')}</h2>
-      <p class="measure text-small font-normal text-muted">
+  <section class="mt-14 sm:mt-16">
+    <div class="flex flex-col gap-1.5">
+      <p class="overline text-muted">{t(locale, 'landing.services_overline')}</p>
+      <h2 class="font-display text-h1 sm:text-display text-ink tracking-tight">{t(locale, 'landing.services_title')}</h2>
+      <p class="measure text-small font-normal text-muted leading-relaxed">
         {t(locale, 'landing.services_desc')}
       </p>
     </div>
 
-    <div class="mt-6 grid gap-4 sm:grid-cols-2">
+    <div class="mt-6 grid gap-5 sm:grid-cols-2">
       {
         services.map((service) => (
-          <article class="card flex flex-col gap-3 p-4 sm:p-6">
-            <span class="flex h-10 w-10 items-center justify-center rounded-input bg-subtle text-teal-600">
+          <article class="card group flex flex-col gap-4 p-5 sm:p-6 transition-all duration-200 hover:border-teal-600 hover:shadow-e2">
+            <span class="flex h-11 w-11 items-center justify-center rounded-input border border-border bg-subtle text-teal-600 shadow-sm transition-transform duration-200 group-hover:scale-105">
               <Icon name={service.icon} size={20} />
             </span>
-            <h3 class="text-h3 text-ink">{service.title}</h3>
-            <p class="measure text-small font-normal text-muted">{service.copy}</p>
+            <div>
+              <h3 class="text-h3 font-semibold text-ink transition-colors group-hover:text-teal-600">{service.title}</h3>
+              <p class="measure mt-1.5 text-small font-normal text-muted leading-relaxed">{service.copy}</p>
+            </div>
           </article>
         ))
       }
@@ -166,21 +264,36 @@ const services = [
   </section>
 
   <!-- Trust band — intake policy and the institution that runs it -->
-  <section class="mt-12 flex flex-col gap-4 rounded-hero bg-navy-900 p-6 text-on-dark sm:p-8">
-    <span class="flex h-12 w-12 items-center justify-center rounded-card bg-navy-800 text-gold-300">
-      <Icon name="shield-check" size={24} />
-    </span>
-    <h2 class="font-display text-h2 text-surface">
-      {locale === 'fr' ? 'Règlement d’admission & justificatifs d’identité' : 'Intake policy & identification requirement'}
-    </h2>
-    <p class="measure text-small font-normal text-on-dark">
-      {locale === 'fr'
-        ? 'L’hébergement est strictement réservé aux étudiants régulièrement inscrits figurant sur la liste officielle de l’université pour l’année académique en cours. Les dossiers non confirmés demeurent en attente jusqu’à validation par la Direction des Œuvres Universitaires (DOU) de Tlemcen.'
-        : 'Accommodation is strictly reserved for actively matriculated university students appearing on the official university admission roster for the current academic year. Unmatched registrations remain pending until physical verification by the administration of Direction des Œuvres Universitaires (DOU) Tlemcen.'}
-    </p>
-    <p class="flex flex-wrap items-center gap-2 border-t border-navy-700 pt-4 text-small text-on-dark">
-      <Icon name="map-pin" size={16} class="text-gold-300" />
-      <span>Direction des Œuvres Universitaires · Cité Universitaire · Tlemcen</span>
-    </p>
+  <section class="relative overflow-hidden mt-14 sm:mt-16 rounded-hero border border-navy-700/80 bg-navy-900 p-6 sm:p-10 text-on-dark shadow-e2">
+    <!-- Inset hairline border -->
+    <div class="pointer-events-none absolute inset-2 rounded-[12px] border border-white/5" aria-hidden="true"></div>
+
+    <div class="relative flex flex-col gap-5">
+      <span class="flex h-12 w-12 items-center justify-center rounded-card border border-navy-700 bg-navy-800 text-gold-300 shadow-sm">
+        <Icon name="shield-check" size={24} />
+      </span>
+
+      <div class="flex flex-col gap-2">
+        <h2 class="font-display text-h1 sm:text-h2 text-surface font-semibold tracking-tight">
+          {locale === 'fr' ? 'Règlement d’admission & justificatifs d’identité' : 'Intake policy & identification requirement'}
+        </h2>
+        <p class="measure text-body font-normal text-on-dark leading-relaxed">
+          {locale === 'fr'
+            ? 'L’hébergement est strictement réservé aux étudiants régulièrement inscrits figurant sur la liste officielle de l’université pour l’année académique en cours. Les dossiers non confirmés demeurent en attente jusqu’à validation par la Direction des Œuvres Universitaires (DOU) de Tlemcen.'
+            : 'Accommodation is strictly reserved for actively matriculated university students appearing on the official university admission roster for the current academic year. Unmatched registrations remain pending until physical verification by the administration of Direction des Œuvres Universitaires (DOU) Tlemcen.'}
+        </p>
+      </div>
+
+      <div class="mt-2 flex flex-wrap items-center justify-between gap-4 border-t border-navy-700/80 pt-5 text-small text-on-dark-2">
+        <p class="flex items-center gap-2">
+          <Icon name="map-pin" size={16} class="text-gold-300 shrink-0" />
+          <span>Direction des Œuvres Universitaires · Cité Universitaire · Tlemcen</span>
+        </p>
+        <p class="tnum flex items-center gap-2 font-mono text-xs text-on-dark font-medium">
+          <Icon name="phone" size={14} class="text-teal-400 shrink-0" />
+          <span>{t(locale, 'landing.hotline')}</span>
+        </p>
+      </div>
+    </div>
   </section>
 </Layout>

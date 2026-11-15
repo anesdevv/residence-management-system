@@ -1,0 +1,11 @@
+{
+  "name": "unreasonable-craft-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Capture, frame-by-frame, and measurement tools for the unreasonable-craft skill.",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "playwright-core": "1.63.0",
+    "sharp": "0.35.5"
+  }
+}

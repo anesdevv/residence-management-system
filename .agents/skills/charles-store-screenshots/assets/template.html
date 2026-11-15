@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<!--
+name: v01 · Short name
+lane: clean / editorial
+hook: one photo across both
+move: the number is the hero
+frames:
+  1 | Hook headline, part one        | photo of the person, crosses into 2
+  2 | Hook headline, part two        | home screen in a phone, photo continues behind it
+  3 | Headline with *one* emphasis   | tracker, cropped to the payoff
+-->
+<title>Set name</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+  /* the set's own system: palette, faces, sizes, emphasis */
+  :root { --bg: #0b0c0c; --ink: #f3f5ef; --accent: #42e66c; }
+  .frame { background: var(--bg); }
+  .hd { color: var(--ink); font-family: "Your Face", sans-serif; font-size: 48px; line-height: 1; }
+  .hd em { font-style: normal; color: var(--accent); }
+</style></head>
+<body>
+<div class="strip">
+  <section class="frame" data-name="01"></section>
+  <section class="frame" data-name="02"></section>
+  <section class="frame" data-name="03"></section>
+
+  <!-- one element across the hook seam: placed in strip coordinates -->
+  <img class="at" style="--f:1;--x:-60px;--y:180px;width:620px" src="art/person.png" alt="">
+  <h1 class="hd at" style="--f:1;--x:36px;--y:64px">Hook line</h1>
+  <div class="phone at" style="--f:2;--x:45px;--y:220px;--w:330px">
+    <div class="glass"><img class="screen" src="ui/home.png" alt=""><i class="island"></i></div>
+    <i class="key l a"></i><i class="key l v1"></i><i class="key l v2"></i><i class="key r s"></i></div>
+  <h2 class="hd at" style="--f:3;--x:36px;--y:64px">Know <em>exactly</em> what to lift</h2>
+  <div class="crop at" style="--f:3;--x:30px;--y:240px;width:380px;height:520px;--s:1.6;--ox:-40px;--oy:-260px">
+    <img src="ui/tracker.png" alt=""></div>
+</div>
+</body></html>

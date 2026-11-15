@@ -1,0 +1,45 @@
+<!-- BLUEPRINT phone-notify, wide (1280x630, the 2:1 card; fills the frame edge to edge): an iPhone lock screen,
+     zoomed so the notifications read, with the date and the big time on top. Three notifications slide down on
+     their words, the newest on top pushing the others down (iOS list style).
+     Use for: "you get paid", "an order comes in", "Claude pings you when it's done", any alert that arrives.
+     Edit: the wallpaper (put a photo in img.wb-wall's src, or keep the CSS gradient), the date and time, the three
+     cards (newest first in the HTML: app icon img, app name, time, text; a real icon replaces data-ph), T.n1-T.n3.
+     For the stack style (newest in front, older ones peeking behind) add class wb-stack to .wb-notifs and write
+     the cards oldest first. Sized in iOS points: --pt is the px per point.
+     mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    #SCENE-lock { --pt: 2px; }
+    #SCENE-lock .wb-lock-date { top: 14px; font-size: 30px; }
+    #SCENE-lock .wb-lock-time { top: 50px; font-size: 118px; line-height: 1; }
+    #SCENE-stack { left: 150px; right: 150px; top: 196px; gap: 12px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div class="wb-lock" id="SCENE-lock">
+      <img class="wb-wall" alt="">
+      <div class="wb-lock-date">Friday, August 21</div>
+      <div class="wb-lock-time">9:41</div>
+      <div class="wb-notifs" id="SCENE-stack">
+        <div class="wb-notif" id="SCENE-n3"><img class="wb-appicon" data-ph="logo:claude" alt="">
+          <div class="wb-n-main"><div class="wb-n-top"><b class="wb-n-app">Claude</b><span class="wb-n-time">now</span></div>
+            <div class="wb-n-text">Your weekly brief is ready: 10 hooks to post next</div></div></div>
+        <div class="wb-notif" id="SCENE-n2"><img class="wb-appicon" data-ph="logo:shopify" alt="">
+          <div class="wb-n-main"><div class="wb-n-top"><b class="wb-n-app">Shopify</b><span class="wb-n-time">now</span></div>
+            <div class="wb-n-text">Order #1280 · $49.00 from Online Store</div></div></div>
+        <div class="wb-notif" id="SCENE-n1"><img class="wb-appicon" data-ph="logo:stripe" alt="">
+          <div class="wb-n-main"><div class="wb-n-top"><b class="wb-n-app">Stripe</b><span class="wb-n-time">now</span></div>
+            <div class="wb-n-text">Payment received · $5.00 from a new subscriber</div></div></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const T = { n1: 0.3, n2: 1.05, n3: 1.8 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fills [data-name] text, icons and image placeholders
+    AR.notify(tl, "#SCENE-stack", "#SCENE-n1", T.n1 - 0.08);
+    AR.notify(tl, "#SCENE-stack", "#SCENE-n2", T.n2 - 0.08);
+    AR.notify(tl, "#SCENE-stack", "#SCENE-n3", T.n3 - 0.08);
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

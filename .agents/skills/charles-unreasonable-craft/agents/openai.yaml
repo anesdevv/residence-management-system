@@ -1,0 +1,6 @@
+interface:
+  display_name: "Unreasonable Craft"
+  short_description: "Award-level web and app design, verified frame by frame"
+  default_prompt: "Use $charles-unreasonable-craft to design this to an Awwwards Site of the Day bar."
+policy:
+  allow_implicit_invocation: true

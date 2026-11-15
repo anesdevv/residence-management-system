@@ -1,0 +1,30 @@
+{
+  "video": "10 niche animation hacks (kit example: line 1)",
+  "format": "hack reel",
+  "slot": { "name": "hack-card", "w": 1080, "h": 960, "band": [300, 890], "scale": 0.72 },
+  "render": { "fps": 60, "scale": 2 },
+  "ground": "#e6e9ee",
+  "agents": [{ "label": "Agent", "color": "#0079CD" }],
+  "lines": [
+    {
+      "id": "01",
+      "say": "Don't scale from zero. Scale from 0.97.",
+      "term": "Scale from 0.97",
+      "takeaway": "Enter from 0.97, not from 0",
+      "change": { "word": "Scale", "occurrence": 2 },
+      "assets": [
+        {
+          "id": "01-scale-from-097",
+          "form": "flip",
+          "why": "A motion flaw with a big difference (a burst out of a dot against a fade), so it flips in place on one crop",
+          "dur": 9.0,
+          "tFix": 4.5,
+          "win": { "b": 1.1, "a": 1.5 },
+          "words": [{ "text": "the four-line keyframes recipe", "kind": "pause", "in": 0, "out": 9.0 }],
+          "cursor": [{ "agent": "Agent", "action": "double", "target": "the 0 of scale", "t": 4.5 }]
+        }
+      ]
+    }
+  ],
+  "clicks": [{ "line": "01", "t": 4.5 }]
+}

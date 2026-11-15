@@ -1,0 +1,78 @@
+<!-- BLUEPRINT claims-board: a list whose items get judged one by one: pills flip from waiting to a verdict,
+     dropped items get struck through, the owner of each claim reacts below, a result line lands at the end.
+     Use for: "defend every claim", "until only the best is left", checks, audits, rankings, A/B results.
+     Edit: the header, the rows (text, owner icon, verdict pill), VERDICTS (row, verdict, time, who reacts),
+     the result line, T.result, T.end (the beat length).
+     Length 1.8-4 s. mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    #SCENE-cam { position: absolute; inset: 0; transform-origin: 50% 40%; }
+    #SCENE-app { left: 40px; top: 290px; width: 1000px; }
+    #SCENE-list { padding: 14px 40px 30px; }
+    .SCENE-row { position: relative; display: flex; align-items: center; gap: 22px; padding: 26px 0; border-top: 2px solid var(--app-line); font-size: 42px; }
+    .SCENE-row:first-child { border-top: 0; }
+    .SCENE-who { width: 46px; height: 46px; flex: none; object-fit: contain; image-rendering: pixelated; }
+    .SCENE-text { position: relative; flex: 1; }
+    .SCENE-verdict { position: relative; width: 260px; height: 56px; flex: none; }
+    .SCENE-verdict .pill { position: absolute; right: 0; top: 0; }
+    #SCENE-result { position: absolute; left: 40px; top: 880px; width: 1000px; display: flex; align-items: center; gap: 20px;
+      background: #fff6db; border: 3px solid #f0d48a; border-radius: 26px; padding: 26px 34px; font-family: var(--sans); font-weight: 700; font-size: 42px; }
+    #SCENE-result .px { font-size: 54px; color: #c9a227; }
+    #SCENE-a { left: 110px; top: 1050px; width: 420px; height: 350px; }
+    #SCENE-b { left: 560px; top: 1020px; width: 380px; height: 388px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1080" data-height="1920">
+    <div class="stage" data-layout-ignore></div>
+    <div id="SCENE-cam" data-layout-allow-overflow>
+      <div class="app" id="SCENE-app">
+        <div class="app-bar"><span style="color:var(--ink);font-weight:700">Audit</span><span>Step 2 · Verify</span></div>
+        <div id="SCENE-list">
+          <div class="SCENE-row" id="SCENE-r1"><img class="SCENE-who" src="assets/cast/claude/ref.png" /><span class="SCENE-text">Ships in two weeks<i class="strike"></i></span>
+            <span class="SCENE-verdict"><span class="pill wait">Checking…</span><span class="pill bad">✕ Dropped</span></span></div>
+          <div class="SCENE-row" id="SCENE-r2"><img class="SCENE-who" src="assets/cast/gpt/ref.png" /><span class="SCENE-text">Costs $40 a month<i class="strike"></i></span>
+            <span class="SCENE-verdict"><span class="pill wait">Checking…</span><span class="pill bad">✕ Dropped</span></span></div>
+          <div class="SCENE-row" id="SCENE-r3"><img class="SCENE-who" src="assets/cast/claude/ref.png" /><span class="SCENE-text">Works offline<i class="strike"></i></span>
+            <span class="SCENE-verdict"><span class="pill wait">Checking…</span><span class="pill ok">✓ Verified</span></span></div>
+          <div class="SCENE-row" id="SCENE-r4"><img class="SCENE-who" src="assets/cast/gpt/ref.png" /><span class="SCENE-text">Supports 12 languages<i class="strike"></i></span>
+            <span class="SCENE-verdict"><span class="pill wait">Checking…</span><span class="pill ok">✓ Verified</span></span></div>
+        </div>
+      </div>
+      <div id="SCENE-result"><span class="px">★</span>2 of 4 claims hold up</div>
+      <div class="sprite" id="SCENE-a">
+        <img class="pose on" data-pose="fight_ready" src="assets/cast/claude/poses/fight_ready.png" />
+        <img class="pose" data-pose="fight_hurt" src="assets/cast/claude/poses/fight_hurt.png" />
+        <img class="pose" data-pose="fight_victory" src="assets/cast/claude/poses/fight_victory.png" />
+      </div>
+      <div class="sprite" id="SCENE-b">
+        <img class="pose on" data-pose="fight_ready" src="assets/cast/gpt/poses/fight_ready.png" />
+        <img class="pose" data-pose="fight_hurt" src="assets/cast/gpt/poses/fight_hurt.png" />
+        <img class="pose" data-pose="fight_victory" src="assets/cast/gpt/poses/fight_victory.png" />
+      </div>
+    </div>
+  </div>
+  <script>
+    // [row, verdict ("bad" or "ok"), scene time, the cast member who owns the claim]
+    const VERDICTS = [["#SCENE-r1", "bad", 0.55, "#SCENE-a"], ["#SCENE-r2", "bad", 0.85, "#SCENE-b"],
+                      ["#SCENE-r3", "ok", 1.15, "#SCENE-a"], ["#SCENE-r4", "ok", 1.4, "#SCENE-b"]];
+    const T = { result: 1.9, end: 2.4 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] elements from assets/names.js
+    AR.settle(tl, "#SCENE-app", 0);
+    VERDICTS.forEach(([row, kind, t, who], i) => {
+      tl.set(`${row} .pill.wait`, { opacity: 0 }, t);
+      AR.pop(tl, `${row} .pill.${kind}`, t, { from: 0.6, dur: 0.24 });
+      AR.pose(tl, who, kind === "bad" ? "fight_hurt" : "fight_victory", t);
+      AR.pose(tl, who, "fight_ready", t + 0.36);
+      if (kind === "bad") {
+        AR.strike(tl, `${row} .strike`, t + 0.05);
+        tl.to(`${row} .SCENE-text`, { color: "#b9b4ab", duration: 0.2 }, t + 0.1);
+        AR.shake(tl, who, t, { amp: 14, dur: 0.22, seed: i + 3 });
+      } else {
+        AR.hop(tl, who, t, { h: 44, dur: 0.28 });
+      }
+    });
+    AR.pop(tl, "#SCENE-result", T.result, { from: 0.7 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

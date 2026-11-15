@@ -1,0 +1,135 @@
+<!-- BLUEPRINT author-card, tall card (laid out at 1280x1550, the card that covers the face; fills it edge to edge; the same scene as the wide blueprint, which lays itself out for both):
+     "by Robert Cialdini", "from Harry Dry", "Alex Hormozi's". The real person in a gold picture frame hanging in a
+     dark gallery: a credited photo from source.py photo (or a capture of the person's own site, source.py page), its
+     credit line readable in the photo's corner the whole time. The frame is on screen from the cut and sways; the
+     host points up at it; on the name the nameplate slams down beside it (under it in a tall card) with a shake and
+     sparkles glint on the frame; an optional line under the name ("author of Influence").
+     Use for: the person behind a resource, a quote's author, an investor or founder the voice names. Real people are
+     always real photos with their credit, never generated.
+     Edit: PHOTO (src, size: [w, h] its pixels, focus: the object-position that keeps the face in the frame, "50% 22%";
+     credit: the credit line, exactly as source.py wrote it; site: true for a page capture, shown from its top), PLATE
+     (a generated scene behind, or null for the code-drawn gallery), HOST ("critter", "pal", a cast.py character's
+     folder such as "charles", or null), LOOK (role, colour; h), LOOT (null, or {n, have, items}: the bar stays on top),
+     the name and the line ([data-name] "person" and "about" in names.js, or edit the spans; LINE null for none), and
+     the T times: T.name (the name's word: the plate slams), T.end. Key text: the nameplate (60 px or more on the tall card);
+     the credit is small but stays readable (21 px or more on the card, 34 on a tall card). Needs cast.js. mount.py copies it to
+     compositions/<id>.html with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #2a1a24; }
+    #SCENE-wall { position: absolute; inset: 0; background: linear-gradient(#4a2433 0%, #2f1823 80%); }
+    #SCENE-wall::before { content: ""; position: absolute; left: 0; right: 0; top: 0; bottom: 0; opacity: 0.35;
+      background-image: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0 4px, transparent 4px 64px); }
+    #SCENE-floor { position: absolute; left: 0; right: 0; bottom: 0; background: #3b2418; border-top: 10px solid #5a3a26; }
+    #SCENE-shake, #SCENE-stage { position: absolute; left: 0; top: 0; }
+    #SCENE-frame { position: absolute; background: #1a1426; transform-origin: 50% 0%;
+      box-shadow: 0 0 0 10px #f7c531, 0 0 0 16px #b97a10, 0 0 0 22px #ffd96b, 0 0 0 28px #8a5a0c, 0 22px 0 26px rgba(0, 0, 0, 0.35); }
+    #SCENE-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    #SCENE-credit { position: absolute; font-family: var(--sans); color: rgba(255, 255, 255, 0.95); background: rgba(0, 0, 0, 0.6); padding: 4px 10px; border-radius: 6px; white-space: nowrap; }
+    #SCENE-wire { position: absolute; overflow: visible; }
+    #SCENE-plate { position: absolute; white-space: nowrap; line-height: 1; color: #1d1b2e; background: #f7c531; padding: 0.22em 0.5em 0.18em; z-index: 6;
+      box-shadow: 0 0 0 6px #1d1b2e, 0 12px 0 6px rgba(0, 0, 0, 0.35); }
+    #SCENE-line { position: absolute; white-space: nowrap; font-family: var(--sans); font-weight: 700; color: #f3e6d2; line-height: 1.1; }
+    .SCENE-spark { position: absolute; opacity: 0; z-index: 7; pointer-events: none; }
+    .SCENE-spark svg { width: 100%; height: 100%; overflow: visible; shape-rendering: crispEdges; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="1550">
+    <div id="SCENE-wall" data-layout-ignore></div>
+    <div id="SCENE-floor" data-layout-ignore></div>
+    <div id="SCENE-shake" data-layout-allow-overflow>
+      <div id="SCENE-stage">
+        <svg id="SCENE-wire" data-layout-ignore></svg>
+        <div id="SCENE-frame"><img id="SCENE-photo" alt="" /><div id="SCENE-credit"></div></div>
+        <div class="px" id="SCENE-plate"><span data-name="person">Robert Cialdini</span></div>
+        <div id="SCENE-line"><span data-name="about">author of Influence</span></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const T = { name: 0.35, end: 1.7 };
+    const PHOTO = { src: "assets/cast/props/easel.png", size: [291, 466], focus: "50% 22%", credit: "Photo: Name, CC BY-SA 4.0", site: false };
+    const PLATE = null;                              // a generated scene behind, or null for the gallery
+    const HOST = "critter";                          // "critter", "pal", a cast.py character ("charles"), or null
+    const LOOK = { role: null, color: null, h: 250 };
+    const LINE = true;                               // the line under the name (data-name "about"); false for none
+    const LOOT = null;                               // { n: 5, have: 1, items: FACTS.loot }: the bar on top, unchanged
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    const $ = (id) => document.getElementById("SCENE-" + id);
+    const rootEl = document.querySelector('[data-composition-id="SCENE"][data-width]');
+    const W = +(rootEl && rootEl.dataset.width) || 1280, H = +(rootEl && rootEl.dataset.height) || 630, tall = H > W * 0.9;
+    ["shake", "stage"].forEach((id) => Object.assign($(id).style, { width: W + "px", height: H + "px" }));
+    if (PLATE) { const bg = document.createElement("img"); bg.className = "bg-art pixel"; bg.src = PLATE; bg.alt = ""; bg.setAttribute("data-layout-ignore", ""); rootEl.insertBefore(bg, $("shake")); $("wall").style.display = "none"; $("floor").style.display = "none"; }
+    const stage = $("stage"), floorY = tall ? H - 100 : H - 40;
+    $("floor").style.top = floorY + "px";
+    // ---- the frame: a portrait (or a page, wider) as big as the frame allows ----
+    const top0 = (LOOT ? (tall ? 300 : 158) : (tall ? 120 : 64)), aspect = PHOTO.site ? 1.25 : Math.min(1.1, Math.max(0.68, PHOTO.size[0] / PHOTO.size[1]));
+    let fh = tall ? Math.min(880, floorY - 300 - top0) : H - top0 - 70, fw = fh * aspect;
+    if (!tall && fw > 520) { fw = 520; fh = fw / aspect; }
+    if (tall && fw > W - 240) { fw = W - 240; fh = fw / aspect; }
+    const fx = tall ? (W - fw) / 2 : (HOST ? 330 : 120), fy = top0;
+    Object.assign($("frame").style, { left: fx + "px", top: fy + "px", width: fw + "px", height: fh + "px" });
+    const photo = $("photo");
+    photo.src = PHOTO.src;
+    photo.style.objectPosition = PHOTO.site ? "50% 0%" : PHOTO.focus || "50% 30%";
+    const credit = $("credit");
+    credit.textContent = PHOTO.credit || "";
+    if (!PHOTO.credit) credit.style.display = "none";
+    credit.style.fontSize = (tall ? 34 : 21) + "px";
+    Object.assign(credit.style, { right: (tall ? 14 : 8) + "px", bottom: (tall ? 14 : 8) + "px" });
+    if (credit.offsetWidth > fw - 16) credit.style.fontSize = parseFloat(credit.style.fontSize) * (fw - 16) / credit.offsetWidth + "px";
+    // the wire it hangs from
+    const wire = $("wire");
+    Object.assign(wire.style, { left: 0, top: 0, width: W + "px", height: H + "px" });
+    if (!LOOT) wire.innerHTML = `<path d="M ${fx + fw * 0.18} ${fy - 26} L ${fx + fw / 2} ${fy - (tall ? 90 : 46)} L ${fx + fw * 0.82} ${fy - 26}" fill="none" stroke="#c9a24a" stroke-width="${tall ? 6 : 4}"/>` +
+      `<rect x="${fx + fw / 2 - 8}" y="${fy - (tall ? 98 : 54)}" width="16" height="16" fill="#8a5a0c"/>`;
+    // ---- the nameplate and the line: beside the frame (a wide card), under it (a tall card) ----
+    const plate = $("plate"), line = $("line");
+    plate.style.fontSize = (tall ? 84 : 52) + "px";
+    line.style.fontSize = (tall ? 46 : 30) + "px";
+    if (!LINE) line.style.display = "none";
+    const fit = (el, maxW) => { if (el.offsetWidth > maxW) el.style.fontSize = parseFloat(el.style.fontSize) * maxW / el.offsetWidth + "px"; };
+    if (tall) {
+      // under the frame; beside the host when there is one (it stands in the bottom-left corner)
+      const px0 = HOST ? 380 : 60;
+      fit(plate, W - 60 - px0); fit(line, W - 70 - px0);
+      const py = fy + fh + 80, cxp = HOST ? px0 + (W - 60 - px0) / 2 : W / 2;
+      Object.assign(plate.style, { left: cxp - plate.offsetWidth / 2 + "px", top: py + "px" });
+      Object.assign(line.style, { left: cxp - line.offsetWidth / 2 + "px", top: py + plate.offsetHeight + 30 + "px" });
+    } else {
+      const px0 = fx + fw + 80;
+      fit(plate, W - 50 - px0); fit(line, W - 50 - px0);
+      const py = fy + fh / 2 - plate.offsetHeight / 2 - (LINE ? 24 : 0);
+      Object.assign(plate.style, { left: px0 + "px", top: py + "px" });
+      Object.assign(line.style, { left: px0 + 4 + "px", top: py + plate.offsetHeight + 26 + "px" });
+    }
+    // ---- the host points up at the frame ----
+    const host = HOST ? AR.cast.host(stage, HOST, Object.assign({ id: "SCENE-host", u: tall ? 24 : 15, x: tall ? 190 : fx - 150, y: floorY + 4, eyes: "look-up", arms: "point" },
+      LOOK.color ? { color: LOOK.color } : {}, LOOK.role ? { role: LOOK.role } : {},
+      HOST === "critter" || HOST === "pal" ? {} : { h: tall ? LOOK.h * 1.7 : LOOK.h, pose: "point" })) : null;
+    if (host) AR.crit.alive(tl, host, 0, T.end, { bob: true, amp: 0.15, seed: 6 });
+    if (LOOT) AR.loot.bar(stage, { id: "SCENE-loot", n: LOOT.n, have: LOOT.have, items: LOOT.items, size: tall ? 120 : 64, x: W / 2, center: true, y: tall ? 50 : 22 });
+    // ---- it hangs and sways a little from the cut ----
+    const fr = $("frame");
+    for (let i = 0; i * 0.5 < T.end; i++) tl.to(fr, { rotation: i % 2 ? -0.8 : 0.8, duration: 0.5, ease: "sine.inOut" }, i * 0.5);
+    // ---- the name: the plate slams, a shake, sparkles glint on the frame ----
+    tl.fromTo(plate, { opacity: 0, scale: 2.4, rotation: -5 }, { opacity: 1, scale: 1, rotation: -2, duration: 0.1, ease: "power4.in" }, T.name - 0.1);
+    tl.set(plate, { scaleX: 1.1, scaleY: 0.9 }, T.name);
+    tl.to(plate, { scaleX: 1, scaleY: 1, duration: 0.18, ease: "back.out(3)" }, T.name);
+    if (LINE) tl.fromTo(line, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.16, ease: "power3.out" }, T.name + 0.16);
+    AR.shake(tl, "#SCENE-shake", T.name, { amp: tall ? 10 : 7, dur: 0.2 });
+    if (host) { AR.crit.eyes(tl, host, T.name, "happy"); AR.hop(tl, host, T.name + 0.02, { h: tall ? 50 : 26, dur: 0.26 }); }
+    [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([a, b], i) => {
+      const s = document.createElement("div"), sz = tall ? 56 : 34;
+      s.className = "SCENE-spark";
+      s.setAttribute("data-layout-ignore", "");
+      s.innerHTML = '<svg viewBox="0 0 7 7"><rect x="3" y="0" width="1" height="7" fill="#fff"/><rect x="0" y="3" width="7" height="1" fill="#fff"/><rect x="2" y="2" width="3" height="3" fill="#fff"/></svg>';
+      Object.assign(s.style, { left: fx - 22 + a * (fw + 44) - sz / 2 + "px", top: fy - 22 + b * (fh + 44) - sz / 2 + "px", width: sz + "px", height: sz + "px" });
+      stage.appendChild(s);
+      const tk = T.name + 0.05 + i * 0.07;
+      tl.fromTo(s, { opacity: 0, scale: 0.2 }, { opacity: 1, scale: 1.1, duration: 0.1, ease: "back.out(3)" }, tk);
+      tl.to(s, { opacity: 0, scale: 0.5, duration: 0.14 }, tk + 0.2);
+    });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

@@ -44,3 +44,35 @@ const box = isStatic ? `card flex items-start gap-3 p-3 sm:p-4 shadow-e2 ${class
     <Icon name="x" size={16} />
   </button>
 </div>
+
+<style>
+  /* Toast entrance craft — charles-ux-animation:
+     Authentic entrance curve: cubic-bezier(0.32, 0.72, 0, 1) over 220ms.
+     Entering at scale(0.97) and translateY(8px) to scale(1) and translateY(0).
+     Animates strictly transform and opacity, never layout geometry.
+     Honours prefers-reduced-motion completely.
+  */
+  :global(.toast) {
+    animation: rs-toast-in 220ms cubic-bezier(0.32, 0.72, 0, 1);
+    will-change: transform, opacity;
+  }
+
+  @keyframes rs-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.toast) {
+      animation: none !important;
+      transform: none !important;
+      opacity: 1 !important;
+    }
+  }
+</style>

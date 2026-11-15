@@ -1,0 +1,117 @@
+/* critter.css: the code-drawn Claude critter (critter.js renders it), its props, bubbles and emotes.
+   Size a critter with --u, the pixels per art pixel: it is 12u x 8u (body 8x6, side nubs, legs). --u 16px is
+   Jake's card scale at 1280x630 (192 px wide); 26px suits a title card; 53px is a close-up. Position it with
+   left/top like any sprite box; its feet are on the box's bottom edge. */
+
+.critter {
+  position: absolute;
+  width: calc(var(--u, 16px) * 12);
+  height: calc(var(--u, 16px) * 8);
+  transform-origin: 50% 100%;
+  --crit-color: #D87454;
+  --crit-eye: #161512;
+  --crit-ground: #D9CEC7;
+}
+.critter > .crit-ground {
+  position: absolute; z-index: 0; border-radius: 50%; background: var(--crit-ground);
+  left: calc(var(--u, 16px) * 0.85); width: calc(var(--u, 16px) * 10.3);
+  top: calc(var(--u, 16px) * 7.55); height: calc(var(--u, 16px) * 0.9);
+}
+.critter > .crit-mud {
+  position: absolute; z-index: 0; border-radius: 50%; background: #6B4A2E; opacity: 0;
+  left: calc(var(--u, 16px) * -0.5); width: calc(var(--u, 16px) * 13);
+  top: calc(var(--u, 16px) * 7.3); height: calc(var(--u, 16px) * 1.4);
+  box-shadow: inset 0 calc(var(--u, 16px) * -0.3) 0 #4E3420;
+}
+.critter > .crit-body { position: absolute; inset: 0; z-index: 1; transform-origin: 50% 100%; }
+.critter svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; shape-rendering: crispEdges; }
+.critter .crit-svg { z-index: 2; }
+.critter .crit-worn { position: absolute; }
+.critter .crit-worn[data-slot="back"] { z-index: 1; }
+.critter .crit-worn[data-slot="body"] { z-index: 3; }
+.critter .crit-worn[data-slot="face"] { z-index: 4; }
+.critter .crit-worn[data-slot="ears"] { z-index: 5; }
+.critter .crit-worn[data-slot="head"] { z-index: 6; }
+.critter .crit-worn[data-slot="ground"] { z-index: 1; }
+.critter .crit-move { position: absolute; inset: 0; transform-origin: 50% 100%; }
+.critter .crit-move > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.critter .crit-hand { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 7; }
+.critter .crit-hand[data-hand="l"] { z-index: 6; }
+.critter .crit-item, .critter .crit-grip { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
+.critter .crit-grip > img { position: absolute; display: block; max-width: none; image-rendering: pixelated; }
+.critter .crit-fx { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 9; overflow: visible; }
+.critter .crit-fx > * { position: absolute; }
+
+/* speech bubbles: white, a pixel-notched ink outline, a stepped tail, mixed-case pixel text (.pxt); generated characters
+   (cast.js, .cast-actor) use the same bubble */
+:is(.critter, .cast-actor) .crit-say { position: absolute; width: 0; height: 0; z-index: 12; transform-origin: 0 0; opacity: 0; }
+:is(.critter, .cast-actor) .crit-say-box {
+  position: absolute; left: 0; bottom: 14px; width: max-content; max-width: 460px; white-space: normal; text-align: center;
+  font-family: var(--pixel-text, "Pixelify Sans", monospace); font-weight: 400; font-size: 32px; line-height: 1.12; font-variant-ligatures: none;
+  color: var(--ink, #1f1e1c); background: #fff; padding: 10px 18px 12px;
+  box-shadow: 0 -4px 0 0 var(--ink, #1f1e1c), 0 4px 0 0 var(--ink, #1f1e1c), -4px 0 0 0 var(--ink, #1f1e1c), 4px 0 0 0 var(--ink, #1f1e1c);
+}
+:is(.critter, .cast-actor) .crit-say-tail { position: absolute; left: -12.5px; bottom: 0; width: 25px; height: 15px; overflow: visible; }
+:is(.critter, .cast-actor) .crit-dots { display: flex; gap: 9px; padding: 9px 4px 5px; }
+:is(.critter, .cast-actor) .crit-dots i { display: block; width: 9px; height: 9px; background: var(--ink, #1f1e1c); opacity: 0.25; }
+
+/* emotes and fx bits (! ? sweat heart spark, dust, dirt, drops) */
+.critter .crit-emote { opacity: 0; transform-origin: 50% 100%; }
+.critter svg.crit-emote { width: auto; height: auto; }   /* keep the svg's own size (the `.critter svg` rule would make it 0x0) */
+.critter .crit-bit { width: calc(var(--u, 16px) * 0.375); height: calc(var(--u, 16px) * 0.375); opacity: 0; }
+
+/* roster tiles (the roster blueprint): white, rounded, a soft shadow, a bold label */
+.crit-tile {
+  position: absolute; background: #fff; border-radius: 18px;
+  box-shadow: 0 8px 22px rgba(31, 30, 28, 0.10), 0 1px 3px rgba(31, 30, 28, 0.07);
+}
+.crit-tile-label {
+  position: absolute; left: 8px; right: 8px; text-align: center; font-family: var(--sans, "Inter", sans-serif);
+  font-weight: 700; color: var(--ink, #1f1e1c); line-height: 1.08; letter-spacing: -0.01em;
+}
+
+/* crowd NPCs (AR.crit.crowd): a box per person, feet on its bottom edge. The crowd's own layer keeps its z-indexes (back
+   row, front row, paddles) to itself, so UI added to the parent later sits in front of the crowd */
+.crit-crowd { position: absolute; left: 0; top: 0; width: 0; height: 0; isolation: isolate; }
+.crit-npc { position: absolute; transform-origin: 50% 100%; }
+.crit-npc img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; image-rendering: pixelated; }
+
+/* ---------- the pal (shape "pal"): the neutral host, a round bun on two feet. Its shading follows --crit-color ---------- */
+.critter {
+  --crit-shade: color-mix(in srgb, var(--crit-color) 74%, #1d1430);
+  --crit-shine: color-mix(in srgb, var(--crit-color) 52%, #ffffff);
+  --crit-blush: color-mix(in srgb, var(--crit-color) 42%, #ff5d7d);
+}
+.critter[data-shape="pal"] { --crit-color: #45BFA0; }
+.critter[data-shape="pal"] > .crit-ground { left: calc(var(--u, 16px) * 1.6); width: calc(var(--u, 16px) * 8.8); }
+.critter .crit-clip { position: absolute; inset: 0; }
+
+/* text on a prop's blank face (the stop sign), and props standing on their own in a scene (AR.crit.put) */
+.crit-label {
+  position: absolute; display: flex; align-items: center; justify-content: center; text-align: center; white-space: nowrap;
+  font-family: var(--sans, "Inter", sans-serif); font-weight: 700; letter-spacing: 0.02em; line-height: 1; pointer-events: none;
+}
+.crit-thing { position: absolute; transform-origin: 50% 100%; }
+.crit-thing > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+
+/* crowd signs (AR.crit.signs): a board on a stick behind a person's head */
+.crit-sign { position: absolute; transform-origin: 50% 100%; opacity: 0; }
+.crit-sign-board {
+  position: absolute; left: 0; top: 0; border-style: solid; overflow: hidden; transform-origin: 50% 100%;
+  display: grid; place-items: center;
+}
+.crit-sign-face {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--sans, "Inter", sans-serif);
+  font-weight: 700; letter-spacing: 0.01em; line-height: 1; white-space: nowrap;
+}
+.crit-sign-face img { width: 78%; height: 78%; object-fit: contain; }
+.crit-sign-face svg { width: 62%; height: 80%; overflow: visible; }
+.crit-sign-stick { position: absolute; background: #9A6A3A; border: 3px solid #4D3016; border-top: 0; }
+
+/* the roster's count chip ("1 SKILL" -> "11 SKILLS") */
+.crit-count {
+  position: absolute; display: flex; align-items: center; gap: 0.28em; white-space: nowrap; transform-origin: 50% 50%;
+  font-family: var(--pixel, "Silkscreen", monospace); font-weight: 700; letter-spacing: 0.04em; line-height: 1; text-transform: uppercase;
+  color: #fff; background: var(--charcoal, #2b2a28); border-radius: 0.36em; padding: 0.22em 0.5em 0.26em; box-shadow: 0 0.12em 0 rgba(0, 0, 0, 0.22);
+}
+.crit-count b { color: var(--gold, #f7c531); font-weight: 700; }

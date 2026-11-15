@@ -16,8 +16,8 @@ import ResidentPass from '../../components/ResidentPass.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import InlineBanner from '../../components/InlineBanner.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
-
-import { localizePath, t, type SupportedLocale } from '../../lib/i18n';
+import { getCategoryMeta } from '../../lib/maintenance';
+import { localizePath, t, formatDate, type SupportedLocale } from '../../lib/i18n';
 
 export const prerender = false;
 const locale: SupportedLocale = Astro.locals.locale || 'en';
@@ -103,8 +103,6 @@ const statusPill = isActive
       : null;
 
 const subtitle = [student?.faculty, student?.university || 'Université de Tlemcen'].filter(Boolean).join(' · ');
-
-import { getCategoryMeta } from '../../lib/maintenance';
 ---
 
 <Layout title={locale === 'fr' ? 'Tableau de bord — RÉSIVO' : 'Dashboard — RÉSIVO'} activeNav="dashboard">
@@ -116,7 +114,11 @@ import { getCategoryMeta } from '../../lib/maintenance';
     )
   }
 
-  <PageHeader title={t(locale, 'dashboard.welcome', { name: fullName })} overline="Cité Universitaire Tlemcen" subtitle={subtitle}>
+  <PageHeader
+    title={t(locale, 'dashboard.title')}
+    overline="Cité Universitaire Tlemcen"
+    subtitle={[fullName, subtitle].filter(Boolean).join(' · ')}
+  >
     {
       statusPill && (
         <Fragment slot="actions">
@@ -133,26 +135,27 @@ import { getCategoryMeta } from '../../lib/maintenance';
   {/* Pending — amber tokens + the 3-step review tracker */}
   {
     isPending && (
-      <section class="hero-card border border-pending-line bg-pending-bg p-4 sm:p-6">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-pending-line bg-surface text-pending">
+      <section class="hero-card border border-pending-line bg-pending-bg p-5 sm:p-7 shadow-e1">
+        <div class="flex flex-col gap-5 sm:flex-row sm:items-start">
+          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-pending-line bg-surface text-pending shadow-sm">
             <Icon name="clock" size={24} />
           </span>
           <div class="flex min-w-0 flex-1 flex-col gap-6">
             <div>
-              <p class="overline text-pending">Registration under review</p>
-              <h2 class="font-display text-h2 text-ink">Verification in progress</h2>
-              <p class="measure mt-1 text-body text-ink-2">
-                Your accommodation dossier is being processed by the Residence Administration. Once it is matched
-                against the university admission roster, your room will be officially assigned.
+              <p class="overline text-pending font-semibold">{t(locale, 'dashboard.status_pending_title')}</p>
+              <h2 class="font-display text-h1 sm:text-display text-ink tracking-tight">Verification in progress</h2>
+              <p class="measure mt-1.5 text-body text-ink-2 leading-relaxed">
+                {t(locale, 'dashboard.status_pending_desc')}
               </p>
             </div>
 
-            <Stepper steps={['Form submitted', 'Roster matching', 'Room handover']} current={1} />
+            <div class="rounded-input border border-pending-line/80 bg-surface/90 p-4 sm:p-5 shadow-sm">
+              <Stepper steps={['Form submitted', 'Roster matching', 'Room handover']} current={1} />
+            </div>
 
-            <div class="flex items-start gap-2 rounded-input border border-pending-line bg-surface p-3 sm:px-4">
+            <div class="flex items-start gap-3 rounded-input border border-pending-line bg-surface p-3.5 sm:px-4">
               <Icon name="lock" size={16} class="mt-0.5 shrink-0 text-pending" />
-              <p class="text-small font-normal text-ink-2">
+              <p class="text-small font-normal text-ink-2 leading-relaxed">
                 Service requests (maintenance and room transfer) unlock automatically upon room assignment.
               </p>
             </div>
@@ -165,29 +168,30 @@ import { getCategoryMeta } from '../../lib/maintenance';
   {/* Rejected — danger tokens + the reason in a quoted block */}
   {
     isRejected && (
-      <section class="hero-card border border-danger-line bg-danger-bg p-4 sm:p-6">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-danger-line bg-surface text-danger">
+      <section class="hero-card border border-danger-line bg-danger-bg p-5 sm:p-7 shadow-e1">
+        <div class="flex flex-col gap-5 sm:flex-row sm:items-start">
+          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-danger-line bg-surface text-danger shadow-sm">
             <Icon name="x-circle" size={24} />
           </span>
-          <div class="flex min-w-0 flex-1 flex-col gap-4">
+          <div class="flex min-w-0 flex-1 flex-col gap-5">
             <div>
-              <p class="overline text-danger">Application rejected</p>
-              <h2 class="font-display text-h2 text-ink">Registration could not be approved</h2>
-              <p class="measure mt-1 text-body text-ink-2">
-                Your application was reviewed by the housing admissions board with the following note:
+              <p class="overline text-danger font-semibold">{t(locale, 'dashboard.status_rejected_title')}</p>
+              <h2 class="font-display text-h1 sm:text-display text-ink tracking-tight">Registration could not be approved</h2>
+              <p class="measure mt-1.5 text-body text-ink-2 leading-relaxed">
+                {t(locale, 'dashboard.status_rejected_desc')}
               </p>
             </div>
 
-            <blockquote class="rounded-input border border-danger-line bg-surface p-3 sm:p-4">
+            <blockquote class="rounded-input border border-danger-line bg-surface p-4 sm:p-5 shadow-sm">
+              <p class="text-xs font-semibold uppercase tracking-wider text-danger mb-1.5">{t(locale, 'dashboard.rejection_reason_label')}</p>
               <p class="break-words text-body font-medium text-danger">
                 “{student?.rejection_reason || 'Official records could not be verified on the current year admissions roster.'}”
               </p>
             </blockquote>
 
-            <div class="flex items-start gap-3 rounded-input border border-danger-line bg-surface p-3 sm:p-4">
+            <div class="flex items-start gap-3 rounded-input border border-danger-line bg-surface p-3.5 sm:p-4">
               <Icon name="building" size={18} class="mt-0.5 shrink-0 text-danger" />
-              <p class="measure text-small font-normal text-ink-2">
+              <p class="measure text-small font-normal text-ink-2 leading-relaxed">
                 If you believe this is an administrative discrepancy, please visit the Housing Bureau
                 (Administration Bloc A) with your official student certificate.
               </p>
@@ -201,29 +205,32 @@ import { getCategoryMeta } from '../../lib/maintenance';
   {/* Active with a room — the assigned-quarters summary */}
   {
     isActive && room && (
-      <section class="hero-card border border-ok-line bg-ok-bg p-4 sm:p-6">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div class="flex min-w-0 items-start gap-4">
-            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-ok-line bg-surface text-ok">
+      <section class="hero-card border border-ok-line bg-ok-bg p-5 sm:p-7 shadow-e1">
+        <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex min-w-0 items-start gap-4 sm:gap-5">
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-ok-line bg-surface text-ok shadow-sm">
               <Icon name="building" size={24} />
             </span>
             <div class="min-w-0">
-              <p class="overline text-ok">{t(locale, 'dashboard.assigned_quarters_overline')}</p>
-              <h2 class="font-display text-h2 text-ink">
+              <p class="overline text-ok font-semibold">{t(locale, 'dashboard.assigned_quarters_overline')}</p>
+              <h2 class="tnum font-display text-h1 sm:text-display text-ink tracking-tight">
                 {t(locale, 'dashboard.block_room', { block: room.block, room: room.number })}
               </h2>
-              <p class="mt-0.5 text-small font-normal text-ink-2">{t(locale, 'dashboard.floor_residence', { floor: room.floor })}</p>
+              <p class="tnum mt-1 flex items-center gap-2 text-small font-normal text-ink-2">
+                <Icon name="map-pin" size={14} class="text-ok shrink-0" />
+                <span>{t(locale, 'dashboard.floor_residence', { floor: room.floor })}</span>
+              </p>
             </div>
           </div>
 
-          <dl class="grid shrink-0 grid-cols-2 gap-4 rounded-input border border-ok-line bg-surface p-3 sm:px-4">
-            <div class="min-w-0">
-              <dt class="overline">{t(locale, 'fields.card_id')}</dt>
-              <dd class="tnum font-display text-h2 text-ink">{student?.card_id}</dd>
+          <dl class="grid shrink-0 grid-cols-2 divide-x divide-ok-line/50 rounded-input border border-ok-line bg-surface p-3.5 sm:px-5 shadow-sm">
+            <div class="min-w-0 px-3 first:pl-0 last:pr-0">
+              <dt class="overline text-muted">{t(locale, 'fields.card_id')}</dt>
+              <dd class="tnum font-mono text-h2 font-semibold text-ink tracking-wider">{student?.card_id}</dd>
             </div>
-            <div class="min-w-0">
-              <dt class="overline">{t(locale, 'fields.study_level')}</dt>
-              <dd class="font-display text-h2 text-ink">{student?.study_level || 'L1'}</dd>
+            <div class="min-w-0 px-3 first:pl-0 last:pr-0">
+              <dt class="overline text-muted">{t(locale, 'fields.study_level')}</dt>
+              <dd class="font-display text-h2 font-semibold text-ink">{student?.study_level || 'L1'}</dd>
             </div>
           </dl>
         </div>
@@ -234,17 +241,16 @@ import { getCategoryMeta } from '../../lib/maintenance';
   {/* Active without a room yet */}
   {
     isActive && !room && (
-      <section class="hero-card border border-line bg-surface p-4 sm:p-6">
+      <section class="hero-card border border-line bg-surface p-5 sm:p-7 shadow-e1">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-pending-line bg-pending-bg text-pending">
+          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-pending-line bg-pending-bg text-pending shadow-sm">
             <Icon name="clock" size={24} />
           </span>
           <div class="min-w-0">
-            <p class="overline text-pending">{t(locale, 'dashboard.room_assignment')}</p>
-            <h2 class="font-display text-h2 text-ink">{t(locale, 'dashboard.allocation_finalizing_title')}</h2>
-            <p class="measure mt-1 text-body text-ink-2">
+            <p class="overline text-pending font-semibold">{t(locale, 'dashboard.room_assignment')}</p>
+            <h2 class="font-display text-h1 sm:text-h2 text-ink tracking-tight">{t(locale, 'dashboard.allocation_finalizing_title')}</h2>
+            <p class="measure mt-1.5 text-body text-ink-2 leading-relaxed">
               {t(locale, 'dashboard.allocation_finalizing_desc')}
-
             </p>
           </div>
         </div>
@@ -257,14 +263,18 @@ import { getCategoryMeta } from '../../lib/maintenance';
        ====================================================================== -->
   {
     isActive && room && (
-      <section class="mt-8 sm:mt-12" aria-labelledby="pass-heading">
-        <p class="overline">{t(locale, 'dashboard.pass_section_overline')}</p>
-        <h2 id="pass-heading" class="font-display text-h2 text-ink">{t(locale, 'dashboard.pass_section_title')}</h2>
-        <p class="measure mt-1 text-small font-normal text-muted">
-          {t(locale, 'dashboard.pass_section_desc')}
-        </p>
+      <section class="mt-10 sm:mt-12" aria-labelledby="pass-heading">
+        <div class="flex flex-col gap-1">
+          <p class="overline text-muted">{t(locale, 'dashboard.pass_section_overline')}</p>
+          <h2 id="pass-heading" class="font-display text-h1 sm:text-h2 text-ink tracking-tight">
+            {t(locale, 'dashboard.pass_section_title')}
+          </h2>
+          <p class="measure text-small font-normal text-muted leading-relaxed">
+            {t(locale, 'dashboard.pass_section_desc')}
+          </p>
+        </div>
         <ResidentPass
-          class="mt-4"
+          class="mt-5"
           fullName={fullName}
           cardId={student?.card_id ?? ''}
           block={room.block}
@@ -280,43 +290,49 @@ import { getCategoryMeta } from '../../lib/maintenance';
   <!-- ======================================================================
        Resident services
        ====================================================================== -->
-  <section class="mt-8 sm:mt-12" aria-labelledby="services-heading">
-    <p class="overline">{t(locale, 'dashboard.services_section_overline')}</p>
-    <h2 id="services-heading" class="font-display text-h2 text-ink">{t(locale, 'dashboard.services_section_title')}</h2>
+  <section class="mt-10 sm:mt-12" aria-labelledby="services-heading">
+    <div class="flex flex-col gap-1">
+      <p class="overline text-muted">{t(locale, 'dashboard.services_section_overline')}</p>
+      <h2 id="services-heading" class="font-display text-h1 sm:text-h2 text-ink tracking-tight">
+        {t(locale, 'dashboard.services_section_title')}
+      </h2>
+    </div>
 
-    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {/* Maintenance requests */}
       {
         isActive ? (
           <a
             href={localizePath(locale, '/dashboard/maintenance')}
-            class="card group flex flex-col justify-between gap-4 p-4 transition-colors hover:border-teal-600 sm:p-6"
+            class="card group flex flex-col justify-between gap-5 p-5 sm:p-6 transition-all duration-200 hover:border-teal-600 hover:shadow-e2"
           >
             <div>
-              <span class="flex h-11 w-11 items-center justify-center rounded-input bg-teal-600/10 text-teal-600">
+              <span class="flex h-12 w-12 items-center justify-center rounded-input border border-teal-600/15 bg-teal-600/10 text-teal-600 shadow-sm transition-transform duration-200 group-hover:scale-105">
                 <Icon name="wrench" size={22} />
               </span>
-              <h3 class="mt-4 text-h3 text-ink transition-colors group-hover:text-teal-600">{t(locale, 'dashboard.service_maintenance_title')}</h3>
-              <p class="mt-1 text-small font-normal text-muted">
+              <h3 class="mt-4 text-h3 font-semibold text-ink transition-colors group-hover:text-teal-600">
+                {t(locale, 'dashboard.service_maintenance_title')}
+              </h3>
+              <p class="mt-1.5 text-small font-normal text-muted leading-relaxed">
                 {t(locale, 'dashboard.service_maintenance_desc')}
               </p>
             </div>
-            <span class="flex items-center gap-1 text-small font-semibold text-teal-600">
+            <span class="flex items-center gap-1.5 text-small font-semibold text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5">
               <span>{t(locale, 'dashboard.service_maintenance_cta')}</span>
               <Icon name="chevron-right" size={16} />
             </span>
           </a>
         ) : (
-          <div class="card card-flat flex flex-col justify-between gap-4 p-4 sm:p-6">
+          <div class="card card-flat flex flex-col justify-between gap-5 p-5 sm:p-6 bg-subtle/50">
             <div>
-              <span class="flex h-11 w-11 items-center justify-center rounded-input bg-subtle text-muted">
+              <span class="flex h-12 w-12 items-center justify-center rounded-input bg-subtle text-muted">
                 <Icon name="wrench" size={22} />
               </span>
               <div class="mt-4 flex flex-wrap items-center gap-2">
-                <h3 class="text-h3 text-muted">{t(locale, 'dashboard.service_maintenance_title')}</h3>
+                <h3 class="text-h3 font-semibold text-muted">{t(locale, 'dashboard.service_maintenance_title')}</h3>
                 <StatusPill kind="neutral" icon="lock" label={t(locale, 'dashboard.service_locked_badge')} size="sm" />
               </div>
-              <p class="mt-1 text-small font-normal text-muted">
+              <p class="mt-1.5 text-small font-normal text-muted leading-relaxed">
                 {t(locale, 'dashboard.service_maintenance_desc')}
               </p>
             </div>
@@ -333,33 +349,35 @@ import { getCategoryMeta } from '../../lib/maintenance';
         isActive ? (
           <a
             href={localizePath(locale, '/dashboard/room-change')}
-            class="card group flex flex-col justify-between gap-4 p-4 transition-colors hover:border-teal-600 sm:p-6"
+            class="card group flex flex-col justify-between gap-5 p-5 sm:p-6 transition-all duration-200 hover:border-teal-600 hover:shadow-e2"
           >
             <div>
-              <span class="flex h-11 w-11 items-center justify-center rounded-input bg-navy-800/10 text-navy-800">
+              <span class="flex h-12 w-12 items-center justify-center rounded-input border border-navy-800/15 bg-navy-800/10 text-navy-800 shadow-sm transition-transform duration-200 group-hover:scale-105">
                 <Icon name="arrow-left-right" size={22} />
               </span>
-              <h3 class="mt-4 text-h3 text-ink transition-colors group-hover:text-teal-600">{t(locale, 'dashboard.service_transfer_title')}</h3>
-              <p class="mt-1 text-small font-normal text-muted">
+              <h3 class="mt-4 text-h3 font-semibold text-ink transition-colors group-hover:text-teal-600">
+                {t(locale, 'dashboard.service_transfer_title')}
+              </h3>
+              <p class="mt-1.5 text-small font-normal text-muted leading-relaxed">
                 {t(locale, 'dashboard.service_transfer_desc')}
               </p>
             </div>
-            <span class="flex items-center gap-1 text-small font-semibold text-teal-600">
+            <span class="flex items-center gap-1.5 text-small font-semibold text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5">
               <span>{t(locale, 'dashboard.service_transfer_cta')}</span>
               <Icon name="chevron-right" size={16} />
             </span>
           </a>
         ) : (
-          <div class="card card-flat flex flex-col justify-between gap-4 p-4 sm:p-6">
+          <div class="card card-flat flex flex-col justify-between gap-5 p-5 sm:p-6 bg-subtle/50">
             <div>
-              <span class="flex h-11 w-11 items-center justify-center rounded-input bg-subtle text-muted">
+              <span class="flex h-12 w-12 items-center justify-center rounded-input bg-subtle text-muted">
                 <Icon name="arrow-left-right" size={22} />
               </span>
               <div class="mt-4 flex flex-wrap items-center gap-2">
-                <h3 class="text-h3 text-muted">{t(locale, 'dashboard.service_transfer_title')}</h3>
+                <h3 class="text-h3 font-semibold text-muted">{t(locale, 'dashboard.service_transfer_title')}</h3>
                 <StatusPill kind="neutral" icon="lock" label={t(locale, 'dashboard.service_locked_badge')} size="sm" />
               </div>
-              <p class="mt-1 text-small font-normal text-muted">
+              <p class="mt-1.5 text-small font-normal text-muted leading-relaxed">
                 {t(locale, 'dashboard.service_transfer_desc')}
               </p>
             </div>
@@ -374,18 +392,20 @@ import { getCategoryMeta } from '../../lib/maintenance';
       {/* Resident profile — always available */}
       <a
         href={localizePath(locale, '/dashboard/profile')}
-        class="card group flex flex-col justify-between gap-4 p-4 transition-colors hover:border-teal-600 sm:p-6"
+        class="card group flex flex-col justify-between gap-5 p-5 sm:p-6 transition-all duration-200 hover:border-teal-600 hover:shadow-e2"
       >
         <div>
-          <span class="flex h-11 w-11 items-center justify-center rounded-input bg-gold-500/15 text-navy-800">
+          <span class="flex h-12 w-12 items-center justify-center rounded-input border border-gold-500/20 bg-gold-500/15 text-navy-800 shadow-sm transition-transform duration-200 group-hover:scale-105">
             <Icon name="user" size={22} />
           </span>
-          <h3 class="mt-4 text-h3 text-ink transition-colors group-hover:text-teal-600">{t(locale, 'dashboard.service_profile_title')}</h3>
-          <p class="mt-1 text-small font-normal text-muted">
+          <h3 class="mt-4 text-h3 font-semibold text-ink transition-colors group-hover:text-teal-600">
+            {t(locale, 'dashboard.service_profile_title')}
+          </h3>
+          <p class="mt-1.5 text-small font-normal text-muted leading-relaxed">
             {t(locale, 'dashboard.service_profile_desc')}
           </p>
         </div>
-        <span class="flex items-center gap-1 text-small font-semibold text-teal-600">
+        <span class="flex items-center gap-1.5 text-small font-semibold text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5">
           <span>{t(locale, 'dashboard.service_profile_cta')}</span>
           <Icon name="chevron-right" size={16} />
         </span>
@@ -396,17 +416,19 @@ import { getCategoryMeta } from '../../lib/maintenance';
   <!-- ======================================================================
        Recent activity — maintenance tickets + room-change requests
        ====================================================================== -->
-  <section class="mt-8 sm:mt-12" aria-labelledby="activity-heading">
-    <div class="flex flex-wrap items-end justify-between gap-2">
+  <section class="mt-10 sm:mt-12" aria-labelledby="activity-heading">
+    <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <p class="overline">{t(locale, 'dashboard.timeline_overline')}</p>
-        <h2 id="activity-heading" class="font-display text-h2 text-ink">{t(locale, 'dashboard.timeline_title')}</h2>
+        <p class="overline text-muted">{t(locale, 'dashboard.timeline_overline')}</p>
+        <h2 id="activity-heading" class="font-display text-h1 sm:text-h2 text-ink tracking-tight">
+          {t(locale, 'dashboard.timeline_title')}
+        </h2>
       </div>
       {
         isActive && (
           <a
             href={localizePath(locale, '/dashboard/maintenance')}
-            class="inline-flex min-h-11 items-center gap-1 text-small font-semibold text-teal-600 hover:underline"
+            class="inline-flex min-h-11 items-center gap-1.5 text-small font-semibold text-teal-600 hover:underline"
           >
             <span>{t(locale, 'dashboard.timeline_view_all')}</span>
             <Icon name="chevron-right" size={16} />
@@ -417,7 +439,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
 
     {
       partialReportsError && (
-        <InlineBanner kind="warning" title={t(locale, 'dashboard.error_maintenance_unavailable')} class="mt-4">
+        <InlineBanner kind="warning" title={t(locale, 'dashboard.error_maintenance_unavailable')} class="mt-5">
           {partialReportsError}
         </InlineBanner>
       )
@@ -425,7 +447,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
 
     {
       partialRoomChangesError && (
-        <InlineBanner kind="warning" title={t(locale, 'dashboard.error_transfers_unavailable')} class="mt-4">
+        <InlineBanner kind="warning" title={t(locale, 'dashboard.error_transfers_unavailable')} class="mt-5">
           {partialRoomChangesError}
         </InlineBanner>
       )
@@ -434,7 +456,7 @@ import { getCategoryMeta } from '../../lib/maintenance';
     {
       (!recentReports || recentReports.length === 0) && (!recentRoomChanges || recentRoomChanges.length === 0) ? (
         <EmptyState
-          class="mt-4"
+          class="mt-5"
           icon="file-text"
           title={t(locale, 'dashboard.timeline_empty_title')}
           message={
@@ -444,19 +466,19 @@ import { getCategoryMeta } from '../../lib/maintenance';
           }
         />
       ) : (
-        <ul class="mt-4 flex flex-col gap-3">
+        <ul class="mt-5 flex flex-col gap-3">
           {recentReports &&
             recentReports.map((r) => (
-              <li class="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                <div class="flex min-w-0 items-start gap-3">
-                  <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input bg-subtle text-teal-600">
+              <li class="card flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 transition-colors hover:border-border-strong">
+                <div class="flex min-w-0 items-start gap-3.5">
+                  <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-input border border-teal-600/15 bg-teal-600/10 text-teal-600 shadow-sm">
                     <Icon name={getCategoryMeta(r.category).icon} size={20} />
                   </span>
                   <div class="min-w-0">
-                    <p class="overline">{t(locale, 'nav.maintenance')} · {getCategoryMeta(r.category).label}</p>
+                    <p class="overline text-muted">{t(locale, 'nav.maintenance')} · {getCategoryMeta(r.category).label}</p>
                     <p class="line-clamp-1 text-body font-semibold text-ink">{r.description}</p>
-                    <time class="tnum block text-small font-normal text-muted" datetime={r.created_at}>
-                      {new Date(r.created_at).toLocaleDateString()}
+                    <time class="tnum block text-xs font-normal text-muted mt-0.5" datetime={r.created_at}>
+                      {formatDate(locale, r.created_at, { year: 'numeric', month: 'short', day: 'numeric' })}
                     </time>
                   </div>
                 </div>
@@ -470,16 +492,16 @@ import { getCategoryMeta } from '../../lib/maintenance';
 
           {recentRoomChanges &&
             recentRoomChanges.map((rc) => (
-              <li class="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                <div class="flex min-w-0 items-start gap-3">
-                  <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input bg-subtle text-navy-800">
+              <li class="card flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 transition-colors hover:border-border-strong">
+                <div class="flex min-w-0 items-start gap-3.5">
+                  <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-input border border-navy-800/15 bg-navy-800/10 text-navy-800 shadow-sm">
                     <Icon name="arrow-left-right" size={20} />
                   </span>
                   <div class="min-w-0">
-                    <p class="overline">{t(locale, 'terms.room_change_request')}</p>
+                    <p class="overline text-muted">{t(locale, 'terms.room_change_request')}</p>
                     <p class="line-clamp-1 text-body font-semibold text-ink">{rc.reason}</p>
-                    <time class="tnum block text-small font-normal text-muted" datetime={rc.created_at}>
-                      {new Date(rc.created_at).toLocaleDateString()}
+                    <time class="tnum block text-xs font-normal text-muted mt-0.5" datetime={rc.created_at}>
+                      {formatDate(locale, rc.created_at, { year: 'numeric', month: 'short', day: 'numeric' })}
                     </time>
                   </div>
                 </div>

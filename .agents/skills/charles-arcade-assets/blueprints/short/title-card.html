@@ -1,0 +1,49 @@
+<!-- BLUEPRINT title-card, short frame (laid out at 1080x960; the start for any frame under 1400 px tall): the named thing gets its reveal.
+     A white card, the cast dropping onto a sand mound, the title landing on its word with the subtitle under it.
+     Use for: "it's called X", naming a skill, tool, feature or product.
+     Edit: TITLE (over ~7 letters: lower the font-size so it fits in 860 px), SUB, the cast on the mound (or one
+     prop image), T.title (the word; keep it at 0.4 or later so the cast has landed), T.sub.
+     Text stays between y 170 and y 880. mount.py copies it to compositions/<id>.html with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    #SCENE-card { left: 60px; top: 150px; width: 960px; height: 700px; }
+    #SCENE-title { position: absolute; left: 0; right: 0; top: 40px; text-align: center; font-size: 160px; }
+    #SCENE-sub { position: absolute; left: 0; right: 0; top: 210px; text-align: center; font-family: var(--sans); font-weight: 700; font-size: 44px; color: var(--muted); }
+    #SCENE-mound { position: absolute; left: -100px; bottom: -180px; width: 1160px; height: 360px; border-radius: 50%; background: #ead2a0; }
+    #SCENE-a { left: 190px; top: 300px; width: 290px; height: 242px; }
+    #SCENE-b { left: 500px; top: 280px; width: 260px; height: 266px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1080" data-height="960">
+    <div class="stage" data-layout-ignore></div>
+    <div class="card" id="SCENE-card">
+      <div id="SCENE-mound"></div>
+      <div class="sprite" id="SCENE-a">
+        <img class="pose on" data-pose="fight_ready" src="assets/cast/claude/poses/fight_ready.png" />
+        <img class="pose" data-pose="fight_victory" src="assets/cast/claude/poses/fight_victory.png" />
+      </div>
+      <div class="sprite" id="SCENE-b">
+        <img class="pose on" data-pose="fight_ready" src="assets/cast/gpt/poses/fight_ready.png" />
+        <img class="pose" data-pose="fight_victory" src="assets/cast/gpt/poses/fight_victory.png" />
+      </div>
+      <div class="title-xl" id="SCENE-title">Scout</div>
+      <div id="SCENE-sub">Free Claude skill</div>
+    </div>
+  </div>
+  <script>
+    const T = { title: 0.45, sub: 0.75 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] elements from assets/names.js
+    AR.settle(tl, "#SCENE-card", 0);
+    AR.drop(tl, "#SCENE-a", 0, { dy: -200, dur: 0.34 }); // starts inside the card: seen on the cut
+    AR.drop(tl, "#SCENE-b", 0, { dy: -220, dur: 0.38 });
+    tl.fromTo("#SCENE-title", { opacity: 0, scale: 1.25, filter: "blur(8px)" },
+      { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.16, ease: "power4.out" }, T.title);
+    AR.poses(tl, "#SCENE-a", [[T.title, "fight_victory"]]);
+    AR.poses(tl, "#SCENE-b", [[T.title + 0.08, "fight_victory"]]);
+    AR.hop(tl, "#SCENE-a", T.title, { h: 40, dur: 0.28 });
+    AR.hop(tl, "#SCENE-b", T.title + 0.08, { h: 40, dur: 0.28 });
+    tl.fromTo("#SCENE-sub", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.2, ease: "power3.out" }, T.sub);
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

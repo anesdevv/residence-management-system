@@ -1,0 +1,68 @@
+<!-- BLUEPRINT arena-clash, short frame (laid out at 1080x960; the start for any frame under 1400 px tall): two fighters in a full-bleed
+     pixel arena. They step in, one lunges, the hit lands with a flash, star, shake and a health bar that drops.
+     Use for: conflict, debate, "X vs Y", "fight", "battle", "tear apart", "beat".
+     Edit: the backdrop (a wide 5:4 arena plate with an empty floor), the two cast members, T.hit (the key
+     word, scene-local seconds), who takes the hit, how far the bar drops, T.end (the beat length).
+     Text stays between y 170 and y 880. mount.py copies it to compositions/<id>.html with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #000; }
+    #SCENE-cam { position: absolute; inset: 0; transform-origin: 50% 72%; }
+    #SCENE-a { left: 40px; top: 470px; width: 440px; height: 367px; }
+    #SCENE-b { left: 610px; top: 440px; width: 400px; height: 409px; }
+    #SCENE-hud { top: 170px; }
+    #SCENE-round { top: 296px; }
+    #SCENE-spark { left: 450px; top: 520px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1080" data-height="960">
+    <div id="SCENE-cam" data-layout-allow-overflow>
+      <div class="fill" id="SCENE-shake" data-layout-allow-overflow>
+        <img class="bg-art pixel" src="assets/art/arena.png" data-layout-ignore />
+        <div class="sprite" id="SCENE-a">
+          <img class="pose on" data-pose="fight_ready" src="assets/cast/claude/poses/fight_ready.png" />
+          <img class="pose" data-pose="fight_attack" src="assets/cast/claude/poses/fight_attack.png" />
+          <img class="pose" data-pose="fight_victory" src="assets/cast/claude/poses/fight_victory.png" />
+        </div>
+        <div class="sprite" id="SCENE-b">
+          <img class="pose on" data-pose="fight_ready" src="assets/cast/gpt/poses/fight_ready.png" />
+          <img class="pose" data-pose="fight_hurt" src="assets/cast/gpt/poses/fight_hurt.png" />
+        </div>
+        <svg class="spark" id="SCENE-spark" viewBox="0 0 100 100" data-layout-ignore>
+          <path d="M50 0 L58 38 L100 50 L58 62 L50 100 L42 62 L0 50 L42 38 Z" fill="#fff" stroke="#ffd84a" stroke-width="4" />
+        </svg>
+      </div>
+    </div>
+    <div class="hud" id="SCENE-hud">
+      <div class="hud-icon"><img src="assets/cast/claude/ref.png" /></div>
+      <div class="hp"><i></i></div>
+      <div class="hp rtl"><b id="SCENE-hurt-b"></b><i id="SCENE-fill-b"></i></div>
+      <div class="hud-icon"><img src="assets/cast/gpt/ref.png" /></div>
+    </div>
+    <div class="banner center-x" id="SCENE-round">ROUND 1</div>
+    <div class="flash" id="SCENE-flash" data-layout-ignore></div>
+  </div>
+  <script>
+    const T = { hit: 0.95, end: 2.0 }; // scene-local seconds; land T.hit on the key word
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] elements from assets/names.js
+    AR.stagger(tl, "#SCENE-hud > *", 0.0, { gap: 0.05 });
+    AR.stamp(tl, "#SCENE-round", 0.15, { rot: 0, from: 2.2 });
+    tl.to("#SCENE-a", { x: 70, duration: T.hit - 0.4, ease: "steps(5)" }, 0.05);
+    tl.to("#SCENE-b", { x: -60, duration: T.hit - 0.4, ease: "steps(5)" }, 0.05);
+    AR.bob(tl, "#SCENE-a .pose", 0.05, T.hit - 0.4, { fps: 8, amp: 8 });
+    AR.bob(tl, "#SCENE-b .pose", 0.1, T.hit - 0.4, { fps: 8, amp: 8 });
+    AR.pose(tl, "#SCENE-a", "fight_attack", T.hit - 0.26);
+    AR.lunge(tl, "#SCENE-a", T.hit - 0.26, { dx: 100 });
+    AR.flash(tl, "#SCENE-flash", T.hit);
+    AR.burst(tl, "#SCENE-spark", T.hit, { scale: 1.5 });
+    AR.shake(tl, "#SCENE-shake", T.hit, { amp: 20 });
+    AR.pose(tl, "#SCENE-b", "fight_hurt", T.hit);
+    AR.knockback(tl, "#SCENE-b", T.hit, { dx: 110, rot: 10 });
+    tl.set("#SCENE-hurt-b", { scaleX: 1 }, 0);
+    AR.bar(tl, "#SCENE-fill-b", T.hit, 0.08, { from: 1, to: 0.58 });
+    AR.bar(tl, "#SCENE-hurt-b", T.hit + 0.3, 0.35, { from: 1, to: 0.58 });
+    AR.pose(tl, "#SCENE-a", "fight_ready", T.hit + 0.4);
+    AR.pose(tl, "#SCENE-b", "fight_ready", T.hit + 0.65);
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

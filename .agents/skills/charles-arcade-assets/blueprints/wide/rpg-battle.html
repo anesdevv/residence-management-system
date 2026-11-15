@@ -1,0 +1,211 @@
+<!-- BLUEPRINT rpg-battle, wide frame (laid out at 1280x630): a turn-based battle against the problem, for any "N fixes /
+     tips / mistakes / rules" video. The problem is a monster on the far platform with a name, a level and an HP box;
+     the host stands on the near one. On "number one" the menu cursor picks the move, the menu turns into the message
+     box ("YOU used KILL GRADIENT!"), the host dashes in and hits, the monster recoils with a flash and a shake, its HP
+     drains, SUPER EFFECTIVE! stamps in. The last move knocks it out ("SLOP fainted!").
+     Use for: one beat per fix (set ROUNDS to that round; the HP and the struck-out moves carry over), or one beat that
+     plays every round. The battlefield is drawn in code; swap in a generated plate with an <img class="bg-art pixel">
+     in #SCENE-world if the video has one.
+     Edit: MONSTER (name, lv, the pal look: shape/color/eyes/wear, or a cast.py character: cast: "slop" (its folder in
+     assets/cast; it is hurt and knocked out with its own poses), h), HOST (the hero: "critter", "pal", or a cast.py
+     character's folder: "charles"), HERO (role or hold, name, colour, u; h for a generated character), MOVES (one per
+     fix, in order; the last one KOs),
+     HP (max, and optional after: [67, 33, 0]), ROUNDS (the rounds this beat shows, each with its T times: pick = the
+     word that names the move, hit = the verb, banner = SUPER EFFECTIVE), T.end. A name written "@key" (a move, the
+     monster's or the hero's name) reads NAMES.key from names.js. The camera is locked; only the hit shakes it. Needs
+     cast.js. mount.py copies it with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #a9d8ea; }
+    #SCENE-shake, #SCENE-world, #SCENE-cast { position: absolute; left: 0; top: 0; width: 1280px; height: 630px; }
+    #SCENE-sky { position: absolute; left: 0; top: 0; width: 1280px; height: 330px; background: linear-gradient(#8fd0ec, #cdeef8); }
+    #SCENE-field { position: absolute; left: 0; top: 300px; width: 1280px; height: 330px; background: linear-gradient(#b9e27f, #9ed067); }
+    #SCENE-hills, #SCENE-pads { position: absolute; left: 0; top: 0; width: 1280px; height: 630px; overflow: visible; }
+    #SCENE-hud { position: absolute; left: 46px; top: 30px; width: 580px; height: 138px; background: #f8f4e6; border: 6px solid #2a2433; border-radius: 14px; box-shadow: 0 8px 0 rgba(0,0,0,.22); }
+    #SCENE-name { position: absolute; left: 24px; top: 18px; font-size: 46px; color: #2a2433; }
+    #SCENE-lv { position: absolute; right: 24px; top: 22px; font-size: 34px; color: #2a2433; }
+    #SCENE-hpl { position: absolute; left: 24px; top: 84px; font-size: 28px; color: #e3a21a; }
+    #SCENE-hp { position: absolute; left: 78px; top: 80px; width: 250px; height: 34px; background: #3a3344; border: 4px solid #2a2433; border-radius: 8px; overflow: hidden; }
+    #SCENE-hp b { position: absolute; inset: 0; background: #e5483b; transform-origin: 0 50%; }
+    #SCENE-hp i { position: absolute; inset: 0; background: linear-gradient(#62d36b 0 55%, #3fae4b 55%); transform-origin: 0 50%; }
+    #SCENE-hpn { position: absolute; right: 22px; top: 83px; font-size: 31px; color: #2a2433; white-space: nowrap; }
+    #SCENE-menu, #SCENE-msg { position: absolute; left: 610px; top: 412px; width: 638px; height: 190px; background: #2a2433; border: 6px solid #f8f4e6; border-radius: 14px; box-shadow: 0 0 0 6px #2a2433, 0 10px 0 6px rgba(0,0,0,.22); }
+    #SCENE-menu { padding: 14px 0 0 22px; }
+    .SCENE-mv { position: relative; padding-left: 50px; color: #f8f4e6; white-space: nowrap; display: flex; align-items: center; }
+    .SCENE-mv em { font-style: normal; width: 50px; color: #9a93b5; }
+    .SCENE-mv.SCENE-done { color: #7d7696; }
+    .SCENE-mv.SCENE-done::after { content: ""; position: absolute; left: 96px; right: 40px; top: 50%; height: 5px; margin-top: -2px; background: #7d7696; }
+    #SCENE-cur { position: absolute; left: 22px; width: 30px; height: 36px; }
+    #SCENE-msg { opacity: 0; padding: 26px 34px; }
+    #SCENE-msg p { margin: 0; color: #f8f4e6; font-size: 40px; line-height: 1.3; }
+    #SCENE-move { right: 40px; top: 40px; font-size: 42px; background: #2a2433; border-color: #ffd84a; color: #ffd84a; opacity: 0; }
+    #SCENE-eff { top: 236px; font-size: 46px; background: #2a2433; border-color: #f8f4e6; opacity: 0; }
+    #SCENE-spark { left: 0; top: 0; }
+    #SCENE-mon { position: absolute; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div id="SCENE-shake" data-layout-allow-overflow>
+      <div id="SCENE-world" data-layout-ignore>
+        <div id="SCENE-sky"></div>
+        <svg id="SCENE-hills" viewBox="0 0 1280 630" shape-rendering="crispEdges"></svg>
+        <div id="SCENE-field"></div>
+        <svg id="SCENE-pads" viewBox="0 0 1280 630" shape-rendering="crispEdges"></svg>
+      </div>
+      <div id="SCENE-cast"></div>
+      <svg class="spark" id="SCENE-spark" viewBox="0 0 100 100" data-layout-ignore>
+        <path d="M50 0 L58 38 L100 50 L58 62 L50 100 L42 62 L0 50 L42 38 Z" fill="#fff" stroke="#ffd84a" stroke-width="4" />
+      </svg>
+      <div id="SCENE-hud">
+        <div class="px" id="SCENE-name"></div>
+        <div class="px" id="SCENE-lv"></div>
+        <div class="px" id="SCENE-hpl">HP</div>
+        <div id="SCENE-hp"><b id="SCENE-hurt"></b><i id="SCENE-fill"></i></div>
+        <div class="px" id="SCENE-hpn"><span id="SCENE-n">100</span>/<span id="SCENE-max">100</span></div>
+      </div>
+      <div id="SCENE-menu">
+        <svg id="SCENE-cur" viewBox="0 0 5 6" shape-rendering="crispEdges"><path d="M0 0h1v1h1v1h1v1h1v1h-1v1h-1v1h-1v-1h-1z" fill="#ffd84a" /></svg>
+      </div>
+      <div id="SCENE-msg"><p class="pxt" id="SCENE-say"></p></div>
+      <div class="banner" id="SCENE-move"></div>
+      <div class="banner center-x" id="SCENE-eff">SUPER EFFECTIVE!</div>
+    </div>
+    <div class="flash" id="SCENE-flash" data-layout-ignore></div>
+  </div>
+  <script>
+    const T = { end: 2.4 };
+    const MONSTER = { name: "SLOP", lv: 99, shape: "pal", color: "purple", eyes: "angry", wear: ["horns"], u: 22, cast: null, h: 230 };
+    // a cast.py character instead: cast: "slop" (assets/cast/slop/: hurt and ko poses, or the nearest it has)
+    const HOST = "critter";                       // the hero: "critter", "pal", or a cast.py character ("charles")
+    const HERO = { name: "YOU", role: "painter", color: null, u: 17, h: 230 };   // h: a generated character's height
+    const MOVES = ["KILL GRADIENT", "STOP CENTERING", "DELETE EMOJI"];
+    const HP = { max: 100, after: null };             // after: HP left after each move, e.g. [67, 33, 0]
+    const ROUNDS = [{ move: 0, pick: 0.35, hit: 1.15, banner: 1.55 }];
+    const KO_TEXT = "{name} fainted!";
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    const word = (v) => (typeof v === "string" && v[0] === "@" ? String((window.NAMES || {})[v.slice(1)] ?? v.slice(1)) : v);
+    MOVES.forEach((m, i) => { MOVES[i] = word(m); });
+    MONSTER.name = word(MONSTER.name); HERO.name = word(HERO.name);
+    const $ = (id) => document.getElementById("SCENE-" + id);
+    const rnd = AR.rnd(7);
+    // ---- the battlefield: pixel hills and two platforms, drawn in code ----
+    const NS = "http://www.w3.org/2000/svg", rect = (svg, x, y, w, h, fill) => {
+      const r = document.createElementNS(NS, "rect");
+      [["x", x], ["y", y], ["width", w], ["height", h], ["fill", fill]].forEach(([k, v]) => r.setAttribute(k, v));
+      svg.appendChild(r);
+    };
+    const hills = $("hills");
+    let hy = 250;
+    for (let x = 0; x < 1280; x += 16) { hy = Math.max(205, Math.min(275, hy + Math.round((rnd() - 0.5) * 3) * 8)); rect(hills, x, hy, 16, 330 - hy, "#78bf73"); rect(hills, x, hy, 16, 8, "#93d07f"); }
+    for (let x = 0; x < 1280; x += 16) { const y = 286 + Math.round(Math.sin(x / 70) * 2) * 8; rect(hills, x, y, 16, 330 - y, "#5ea85b"); }
+    const pad = (cx, cy, rx, ry) => {
+      const svg = $("pads"), s = 8;
+      for (let y = -ry; y < ry; y += s) {
+        const w = Math.round((rx * Math.sqrt(1 - Math.pow((y + s / 2) / ry, 2))) / s) * s;
+        rect(svg, cx - w, cy + y, 2 * w, s, "#5f9e44");
+        const wi = Math.max(0, w - 16);
+        if (y + s < ry - 8 && y > -ry + 8) rect(svg, cx - wi, cy + y, 2 * wi, s, y < -ry / 3 ? "#b4e486" : "#9ad471");
+      }
+    };
+    pad(930, 352, 230, 46);
+    pad(330, 566, 270, 52);
+
+    // ---- the monster (a pal by default, or a sprite) and the hero ----
+    const cast = $("cast");
+    let mon, monPal = !MONSTER.cast;
+    if (monPal) {
+      mon = AR.crit.make(cast, { id: "SCENE-mon", shape: MONSTER.shape || "pal", u: MONSTER.u, x: 930, y: 356, color: MONSTER.color, eyes: MONSTER.eyes, wear: MONSTER.wear });
+    } else {
+      mon = AR.cast.make(cast, MONSTER.cast, { id: "SCENE-mon", x: 930, y: 362, h: MONSTER.h, face: "left" });
+    }
+    const hero = AR.cast.host(cast, HOST, Object.assign({ id: "SCENE-hero", u: HERO.u, x: 330, y: 556, eyes: "look-right" },
+      HERO.color ? { color: HERO.color } : {}, HERO.role ? { role: HERO.role } : {}, HERO.hold ? { hold: HERO.hold } : {},
+      HOST === "critter" || HOST === "pal" ? {} : { h: HERO.h }));
+    // ---- HUD, menu ----
+    const after = HP.after || MOVES.map((_, i) => Math.round(HP.max * (1 - (i + 1) / MOVES.length)));
+    const first = ROUNDS.length ? ROUNDS[0].move : 0, hp0 = first ? after[first - 1] : HP.max;
+    $("name").textContent = MONSTER.name;
+    $("lv").textContent = "Lv" + MONSTER.lv;
+    $("max").textContent = HP.max;
+    $("n").textContent = hp0;
+    const menu = $("menu"), rowH = Math.min(58, 166 / MOVES.length), mvFs = Math.min(42, rowH * 0.74);
+    const rows = MOVES.map((m, i) => {
+      const r = document.createElement("div");
+      r.className = "SCENE-mv px" + (i < first ? " SCENE-done" : "");
+      r.id = "SCENE-m" + i;
+      Object.assign(r.style, { height: rowH + "px", fontSize: mvFs + "px" });
+      r.innerHTML = `<em>${i + 1}</em><span>${m}</span>`;
+      menu.appendChild(r);
+      return r;
+    });
+    const curY = (i) => 14 + i * rowH + (rowH - 36) / 2;
+    gsap.set($("cur"), { y: curY(Math.max(0, first - 1)) });
+    gsap.set([$("fill"), $("hurt")], { scaleX: hp0 / HP.max });
+    const hpColor = (v) => (v <= 0.2 ? "linear-gradient(#ef6a4c 0 55%, #d9473a 55%)" : v <= 0.5 ? "linear-gradient(#f2c230 0 55%, #d9a514 55%)" : null);
+    if (hpColor(hp0 / HP.max)) $("fill").style.background = hpColor(hp0 / HP.max);
+    // the monster idles until it is hit; the hero is alive
+    const idleEnd = ROUNDS.length ? ROUNDS[0].hit : T.end;
+    if (monPal) AR.crit.alive(tl, mon, 0, idleEnd, { seed: 3, amp: 0.2 }); else AR.bob(tl, mon, 0, idleEnd, { fps: 4, amp: 5 });
+    AR.crit.alive(tl, hero, 0, T.end, { bob: false, seed: 5 });
+    for (let i = 0; i < 4; i++) tl.set($("cur"), { opacity: i % 2 ? 1 : 0.2 }, 0.06 + i * 0.08);
+
+    // ---- the rounds ----
+    let hp = hp0;
+    ROUNDS.forEach((R, ri) => {
+      const i = R.move, last = i === MOVES.length - 1, hp1 = after[i], prev = ROUNDS[ri - 1];
+      if (prev) { // back to the menu for the next round
+        tl.to("#SCENE-eff", { opacity: 0, duration: 0.08 }, R.pick - 0.3);
+        tl.set($("msg"), { opacity: 0 }, R.pick - 0.25);
+        tl.set(menu, { opacity: 1 }, R.pick - 0.25);
+        tl.set(rows[prev.move], { attr: { class: "SCENE-mv px SCENE-done" } }, R.pick - 0.25);
+      }
+      // "number one": the cursor drops onto the move, it lights up
+      tl.to($("cur"), { y: curY(i), duration: 0.06, ease: "steps(2)" }, R.pick - 0.06);
+      tl.set(rows[i], { color: "#ffd84a" }, R.pick);
+      tl.fromTo(rows[i], { scale: 1.12, transformOrigin: "0% 50%" }, { scale: 1, duration: 0.18, ease: "back.out(3)", immediateRender: false }, R.pick);
+      AR.flash(tl, "#SCENE-flash", R.pick, { peak: 0.22, dur: 0.1 });
+      // the menu becomes the message box: HERO used MOVE!
+      const tm = Math.min(R.pick + 0.3, R.hit - 0.35);
+      tl.set(menu, { opacity: 0 }, tm);
+      tl.set($("msg"), { opacity: 1 }, tm);
+      tl.set($("say"), { textContent: `${HERO.name} used ${MOVES[i]}!` }, tm);
+      if (ri === 0) $("move").textContent = MOVES[i] + "!";
+      else tl.set($("move"), { textContent: MOVES[i] + "!" }, R.hit - 0.13);
+      AR.stamp(tl, "#SCENE-move", R.hit - 0.12, { rot: -3, from: 1.8, dur: 0.1 });
+      tl.to("#SCENE-move", { opacity: 0, duration: 0.1 }, R.banner - 0.05);
+      // the hit: the hero dashes in, swings, the monster recoils with a flash and a shake
+      const dash = Math.min(0.3, R.hit - tm - 0.02);
+      AR.crit.walk(tl, hero, R.hit - dash, dash, { x: 400, y: -190, fps: 14 });
+      const tool = AR.cast.items(hero).find((r) => r.slot === "hand");
+      if (tool) AR.crit.swing(tl, hero, R.hit - 0.2, { prop: tool.name });
+      AR.flash(tl, "#SCENE-flash", R.hit, { peak: 0.75 });
+      gsap.set("#SCENE-spark", { left: 790, top: 160 });
+      AR.burst(tl, "#SCENE-spark", R.hit, { scale: 1.3 });
+      AR.shake(tl, "#SCENE-shake", R.hit, { amp: 16, dur: 0.28 });
+      if (monPal) { AR.crit.eyes(tl, mon, R.hit, "squeeze"); AR.recoil(tl, mon, R.hit, { dx: 46, rot: 7 }); }
+      else { AR.cast.pose(tl, mon, R.hit, "hurt"); AR.recoil(tl, mon, R.hit, { dx: 46, rot: 7 }); }
+      tl.to(hero, { x: 0, y: 0, duration: 0.22, ease: "power2.out" }, R.hit + 0.18);
+      // HP drains, the number counts down; SUPER EFFECTIVE!
+      AR.bar(tl, "#SCENE-fill", R.hit + 0.02, 0.14, { from: hp / HP.max, to: hp1 / HP.max });
+      AR.bar(tl, "#SCENE-hurt", R.hit + 0.24, 0.3, { from: hp / HP.max, to: hp1 / HP.max });
+      AR.countTo(tl, "#SCENE-n", R.hit + 0.02, 0.3, { from: hp, to: hp1, format: "int" });
+      AR.shake(tl, "#SCENE-hud", R.hit + 0.02, { amp: 6, dur: 0.2 });
+      if (hpColor(hp1 / HP.max) && hpColor(hp1 / HP.max) !== hpColor(hp / HP.max)) tl.set("#SCENE-fill", { background: hpColor(hp1 / HP.max) }, R.hit + 0.16);
+      AR.stamp(tl, "#SCENE-eff", R.banner - 0.08, { rot: 0, from: 1.6, dur: 0.08 });
+      tl.set($("say"), { textContent: "It's super effective!" }, R.banner);
+      AR.crit.eyes(tl, hero, R.banner, "happy");
+      AR.cast.act(tl, hero, R.banner, "cheer", { dur: last ? null : 0.45 });
+      if (last) { // the knockout
+        const tk = R.banner + 0.55;
+        tl.to("#SCENE-eff", { opacity: 0, duration: 0.1 }, tk + 0.25);
+        if (monPal) { AR.crit.ko(tl, mon, tk - 0.2, { dir: "left" }); tl.to(mon, { y: 60, opacity: 0, duration: 0.3, ease: "power2.in" }, tk + 0.25); }
+        else { AR.cast.pose(tl, mon, tk - 0.2, "ko"); tl.to(mon, { y: 40, opacity: 0, duration: 0.3, ease: "power2.in" }, tk + 0.25); }
+        tl.set($("say"), { textContent: KO_TEXT.replace("{name}", MONSTER.name) }, tk);
+        AR.crit.victory(tl, hero, tk + 0.1);
+      } else if (monPal) AR.crit.eyes(tl, mon, R.hit + 0.35, MONSTER.eyes || "angry");
+      else AR.cast.pose(tl, mon, R.hit + 0.35, "idle");
+      hp = hp1;
+    });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

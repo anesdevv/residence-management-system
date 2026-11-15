@@ -1,0 +1,39 @@
+<!-- BLUEPRINT ai-shot: one generated video clip (fal.py video) full-bleed, trimmed to its best moment, with
+     exact HUD or text from code on top. The clip's own pixels carry the motion; code carries anything that
+     must be exact (numbers, names, health bars).
+     Use for: at most 1-2 hero moments per 30 s where a still with code motion is not enough (a real fight,
+     a crowd going wild, a world turning). Generate it from the scene's still, with no text in the still.
+     Edit: the clip src, data-media-start (seconds into the clip where the good part starts),
+     data-playback-rate, the overlay, T times. The clip is muted: charles-claude-editing owns the sound.
+     Length 0.8-2.5 s. mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #000; }
+    #SCENE-cam { position: absolute; inset: 0; transform-origin: 50% 60%; }
+    #SCENE-clip { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; object-fit: cover; }
+    #SCENE-hud { top: 262px; }
+    #SCENE-round { top: 392px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1080" data-height="1920">
+    <div id="SCENE-cam" data-layout-allow-overflow>
+      <video id="SCENE-clip" class="clip" src="assets/clips/fight.mp4" data-start="0" data-duration="2"
+             data-media-start="0.8" data-playback-rate="1" muted playsinline data-layout-ignore></video>
+    </div>
+    <div class="hud" id="SCENE-hud">
+      <div class="hud-icon"><img src="assets/cast/claude/ref.png" /></div>
+      <div class="hp"><i></i></div>
+      <div class="hp rtl"><i id="SCENE-fill-b"></i></div>
+      <div class="hud-icon"><img src="assets/cast/gpt/ref.png" /></div>
+    </div>
+    <div class="banner center-x" id="SCENE-round">FIGHT!</div>
+  </div>
+  <script>
+    const T = { hit: 0.5 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] elements from assets/names.js
+    AR.stagger(tl, "#SCENE-hud > *", 0, { gap: 0.05 });
+    AR.stamp(tl, "#SCENE-round", 0.1, { rot: 0, from: 2.4 });
+    AR.bar(tl, "#SCENE-fill-b", T.hit, 0.25, { from: 1, to: 0.4 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

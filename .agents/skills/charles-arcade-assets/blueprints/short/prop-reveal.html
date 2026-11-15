@@ -1,0 +1,42 @@
+<!-- BLUEPRINT prop-reveal, short frame (laid out at 1080x960; the start for any frame under 1400 px tall): the general-purpose metaphor
+     beat. A full-bleed pixel scene, one cast member, and the literal object from the sentence dropping in, with
+     the character reacting and one short label.
+     Use for: any literal image of a phrase: a crate for "biggest update", a chest for "free", a trophy for
+     "the best", a broken heart for "bad answers", a lock for "secure". Pick the object, not the abstraction.
+     Edit: the backdrop (a wide 5:4 plate), the prop image (generated on magenta, keyed with sprites.py key),
+     the label, the reaction pose, T.prop (the noun's word), T.react, T.label, T.end (the beat length).
+     Text stays between y 170 and y 880. mount.py copies it to compositions/<id>.html with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #000; }
+    #SCENE-cam { position: absolute; inset: 0; transform-origin: 50% 66%; }
+    #SCENE-prop { position: absolute; left: 520px; top: 330px; width: 420px; height: 420px; object-fit: contain; image-rendering: pixelated; }
+    #SCENE-hero { left: 90px; top: 500px; width: 380px; height: 317px; }
+    #SCENE-label { top: 180px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1080" data-height="960">
+    <div id="SCENE-cam" data-layout-allow-overflow>
+      <div class="fill" id="SCENE-shake" data-layout-allow-overflow>
+        <img class="bg-art pixel" src="assets/art/arena.png" data-layout-ignore />
+        <img id="SCENE-prop" src="assets/cast/gpt/ref.png" />
+        <div class="sprite" id="SCENE-hero">
+          <img class="pose on" data-pose="idle" src="assets/cast/claude/poses/idle.png" />
+          <img class="pose" data-pose="jump" src="assets/cast/claude/poses/jump.png" />
+          <img class="pose" data-pose="cheer" src="assets/cast/claude/poses/cheer.png" />
+        </div>
+      </div>
+    </div>
+    <div class="label center-x" id="SCENE-label">NEW ITEM UNLOCKED</div>
+  </div>
+  <script>
+    const T = { prop: 0.25, react: 0.62, label: 0.7, end: 1.8 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] elements from assets/names.js
+    AR.drop(tl, "#SCENE-prop", T.prop, { dy: -800, dur: 0.5 });
+    AR.shake(tl, "#SCENE-shake", T.prop + 0.28, { amp: 10, dur: 0.22 });
+    AR.poses(tl, "#SCENE-hero", [[T.react, "jump"], [T.react + 0.3, "cheer"]]);
+    AR.hop(tl, "#SCENE-hero", T.react, { h: 90, dur: 0.34 });
+    AR.pop(tl, "#SCENE-label", T.label, { from: 0.7 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

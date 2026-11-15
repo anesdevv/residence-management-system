@@ -1,0 +1,1199 @@
+/* ui-web.css: rebuilt web, social and device UI at about 2x desktop scale for a 1280x630 card (body text
+   26-30 px, key text 43 px or more, chrome and timestamps down to 18 px). Every class starts with .wb-.
+   Icons: <i data-i="name"></i> (filled from ui-web.js). Image slots: <img class="wb-avatar|wb-logo|wb-favicon|
+   wb-appicon|wb-thumb|wb-shot" src="assets/..."> or data-ph="kind:text" for a generated placeholder until the
+   real image is sourced. Phone-internal UI (lock screen, notifications, App Store, Gmail mobile) is sized in
+   iOS points: calc(N * var(--pt)); .wb-phone sets --pt from its width, a bare screen sets --pt itself. */
+
+/* the Instagram wordmark: a system script font (the real logo is an image; put one in .wb-ig-top for an exact match) */
+@font-face { font-family: "WB Script"; src: local("Brush Script MT Italic"), local("BrushScriptMT"), local("Brush Script MT"), local("Snell Roundhand"); }
+
+:root {
+  --wb-sans: "Inter", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --wb-goog: "Inter", Roboto, Arial, sans-serif;
+  --wb-cell: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --wb-mono: "JetBrains Mono", ui-monospace, monospace;
+  --wb-blue: #0969da;
+  --wb-gblue: #1a73e8;
+  --wb-sel: #1a73e8;
+}
+
+/* ---------- shared ---------- */
+.wb, .wb-browser, .wb-gh, .wb-ig, .wb-table, .wb-news, .wb-serp, .wb-slack, .wb-gm, .wb-cal, .wb-receipt,
+.wb-phone, .wb-lock, .wb-meet, .wb-ads, .wb-sheet, .wb-as, .wb-reel, .wb-feed, .wb-insights, .wb-gh-card, .wb-ad, .wb-days,
+.wb-free, .wb-counter, .wb-reviews, .wb-notifs, .wb-notif, .wb-snack, .wb-handle-chip, .wb-compose, .wb-thread, .wb-detail, .wb-src, .wb-res {
+  font-family: var(--wb-sans); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+.wb-i { display: inline-flex; width: 1em; height: 1em; flex: none; align-items: center; justify-content: center; vertical-align: -0.14em; }
+.wb-i svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.wb-i svg .s { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.wb-i svg .f { fill: currentColor; stroke: none; }
+img.wb-avatar, img.wb-logo, img.wb-favicon, img.wb-appicon, img.wb-thumb { display: block; object-fit: cover; flex: none; }
+img.wb-shot { display: block; width: 100%; height: auto; }
+.wb-avatar { border-radius: 50%; }
+.wb-ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.wb-num { font-variant-numeric: tabular-nums; }
+
+/* ---------- cursor: a 0x0 point at the hotspot; SVGs hang off it ----------
+   <div class="wb-cursor" id="X-cur" style="left:900px; top:560px" data-layout-ignore>
+     <svg class="wb-arrow">..</svg><svg class="wb-hand">..</svg></div>   (AR.webInit fills an empty one) */
+.wb-cursor { position: absolute; width: 0; height: 0; z-index: 60; transform-origin: 0 0; pointer-events: none; }
+.wb-cursor svg { position: absolute; overflow: visible; filter: drop-shadow(0 2px 2px rgba(0,0,0,.28)); }
+.wb-cursor .wb-arrow { left: -4px; top: -3px; width: 31px; height: 45px; }
+.wb-cursor .wb-hand { left: -15px; top: -3px; width: 38px; height: 41px; opacity: 0; }
+.wb-cursor.wb-big .wb-arrow { width: 40px; height: 58px; left: -5px; top: -4px; }
+.wb-cursor.wb-big .wb-hand { width: 49px; height: 53px; left: -19px; top: -4px; }
+.wb-ring { position: absolute; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; border: 3px solid rgba(26,115,232,.55); background: rgba(26,115,232,.12); opacity: 0; pointer-events: none; z-index: 59; }
+
+/* links on rebuilt pages and hotspots over screenshots: the underline is a background sweep */
+.wb-link { color: inherit; text-decoration: none; background: linear-gradient(currentColor, currentColor) no-repeat 0 100% / 0% 2px; padding-bottom: 1px; }
+.wb-hot { position: absolute; color: #1f2328; background: linear-gradient(currentColor, currentColor) no-repeat 0 100% / 0% 3px; }
+
+/* ---------- Chrome browser ----------
+   <div class="wb-browser [wb-dark]">
+     <div class="wb-tabs"><div class="wb-lights"><i></i><i></i><i></i></div>
+       <div class="wb-tab wb-on"><span class="wb-fav"><img class="wb-favicon" data-ph="logo:S"></span>
+         <span class="wb-swap"><span class="wb-ell" data-page="X-p1">Title</span><span data-page="X-p2">Next</span></span><i data-i="x"></i></div>
+       <div class="wb-tab">Other tab</div><i class="wb-newtab" data-i="plus"></i></div>
+     <div class="wb-bar"><i data-i="back"></i><i data-i="fwd"></i><i data-i="reload"></i>
+       <div class="wb-omni"><i data-i="tune"></i><span class="wb-url wb-swap"><span data-page="X-p1"><b>site.com</b>/path</span>..</span><i data-i="star"></i></div>
+       <i data-i="puzzle"></i><img class="wb-avatar wb-prof" data-ph="avatar:J"><i data-i="kebab"></i></div>
+     <div class="wb-view"><div class="wb-page wb-on" id="X-p1"><div class="wb-scroll"><img class="wb-shot" ..></div></div>
+       <div class="wb-page" id="X-p2">..</div></div></div> */
+.wb-browser { position: absolute; display: flex; flex-direction: column; background: #fff; overflow: hidden; color: #1f1f1f;
+  --wb-frame: #dfe3e8; --wb-tool: #ffffff; --wb-omni: #eef1f4; --wb-tx: #1f1f1f; --wb-tx2: #5e6266; --wb-ic: #474a4d; --wb-page: #ffffff; }
+.wb-browser.wb-dark { --wb-frame: #1f2023; --wb-tool: #35363a; --wb-omni: #202124; --wb-tx: #e8eaed; --wb-tx2: #9aa0a6; --wb-ic: #c4c7c5; --wb-page: #121316; }
+.wb-tabs { flex: none; height: 52px; background: var(--wb-frame); display: flex; align-items: flex-end; padding: 0 12px; gap: 2px; position: relative; }
+.wb-lights { display: flex; gap: 10px; align-self: center; margin: 0 22px 0 10px; }
+.wb-lights i { width: 15px; height: 15px; border-radius: 50%; background: #ff5f57; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,.12); }
+.wb-lights i:nth-child(2) { background: #febc2e; }
+.wb-lights i:nth-child(3) { background: #28c840; }
+.wb-tab { position: relative; height: 42px; width: 300px; display: flex; align-items: center; gap: 12px; padding: 0 14px 0 16px; font-size: 18px; color: var(--wb-tx2); white-space: nowrap; }
+.wb-tab:not(.wb-on)::after { content: ""; position: absolute; right: -1px; top: 11px; bottom: 11px; width: 1.5px; background: rgba(120,124,130,.45); }
+.wb-tab.wb-on { background: var(--wb-tool); color: var(--wb-tx); border-radius: 12px 12px 0 0; }
+.wb-tab.wb-on::before, .wb-tab.wb-on::after { content: ""; position: absolute; bottom: 0; width: 12px; height: 12px; }
+.wb-tab.wb-on::before { left: -12px; background: radial-gradient(circle at 0 0, transparent 12px, var(--wb-tool) 12.5px); }
+.wb-tab.wb-on::after { right: -12px; top: auto; width: 12px; background: radial-gradient(circle at 100% 0, transparent 12px, var(--wb-tool) 12.5px); }
+.wb-tab > .wb-swap, .wb-tab > .wb-ell { flex: 1; min-width: 0; }
+.wb-tab > .wb-i { font-size: 18px; color: var(--wb-ic); }
+.wb-fav { width: 22px; height: 22px; flex: none; position: relative; display: grid; place-items: center; }
+.wb-fav img, .wb-fav svg { width: 22px; height: 22px; border-radius: 5px; }
+.wb-spin { position: absolute; inset: -1px; border-radius: 50%; border: 2.5px solid transparent; border-top-color: var(--wb-gblue); border-right-color: var(--wb-gblue); opacity: 0; }
+.wb-newtab { font-size: 22px; color: var(--wb-ic); align-self: center; margin-left: 10px; }
+.wb-bar { flex: none; height: 58px; background: var(--wb-tool); display: flex; align-items: center; gap: 20px; padding: 0 18px 0 20px; color: var(--wb-ic); font-size: 24px; border-bottom: 1px solid rgba(0,0,0,.08); }
+.wb-dark .wb-bar { border-bottom-color: rgba(255,255,255,.06); }
+.wb-bar > .wb-i:nth-child(2) { opacity: .45; }
+.wb-omni { flex: 1; height: 42px; border-radius: 21px; background: var(--wb-omni); display: flex; align-items: center; gap: 14px; padding: 0 18px; font-size: 20px; color: var(--wb-tx); min-width: 0; }
+.wb-omni > .wb-i { font-size: 20px; color: var(--wb-ic); }
+.wb-omni > .wb-i:last-child { margin-left: auto; }
+.wb-url { color: var(--wb-tx); white-space: nowrap; overflow: hidden; }
+.wb-url b { font-weight: 400; }
+.wb-url span > span, .wb-url .wb-path { color: var(--wb-tx2); }
+.wb-prof { width: 30px; height: 30px; }
+.wb-view { flex: 1; position: relative; overflow: hidden; background: var(--wb-page); }
+.wb-page { position: absolute; inset: 0; overflow: hidden; background: var(--wb-page); opacity: 0; }
+.wb-page.wb-on { opacity: 1; }
+.wb-scroll { position: absolute; left: 0; top: 0; width: 100%; transform-origin: 0 0; }
+.wb-swap { display: inline-grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.wb-swap > * { grid-area: 1 / 1; opacity: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb-swap > :first-child { opacity: 1; }
+
+/* ---------- GitHub repo page (light) ----------
+   <div class="wb-gh"><div class="wb-gh-head"><img class="wb-avatar" ..><a class="wb-gh-owner">owner</a><span class="wb-gh-sl">/</span>
+     <b class="wb-gh-repo">repo</b><span class="wb-gh-pub">Public</span><div class="wb-gh-acts">
+     <span class="wb-gh-btn"><i data-i="eye"></i>Watch<em>12</em></span>..</div></div>
+     <div class="wb-gh-tabs"><span class="wb-on"><i data-i="code"></i>Code</span><span><i data-i="issue"></i>Issues<em>3</em></span>..</div>
+     <div class="wb-gh-main"><div class="wb-gh-files"><div class="wb-gh-commit">..</div>
+       <div class="wb-gh-row"><i data-i="folder"></i><span class="wb-gh-name">skills</span><span class="wb-gh-msg">..</span><span class="wb-gh-time">2 days ago</span></div>..</div>
+       <div class="wb-gh-about"><h4>About</h4><p>..</p><div class="wb-gh-topics"><span>claude</span>..</div>
+         <div class="wb-gh-meta"><span><i data-i="book"></i>Readme</span>..</div></div></div></div> */
+.wb-gh { position: absolute; background: #fff; color: #1f2328; overflow: hidden; }
+.wb-gh-head { display: flex; align-items: center; gap: 14px; padding: 24px 36px 0; height: 76px; font-size: 34px; }
+.wb-gh-head > img.wb-avatar { width: 46px; height: 46px; }
+.wb-gh-owner { color: var(--wb-blue); }
+.wb-gh-sl { color: #59636e; margin: 0 -2px; }
+.wb-gh-repo { color: var(--wb-blue); font-weight: 600; }
+.wb-gh-pub { font-size: 19px; font-weight: 500; color: #59636e; border: 1.5px solid #d1d9e0; border-radius: 999px; padding: 3px 12px; margin-left: 6px; }
+.wb-gh-acts { margin-left: auto; display: flex; gap: 12px; }
+.wb-gh-btn { display: inline-flex; align-items: center; gap: 9px; height: 46px; padding: 0 14px; font-size: 21px; font-weight: 500; color: #25292e; background: #f6f8fa; border: 1.5px solid #d1d9e0; border-radius: 9px; }
+.wb-gh-btn .wb-i { color: #59636e; font-size: 21px; }
+.wb-gh-btn em { font-style: normal; font-size: 18px; font-weight: 600; background: #e1e5ea; border-radius: 999px; padding: 1px 9px; }
+.wb-gh-btn.wb-starred .wb-i { color: #d29922; }
+.wb-gh-tabs { display: flex; gap: 6px; padding: 0 28px; border-bottom: 1.5px solid #d1d9e0; height: 62px; align-items: stretch; margin-top: 8px; }
+.wb-gh-tabs > span { display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 24px; color: #1f2328; position: relative; }
+.wb-gh-tabs .wb-i { color: #59636e; font-size: 22px; }
+.wb-gh-tabs em { font-style: normal; font-size: 18px; font-weight: 600; background: #e1e5ea; border-radius: 999px; padding: 1px 9px; }
+.wb-gh-tabs .wb-on { font-weight: 600; }
+.wb-gh-tabs .wb-on::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: -1.5px; height: 4px; border-radius: 3px; background: #fd8c73; }
+.wb-gh-main { display: flex; gap: 32px; padding: 26px 36px 0; }
+.wb-gh-files { flex: 1; min-width: 0; border: 1.5px solid #d1d9e0; border-radius: 12px; overflow: hidden; align-self: flex-start; }
+.wb-gh-commit { display: flex; align-items: center; gap: 14px; height: 64px; padding: 0 20px; background: #f6f8fa; border-bottom: 1.5px solid #d1d9e0; font-size: 22px; color: #59636e; white-space: nowrap; }
+.wb-gh-commit img.wb-avatar { width: 32px; height: 32px; }
+.wb-gh-commit b { color: #1f2328; font-weight: 600; }
+.wb-gh-commit .wb-ell { flex: 1; }
+.wb-gh-commit .wb-gh-n { color: #1f2328; display: flex; align-items: center; gap: 8px; font-weight: 500; }
+.wb-gh-row { display: flex; align-items: center; gap: 16px; height: 58px; padding: 0 20px; border-top: 1.5px solid #e4e8ec; font-size: 25px; white-space: nowrap; }
+.wb-gh-commit + .wb-gh-row { border-top: 0; }
+.wb-gh-row > .wb-i { font-size: 26px; color: #54aeff; }
+.wb-gh-row > .wb-i.wb-file { color: #59636e; }
+.wb-gh-name { width: 230px; flex: none; color: #1f2328; overflow: hidden; text-overflow: ellipsis; }
+.wb-gh-msg { flex: 1; color: #59636e; overflow: hidden; text-overflow: ellipsis; font-size: 23px; }
+.wb-gh-time { color: #59636e; font-size: 22px; }
+.wb-gh-about { width: 360px; flex: none; }
+.wb-gh-about h4 { font-size: 27px; font-weight: 600; margin: 4px 0 14px; }
+.wb-gh-about p { font-size: 23px; line-height: 1.42; color: #1f2328; margin: 0 0 14px; }
+.wb-gh-site { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 600; color: var(--wb-blue); margin-bottom: 14px; }
+.wb-gh-topics { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 16px; }
+.wb-gh-topics span { font-size: 18px; font-weight: 500; color: var(--wb-blue); background: #ddf4ff; border-radius: 999px; padding: 4px 13px; }
+.wb-gh-meta { display: flex; flex-direction: column; gap: 11px; font-size: 22px; color: #59636e; }
+.wb-gh-meta span { display: flex; align-items: center; gap: 12px; }
+.wb-gh-meta b { color: #1f2328; font-weight: 600; }
+/* compact About card: <div class="wb-gh-card"><div class="wb-gh-head">..</div><div class="wb-gh-card-acts">..</div><hr>
+   <div class="wb-gh-about">..</div></div> */
+.wb-gh-card { position: absolute; background: #fff; color: #1f2328; overflow: hidden; padding: 30px 40px; }
+.wb-gh-card .wb-gh-head { padding: 0; height: auto; }
+.wb-gh-card-acts { display: flex; gap: 12px; margin: 18px 0 24px; }
+.wb-gh-card hr { border: 0; border-top: 1.5px solid #d1d9e0; margin: 0 0 22px; }
+.wb-gh-card .wb-gh-about { width: auto; }
+.wb-gh-card .wb-gh-about h4 { font-size: 32px; }
+.wb-gh-card .wb-gh-about p { font-size: 30px; }
+.wb-gh-card .wb-gh-topics span { font-size: 22px; padding: 5px 16px; }
+/* the green FREE pill (stamp it with a blur-in tween; it lands rotated) */
+.wb-free { position: absolute; font-family: var(--wb-sans); font-weight: 800; font-size: 76px; letter-spacing: 0.06em; color: #fff; background: #23a455;
+  border-radius: 22px; padding: 6px 34px 8px; box-shadow: 0 0 0 5px #fff, 0 12px 30px rgba(18,90,45,.35); line-height: 1.1; }
+
+/* ---------- iPhone frame (any size: --pw is the device width) ----------
+   <div class="wb-phone" style="--pw:640px; left:..; top:.."><div class="wb-screen">..content..
+     <div class="wb-status"><span>9:41</span><i data-i="signal"></i><i data-i="wifi"></i><i data-i="battery"></i></div>
+     <div class="wb-island"></div><div class="wb-homebar"></div></div></div> */
+.wb-phone { --pw: 393px; --pt: calc(var(--pw) / 427); position: absolute; width: var(--pw); height: calc(886 * var(--pt));
+  border-radius: calc(72 * var(--pt)); padding: calc(4 * var(--pt));
+  background: linear-gradient(145deg, #d9dadf, #9fa2aa 45%, #c9cbd0 70%, #8b8e96);
+  box-shadow: 0 calc(18 * var(--pt)) calc(40 * var(--pt)) rgba(20,20,30,.25), inset 0 0 0 calc(1 * var(--pt)) rgba(0,0,0,.25); }
+.wb-phone::before, .wb-phone::after { content: ""; position: absolute; width: calc(3 * var(--pt)); background: #a3a6ad; border-radius: calc(2 * var(--pt)); }
+.wb-phone::before { left: calc(-2.5 * var(--pt)); top: calc(178 * var(--pt)); height: calc(62 * var(--pt)); box-shadow: 0 calc(78 * var(--pt)) 0 #a3a6ad, 0 calc(-58 * var(--pt)) 0 #a3a6ad; }
+.wb-phone::after { right: calc(-2.5 * var(--pt)); top: calc(205 * var(--pt)); height: calc(98 * var(--pt)); }
+.wb-phone.wb-dark-ti { background: linear-gradient(145deg, #4a4c52, #26272b 45%, #3c3e44 70%, #1d1e21); }
+.wb-screen { position: relative; width: 100%; height: 100%; border-radius: calc(68 * var(--pt)); border: calc(13 * var(--pt)) solid #050506; overflow: hidden; background: #fff; isolation: isolate; }
+.wb-island { position: absolute; z-index: 30; left: 50%; top: calc(11 * var(--pt)); width: calc(124 * var(--pt)); height: calc(36 * var(--pt)); margin-left: calc(-62 * var(--pt)); border-radius: calc(20 * var(--pt)); background: #000; }
+.wb-homebar { position: absolute; z-index: 30; left: 50%; bottom: calc(8 * var(--pt)); width: calc(138 * var(--pt)); height: calc(5 * var(--pt)); margin-left: calc(-69 * var(--pt)); border-radius: 9px; background: #111; }
+.wb-status { position: absolute; z-index: 29; left: 0; right: 0; top: 0; height: calc(54 * var(--pt)); display: flex; align-items: center; gap: calc(6 * var(--pt)); padding: 0 calc(30 * var(--pt)) 0 calc(48 * var(--pt)); font-size: calc(17 * var(--pt)); font-weight: 600; color: #000; }
+.wb-status > span:first-child { margin-right: auto; }
+.wb-status .wb-i { font-size: calc(17 * var(--pt)); }
+.wb-status .wb-i:last-child { font-size: calc(26 * var(--pt)); margin-left: calc(2 * var(--pt)); }
+.wb-status.wb-light, .wb-light .wb-status { color: #fff; }
+.wb-light .wb-homebar, .wb-homebar.wb-light { background: rgba(255,255,255,.92); }
+
+/* ---------- iOS lock screen + notifications ----------
+   <div class="wb-lock" [style="--pt:2.2px"]><img class="wb-wall" src=".."><div class="wb-lock-date">Friday, August 21</div>
+     <div class="wb-lock-time">9:41</div><div class="wb-notifs [wb-stack]"><div class="wb-notif">
+       <img class="wb-appicon" data-ph="logo:stripe"><div class="wb-n-main"><div class="wb-n-top"><b class="wb-n-app">Stripe</b>
+       <span class="wb-n-time">now</span></div><div class="wb-n-title">Payment received</div><div class="wb-n-text">$5.00 · ..</div></div></div>..</div>
+     <div class="wb-lock-btns"><span><i data-i="flashlight"></i></span><span><i data-i="camera"></i></span></div></div> */
+.wb-lock { position: absolute; inset: 0; overflow: hidden; color: #fff;
+  background: radial-gradient(120% 70% at 30% 105%, #f0a07a 0%, rgba(240,160,122,0) 55%),
+              linear-gradient(180deg, #24275e 0%, #3b3f8f 30%, #6a4f9e 58%, #b0619a 78%, #e98d7f 100%); }
+.wb-lock > img.wb-wall { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.wb-lock > img.wb-wall:not([src]) { display: none; }
+.wb-lock-date { position: absolute; left: 0; right: 0; top: calc(66 * var(--pt, 1px)); text-align: center; font-size: calc(21 * var(--pt, 1px)); font-weight: 600; color: rgba(255,255,255,.88); letter-spacing: 0.005em; }
+.wb-lock-time { position: absolute; left: 0; right: 0; top: calc(84 * var(--pt, 1px)); text-align: center; font-size: calc(96 * var(--pt, 1px)); font-weight: 600; letter-spacing: -0.035em; line-height: 1.08; color: rgba(255,255,255,.9); }
+.wb-lock-btns { position: absolute; left: calc(46 * var(--pt, 1px)); right: calc(46 * var(--pt, 1px)); bottom: calc(46 * var(--pt, 1px)); display: flex; justify-content: space-between; }
+.wb-lock-btns > span { width: calc(50 * var(--pt, 1px)); height: calc(50 * var(--pt, 1px)); border-radius: 50%; display: grid; place-items: center; background: rgba(40,40,46,.38); backdrop-filter: blur(12px); font-size: calc(21 * var(--pt, 1px)); }
+.wb-notifs { position: absolute; left: calc(16 * var(--pt, 1px)); right: calc(16 * var(--pt, 1px)); top: calc(250 * var(--pt, 1px)); display: flex; flex-direction: column; gap: calc(8 * var(--pt, 1px)); }
+.wb-notifs.wb-stack { display: block; }
+.wb-notifs.wb-stack > .wb-notif { position: absolute; left: 0; right: 0; top: 0; transform-origin: 50% 100%; }
+.wb-notif { position: relative; display: flex; align-items: flex-start; gap: calc(11 * var(--pt, 1px)); padding: calc(13 * var(--pt, 1px)) calc(15 * var(--pt, 1px)) calc(14 * var(--pt, 1px)) calc(14 * var(--pt, 1px));
+  border-radius: calc(22 * var(--pt, 1px)); background: rgba(48,44,58,.42); backdrop-filter: blur(24px) saturate(1.7); -webkit-backdrop-filter: blur(24px) saturate(1.7);
+  color: #fff; font-size: calc(15 * var(--pt, 1px)); line-height: 1.27; box-shadow: inset 0 0 0 0.5px rgba(255,255,255,.12); }
+.wb-notif.wb-light { background: rgba(246,246,248,.72); color: #000; }
+.wb-notif > .wb-appicon, .wb-notif > img.wb-appicon { width: calc(38 * var(--pt, 1px)); height: calc(38 * var(--pt, 1px)); border-radius: calc(9 * var(--pt, 1px)); margin-top: calc(2 * var(--pt, 1px)); }
+.wb-n-main { flex: 1; min-width: 0; }
+.wb-n-top { display: flex; align-items: baseline; gap: calc(8 * var(--pt, 1px)); }
+.wb-n-top > :first-child { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-n-app, .wb-n-title { font-weight: 600; }
+.wb-n-time { font-size: calc(13.5 * var(--pt, 1px)); color: rgba(255,255,255,.62); }
+.wb-notif.wb-light .wb-n-time { color: rgba(60,60,67,.6); }
+.wb-n-text { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
+.wb-n-sub { color: rgba(255,255,255,.62); }
+
+/* ---------- App Store (inside .wb-screen) ----------
+   <div class="wb-as" style="--tint:#26b36b"><div class="wb-as-top"><div class="wb-as-back"><i data-i="chev-l"></i>Search</div>
+     <div class="wb-as-app"><img class="wb-appicon" ..><div><b>Rover – Pet Sitters</b><span>Personalized care</span><em>Get</em></div></div></div>
+     <div class="wb-as-info"><div><small>516K RATINGS</small><b>4.9</b><span class="wb-stars">.....</span></div>
+       <div><small>AWARDS</small><b class="wb-as-award">Editors’<br>Choice</b><span>Apps</span></div><div><small>AGE</small><b>4+</b><span>Years</span></div></div></div> */
+.wb-as { position: absolute; inset: 0; background: #fff; color: #000; font-size: calc(17 * var(--pt)); }
+.wb-as-top { background: var(--tint, #1f8fff); color: #fff; padding: calc(58 * var(--pt)) calc(20 * var(--pt)) calc(22 * var(--pt)); }
+.wb-as-back { display: flex; align-items: center; gap: calc(4 * var(--pt)); font-size: calc(17 * var(--pt)); margin: 0 0 calc(14 * var(--pt)) calc(-6 * var(--pt)); }
+.wb-as-back .wb-i { font-size: calc(22 * var(--pt)); }
+.wb-as-app { display: flex; gap: calc(16 * var(--pt)); align-items: flex-start; }
+.wb-as-app > .wb-appicon { width: calc(118 * var(--pt)); height: calc(118 * var(--pt)); border-radius: calc(26 * var(--pt)); box-shadow: 0 0 0 0.5px rgba(0,0,0,.15); }
+.wb-as-app > div { display: flex; flex-direction: column; gap: calc(3 * var(--pt)); padding-top: calc(4 * var(--pt)); }
+.wb-as-app b { font-size: calc(20 * var(--pt)); font-weight: 700; letter-spacing: -0.01em; }
+.wb-as-app span { font-size: calc(15 * var(--pt)); opacity: .82; }
+.wb-as-app em { font-style: normal; align-self: flex-start; margin-top: calc(14 * var(--pt)); font-size: calc(15 * var(--pt)); font-weight: 700; padding: calc(6 * var(--pt)) calc(22 * var(--pt)); border-radius: 999px; background: rgba(255,255,255,.24); }
+.wb-as-info { display: flex; padding: calc(14 * var(--pt)) 0; border-bottom: 0.5px solid #d6d6db; }
+.wb-as-info > div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: calc(2 * var(--pt)); border-left: 1px solid #e3e3e8; color: #8a8a8e; font-size: calc(12 * var(--pt)); }
+.wb-as-info > div:first-child { border-left: 0; }
+.wb-as-info small { font-size: calc(11 * var(--pt)); font-weight: 600; letter-spacing: .04em; }
+.wb-as-info b { font-size: calc(21 * var(--pt)); font-weight: 700; color: #6e6e73; }
+.wb-as-award { font-size: calc(13 * var(--pt)) !important; line-height: 1.05; text-align: center; padding: 0 calc(14 * var(--pt)); position: relative; }
+.wb-as-award::before, .wb-as-award::after { content: ""; position: absolute; top: 0; bottom: 0; width: calc(9 * var(--pt)); border: calc(1.6 * var(--pt)) solid #a1a1a6; border-radius: 50%; }
+.wb-as-award::before { left: 0; border-right-color: transparent; }
+.wb-as-award::after { right: 0; border-left-color: transparent; }
+.wb-stars { display: inline-flex; gap: 0.08em; color: #8a8a8e; }
+.wb-stars .wb-i { width: 1em; height: 1em; }
+.wb-stars.wb-orange { color: #ff9500; }
+/* review cards, in a horizontal track for a carousel swipe:
+   <div class="wb-reviews"><div class="wb-rv-track"><div class="wb-review"><div class="wb-rv-head"><b>Title</b><span>10/14/2026</span></div>
+     <div class="wb-rv-sub"><span class="wb-stars wb-orange"><i data-i="star-f"></i><i data-i="star" class="wb-off"></i>..</span><span>user</span></div>
+     <p>Body .. <a>more</a></p></div>..</div></div>  (sized in px: set font-size on .wb-reviews) */
+.wb-reviews { position: absolute; overflow: hidden; font-size: 30px; }
+.wb-rv-track { display: flex; gap: 0.6em; position: absolute; left: 0; top: 0; height: 100%; }
+.wb-review { flex: none; width: var(--rw, 1000px); height: 100%; background: #f2f2f6; border-radius: 0.8em; padding: 0.9em 1.05em; color: #000; overflow: hidden; }
+.wb-rv-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1em; }
+.wb-rv-head b { font-weight: 700; font-size: 1.04em; }
+.wb-rv-head span, .wb-rv-sub > span:last-child { color: #8a8a8e; font-size: 0.95em; }
+.wb-rv-sub { display: flex; justify-content: space-between; align-items: center; margin: 0.2em 0 0.65em; }
+.wb-rv-sub .wb-stars { font-size: 0.95em; color: #c7c7cc; }
+.wb-rv-sub .wb-stars .wb-on { color: #ff9500; }
+.wb-review p { margin: 0; line-height: 1.38; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.wb-review p a { color: #007aff; }
+
+/* ---------- Instagram ----------
+   profile (desktop web): <div class="wb-ig"><div class="wb-ig-top"><span class="wb-ig-word">Instagram</span></div>
+     <div class="wb-ig-scroll"><div class="wb-ig-head"><div class="wb-ig-ring"><img class="wb-avatar" ..></div><div class="wb-ig-info">
+       <div class="wb-ig-name">handle<i data-i="verified"></i><i data-i="more-h"></i></div>
+       <div class="wb-ig-counts"><span><b>738</b> posts</span><span><b>4.2M</b> followers</span><span><b>929</b> following</span></div>
+       <div class="wb-ig-bio"><b>Name</b><br>line<br><a>link</a></div></div></div>
+       <div class="wb-ig-hl"><span><img class="wb-thumb" ..><em>Tour</em></span>..</div>
+       <div class="wb-ig-tabs"><i data-i="grid" class="wb-on"></i><i data-i="reels"></i><i data-i="tagged"></i></div>
+       <div class="wb-ig-grid"><div class="wb-ig-tile"><img class="wb-thumb" ..><span class="wb-ig-views"><i data-i="play"></i>3.2M</span></div>..</div></div></div> */
+.wb-ig { position: absolute; background: #fff; color: #000; overflow: hidden; }
+.wb-ig-top { position: absolute; z-index: 5; left: 0; right: 0; top: 0; height: 66px; background: #fff; border-bottom: 1px solid #dbdbdb; display: flex; align-items: center; padding: 0 40px; }
+.wb-ig-word { font-family: "WB Script", cursive; font-size: 44px; letter-spacing: 0.01em; }
+.wb-ig-scroll { position: absolute; left: 0; right: 0; top: 66px; transform-origin: 0 0; background: #fff; }
+.wb-ig-head { display: flex; gap: 70px; align-items: center; padding: 34px 120px 0 150px; }
+.wb-ig-ring { width: 196px; height: 196px; border-radius: 50%; padding: 7px; flex: none; background: conic-gradient(from 200deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5, #feda75); }
+.wb-ig-ring.wb-plain { background: #dbdbdb; padding: 2px; }
+.wb-ig-ring > img { width: 100%; height: 100%; border-radius: 50%; border: 6px solid #fff; }
+.wb-ig-name { display: flex; align-items: center; gap: 14px; font-size: 34px; font-weight: 500; }
+.wb-ig-name .wb-i[data-i="verified"] { font-size: 28px; color: #0095f6; }
+.wb-ig-name .wb-i[data-i="more-h"] { font-size: 30px; margin-left: 10px; }
+.wb-ig-btn { font-size: 22px; font-weight: 600; background: #efefef; border-radius: 10px; padding: 9px 22px; margin-left: 8px; }
+.wb-ig-btn.wb-blue { background: #0095f6; color: #fff; }
+.wb-ig-counts { display: flex; gap: 44px; font-size: 25px; margin: 22px 0 16px; }
+.wb-ig-counts b { font-weight: 600; }
+.wb-ig-bio { font-size: 22px; line-height: 1.4; color: #000; }
+.wb-ig-bio b { font-weight: 600; }
+.wb-ig-bio a { color: #00376b; font-weight: 600; }
+.wb-ig-hl { display: flex; gap: 46px; padding: 34px 0 0 170px; }
+.wb-ig-hl > span { display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 19px; font-weight: 600; }
+.wb-ig-hl img.wb-thumb { width: 104px; height: 104px; border-radius: 50%; border: 5px solid #fff; box-shadow: 0 0 0 1.5px #dbdbdb; }
+.wb-ig-tabs { display: flex; justify-content: center; gap: 170px; margin: 30px 120px 0; border-top: 1px solid #dbdbdb; height: 64px; align-items: center; font-size: 30px; color: #8e8e8e; }
+.wb-ig-tabs .wb-on { color: #000; position: relative; }
+.wb-ig-tabs .wb-on::before { content: ""; position: absolute; left: -10px; right: -10px; top: -18px; height: 2px; background: #000; }
+.wb-ig-grid { display: grid; grid-template-columns: repeat(var(--cols, 3), 1fr); gap: 4px; padding: 0 120px; }
+.wb-ig-tile { position: relative; aspect-ratio: var(--tile-ar, 3 / 4); overflow: hidden; background: #efefef; }
+.wb-ig-tile > img.wb-thumb { position: absolute; inset: 0; width: 100%; height: 100%; }
+.wb-ig-views { position: absolute; left: 12px; bottom: 10px; display: flex; align-items: center; gap: 6px; color: #fff; font-size: 20px; font-weight: 600; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.wb-ig-views .wb-i { font-size: 18px; }
+.wb-ig-pin { position: absolute; right: 12px; top: 12px; color: #fff; font-size: 22px; filter: drop-shadow(0 1px 3px rgba(0,0,0,.5)); }
+/* select-all overlay: AR.webInit adds <span class="wb-ig-sel"><i class="wb-ig-check"></i></span> to each tile */
+.wb-ig-sel { position: absolute; inset: 0; background: rgba(0,110,255,.34); box-shadow: inset 0 0 0 4px #1d8cff; opacity: 0; }
+.wb-ig-check { position: absolute; left: 12px; top: 12px; width: 38px; height: 38px; border-radius: 50%; background: #1d8cff; box-shadow: 0 0 0 3px #fff; display: grid; place-items: center; color: #fff; font-size: 24px; }
+.wb-ig-check svg { width: 24px; height: 24px; }
+/* the "POSTS 0/738" counter pill: <div class="wb-counter"><i data-i="copy"></i><span class="wb-ct-label">POSTS</span>
+     <b><span class="wb-ct-n">0</span>/738</b><i data-i="check" class="wb-ct-done"></i></div> */
+.wb-counter { position: absolute; z-index: 20; display: flex; align-items: center; gap: 14px; background: #fff; border: 3px solid #2ea44f; border-radius: 16px; padding: 10px 22px; color: #1a7f37; font-size: 30px; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+.wb-counter .wb-i { font-size: 30px; }
+.wb-ct-label { font-family: var(--wb-mono); font-size: 24px; letter-spacing: .12em; color: #3b7d52; }
+.wb-counter b { font-family: var(--wb-mono); font-weight: 700; font-size: 40px; font-variant-numeric: tabular-nums; }
+.wb-ct-n { display: inline-block; min-width: var(--ct-w, 3ch); text-align: right; }
+.wb-ct-done { opacity: 0; }
+/* reel card (9:16): <div class="wb-reel"><img class="wb-thumb" ..><div class="wb-reel-top"><b>Reels</b><i data-i="camera"></i></div>
+     <div class="wb-reel-acts"><span class="wb-like"><i data-i="heart"></i><i data-i="heart-f" class="wb-liked"></i><em>1.6M</em></span>
+       <span><i data-i="comment"></i><em>5,953</em></span><span><i data-i="repost"></i><em>1,400</em></span><span><i data-i="send"></i><em>9,100</em></span><span><i data-i="more-h"></i></span></div>
+     <div class="wb-reel-meta"><div class="wb-reel-who"><img class="wb-avatar" ..><b>handle</b><span class="wb-reel-follow">Follow</span></div>
+       <div class="wb-reel-cap">caption</div><div class="wb-reel-aud"><i data-i="music"></i>handle · Original audio</div></div>
+     <span class="wb-reel-views"><i data-i="play"></i>22.4M</span><div class="wb-heart-pop"><i data-i="heart-f"></i></div></div>
+   .wb-reel is sized by --rw (its width, default 360px; set it on the reel or on a parent such as .wb-feed); everything scales with it. */
+.wb-reel { --u: calc(var(--rw, 360px) / 360); position: absolute; width: var(--rw, 360px); aspect-ratio: 9 / 16; border-radius: calc(14 * var(--u)); overflow: hidden; background: #111; color: #fff; font-size: calc(15 * var(--u)); box-shadow: 0 calc(10 * var(--u)) calc(30 * var(--u)) rgba(0,0,0,.22); }
+.wb-reel > img.wb-thumb, .wb-reel > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.wb-reel::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(0,0,0,.28), rgba(0,0,0,0) 16%, rgba(0,0,0,0) 62%, rgba(0,0,0,.55)); pointer-events: none; }
+.wb-reel > div, .wb-reel > span { z-index: 2; }
+.wb-reel-top { position: absolute; left: calc(16 * var(--u)); right: calc(16 * var(--u)); top: calc(14 * var(--u)); display: flex; justify-content: space-between; align-items: center; font-size: calc(20 * var(--u)); }
+.wb-reel-top b { font-weight: 700; }
+.wb-reel-acts { position: absolute; right: calc(10 * var(--u)); bottom: calc(74 * var(--u)); display: flex; flex-direction: column; align-items: center; gap: calc(16 * var(--u)); font-size: calc(26 * var(--u)); }
+.wb-reel-acts > span { display: flex; flex-direction: column; align-items: center; gap: calc(3 * var(--u)); position: relative; }
+.wb-reel-acts em { font-style: normal; font-size: calc(13 * var(--u)); font-weight: 600; }
+.wb-like { position: relative; }
+.wb-like .wb-liked { position: absolute; left: 0; top: 0; color: #ff3040; opacity: 0; }
+.wb-reel-meta { position: absolute; left: calc(14 * var(--u)); right: calc(60 * var(--u)); bottom: calc(16 * var(--u)); display: flex; flex-direction: column; gap: calc(7 * var(--u)); }
+.wb-reel-who { display: flex; align-items: center; gap: calc(9 * var(--u)); font-size: calc(15 * var(--u)); }
+.wb-reel-who img.wb-avatar { width: calc(32 * var(--u)); height: calc(32 * var(--u)); border: 1.5px solid rgba(255,255,255,.9); }
+.wb-reel-follow { border: 1.5px solid rgba(255,255,255,.75); border-radius: calc(8 * var(--u)); padding: calc(2 * var(--u)) calc(10 * var(--u)); font-weight: 600; font-size: calc(13 * var(--u)); }
+.wb-reel-cap { font-size: calc(15 * var(--u)); line-height: 1.3; }
+.wb-reel-aud { display: flex; gap: calc(6 * var(--u)); align-items: center; font-size: calc(12.5 * var(--u)); opacity: .92; }
+.wb-reel-views { position: absolute; left: calc(12 * var(--u)); bottom: calc(10 * var(--u)); display: none; align-items: center; gap: calc(6 * var(--u)); font-size: calc(17 * var(--u)); font-weight: 700; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.wb-reel.wb-mini .wb-reel-views { display: flex; }
+.wb-reel.wb-mini .wb-reel-acts, .wb-reel.wb-mini .wb-reel-top, .wb-reel.wb-mini .wb-reel-cap, .wb-reel.wb-mini .wb-reel-aud, .wb-reel.wb-mini .wb-reel-follow { display: none; }
+.wb-reel.wb-mini .wb-reel-meta { bottom: calc(44 * var(--u)); right: calc(14 * var(--u)); }
+.wb-heart-pop { position: absolute; z-index: 6; left: 50%; top: 46%; width: calc(120 * var(--u)); height: calc(120 * var(--u)); margin: calc(-60 * var(--u)) 0 0 calc(-60 * var(--u)); color: #fff; font-size: calc(120 * var(--u)); opacity: 0; filter: drop-shadow(0 calc(4 * var(--u)) calc(12 * var(--u)) rgba(0,0,0,.35)); }
+.wb-heart-pop .wb-i { display: block; }
+/* feed: <div class="wb-feed" style="--rw:420px"><div class="wb-feed-track"><div class="wb-reel">..</div>..</div></div>  (reels stack vertically) */
+.wb-feed { position: absolute; overflow: hidden; width: var(--rw, 360px); aspect-ratio: 9 / 16; border-radius: calc(14 * var(--rw, 360px) / 360); box-shadow: 0 10px 30px rgba(0,0,0,.22); }
+.wb-feed-track { position: absolute; left: 0; top: 0; width: 100%; display: flex; flex-direction: column; gap: 0; }
+.wb-feed .wb-reel { position: relative; box-shadow: none; border-radius: 0; flex: none; }
+/* Insights card: <div class="wb-insights"><div class="wb-ins-head"><span>Views <i data-i="info"></i></span><b class="wb-ins-num">0</b></div>
+     <div class="wb-ins-pills"><span class="wb-on">All</span><span>Followers</span><span>Non-followers</span></div>
+     <div class="wb-ins-chart"><svg viewBox="0 0 1000 300" preserveAspectRatio="none"><path class="wb-ins-line" d=".."/></svg>
+       <span style="top:0">1.2M</span>..</div></div> */
+.wb-insights { position: absolute; background: #fff; color: #000; padding: 30px 46px; }
+.wb-ins-head { display: flex; justify-content: space-between; align-items: center; font-size: 40px; font-weight: 700; }
+.wb-ins-head span { display: flex; align-items: center; gap: 12px; }
+.wb-ins-head .wb-i { font-size: 30px; }
+.wb-ins-num { font-variant-numeric: tabular-nums; }
+.wb-ins-pills { display: flex; gap: 16px; margin: 24px 0 18px; }
+.wb-ins-pills span { font-size: 27px; font-weight: 600; background: #efefef; border-radius: 999px; padding: 12px 30px; }
+.wb-ins-pills .wb-on { background: #000; color: #fff; }
+.wb-ins-chart { position: relative; height: 270px; margin-left: 110px; }
+.wb-ins-chart > span { position: absolute; left: -110px; transform: translateY(-50%); font-size: 24px; color: #737373; }
+.wb-ins-chart::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, #d4d4d4 0 6px, transparent 6px 14px) 0 0 / 100% 2px no-repeat, repeating-linear-gradient(90deg, #d4d4d4 0 6px, transparent 6px 14px) 0 50% / 100% 2px no-repeat, linear-gradient(#cfcfcf, #cfcfcf) 0 100% / 100% 2px no-repeat; }
+.wb-ins-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.wb-ins-line { fill: none; stroke: #b5179e; stroke-width: 6.5; stroke-linecap: round; stroke-linejoin: round; }
+.wb-ins-tip { position: absolute; left: 0; top: 0; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: #b5179e; box-shadow: 0 0 0 5px #fff, 0 2px 8px rgba(0,0,0,.3); }
+.wb-handle-chip { position: absolute; display: flex; align-items: center; gap: 12px; background: #1f1e1c; color: #fff; font-size: 30px; font-weight: 600; border-radius: 12px; padding: 8px 18px 8px 10px; }
+.wb-handle-chip .wb-i { font-size: 34px; }
+
+/* ---------- dense data table (light; .wb-dark for dark) ----------
+   <div class="wb-table [wb-dark]" style="--cols: 1.5fr 1.5fr 130px 160px 150px 64px"><div class="wb-thead"><div class="wb-tr">
+     <div class="wb-th">Politician <i data-i="sort"></i></div>..</div></div>
+     <div class="wb-tbody"><div class="wb-tr"><div class="wb-td wb-who"><img class="wb-avatar" ..><div><b class="wb-name">Nancy Pelosi</b>
+       <span class="wb-sub">Democrat | House | CA</span></div></div>..<div class="wb-td"><span class="wb-pill wb-buy">BUY</span></div>
+       <div class="wb-td"><span class="wb-go"><i data-i="arrow-r"></i></span></div></div>..</div></div>
+   Row-group highlight: <div class="wb-group"><span class="wb-group-tag">GOOGL $33.04B</span></div> placed by AR.rowGroup. */
+.wb-table { position: absolute; background: #fff; color: #111827; overflow: hidden; --cols: 1fr 1fr 1fr; --line: #e6e8eb; --tx2: #6b7280; --nm: #111827; --hd: #6b7280; }
+.wb-table.wb-dark { background: #111214; color: #e8eaed; --line: #2a2c30; --tx2: #9aa0a6; --nm: #5aaaf5; --hd: #8b9097; }
+.wb-tr { display: grid; grid-template-columns: var(--cols); align-items: center; column-gap: 22px; padding: 0 28px; position: relative; }
+.wb-thead .wb-tr { height: 64px; border-bottom: 1.5px solid var(--line); }
+.wb-th { font-size: 20px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--hd); display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.wb-th .wb-i { font-size: 20px; opacity: .8; }
+.wb-tbody { position: relative; }
+.wb-tbody .wb-tr { height: 92px; border-bottom: 1.5px solid var(--line); background: inherit; }
+.wb-td { font-size: 26px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.wb-who { display: flex; align-items: center; gap: 16px; }
+.wb-who > img { width: 56px; height: 56px; border-radius: 50%; }
+.wb-who > img.wb-logo { border-radius: 50%; background: #f1f3f5; }
+.wb-dark .wb-who > img.wb-logo { background: #2a2c30; }
+.wb-who > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.wb-name { font-size: 27px; font-weight: 500; color: var(--nm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-sub { font-size: 20px; color: var(--tx2); white-space: nowrap; }
+.wb-pill { display: inline-block; font-size: 19px; font-weight: 700; letter-spacing: .06em; border-radius: 8px; padding: 6px 13px; }
+.wb-buy { background: #e3f6e9; color: #12813a; }
+.wb-sell { background: #fde8e7; color: #c62828; }
+.wb-dem { background: #e7efff; color: #1d4ed8; }
+.wb-rep { background: #fde8e7; color: #b91c1c; }
+.wb-dark .wb-buy { background: rgba(46,160,90,.18); color: #4ade80; }
+.wb-dark .wb-sell { background: rgba(229,72,59,.18); color: #f87171; }
+.wb-go { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: #f1f3f5; color: #6b7280; font-size: 22px; }
+.wb-dark .wb-go { background: #24262a; color: #c4c7c5; }
+.wb-rowflash { position: absolute; inset: 0; background: var(--wb-flash, rgba(255,214,10,.28)); opacity: 0; pointer-events: none; }
+.wb-dark .wb-rowflash { --wb-flash: rgba(90,170,245,.2); }
+.wb-hover { position: absolute; inset: 0; background: rgba(0,0,0,.04); opacity: 0; pointer-events: none; }
+.wb-dark .wb-hover { background: rgba(255,255,255,.05); }
+.wb-group { position: absolute; border: 4px solid #e5373b; border-radius: 10px; opacity: 0; pointer-events: none; z-index: 8; }
+.wb-group-tag { position: absolute; left: 50%; top: -24px; transform: translateX(-50%); white-space: nowrap; background: #e5373b; color: #fff; font-family: var(--wb-mono); font-weight: 700; font-size: 26px; letter-spacing: .04em; border-radius: 8px; padding: 4px 14px; }
+/* SEC-style dense serif table: add .wb-serif */
+.wb-table.wb-serif .wb-td, .wb-table.wb-serif .wb-th { font-family: "Times New Roman", "Source Serif 4", serif; letter-spacing: 0; text-transform: none; color: #1a1a9c; font-weight: 400; font-size: 25px; }
+.wb-table.wb-serif .wb-tbody .wb-tr { height: 52px; border-bottom: 0; }
+/* detail page fields (the page a row opens): <div class="wb-detail [wb-dark]"><div class="wb-field"><span>Traded</span><b>Oct 21, 2026</b></div>..</div> */
+.wb-detail { position: relative; padding: 0 60px; }
+.wb-field { display: flex; justify-content: space-between; align-items: center; height: 86px; border-bottom: 1.5px solid var(--line, #e6e8eb); font-size: 28px; position: relative; }
+.wb-field > span { color: var(--tx2, #6b7280); }
+.wb-field > b { font-weight: 600; }
+.wb-mark { position: absolute; inset: 8px -18px; border: 4px solid #e5373b; border-radius: 12px; opacity: 0; }
+
+/* ---------- news feed (Yahoo Finance style) ----------
+   <div class="wb-news"><div class="wb-news-tabs"><span class="wb-on">All</span><span>News</span>..</div>
+     <div class="wb-news-list"><div class="wb-news-row"><img class="wb-thumb" ..><div><b>Headline ..</b>
+       <div class="wb-news-meta"><span>Stocktwits</span>·<span>1m ago</span><span class="wb-tick">TSLA<i data-i="star"></i></span></div></div></div>..</div></div> */
+.wb-news { position: absolute; background: #fff; color: #1d2228; overflow: hidden; }
+.wb-news-tabs { display: flex; gap: 10px; padding: 22px 34px 18px; border-bottom: 1.5px solid #eceef0; }
+.wb-news-tabs span { font-size: 24px; font-weight: 500; padding: 9px 20px; border-radius: 999px; color: #232a31; }
+.wb-news-tabs .wb-on { background: #e0f0ff; color: #0f69ff; }
+.wb-news-list { position: relative; }
+.wb-news-row { display: flex; gap: 30px; align-items: center; padding: 22px 34px; border-bottom: 1.5px solid #eceef0; background: #fff; position: relative; }
+.wb-news-row > img.wb-thumb, .wb-news-row > .wb-thumb { width: 230px; height: 140px; border-radius: 10px; flex: none; object-fit: cover; }
+.wb-news-row > img.wb-logo { width: 230px; height: 140px; object-fit: contain; background: #fff; flex: none; }
+.wb-news-row > div { flex: 1; min-width: 0; }
+.wb-news-row b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 31px; font-weight: 700; line-height: 1.25; letter-spacing: -0.005em; }
+.wb-news-meta { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 20px; color: #5b636a; white-space: nowrap; }
+.wb-tick { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid #d6dde3; border-radius: 8px; padding: 2px 10px; color: #0f69ff; font-weight: 600; margin-left: 4px; }
+.wb-tick .wb-i { font-size: 16px; color: #5b636a; }
+.wb-prem { border: 1.5px solid #17a34a; color: #17a34a; border-radius: 6px; font-size: 17px; font-weight: 700; padding: 1px 7px; }
+
+/* ---------- search results ----------
+   Google: <div class="wb-serp"><div class="wb-res"><div class="wb-res-site"><span class="wb-fav-c"><img class="wb-favicon" ..></span>
+     <div><b>Site name</b><span>https://site.com › path</span></div></div><a class="wb-res-title">Title</a><p>Snippet</p></div>..</div>
+   Compact (a chat's source list): <div class="wb-src"><img class="wb-favicon" ..><span>Title <em>site.com</em></span></div> */
+.wb-serp { position: absolute; background: #fff; color: #202124; padding: 26px 60px; overflow: hidden; font-family: var(--wb-goog); }
+.wb-res { padding: 18px 0 22px; }
+.wb-res-site { display: flex; align-items: center; gap: 16px; }
+.wb-fav-c { width: 44px; height: 44px; border-radius: 50%; background: #f1f3f4; border: 1px solid #dadce0; display: grid; place-items: center; flex: none; }
+.wb-fav-c img, .wb-fav-c svg { width: 26px; height: 26px; border-radius: 4px; }
+.wb-res-site b { display: block; font-size: 22px; font-weight: 400; color: #202124; }
+.wb-res-site span { font-size: 19px; color: #4d5156; }
+.wb-res-title { display: inline-block; margin-top: 10px; font-size: 33px; line-height: 1.3; color: #1a0dab; }
+.wb-res p { margin: 6px 0 0; font-size: 23px; line-height: 1.5; color: #4d5156; }
+.wb-src { display: flex; align-items: center; gap: 22px; padding: 18px 0; font-size: 30px; color: #3d3929; }
+.wb-src img.wb-favicon, .wb-src .wb-i { width: 34px; height: 34px; font-size: 34px; border-radius: 6px; }
+.wb-src em { font-style: normal; color: #9a968e; }
+
+/* ---------- Slack ----------
+   <div class="wb-slack"><div class="wb-sl-bar"><div class="wb-lights"><i></i><i></i><i></i></div><div class="wb-sl-search"><i data-i="search"></i>Search Acme</div></div>
+     <div class="wb-sl-chan"><b># general <i data-i="chev-d"></i></b><div class="wb-sl-tabs"><span class="wb-on"><i data-i="chat"></i>Messages</span><span>Canvas</span></div></div>
+     <div class="wb-sl-msgs"><div class="wb-sl-msg"><img class="wb-avatar" ..><div><div class="wb-sl-who"><b>Zapier</b><span class="wb-sl-app">APP</span><time>9:41 AM</time></div>
+       <p>text <span class="wb-sl-at">@Dana</span></p></div></div>..</div></div> */
+.wb-slack { position: absolute; background: #fff; color: #1d1c1d; overflow: hidden; }
+.wb-sl-bar { height: 70px; background: #3f0e40; display: flex; align-items: center; padding: 0 26px; gap: 30px; }
+.wb-sl-search { flex: 1; max-width: 640px; margin: 0 auto; height: 44px; border-radius: 9px; background: rgba(255,255,255,.18); color: rgba(255,255,255,.88); display: flex; align-items: center; gap: 14px; padding: 0 18px; font-size: 22px; }
+.wb-sl-chan { padding: 18px 34px 0; border-bottom: 1.5px solid #e2e2e2; }
+.wb-sl-chan > b { display: flex; align-items: center; gap: 10px; font-size: 32px; font-weight: 800; }
+.wb-sl-chan > b .wb-i { font-size: 24px; }
+.wb-sl-tabs { display: flex; gap: 34px; margin-top: 14px; font-size: 23px; color: #616061; }
+.wb-sl-tabs span { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; }
+.wb-sl-tabs .wb-on { color: #1d1c1d; font-weight: 700; box-shadow: inset 0 -3px 0 #1d1c1d; }
+.wb-sl-msgs { padding: 10px 0; position: relative; }
+.wb-sl-msg { display: flex; gap: 18px; padding: 14px 34px; position: relative; background: #fff; }
+.wb-sl-msg > img { width: 60px; height: 60px; border-radius: 12px; flex: none; }
+.wb-sl-msg > div { flex: 1; min-width: 0; }
+.wb-sl-who { display: flex; align-items: baseline; gap: 10px; font-size: 26px; }
+.wb-sl-who b { font-weight: 800; }
+.wb-sl-app { font-size: 17px; font-weight: 700; background: #e8e8e8; color: #616061; border-radius: 4px; padding: 1px 6px; }
+.wb-sl-who time { font-size: 19px; color: #616061; }
+.wb-sl-msg p { margin: 4px 0 0; font-size: 26px; line-height: 1.42; }
+.wb-sl-at, .wb-sl-ch { color: #1264a3; background: rgba(29,155,209,.1); border-radius: 4px; padding: 0 3px; }
+.wb-sl-react { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 20px; font-weight: 600; color: #1264a3; background: #e8f5fa; border: 1.5px solid #1d9bd1; border-radius: 999px; padding: 2px 12px; }
+
+/* ---------- Gmail ----------
+   mobile list (in a phone, sized in pt): <div class="wb-gm wb-gm-m"><div class="wb-gm-search"><i data-i="menu"></i><span>Search in mail</span><img class="wb-avatar" ..></div>
+     <div class="wb-gm-label">Sent</div><div class="wb-gm-list"><div class="wb-gm-row [wb-unread]"><img class="wb-avatar" data-ph="avatar:P">
+       <div><div class="wb-gm-l1"><b>To: Priya Raman</b><time>10:02 AM</time></div><div class="wb-gm-subj">Subject</div>
+       <div class="wb-gm-l3"><span class="wb-ell">snippet</span><i data-i="star"></i></div><span class="wb-gm-chip" style="--c:#e8710a">Kite Hill Capital</span></div></div>..</div>
+     <div class="wb-snack"><span><b class="wb-snack-n">24</b> emails sent</span><em>Undo</em></div></div>
+   desktop list rows use .wb-gm-d; compose: .wb-compose; thread: .wb-thread (sized in px). */
+.wb-gm { position: absolute; background: #fff; color: #1f1f1f; overflow: hidden; font-family: var(--wb-goog); }
+.wb-gm-m { inset: 0; font-size: calc(15 * var(--pt)); }
+.wb-gm-m .wb-gm-search { margin: calc(58 * var(--pt)) calc(14 * var(--pt)) 0; height: calc(48 * var(--pt)); border-radius: calc(26 * var(--pt)); background: #fff; box-shadow: 0 calc(1 * var(--pt)) calc(4 * var(--pt)) rgba(0,0,0,.22); display: flex; align-items: center; gap: calc(14 * var(--pt)); padding: 0 calc(8 * var(--pt)) 0 calc(16 * var(--pt)); color: #444746; font-size: calc(16 * var(--pt)); }
+.wb-gm-m .wb-gm-search .wb-i { font-size: calc(22 * var(--pt)); }
+.wb-gm-m .wb-gm-search img { width: calc(32 * var(--pt)); height: calc(32 * var(--pt)); margin-left: auto; }
+.wb-gm-label { font-size: calc(12 * var(--pt)); font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: #444746; margin: calc(14 * var(--pt)) calc(18 * var(--pt)) calc(4 * var(--pt)); }
+.wb-gm-list { position: relative; }
+.wb-gm-row { display: flex; gap: calc(14 * var(--pt)); padding: calc(9 * var(--pt)) calc(14 * var(--pt)) calc(9 * var(--pt)) calc(16 * var(--pt)); background: #fff; position: relative; }
+.wb-gm-row > img.wb-avatar { width: calc(40 * var(--pt)); height: calc(40 * var(--pt)); margin-top: calc(2 * var(--pt)); }
+.wb-gm-row > div { flex: 1; min-width: 0; }
+.wb-gm-l1 { display: flex; justify-content: space-between; gap: calc(8 * var(--pt)); font-size: calc(16 * var(--pt)); }
+.wb-gm-l1 b { font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-gm-l1 time { font-size: calc(12.5 * var(--pt)); color: #444746; white-space: nowrap; padding-top: calc(2 * var(--pt)); }
+.wb-gm-subj { font-size: calc(14.5 * var(--pt)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: calc(1 * var(--pt)); }
+.wb-gm-l3 { display: flex; align-items: center; gap: calc(10 * var(--pt)); font-size: calc(14.5 * var(--pt)); color: #444746; }
+.wb-gm-l3 > span { flex: 1; }
+.wb-gm-l3 .wb-i { font-size: calc(19 * var(--pt)); color: #444746; }
+.wb-unread .wb-gm-l1 b, .wb-unread .wb-gm-l1 time, .wb-unread .wb-gm-subj { font-weight: 700; color: #1f1f1f; }
+.wb-gm-chip { display: inline-flex; align-items: center; gap: calc(6 * var(--pt)); margin-top: calc(5 * var(--pt)); font-size: calc(12.5 * var(--pt)); color: var(--c, #0b8043); background: color-mix(in srgb, var(--c, #0b8043) 12%, #fff); border-radius: calc(5 * var(--pt)); padding: calc(2 * var(--pt)) calc(8 * var(--pt)); }
+.wb-gm-chip::before { content: ""; width: calc(6 * var(--pt)); height: calc(6 * var(--pt)); border-radius: 50%; background: var(--c, #0b8043); }
+.wb-snack { position: absolute; z-index: 25; left: calc(12 * var(--pt, 1.6px)); right: calc(12 * var(--pt, 1.6px)); bottom: calc(92 * var(--pt, 1.6px)); display: flex; align-items: center; justify-content: space-between;
+  background: #303034; color: #f2f2f2; border-radius: calc(8 * var(--pt, 1.6px)); padding: calc(14 * var(--pt, 1.6px)) calc(16 * var(--pt, 1.6px)); font-size: calc(14.5 * var(--pt, 1.6px)); box-shadow: 0 calc(3 * var(--pt, 1.6px)) calc(8 * var(--pt, 1.6px)) rgba(0,0,0,.3); }
+.wb-snack b { font-weight: 400; font-variant-numeric: tabular-nums; }
+.wb-snack em { font-style: normal; font-weight: 600; color: #a8c7fa; }
+.wb-gm-nav { position: absolute; left: 0; right: 0; bottom: 0; height: calc(84 * var(--pt)); background: #f3f6fc; display: flex; justify-content: space-around; padding-top: calc(10 * var(--pt)); font-size: calc(12 * var(--pt)); color: #444746; font-weight: 500; }
+.wb-gm-nav > span { display: flex; flex-direction: column; align-items: center; gap: calc(4 * var(--pt)); }
+.wb-gm-nav .wb-i { font-size: calc(22 * var(--pt)); padding: calc(4 * var(--pt)) calc(20 * var(--pt)); box-sizing: content-box; border-radius: 999px; }
+.wb-gm-nav .wb-on .wb-i { background: #c2e7ff; color: #001d35; }
+/* desktop: <div class="wb-gm wb-gm-d"><div class="wb-gm-top"><i data-i="menu"></i><span class="wb-gm-logo"><i data-i="gmail"></i>Gmail</span>
+     <i data-i="search"></i><i data-i="apps"></i><img class="wb-avatar" ..></div><div class="wb-gm-tools">..</div><div class="wb-gm-drow">..</div>
+     <div class="wb-compose"><div class="wb-cp-head">Subject<span><i data-i="minus"></i><i data-i="expand"></i><i data-i="x"></i></span></div>
+       <div class="wb-cp-to">To <span class="wb-chip-p"><img class="wb-avatar" ..>Maya Chen</span><span class="wb-cp-cc">Cc Bcc</span></div>
+       <div class="wb-cp-subj">Subject</div><div class="wb-cp-body">Hi <span class="wb-hl-on">Maya</span>,<br><span class="wb-hl" id="X-line">typed line</span></div>
+       <div class="wb-cp-foot"><span class="wb-send">Send<i data-i="chev-d"></i></span><i data-i="font"></i>..<i data-i="trash"></i></div></div></div> */
+.wb-gm-d { background: #f8fafd; }
+.wb-gm-top { height: 84px; display: flex; align-items: center; gap: 28px; padding: 0 28px; color: #444746; font-size: 30px; }
+.wb-gm-logo { display: flex; align-items: center; gap: 12px; font-size: 32px; color: #444746; margin-right: auto; }
+.wb-gm-logo .wb-i { font-size: 40px; }
+.wb-gm-top img.wb-avatar { width: 46px; height: 46px; }
+.wb-gm-tools { height: 64px; display: flex; align-items: center; gap: 30px; padding: 0 30px; color: #444746; font-size: 26px; background: #fff; border-radius: 18px 18px 0 0; margin: 0 14px; }
+.wb-gm-tools > span { margin-left: auto; font-size: 20px; }
+.wb-gm-drow { height: 62px; display: flex; align-items: center; gap: 26px; padding: 0 30px; margin: 0 14px; background: #f2f6fc; color: #1f1f1f; font-size: 23px; white-space: nowrap; }
+.wb-gm-drow .wb-i { font-size: 24px; color: #444746; }
+.wb-gm-drow b { font-weight: 400; width: 160px; }
+.wb-gm-drow .wb-ell { flex: 1; }
+.wb-gm-drow time { font-size: 20px; }
+.wb-compose { position: absolute; background: #fff; border-radius: 18px 18px 0 0; box-shadow: 0 8px 30px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.04); overflow: hidden; display: flex; flex-direction: column; }
+.wb-cp-head { height: 62px; flex: none; background: #f2f6fc; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; font-size: 23px; font-weight: 500; color: #041e49; }
+.wb-cp-head > span { display: flex; gap: 26px; color: #444746; font-size: 24px; }
+.wb-cp-to, .wb-cp-subj { flex: none; margin: 0 26px; min-height: 64px; display: flex; align-items: center; gap: 16px; border-bottom: 1.5px solid #e3e3e3; font-size: 24px; color: #444746; }
+.wb-cp-subj { color: #1f1f1f; }
+.wb-cp-cc { margin-left: auto; word-spacing: 14px; }
+.wb-chip-p { display: inline-flex; align-items: center; gap: 10px; border: 1.5px solid #c4c7c5; border-radius: 999px; padding: 3px 16px 3px 4px; color: #1f1f1f; font-weight: 500; }
+.wb-chip-p img.wb-avatar { width: 34px; height: 34px; }
+.wb-cp-body { flex: 1; padding: 22px 26px; font-size: 27px; line-height: 1.5; color: #1f1f1f; }
+.wb-hl-on, .wb-hl .ch { background: #c2e7ff; }
+.wb-hl .ch:last-child { box-shadow: 0.27em 0 0 #c2e7ff; }
+.wb-hl > span:last-child .ch:last-child { box-shadow: none; }
+.wb-caret { display: inline-block; width: 2px; height: 1.15em; background: #1f1f1f; vertical-align: -0.2em; margin-left: 1px; }
+.wb-cp-foot { flex: none; height: 92px; display: flex; align-items: center; gap: 26px; padding: 0 26px; color: #444746; font-size: 26px; }
+.wb-cp-foot > .wb-i:last-child { margin-left: auto; }
+.wb-send { display: inline-flex; align-items: center; height: 54px; border-radius: 27px; background: #0b57d0; color: #fff; font-size: 23px; font-weight: 500; padding: 0 0 0 30px; margin-right: 6px; }
+.wb-send .wb-i { font-size: 24px; margin-left: 22px; padding: 0 14px; box-sizing: content-box; border-left: 1.5px solid rgba(255,255,255,.35); height: 54px; }
+/* thread: <div class="wb-thread"><div class="wb-th-subj">Subject <span class="wb-gm-tag">Inbox</span></div><div class="wb-th-track">
+     <div class="wb-th-msg"><img class="wb-avatar" ..><div><div class="wb-gm-l1"><b>Leashly</b><time>Oct 26</time></div><p>snippet</p></div></div>
+     <div class="wb-th-more"><span>2</span></div>..<div class="wb-th-msg wb-th-open">..full reply..</div></div></div> */
+.wb-thread { position: absolute; background: #fff; color: #1f1f1f; overflow: hidden; font-family: var(--wb-goog); }
+.wb-th-track { position: absolute; left: 0; right: 0; top: 0; }
+.wb-th-subj { font-size: 36px; padding: 30px 40px 16px; display: flex; align-items: center; gap: 16px; }
+.wb-gm-tag { font-size: 18px; background: #e8eaed; color: #444746; border-radius: 6px; padding: 2px 10px; }
+.wb-th-msg { display: flex; gap: 22px; padding: 22px 40px; border-bottom: 1.5px solid #e8eaed; }
+.wb-th-msg > img.wb-avatar { width: 62px; height: 62px; }
+.wb-th-msg > div { flex: 1; min-width: 0; }
+.wb-th-msg .wb-gm-l1 { font-size: 27px; }
+.wb-th-msg .wb-gm-l1 b { font-weight: 700; }
+.wb-th-msg .wb-gm-l1 time { font-size: 23px; color: #444746; }
+.wb-th-msg p { margin: 6px 0 0; font-size: 26px; line-height: 1.45; color: #444746; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-th-open p { white-space: normal; color: #1f1f1f; }
+.wb-th-more { position: relative; height: 40px; margin: 0 40px; }
+.wb-th-more::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1.5px solid #e8eaed; }
+.wb-th-more span { position: absolute; left: 6px; top: 0; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid #c4c7c5; background: #fff; display: grid; place-items: center; font-size: 20px; color: #444746; }
+
+/* ---------- Google Calendar (4-day or week) ----------
+   <div class="wb-cal" style="--days:4; --h0:9; --hours:6"><div class="wb-cal-top"><i data-i="menu"></i><span class="wb-cal-logo"><i data-i="cal31"></i>Calendar</span>
+     <span class="wb-cal-today">Today</span><i data-i="chev-l"></i><i data-i="chev-r"></i><b>November 2026</b><span class="wb-cal-view">4 days<i data-i="chev-d"></i></span></div>
+     <div class="wb-cal-days"><span><small>MON</small><b class="wb-today">2</b></span>..</div>
+     <div class="wb-cal-grid"><span class="wb-cal-hr" style="--h:10">10 AM</span>..
+       <div class="wb-ev" style="--d:0; --s:9; --e:9.5; --c:#039be5"><b>Standup</b>9 AM</div>
+       <div class="wb-ev" style="--d:1; --s:11; --e:13; --col:0; --ncol:2">..</div>  (overlaps: --col of --ncol)
+       <div class="wb-slot" style="--d:3; --s:10; --e:10.5">10 – 10:30 AM</div></div></div> */
+.wb-cal { position: absolute; background: #fff; color: #3c4043; overflow: hidden; font-family: var(--wb-goog); --days: 7; --h0: 9; --hours: 6; --gut: 112px; --hh: 84px; }
+.wb-cal-top { height: 84px; display: flex; align-items: center; gap: 26px; padding: 0 30px; font-size: 28px; color: #444746; border-bottom: 1.5px solid #e6e7ea; }
+.wb-cal-top > b { font-size: 31px; font-weight: 400; color: #1f1f1f; }
+.wb-cal-logo { display: flex; align-items: center; gap: 12px; font-size: 29px; color: #444746; margin-right: 18px; }
+.wb-cal-logo .wb-i { font-size: 44px; }
+.wb-cal-today { font-size: 22px; font-weight: 500; color: #1f1f1f; border: 1.5px solid #747775; border-radius: 999px; padding: 7px 22px; }
+.wb-cal-view { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 500; color: #1f1f1f; border: 1.5px solid #747775; border-radius: 999px; padding: 7px 18px 7px 22px; }
+.wb-cal-days { display: grid; grid-template-columns: var(--gut) repeat(var(--days), 1fr); height: 112px; border-bottom: 1.5px solid #dadce0; }
+.wb-cal-days::before { content: ""; }
+.wb-cal-days > span { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.wb-cal-days small { font-size: 18px; font-weight: 500; letter-spacing: .06em; color: #70757a; }
+.wb-cal-days b { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; font-size: 34px; font-weight: 400; color: #3c4043; }
+.wb-cal-days b.wb-today { background: #1a73e8; color: #fff; }
+.wb-cal-days .wb-tsel small { color: #1a73e8; }
+.wb-cal-grid { position: relative; height: calc(var(--hours) * var(--hh)); margin-left: var(--gut);
+  background: linear-gradient(#e3e5e8 1.5px, transparent 1.5px) 0 0 / 100% var(--hh), linear-gradient(90deg, #e3e5e8 1.5px, transparent 1.5px) 0 0 / calc(100% / var(--days)) 100%; }
+.wb-cal-hr { position: absolute; left: calc(-1 * var(--gut)); width: calc(var(--gut) - 16px); top: calc((var(--h) - var(--h0)) * var(--hh)); transform: translateY(-50%); text-align: right; font-size: 18px; color: #70757a; }
+/* overlapping events cascade like Google's: --col 1, 2.. shifts an event right and lays it on top */
+.wb-ev, .wb-slot { position: absolute; --col: 0; top: calc((var(--s) - var(--h0)) * var(--hh) + 1px); height: calc((var(--e) - var(--s)) * var(--hh) - 3px);
+  left: calc(var(--d) * 100% / var(--days) + var(--col) * 100% / var(--days) * 0.28 + 2px); width: calc(100% / var(--days) * (1 - var(--col) * 0.28) - 14px);
+  z-index: calc(1 + var(--col)); border-radius: 8px; padding: 6px 12px; font-size: 20px; line-height: 1.25; overflow: hidden; }
+.wb-ev { background: var(--c, #039be5); color: #fff; box-shadow: 0 0 0 1.5px #fff; }
+.wb-ev b { display: block; font-weight: 500; font-size: 21px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-ev.wb-short { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+.wb-ev.wb-short b { display: inline; }
+.wb-slot { border: 2.5px dashed #1a73e8; background: rgba(26,115,232,.07); color: #1a73e8; font-weight: 500; opacity: 0; }
+
+/* ---------- Google Meet ----------
+   <div class="wb-meet"><div class="wb-meet-tiles"><div class="wb-tile wb-tile-av"><span class="wb-tile-ini" style="--c:#8e6cd1">M</span>
+     <span class="wb-tile-name">Maya Chen</span><span class="wb-talk"><i></i><i></i><i></i></span></div>
+     <div class="wb-tile wb-you">..any content (img, pixel scene)..<span class="wb-tile-name">You</span></div></div>
+     <div class="wb-meet-bar"><span class="wb-meet-time">10:00 AM <i></i> Leashly × Northlight</span><div class="wb-meet-btns">
+       <span><i data-i="mic"></i></span>..<span class="wb-hang"><i data-i="phone-x"></i></span></div><div class="wb-meet-side">..</div></div></div> */
+.wb-meet { position: absolute; background: #202124; color: #e8eaed; overflow: hidden; font-family: var(--wb-goog); }
+.wb-meet-tiles { position: absolute; left: 22px; right: 22px; top: 22px; bottom: 104px; display: flex; gap: 14px; }
+.wb-tile { position: relative; flex: 1; border-radius: 16px; overflow: hidden; background: #3c4043; }
+.wb-tile-av { background: linear-gradient(160deg, #4b3f86, #3a2f6e); display: grid; place-items: center; }
+.wb-tile-ini { width: 150px; height: 150px; border-radius: 50%; background: var(--c, #8e6cd1); display: grid; place-items: center; font-size: 70px; color: #fff; }
+.wb-tile-name { position: absolute; left: 18px; bottom: 14px; font-size: 22px; font-weight: 500; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.wb-you > img, .wb-you > .wb-fill { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.wb-talk { position: absolute; right: 14px; top: 14px; width: 36px; height: 36px; border-radius: 50%; background: #1a73e8; display: flex; align-items: center; justify-content: center; gap: 3px; }
+.wb-talk i { width: 4px; height: 12px; border-radius: 2px; background: #fff; }
+.wb-talk i:nth-child(2) { height: 18px; }
+.wb-meet-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 104px; display: flex; align-items: center; padding: 0 30px; gap: 20px; }
+.wb-meet-time { font-size: 22px; white-space: nowrap; display: flex; align-items: center; gap: 14px; max-width: 290px; overflow: hidden; }
+.wb-meet-time i { width: 1.5px; height: 24px; background: #5f6368; flex: none; }
+.wb-meet-btns { flex: 1; display: flex; justify-content: center; gap: 12px; }
+.wb-meet-btns > span { width: 56px; height: 56px; border-radius: 50%; background: #3c4043; display: grid; place-items: center; font-size: 25px; color: #e8eaed; }
+.wb-meet-btns > .wb-hang { width: 80px; border-radius: 28px; background: #ea4335; color: #fff; }
+.wb-meet-side { display: flex; gap: 26px; font-size: 26px; color: #e8eaed; }
+
+/* ---------- Meta Ad Library ----------
+   <div class="wb-ads"><div class="wb-ads-top"><i data-i="meta"></i>Meta</div><div class="wb-ads-filters"><span class="wb-sel-box">United States<i data-i="caret"></i></span>
+     <i data-i="info-f"></i><span class="wb-sel-box"><i data-i="adbox"></i>All ads<i data-i="caret"></i></span><span class="wb-ads-q"><i data-i="search"></i>Stanley 1913</span></div>
+     <div class="wb-ads-adv"><img class="wb-logo" ..><b>Stanley 1913</b></div><div class="wb-ads-tabs"><span class="wb-on">Ads</span><span>About</span></div>
+     <div class="wb-ads-count">~300 results</div><div class="wb-ads-grid"><div class="wb-ad">
+       <div class="wb-ad-st"><span class="wb-active"><i data-i="check-c"></i>Active</span><i data-i="more-h"></i></div>
+       <p>Library ID: 2359642321473337</p><p>Started running on Oct 20, 2026</p><p class="wb-ad-pl">Platforms <i data-i="fb"></i><i data-i="ig"></i></p>
+       <p>This ad has multiple versions <i data-i="info-f"></i></p><div class="wb-ad-btn">See ad details</div><hr>
+       <div class="wb-ad-who"><img class="wb-logo" ..><div><b>Stanley 1913</b><span>Sponsored</span></div></div><p class="wb-ad-copy">..</p>
+       <div class="wb-ad-media"><img class="wb-thumb" ..><span class="wb-ad-play"><i data-i="play"></i></span></div>
+       <div class="wb-ad-foot"><div><small>STANLEY1913.COM</small><b>The District Pulse Mug</b></div><span>Shop Now</span></div></div>..</div></div>
+   badge: <div class="wb-days"><i data-i="check-c"></i>16 days</div> */
+.wb-ads { position: absolute; background: #fff; color: #1c1e21; overflow: hidden; }
+.wb-ads-top { height: 76px; display: flex; align-items: center; gap: 10px; padding: 0 34px; font-size: 33px; font-weight: 600; color: #1c2b33; border-bottom: 1.5px solid #e4e6eb; }
+.wb-ads-top .wb-i { font-size: 46px; color: #0866ff; }
+.wb-ads-filters { display: flex; align-items: center; gap: 16px; padding: 22px 34px; border-bottom: 1.5px solid #e4e6eb; background: #f7f8fa; }
+.wb-sel-box, .wb-ads-q { display: inline-flex; align-items: center; gap: 12px; height: 56px; border: 1.5px solid #ccd0d5; border-radius: 10px; background: #fff; padding: 0 18px; font-size: 23px; white-space: nowrap; }
+.wb-sel-box .wb-i:last-child { font-size: 18px; }
+.wb-ads-q { flex: 1; }
+.wb-ads-filters > .wb-i { font-size: 24px; color: #1c1e21; }
+.wb-ads-adv { display: flex; align-items: center; gap: 22px; padding: 26px 34px 10px; font-size: 32px; font-weight: 700; }
+.wb-ads-adv img.wb-logo { width: 104px; height: 104px; border-radius: 50%; border: 1.5px solid #dadde1; object-fit: contain; background: #fff; }
+.wb-ads-tabs { display: flex; gap: 70px; padding: 8px 34px 0; font-size: 24px; color: #1c1e21; }
+.wb-ads-tabs span { padding-bottom: 10px; }
+.wb-ads-tabs .wb-on { color: #0866ff; font-weight: 600; box-shadow: inset 0 -3px 0 #0866ff; }
+.wb-ads-count { font-size: 25px; font-weight: 700; padding: 18px 34px; }
+.wb-ads-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; padding: 0 22px; background: #f0f2f5; padding-top: 18px; }
+.wb-ad { background: #fff; border: 1.5px solid #dadde1; border-radius: 12px; padding: 16px 18px; font-size: 19px; color: #1c1e21; position: relative; }
+.wb-ad p { margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+.wb-ad-st { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.wb-active { display: inline-flex; align-items: center; gap: 7px; background: #e6f4ea; color: #1e7e34; font-weight: 700; border-radius: 6px; padding: 3px 10px 3px 6px; }
+.wb-active .wb-i { color: #1e8e3e; }
+.wb-ad-pl .wb-i { font-size: 20px; }
+.wb-ad-btn { text-align: center; background: #ebedf0; border-radius: 8px; padding: 10px 0; font-weight: 600; margin: 12px 0 14px; }
+.wb-ad hr { border: 0; border-top: 1.5px solid #e4e6eb; margin: 0 -18px 14px; }
+.wb-ad-who { display: flex; align-items: center; gap: 12px; }
+.wb-ad-who img.wb-logo { width: 46px; height: 46px; border-radius: 50%; border: 1px solid #dadde1; object-fit: contain; }
+.wb-ad-who b { display: block; font-size: 20px; }
+.wb-ad-who span { font-size: 17px; color: #65676b; }
+.wb-ad-copy { display: block !important; margin: 12px 0 !important; line-height: 1.38; font-size: 18px; }
+.wb-ad-media { position: relative; height: 200px; margin: 0 -18px; background: #f0f2f5; display: grid; place-items: center; overflow: hidden; }
+.wb-ad-media > img.wb-thumb { height: 100%; width: auto; aspect-ratio: 9 / 16; }
+.wb-ad-play { position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: rgba(0,0,0,.55); display: grid; place-items: center; color: #fff; font-size: 30px; border: 3px solid #fff; }
+.wb-ad-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: #f0f2f5; margin: 0 -18px -16px; padding: 12px 18px; border-radius: 0 0 12px 12px; }
+.wb-ad-foot small { display: block; font-size: 17px; color: #65676b; }
+.wb-ad-foot b { font-size: 18px; }
+.wb-ad-foot > span { background: #e4e6eb; border-radius: 6px; padding: 8px 14px; font-weight: 600; white-space: nowrap; }
+.wb-ad.wb-big { font-size: 28px; padding: 26px 30px; border-radius: 16px; }
+.wb-ad.wb-big p { margin-bottom: 14px; }
+.wb-ad.wb-big .wb-ad-btn { padding: 16px 0; }
+.wb-days { position: absolute; display: inline-flex; align-items: center; gap: 14px; font-weight: 800; font-size: 50px; color: #fff; background: #1e9e48; border-radius: 18px; padding: 8px 26px 10px 18px;
+  box-shadow: 0 0 0 4px #fff, 6px 8px 0 rgba(10,80,35,.35); white-space: nowrap; }
+.wb-days .wb-i { font-size: 52px; }
+
+/* ---------- Google Sheets ----------
+   <div class="wb-sheet" style="--cw: 260px 190px 150px 200px 150px 150px"><div class="wb-sh-title"><i data-i="sheets"></i><div><b>leads</b>
+     <div class="wb-sh-menu"><span>File</span>..</div></div></div><div class="wb-sh-tools">..</div>
+     <div class="wb-sh-fx"><span class="wb-sh-name">A<span class="wb-sh-r">1</span><i data-i="caret"></i></span><i data-i="fx"></i><span class="wb-sh-val wb-swap">..</span></div>
+     <div class="wb-sh-grid"><div class="wb-sh-cols"><span></span><span class="wb-on">A</span><span>B</span>..</div>
+       <div class="wb-sh-body"><div class="wb-sh-row"><span class="wb-sh-n">1</span><span>gym</span><span>area</span>..</div>..
+       <div class="wb-sh-sel"></div></div></div><div class="wb-sh-tabs"><i data-i="plus"></i><i data-i="menu"></i><span class="wb-on">Sheet1<i data-i="caret"></i></span></div></div> */
+.wb-sheet { position: absolute; background: #f9fbfd; color: #1f1f1f; overflow: hidden; font-family: var(--wb-goog); --rh: 46px; --cw: 240px 240px 240px 240px 240px; }
+.wb-sh-title { height: 92px; display: flex; align-items: center; gap: 18px; padding: 0 22px; }
+.wb-sh-title > .wb-i { font-size: 56px; }
+.wb-sh-title b { font-size: 27px; font-weight: 400; display: flex; align-items: center; gap: 16px; }
+.wb-sh-title b .wb-i { font-size: 24px; color: #444746; }
+.wb-sh-menu { display: flex; gap: 22px; font-size: 21px; color: #1f1f1f; margin-top: 6px; }
+.wb-sh-tools { height: 60px; margin: 0 14px; background: #eef2f9; border-radius: 30px; display: flex; align-items: center; gap: 22px; padding: 0 22px; font-size: 22px; color: #444746; white-space: nowrap; }
+.wb-sh-tools .wb-sh-pill { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 20px; padding: 6px 16px; color: #1f1f1f; }
+.wb-sh-tools .wb-sep { width: 1.5px; height: 30px; background: #c7c7c7; }
+.wb-sh-tools .wb-sh-sz { border: 1.5px solid #747775; border-radius: 6px; padding: 1px 9px; color: #1f1f1f; }
+.wb-sh-fx { height: 52px; display: flex; align-items: center; gap: 18px; margin-top: 8px; padding: 0 16px; border-top: 1.5px solid #e1e3e6; border-bottom: 1.5px solid #e1e3e6; background: #fff; font-size: 21px; }
+.wb-sh-name { width: 130px; display: flex; align-items: center; color: #1f1f1f; border-right: 1.5px solid #e1e3e6; padding-right: 14px; height: 100%; }
+.wb-sh-name .wb-i { font-size: 16px; color: #444746; margin-left: auto; }
+.wb-sh-fx > .wb-i { color: #9aa0a6; font-size: 28px; }
+.wb-sh-val { font-family: var(--wb-cell); font-size: 22px; flex: 1; }
+.wb-sh-grid { position: absolute; left: 0; right: 0; top: 215px; bottom: 58px; overflow: hidden; background: #fff; font-family: var(--wb-cell); }
+.wb-sh-cols, .wb-sh-row { display: grid; grid-template-columns: 58px var(--cw); }
+.wb-sh-cols { height: 34px; background: #f8f9fa; border-bottom: 1.5px solid #c4c7c5; }
+.wb-sh-cols span { display: grid; place-items: center; font-size: 17px; color: #444746; border-right: 1.5px solid #e1e3e6; font-family: var(--wb-goog); }
+.wb-sh-cols .wb-on { background: #d3e3fd; color: #0b57d0; font-weight: 600; }
+.wb-sh-body { position: relative; }
+.wb-sh-row { height: var(--rh); }
+.wb-sh-row > span { border-right: 1.5px solid #e1e3e6; border-bottom: 1.5px solid #e1e3e6; font-size: 25px; padding: 0 10px; display: flex; align-items: center; white-space: nowrap; overflow: hidden; color: #000; }
+.wb-sh-row > .wb-sh-n { background: #f8f9fa; justify-content: center; font-size: 18px; color: #444746; font-family: var(--wb-goog); padding: 0; }
+.wb-sh-row > .wb-sh-n.wb-on { background: #d3e3fd; color: #0b57d0; font-weight: 600; }
+.wb-sh-sel { position: absolute; left: 0; top: 0; border: 3px solid var(--wb-sel); pointer-events: none; z-index: 4; }
+.wb-sh-sel::after { content: ""; position: absolute; right: -6px; bottom: -6px; width: 9px; height: 9px; background: var(--wb-sel); border: 1.5px solid #fff; border-radius: 50%; }
+.wb-sh-tabs { position: absolute; left: 0; right: 0; bottom: 0; height: 58px; background: #f9fbfd; border-top: 1.5px solid #e1e3e6; display: flex; align-items: center; gap: 26px; padding: 0 22px; font-size: 26px; color: #444746; z-index: 6; }
+.wb-sh-tabs > span { display: flex; align-items: center; gap: 12px; font-size: 21px; padding: 7px 18px; border-radius: 8px; }
+.wb-sh-tabs .wb-on { background: #e1e9f7; color: #0b57d0; font-weight: 600; }
+.wb-sh-tabs .wb-on .wb-i { font-size: 16px; }
+
+/* ---------- receipt (mono, zigzag edge) ----------
+   <div class="wb-receipt-wrap" style="left:..; top:..; width:..px"><div class="wb-receipt"><div class="wb-rc-brand">Bloomberg</div>
+     <div class="wb-rc-cap">Terminal subscription</div><div class="wb-rc-line"><span>1 seat, per month</span><b>$2,665</b></div>
+     <div class="wb-rc-sub">2-year minimum contract</div><hr><div class="wb-rc-total"><span>TOTAL / MO</span><b>$65.98</b></div></div></div> */
+.wb-receipt-wrap { position: absolute; filter: drop-shadow(0 10px 18px rgba(0,0,0,.18)); }
+.wb-receipt { background: #fbfaf6; color: #1c1b19; font-family: var(--wb-mono); padding: 30px 34px 50px; font-size: 27px;
+  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 26px 100%;
+          mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 26px 100%; }
+.wb-receipt.wb-top { -webkit-mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% / 26px 51% repeat-x top, conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 26px 51% repeat-x bottom;
+          mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% / 26px 51% repeat-x top, conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 26px 51% repeat-x bottom; padding-top: 44px; }
+.wb-rc-brand { text-align: center; font-family: var(--wb-sans); font-weight: 800; font-size: 42px; letter-spacing: -0.02em; }
+.wb-rc-cap { text-align: center; font-size: 22px; letter-spacing: .16em; text-transform: uppercase; margin: 8px 0 20px; }
+.wb-rc-line { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; padding: 8px 0 4px; position: relative; }
+.wb-rc-line b { font-weight: 700; font-size: 1.12em; white-space: nowrap; }
+.wb-rc-line .wb-old { color: #9b9890; text-decoration: line-through; text-decoration-color: #d33; text-decoration-thickness: 3px; font-weight: 400; }
+.wb-rc-sub { font-size: 20px; color: #8a877f; margin-bottom: 4px; }
+.wb-receipt hr { border: 0; border-top: 2.5px dashed #b9b5ab; margin: 16px 0; }
+.wb-rc-total { display: flex; justify-content: space-between; align-items: baseline; font-size: 30px; font-weight: 700; }
+.wb-rc-total b { font-size: 54px; }
+.wb-rc-item { display: flex; align-items: center; gap: 18px; padding: 10px 0; }
+.wb-rc-item > img, .wb-rc-item > .wb-logo { width: 54px; height: 54px; border-radius: 12px; }
+.wb-rc-item > div { flex: 1; min-width: 0; }
+.wb-rc-item > div b { display: block; font-weight: 700; font-size: 30px; }
+.wb-rc-item > div small { display: block; font-size: 18px; color: #8a877f; }
+.wb-rc-item > em { font-style: normal; font-weight: 700; font-size: 36px; }
+
+/* =====================================================================================================================
+   Landing page with skins (AR.wbLanding builds it; AR.wbSkin switches it on the word). One structure, three looks:
+     .wb-slop       the AI-slop look: indigo-to-violet gradient, glow blobs, everything centred, a pill badge with a
+                    sparkle, gradient headline text, glass cards with emoji icons
+     .wb-brand      fix 1 only: one brand colour (--brand) on cream, layout and emoji unchanged
+     .wb-editorial  the human look: left-aligned hero, one brand colour, a big serif headline, an eyebrow instead of a
+                    badge, a real product screenshot slot in the hero and in every card
+   <div class="wb-land wb-slop" style="--brand:#FFC42E">
+     <div class="wb-ld-nav"><div class="wb-ld-logo"><i class="wb-ld-mark"></i><span>Brand</span></div>
+       <div class="wb-ld-links"><span>Features</span>..</div><span class="wb-ld-btn wb-ld-top">Get started</span></div>
+     <div class="wb-ld-hero"><div class="wb-ld-badge"><span class="wb-ld-s">✨ Introducing X AI</span><span class="wb-ld-e">For cafés</span></div>
+       <h1 class="wb-ld-h1">..</h1><p class="wb-ld-sub">..</p>
+       <div class="wb-ld-ctas"><span class="wb-ld-btn wb-ld-cta">Start free</span><span class="wb-ld-btn wb-ld-ghost">Learn more</span></div>
+       <div class="wb-ld-art"><img class="wb-shot" src=".."></div></div>
+     <div class="wb-ld-feats"><h2 class="wb-ld-fh">..</h2><div class="wb-ld-grid">
+       <div class="wb-ld-card"><div class="wb-ld-icon">🚀</div><div class="wb-ld-shot">..</div><b>Title</b><p>Text</p></div> x3</div></div></div>
+   .wb-ld-s shows only in the slop and brand skins, .wb-ld-e only in the editorial one (copy that changes with the fix).
+   The page is 1280 px wide: the hero is one Chrome viewport (84 + 436 = 520 px), the feature section 520-880.
+   ===================================================================================================================== */
+.wb-land {
+  position: relative; width: 1280px; height: 880px; overflow: hidden; isolation: isolate; font-family: var(--wb-sans); -webkit-font-smoothing: antialiased;
+  --brand: #FFC42E; --ld-ink: #171511; --ld-muted: #5c574d; --ld-paper: #FBF7EE; color: var(--ld-ink);
+}
+.wb-land * { box-sizing: border-box; }
+.wb-ld-nav { position: absolute; left: 0; top: 0; width: 1280px; height: 84px; padding: 0 56px; display: flex; align-items: center; gap: 34px; z-index: 2; }
+.wb-ld-logo { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 29px; letter-spacing: -0.01em; white-space: nowrap; }
+.wb-ld-mark { display: block; width: 40px; height: 40px; flex: none; border-radius: 11px; position: relative; }
+.wb-ld-mark::after { content: ""; position: absolute; left: 11px; top: 11px; width: 18px; height: 18px; border-radius: 50%; }
+.wb-ld-links { display: flex; gap: 32px; font-size: 21px; margin-left: auto; white-space: nowrap; }
+.wb-ld-btn { display: inline-flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 600; padding: 15px 30px; border-radius: 999px; white-space: nowrap; line-height: 1; }
+.wb-ld-top { font-size: 20px; padding: 12px 24px; }
+.wb-ld-hero { position: absolute; left: 0; top: 84px; width: 1280px; height: 436px; }
+.wb-ld-hero > * { position: absolute; margin: 0; }
+.wb-ld-badge { font-size: 21px; font-weight: 600; white-space: nowrap; line-height: 1; }
+.wb-ld-h1 { font-weight: 800; }
+.wb-ld-sub { font-size: 23px; line-height: 1.42; }
+.wb-ld-ctas { display: flex; gap: 18px; }
+.wb-ld-art { display: none; overflow: hidden; }
+.wb-ld-art > img, .wb-ld-shot > img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 0 0; }
+.wb-ld-feats { position: absolute; left: 0; top: 520px; width: 1280px; height: 360px; }
+.wb-ld-fh { position: absolute; margin: 0; font-weight: 800; white-space: nowrap; }
+.wb-ld-grid { position: absolute; left: 70px; top: 96px; width: 1140px; height: 240px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
+.wb-ld-card { position: relative; border-radius: 24px; padding: 26px 28px; overflow: hidden; }
+.wb-ld-icon { font-size: 56px; line-height: 1; height: 64px; }
+.wb-ld-card b { display: block; margin-top: 16px; font-size: 27px; font-weight: 700; }
+.wb-ld-card p { margin: 8px 0 0; font-size: 19px; line-height: 1.35; }
+.wb-ld-shot { display: none; position: absolute; left: 0; top: 0; width: 100%; height: 170px; overflow: hidden; }
+.wb-ld-e { display: none; }
+.wb-ld-grad { background: linear-gradient(90deg, #ffffff 10%, #c7d2fe 55%, #f5d0fe 95%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.wb-ld-hl { padding: 0 4px; }
+
+/* slop: the gradient, the glow, the centring */
+.wb-slop { color: #fff;
+  background: radial-gradient(circle at 16% 18%, rgba(255,255,255,.22), transparent 30%), radial-gradient(circle at 86% 64%, rgba(236,72,153,.32), transparent 36%),
+              radial-gradient(circle at 50% 108%, rgba(56,189,248,.28), transparent 40%), linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); }
+.wb-slop .wb-ld-mark, .wb-brand .wb-ld-mark { background: linear-gradient(135deg, #fff, #c7d2fe); }
+.wb-slop .wb-ld-mark::after { background: #7c3aed; }
+.wb-slop .wb-ld-links { color: rgba(255,255,255,.84); }
+.wb-slop .wb-ld-top { background: #fff; color: #5b4bea; }
+.wb-slop .wb-ld-badge, .wb-brand .wb-ld-badge { left: 0; right: 0; margin: 0 auto; width: fit-content; top: 30px; padding: 10px 22px; border-radius: 999px; }
+.wb-slop .wb-ld-badge { background: rgba(255,255,255,.17); border: 1.5px solid rgba(255,255,255,.42); color: #fff; box-shadow: 0 0 34px rgba(255,255,255,.18); }
+.wb-slop .wb-ld-h1, .wb-brand .wb-ld-h1 { left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 1080px; top: 88px; font-size: 66px; line-height: 1.06; letter-spacing: -0.03em; text-align: center; }
+.wb-slop .wb-ld-sub, .wb-brand .wb-ld-sub { left: 0; right: 0; margin: 0 auto; top: 248px; width: 820px; text-align: center; }
+.wb-slop .wb-ld-sub { color: rgba(255,255,255,.86); }
+.wb-slop .wb-ld-ctas, .wb-brand .wb-ld-ctas { left: 0; right: 0; margin: 0 auto; width: fit-content; top: 340px; }
+.wb-slop .wb-ld-cta { background: #fff; color: #5b4bea; box-shadow: 0 10px 34px rgba(49,26,140,.38); }
+.wb-slop .wb-ld-ghost { border: 2px solid rgba(255,255,255,.7); color: #fff; }
+.wb-slop .wb-ld-fh, .wb-brand .wb-ld-fh { left: 0; width: 1280px; top: 20px; text-align: center; font-size: 40px; letter-spacing: -0.02em; }
+.wb-slop .wb-ld-card { background: rgba(255,255,255,.14); border: 1.5px solid rgba(255,255,255,.36); box-shadow: 0 18px 44px rgba(40,20,120,.28); text-align: center; color: #fff; }
+.wb-slop .wb-ld-card p { color: rgba(255,255,255,.82); }
+
+/* brand: one colour on cream (fix 1), still centred, still emoji */
+.wb-brand { background: var(--ld-paper); color: var(--ld-ink); }
+.wb-brand .wb-ld-grad { background: none; color: inherit; }
+.wb-brand .wb-ld-mark { background: var(--brand); box-shadow: inset 0 0 0 3px var(--ld-ink); }
+.wb-brand .wb-ld-mark::after, .wb-editorial .wb-ld-mark::after { background: #fff; box-shadow: inset 0 0 0 3px var(--ld-ink); }
+.wb-brand .wb-ld-links, .wb-editorial .wb-ld-links { color: #3d3a33; }
+.wb-brand .wb-ld-top, .wb-editorial .wb-ld-top, .wb-brand .wb-ld-cta, .wb-editorial .wb-ld-cta {
+  background: var(--brand); color: var(--ld-ink); border: 2.5px solid var(--ld-ink); border-radius: 12px; }
+.wb-brand .wb-ld-cta, .wb-editorial .wb-ld-cta { box-shadow: 4px 4px 0 var(--ld-ink); }
+.wb-brand .wb-ld-badge { background: var(--brand); border: 2px solid var(--ld-ink); color: var(--ld-ink); }
+.wb-brand .wb-ld-sub { color: var(--ld-muted); }
+.wb-brand .wb-ld-ghost { border: 2.5px solid var(--ld-ink); border-radius: 12px; color: var(--ld-ink); }
+.wb-brand .wb-ld-hl, .wb-editorial .wb-ld-hl { background: linear-gradient(transparent 54%, var(--brand) 54%, var(--brand) 92%, transparent 92%); }
+.wb-brand .wb-ld-card { background: #fff; border: 2px solid var(--ld-ink); text-align: center; }
+.wb-brand .wb-ld-card p { color: var(--ld-muted); }
+.wb-brand .wb-ld-icon { display: inline-grid; place-items: center; width: 80px; height: 80px; font-size: 44px; background: var(--brand); border: 2.5px solid var(--ld-ink); border-radius: 18px; }
+
+/* editorial: left-aligned, one colour, a serif headline, real screenshots */
+.wb-editorial { background: var(--ld-paper); color: var(--ld-ink); }
+.wb-editorial .wb-ld-s { display: none; }
+.wb-editorial .wb-ld-e { display: inline; }
+.wb-editorial .wb-ld-mark { background: var(--brand); box-shadow: inset 0 0 0 3px var(--ld-ink); }
+.wb-editorial .wb-ld-logo { font-family: var(--serif, "Source Serif 4", serif); font-weight: 600; font-size: 31px; }
+.wb-editorial .wb-ld-badge { left: 64px; top: 30px; font-family: var(--wb-mono); font-size: 17px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6b665b; }
+.wb-editorial .wb-ld-h1 { left: 64px; top: 62px; width: 600px; font-family: var(--serif, "Source Serif 4", serif); font-weight: 600; font-size: 76px; line-height: 0.98; letter-spacing: -0.025em; }
+.wb-editorial .wb-ld-sub { left: 64px; top: 318px; width: 540px; font-size: 22px; color: var(--ld-muted); }
+.wb-editorial .wb-ld-ctas { left: 64px; top: 372px; }
+.wb-editorial .wb-ld-ghost { background: none; padding-left: 6px; color: var(--ld-ink); text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 2px; border-radius: 0; }
+.wb-editorial .wb-ld-art { display: block; left: 690px; top: 22px; width: 526px; height: 396px; border-radius: 18px; border: 2.5px solid var(--ld-ink); background: #fff; box-shadow: 8px 8px 0 var(--ld-ink); }
+.wb-editorial .wb-ld-fh { left: 64px; top: 22px; font-family: var(--serif, "Source Serif 4", serif); font-weight: 600; font-size: 44px; letter-spacing: -0.02em; }
+.wb-editorial .wb-ld-grid { left: 64px; width: 1152px; }
+.wb-editorial .wb-ld-card { background: #fff; border: 2px solid var(--ld-ink); padding: 0; }
+.wb-editorial .wb-ld-icon, .wb-editorial .wb-ld-card p { display: none; }
+.wb-editorial .wb-ld-shot { display: block; border-bottom: 2px solid var(--ld-ink); background: #f3eee2; }
+.wb-editorial .wb-ld-card b { position: absolute; left: 22px; bottom: 14px; margin: 0; font-size: 26px; }
+.wb-ld-shot-empty, .wb-ld-art-empty { width: 100%; height: 100%; display: grid; place-items: center; font-family: var(--wb-mono); font-size: 20px; color: #8a7f68;
+  background: repeating-linear-gradient(45deg, #efe8d8 0 14px, #f6f1e5 14px 28px); }
+
+/* the built-in product mock for screenshot slots (AR.wbLanding with no image): a small app window */
+.wb-ld-mock { position: absolute; inset: 0; background: #fff; font-family: var(--wb-sans); color: var(--ld-ink); }
+.wb-ld-mock-bar { height: 36px; background: #f4f1ea; border-bottom: 1.5px solid #e4dfd3; display: flex; align-items: center; gap: 7px; padding: 0 14px; }
+.wb-ld-mock-bar i { width: 11px; height: 11px; border-radius: 50%; background: #e0dace; }
+.wb-ld-mock-side { position: absolute; left: 0; top: 36px; bottom: 0; width: 26%; background: #faf8f3; border-right: 1.5px solid #ece7dc; padding: 14px 12px; }
+.wb-ld-mock-side i { display: block; height: 12px; border-radius: 6px; background: #e7e1d4; margin-bottom: 12px; }
+.wb-ld-mock-side i:first-child { background: var(--brand); width: 80%; }
+.wb-ld-mock-main { position: absolute; left: 26%; right: 0; top: 36px; bottom: 0; padding: 16px 18px; }
+.wb-ld-mock-main b { display: block; font-size: 20px; font-weight: 700; }
+.wb-ld-mock-main small { display: block; font-size: 14px; color: #8a8478; margin-top: 2px; }
+.wb-ld-mock-kpis { display: flex; gap: 10px; margin-top: 12px; }
+.wb-ld-mock-kpis span { flex: 1; border: 1.5px solid #ece7dc; border-radius: 10px; padding: 8px 10px; font-size: 13px; color: #8a8478; }
+.wb-ld-mock-kpis span em { display: block; font-style: normal; font-weight: 700; font-size: 22px; color: var(--ld-ink); }
+.wb-ld-mock-chart { position: absolute; left: 18px; right: 18px; bottom: 16px; height: 42%; display: flex; align-items: flex-end; gap: 7%; padding: 0 4%; border-bottom: 1.5px solid #ece7dc; }
+.wb-ld-mock-chart i { flex: 1; background: #e7e1d4; border-radius: 5px 5px 0 0; }
+.wb-ld-mock-chart i:nth-child(4) { background: var(--brand); box-shadow: inset 0 0 0 2px var(--ld-ink); }
+.wb-ld-mock-list { padding: 12px 16px; }
+.wb-ld-mock-list div { display: flex; align-items: center; gap: 10px; height: 34px; border-bottom: 1.5px solid #f0ebe0; font-size: 15px; }
+.wb-ld-mock-list div i { width: 24px; height: 24px; border-radius: 50%; background: #e7e1d4; flex: none; }
+.wb-ld-mock-list div:first-child i { background: var(--brand); }
+.wb-ld-mock-list div em { margin-left: auto; font-style: normal; font-weight: 700; }
+
+/* =====================================================================================================================
+   Design tool (a Figma-like editor around a page): guides, a column grid, selections, resizing, snapping
+   <div class="wb-figma" style="--fg-scale:0.84">
+     <div class="wb-fg-top"><i class="wb-fg-logo"></i><i class="wb-fg-tool wb-on"></i><i class="wb-fg-tool"></i>..
+       <div class="wb-fg-file"><span>Drafts /</span> Brand — Home</div><span class="wb-fg-share">Share</span></div>
+     <div class="wb-fg-canvas"><div class="wb-fg-label">Home · Desktop 1280</div>
+       <div class="wb-fg-frame" id="X-page"> page content, e.g. a .wb-land </div></div></div>
+   Optional side panels: .wb-fg-left (layers: .wb-fg-layer[.wb-on]) and .wb-fg-right (design: .wb-fg-prop rows); add
+   .wb-fg-panels on .wb-figma to make room for them. The frame is the page at 1280 px, scaled by --fg-scale; guides,
+   grids and selections are drawn inside it in page px (AR.wbGuides, AR.wbGrid, AR.wbSelect, AR.wbResize, AR.wbSnap).
+   ===================================================================================================================== */
+.wb-figma { position: relative; width: 1280px; height: 630px; overflow: hidden; background: #e5e5e5; font-family: var(--wb-sans); -webkit-font-smoothing: antialiased; --fg-scale: 0.84; --fg-blue: #0d99ff; --fg-pink: #f24e9c; }
+.wb-fg-top { position: absolute; left: 0; top: 0; right: 0; height: 52px; background: #2c2c2c; color: #fff; display: flex; align-items: center; gap: 16px; padding: 0 18px; font-size: 18px; z-index: 3; }
+.wb-fg-logo { width: 22px; height: 30px; flex: none; position: relative;
+  background: radial-gradient(circle at 70% 50%, #1abcfe 4.6px, transparent 5px), linear-gradient(#f24e1e 0 33.3%, #a259ff 33.3% 66.6%, #0acf83 66.6%) 0 0 / 11px 100% no-repeat,
+              linear-gradient(#ff7262 0 33.3%, transparent 33.3%) 11px 0 / 11px 100% no-repeat; border-radius: 6px; }
+.wb-fg-tool { width: 24px; height: 24px; border-radius: 6px; background: rgba(255,255,255,.2); flex: none; }
+.wb-fg-tool.wb-on { background: var(--fg-blue); }
+.wb-fg-file { margin: 0 auto; white-space: nowrap; font-weight: 500; }
+.wb-fg-file span { color: rgba(255,255,255,.55); }
+.wb-fg-share { background: var(--fg-blue); border-radius: 7px; padding: 7px 16px; font-weight: 600; font-size: 17px; }
+.wb-fg-canvas { position: absolute; left: 0; top: 52px; right: 0; bottom: 0; overflow: hidden; }
+.wb-fg-label { position: absolute; left: 102px; top: 16px; font-size: 18px; color: #7a7a7a; white-space: nowrap; }
+.wb-fg-frame { position: absolute; left: 102px; top: 42px; width: 1280px; height: 880px; transform: scale(var(--fg-scale)); transform-origin: 0 0; background: #fff; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+.wb-figma.wb-fg-panels .wb-fg-canvas { left: 240px; right: 250px; }
+.wb-figma.wb-fg-panels .wb-fg-frame, .wb-figma.wb-fg-panels .wb-fg-label { left: 22px; }
+.wb-fg-left, .wb-fg-right { position: absolute; top: 52px; bottom: 0; background: #fff; border-color: #e6e6e6; border-style: solid; font-size: 16px; color: #333; padding: 14px 14px; z-index: 2; }
+.wb-fg-left { left: 0; width: 240px; border-width: 0 1px 0 0; }
+.wb-fg-right { right: 0; width: 250px; border-width: 0 0 0 1px; }
+.wb-fg-left h6, .wb-fg-right h6 { margin: 0 0 10px; font-size: 15px; font-weight: 600; color: #111; }
+.wb-fg-layer { display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 8px; border-radius: 5px; white-space: nowrap; }
+.wb-fg-layer::before { content: "#"; color: #999; font-size: 14px; }
+.wb-fg-layer.wb-on { background: #e5f4ff; color: #0b6fc2; }
+.wb-fg-prop { display: flex; gap: 10px; margin-bottom: 9px; }
+.wb-fg-prop span { flex: 1; background: #f5f5f5; border-radius: 5px; padding: 6px 9px; font-size: 15px; white-space: nowrap; }
+.wb-fg-prop span em { font-style: normal; color: #999; margin-right: 6px; }
+
+/* overlays the helpers draw inside the frame (page px) */
+.wb-fg-guide { position: absolute; background: var(--fg-pink); z-index: 30; pointer-events: none; }
+.wb-fg-cols { position: absolute; top: 0; display: grid; z-index: 29; pointer-events: none; }
+.wb-fg-cols i { display: block; background: rgba(255, 60, 90, .15); border-left: 1.5px solid rgba(255, 60, 90, .34); border-right: 1.5px solid rgba(255, 60, 90, .34); transform-origin: 50% 0; }
+.wb-fg-sel { position: absolute; border: 3px solid var(--fg-blue); z-index: 31; pointer-events: none; transform-origin: 0 0; }
+.wb-fg-sel > i { position: absolute; width: 16px; height: 16px; background: #fff; border: 3px solid var(--fg-blue); }
+.wb-fg-sel > i:nth-of-type(1) { left: -10px; top: -10px; } .wb-fg-sel > i:nth-of-type(2) { right: -10px; top: -10px; }
+.wb-fg-sel > i:nth-of-type(3) { left: -10px; bottom: -10px; } .wb-fg-sel > i:nth-of-type(4) { right: -10px; bottom: -10px; }
+.wb-fg-tag, .wb-fg-dim, .wb-fg-chip { position: absolute; font-family: var(--wb-sans); font-weight: 600; white-space: nowrap; border-radius: 5px; line-height: 1; z-index: 32; pointer-events: none; }
+.wb-fg-tag { left: -3px; bottom: calc(100% + 8px); background: var(--fg-blue); color: #fff; font-size: 22px; padding: 5px 10px; }
+.wb-fg-dim { left: 0; right: 0; margin: 0 auto; width: fit-content; top: calc(100% + 10px); background: var(--fg-blue); color: #fff; font-size: 20px; padding: 5px 9px; }
+.wb-fg-chip { background: var(--fg-pink); color: #fff; font-size: 20px; padding: 5px 9px; }
+.wb-fg-out { position: absolute; border: 3px solid var(--fg-pink); z-index: 30; pointer-events: none; }
+.wb-ld-mock-stamps { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(5, 1fr); align-content: center; gap: 10px; padding: 14px 26px; background: #fff; }
+.wb-ld-mock-stamps i { display: block; aspect-ratio: 1; border-radius: 50%; border: 2.5px dashed #c9c1ae; }
+.wb-ld-mock-stamps i.wb-on { border: 2.5px solid var(--ld-ink); background: var(--brand); }
+.wb-ld-mock-alert { position: absolute; inset: 0; display: grid; place-items: center; background: #f3eee2; }
+.wb-ld-mock-alert > div { width: 86%; display: flex; align-items: center; gap: 12px; background: #171511; color: #fff; border-radius: 16px; padding: 12px 14px; box-shadow: 0 10px 24px rgba(23,21,17,.22); }
+.wb-ld-mock-alert i { width: 40px; height: 40px; border-radius: 11px; background: var(--brand); flex: none; }
+.wb-ld-mock-alert b { display: block; font-size: 17px; margin: 0; }
+.wb-ld-mock-alert span { display: block; font-size: 14px; color: #c9c3b4; margin-top: 2px; }
+
+/* =====================================================================================================
+   Phone and growth UI: iOS system alerts, the home screen and app launch, bottom sheets, the sign-up wall,
+   the paywall and the tap indicator, all inside a .wb-phone's .wb-screen and sized in iOS points
+   (calc(N * var(--pt)); the screen is 393 x 852 pt; outside a phone, set --pt yourself). Then the GitHub Code
+   button, clone menu, "Copied!" tip and URL chip (the setup-flow blueprint), and the overworld map (quest-map).
+   Helpers in ui-web.js; AR.names() builds everything marked data-alert, data-fill and data-ph="app:...".
+   ===================================================================================================== */
+:root {
+  --wb-ios: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --wb-ios-blue: #007aff;
+  --wb-ios-green: #34c759;
+  --wb-ios-grey: #8e8e93;
+  --wb-ios-sep: rgba(60, 60, 67, 0.29);
+}
+/* a full-screen layer inside .wb-screen (an app screen); .wb-dark for a dark one */
+.wb-scr { position: absolute; inset: 0; overflow: hidden; background: #fff; color: #000; font-family: var(--wb-ios);
+  -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; }
+.wb-scr.wb-dark { background: #000; color: #fff; }
+
+/* ---------- iOS system alert ----------
+   <div class="wb-sys" id="X-sys"><div class="wb-alert" data-alert="notif" data-app="Popshot"></div></div>
+   data-alert: notif | att | location | custom (data-title, data-msg, data-btns="Cancel|*OK": * marks the bold one);
+   data-why: the purpose string under the ATT and location titles. AR.names() builds the exact iOS wording and
+   adds the dim layer; the alert stays hidden until AR.wbAlert (add .wb-on to .wb-sys to show it from the cut). */
+.wb-sys { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; pointer-events: none; }
+.wb-sys-dim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.26); opacity: 0; }
+.wb-alert { position: relative; width: calc(270 * var(--pt)); border-radius: calc(14 * var(--pt)); overflow: hidden;
+  background: rgba(240, 240, 242, 0.97); color: #000; text-align: center; font-family: var(--wb-ios); -webkit-font-smoothing: antialiased; opacity: 0; }
+.wb-sys.wb-on .wb-alert, .wb-sys.wb-on .wb-sys-dim { opacity: 1; }
+.wb-al-body { padding: calc(19 * var(--pt)) calc(16 * var(--pt)) calc(18 * var(--pt)); }
+.wb-al-title { display: block; font-size: calc(17 * var(--pt)); font-weight: 600; line-height: 1.3; letter-spacing: -0.025em; }
+.wb-al-msg { display: block; margin-top: calc(3 * var(--pt)); font-size: calc(13 * var(--pt)); line-height: 1.32; letter-spacing: -0.005em; }
+.wb-al-map { position: relative; height: calc(172 * var(--pt)); border-top: calc(0.5 * var(--pt)) solid var(--wb-ios-sep); overflow: hidden; background: #f2efe9; }
+.wb-al-map > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.wb-al-precise { position: absolute; left: calc(9 * var(--pt)); top: calc(9 * var(--pt)); display: flex; align-items: center; gap: calc(4 * var(--pt));
+  padding: calc(5 * var(--pt)) calc(10 * var(--pt)) calc(5 * var(--pt)) calc(8 * var(--pt)); border-radius: 999px; background: rgba(255, 255, 255, 0.92);
+  font-size: calc(13 * var(--pt)); font-weight: 600; color: var(--wb-ios-blue); box-shadow: 0 calc(1 * var(--pt)) calc(4 * var(--pt)) rgba(0, 0, 0, 0.15); }
+.wb-al-precise svg { width: calc(12 * var(--pt)); height: calc(12 * var(--pt)); }
+.wb-al-btns { display: flex; border-top: calc(0.5 * var(--pt)) solid var(--wb-ios-sep); }
+.wb-al-btns.wb-col { flex-direction: column; }
+.wb-al-btns.wb-col .wb-al-btn { flex: none; }
+.wb-al-btn { position: relative; flex: 1 1 0; min-width: 0; height: calc(44 * var(--pt)); display: grid; place-items: center; font-size: calc(17 * var(--pt));
+  color: var(--wb-ios-blue); letter-spacing: -0.02em; white-space: nowrap; }
+.wb-al-btns:not(.wb-col) .wb-al-btn + .wb-al-btn { border-left: calc(0.5 * var(--pt)) solid var(--wb-ios-sep); }
+.wb-al-btns.wb-col .wb-al-btn + .wb-al-btn { border-top: calc(0.5 * var(--pt)) solid var(--wb-ios-sep); }
+.wb-al-btn.wb-pref { font-weight: 600; }
+.wb-al-btn.wb-red { color: #ff3b30; }
+.wb-al-hi { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.1); opacity: 0; }
+.wb-al-btn > span { position: relative; }
+
+/* ---------- home screen ----------
+   <div class="wb-scr wb-home" id="X-home"><img class="wb-wall" src=".."> (optional; a gradient otherwise)
+     <div class="wb-home-grid" data-fill="20"> <span class="wb-app" data-at="9" id="X-pop"><img class="wb-appicon" src=".."><em>Popshot</em></span> </div>
+     <div class="wb-home-search"><i data-i="search"></i>Search</div>
+     <div class="wb-dock" data-fill="4"></div></div>
+   data-fill pads the grid (or the dock) with generic apps; data-at puts your app at that index. A generic icon:
+   <img class="wb-appicon" data-ph="app:Fitly"> (system names get their look: phone, messages, safari, music, mail,
+   photos, camera, settings, maps, weather, notes, calendar, clock). */
+.wb-home { color: #fff; background: radial-gradient(120% 70% at 30% 105%, #f0a07a 0%, rgba(240, 160, 122, 0) 55%),
+  linear-gradient(180deg, #24275e 0%, #3b3f8f 30%, #6a4f9e 58%, #b0619a 78%, #e98d7f 100%); }
+.wb-home > img.wb-wall { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.wb-home-grid { position: absolute; left: calc(27 * var(--pt)); right: calc(27 * var(--pt)); top: calc(72 * var(--pt)); display: grid;
+  grid-template-columns: repeat(4, calc(62 * var(--pt))); justify-content: space-between; row-gap: calc(20 * var(--pt)); }
+.wb-app { position: relative; display: flex; flex-direction: column; align-items: center; gap: calc(6 * var(--pt)); width: calc(62 * var(--pt)); }
+.wb-app > img, .wb-app > .wb-ico, .wb-dock > img { width: calc(62 * var(--pt)); height: calc(62 * var(--pt)); border-radius: calc(14 * var(--pt)); display: block; flex: none; object-fit: cover; }
+.wb-app > em { font-style: normal; font-size: calc(12 * var(--pt)); font-weight: 500; line-height: 1.2; color: #fff; white-space: nowrap; letter-spacing: 0;
+  text-shadow: 0 0 calc(4 * var(--pt)) rgba(0, 0, 0, 0.28); }
+.wb-home-search { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; bottom: calc(119 * var(--pt)); display: flex; align-items: center;
+  gap: calc(5 * var(--pt)); padding: calc(6 * var(--pt)) calc(13 * var(--pt)); border-radius: 999px; background: rgba(255, 255, 255, 0.24);
+  font-size: calc(13 * var(--pt)); font-weight: 600; color: #fff; }
+.wb-home-search .wb-i { font-size: calc(13 * var(--pt)); }
+.wb-dock { position: absolute; left: calc(10 * var(--pt)); right: calc(10 * var(--pt)); bottom: calc(10 * var(--pt)); height: calc(92 * var(--pt));
+  border-radius: calc(38 * var(--pt)); background: rgba(255, 255, 255, 0.27); display: flex; justify-content: space-around; align-items: center; padding: 0 calc(8 * var(--pt)); }
+.wb-dock .wb-app > em { display: none; }
+/* app launch: the layer AR.wbLaunch zooms open out of an icon (put the app's first screen inside) */
+.wb-launch { position: absolute; inset: 0; overflow: hidden; opacity: 0; --wl-v: 0; --wl-h: 0; --wl-r: 0;
+  clip-path: inset(calc(var(--wl-v) * 1px) calc(var(--wl-h) * 1px) round calc(var(--wl-r) * 1px)); }
+.wb-launch.wb-on { opacity: 1; }
+/* splash: <div class="wb-scr wb-splash" style="--brand:#45BFA0"><div><img class="wb-appicon" src=".."><b>Popshot</b></div></div> */
+.wb-splash { background: var(--brand, #1c1c1e); color: #fff; display: grid; place-items: center; }
+.wb-splash > div { display: flex; flex-direction: column; align-items: center; gap: calc(14 * var(--pt)); }
+.wb-splash img { width: calc(110 * var(--pt)); height: calc(110 * var(--pt)); border-radius: calc(25 * var(--pt)); }
+.wb-splash b { font-size: calc(30 * var(--pt)); font-weight: 800; letter-spacing: -0.02em; }
+
+/* ---------- buttons, switch, tap indicator (any phone screen) ---------- */
+.wb-btn { position: relative; height: calc(52 * var(--pt)); border-radius: calc(14 * var(--pt)); display: flex; align-items: center; justify-content: center;
+  gap: calc(9 * var(--pt)); padding: 0 calc(16 * var(--pt)); font-family: var(--wb-ios); font-size: calc(17 * var(--pt)); font-weight: 600; letter-spacing: -0.02em;
+  background: var(--brand, var(--wb-ios-blue)); color: #fff; white-space: nowrap; }
+.wb-btn > .wb-i, .wb-btn > svg, .wb-btn > img { width: calc(19 * var(--pt)); height: calc(19 * var(--pt)); font-size: calc(19 * var(--pt)); flex: none; }
+.wb-btn.wb-apple { background: #000; color: #fff; }
+.wb-btn.wb-apple > .wb-i { width: calc(18 * var(--pt)); height: calc(21 * var(--pt)); margin-top: calc(-3 * var(--pt)); }
+.wb-btn.wb-google { background: #fff; color: #1f1f1f; box-shadow: inset 0 0 0 calc(1.2 * var(--pt)) #c7c7cc; }
+.wb-btn.wb-grey { background: #efeff4; color: #000; }
+.wb-btn.wb-ghost { background: none; color: var(--brand, var(--wb-ios-blue)); }
+.wb-btn.wb-round { border-radius: 999px; }
+.wb-btn > .wb-alt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: inherit; opacity: 0; }
+.wb-switch { position: relative; display: inline-block; width: calc(51 * var(--pt)); height: calc(31 * var(--pt)); border-radius: 999px; background: #e9e9ea; flex: none; }
+.wb-switch > i { position: absolute; left: calc(2 * var(--pt)); top: calc(2 * var(--pt)); width: calc(27 * var(--pt)); height: calc(27 * var(--pt)); border-radius: 50%;
+  background: #fff; box-shadow: 0 calc(3 * var(--pt)) calc(8 * var(--pt)) rgba(0, 0, 0, 0.15), 0 calc(1 * var(--pt)) calc(1 * var(--pt)) rgba(0, 0, 0, 0.16); }
+.wb-switch.wb-on { background: var(--wb-ios-green); }
+.wb-switch.wb-on > i { left: calc(22 * var(--pt)); }
+/* the finger: AR.wbTap adds these inside the screen */
+.wb-tap { position: absolute; z-index: 80; width: calc(44 * var(--pt)); height: calc(44 * var(--pt)); margin: calc(-22 * var(--pt)) 0 0 calc(-22 * var(--pt));
+  border-radius: 50%; background: rgba(36, 36, 44, 0.34); box-shadow: 0 0 0 calc(2.6 * var(--pt)) rgba(255, 255, 255, 0.95), 0 calc(2 * var(--pt)) calc(10 * var(--pt)) rgba(0, 0, 0, 0.28);
+  opacity: 0; pointer-events: none; }
+.wb-tap-ring { position: absolute; z-index: 79; width: calc(44 * var(--pt)); height: calc(44 * var(--pt)); margin: calc(-22 * var(--pt)) 0 0 calc(-22 * var(--pt));
+  border-radius: 50%; border: calc(3 * var(--pt)) solid rgba(255, 255, 255, 0.9); box-shadow: 0 0 0 calc(1.5 * var(--pt)) rgba(0, 0, 0, 0.18); opacity: 0; pointer-events: none; }
+
+/* ---------- bottom sheet ----------
+   <div class="wb-bs" id="X-sheet"><div class="wb-bs-panel"> ..content.. </div></div>  (the grabber and the dim are
+   added by AR.names(); hidden until AR.wbSheet slides it up; .wb-on shows it from the cut). Content pieces:
+   .wb-bs-icon (img), .wb-bs-title, .wb-bs-text, .wb-btn, .wb-btn.wb-ghost. */
+.wb-bs { position: absolute; inset: 0; z-index: 30; overflow: hidden; pointer-events: none; }
+.wb-bs-dim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.4); opacity: 0; }
+.wb-bs-panel { position: absolute; left: 0; right: 0; bottom: 0; border-radius: calc(26 * var(--pt)) calc(26 * var(--pt)) 0 0; background: #fff; color: #000;
+  font-family: var(--wb-ios); padding: calc(34 * var(--pt)) calc(22 * var(--pt)) calc(42 * var(--pt)); display: flex; flex-direction: column; align-items: stretch;
+  gap: calc(12 * var(--pt)); opacity: 0; box-shadow: 0 calc(-2 * var(--pt)) calc(20 * var(--pt)) rgba(0, 0, 0, 0.12); }
+.wb-bs.wb-on .wb-bs-panel, .wb-bs.wb-on .wb-bs-dim { opacity: 1; }
+.wb-bs-grab { position: absolute; left: 50%; top: calc(6 * var(--pt)); width: calc(36 * var(--pt)); height: calc(5 * var(--pt)); margin-left: calc(-18 * var(--pt));
+  border-radius: 999px; background: rgba(60, 60, 67, 0.3); }
+.wb-bs-icon { align-self: center; width: calc(72 * var(--pt)); height: calc(72 * var(--pt)); border-radius: calc(16 * var(--pt)); }
+.wb-bs-title { text-align: center; font-size: calc(22 * var(--pt)); font-weight: 700; line-height: 1.22; letter-spacing: -0.02em; }
+.wb-bs-text { text-align: center; font-size: calc(15 * var(--pt)); line-height: 1.35; color: #6e6e73; margin-bottom: calc(6 * var(--pt)); }
+
+/* ---------- sign-up wall ----------
+   <div class="wb-scr wb-signup" style="--brand:#45BFA0"> [<span class="wb-su-skip">Skip</span>]
+     <img class="wb-appicon wb-su-icon" src=".."><div class="wb-su-h">Create your account</div><div class="wb-su-sub">..</div>
+     <div class="wb-su-btns"><div class="wb-btn wb-apple"><i data-i="apple"></i>Continue with Apple</div>
+       <div class="wb-btn wb-google"><i data-i="google"></i>Continue with Google</div><div class="wb-btn"><i data-i="mail-f"></i>Continue with email</div></div>
+     <div class="wb-su-foot">Already have an account? <b>Log in</b></div><div class="wb-su-legal">By continuing, you agree to our Terms and Privacy Policy.</div></div> */
+.wb-signup { display: flex; flex-direction: column; align-items: stretch; padding: calc(116 * var(--pt)) calc(24 * var(--pt)) calc(42 * var(--pt)); }
+.wb-su-skip { position: absolute; right: calc(22 * var(--pt)); top: calc(62 * var(--pt)); font-size: calc(17 * var(--pt)); font-weight: 600; color: var(--wb-ios-grey); }
+.wb-su-icon { align-self: center; width: calc(84 * var(--pt)); height: calc(84 * var(--pt)); border-radius: calc(19 * var(--pt)); box-shadow: 0 calc(4 * var(--pt)) calc(14 * var(--pt)) rgba(0, 0, 0, 0.12); }
+.wb-su-h { margin-top: calc(22 * var(--pt)); text-align: center; font-size: calc(30 * var(--pt)); font-weight: 800; line-height: 1.12; letter-spacing: -0.025em; }
+.wb-su-sub { margin-top: calc(8 * var(--pt)); text-align: center; font-size: calc(17 * var(--pt)); line-height: 1.32; color: #6e6e73; padding: 0 calc(8 * var(--pt)); }
+.wb-su-btns { margin-top: calc(30 * var(--pt)); display: flex; flex-direction: column; gap: calc(12 * var(--pt)); }
+.wb-su-or { display: flex; align-items: center; gap: calc(12 * var(--pt)); color: var(--wb-ios-grey); font-size: calc(14 * var(--pt)); }
+.wb-su-or::before, .wb-su-or::after { content: ""; flex: 1; height: calc(1 * var(--pt)); background: #e5e5ea; }
+.wb-su-foot { margin-top: calc(22 * var(--pt)); text-align: center; font-size: calc(15 * var(--pt)); color: #6e6e73; }
+.wb-su-foot b { color: var(--brand, var(--wb-ios-blue)); font-weight: 600; }
+.wb-su-legal { margin-top: auto; text-align: center; font-size: calc(12 * var(--pt)); line-height: 1.35; color: #aeaeb2; padding: 0 calc(18 * var(--pt)); }
+
+/* ---------- paywall ----------
+   <div class="wb-scr wb-paywall" style="--brand:#45BFA0"><div class="wb-pw-hero"><img src=".."></div><span class="wb-pw-x"><i data-i="x"></i></span>
+     <div class="wb-pw-h">Unlock Popshot Pro</div><div class="wb-pw-feats"><span>Unlimited pops</span>..</div>
+     <div class="wb-pw-plans"><div class="wb-plan wb-on"><em>BEST VALUE</em><i></i><div><b>Yearly</b><span>3 days free</span></div><strong>$29.99/year</strong></div>
+       <div class="wb-plan"><i></i><div><b>Weekly</b><span>No trial</span></div><strong>$4.99/week</strong></div></div>
+     <div class="wb-pw-trial"><span class="wb-swapt"><span>Free trial disabled</span><span>Free trial enabled</span></span><span class="wb-switch"></span></div>
+     <div class="wb-btn wb-pw-cta">Start free trial</div><div class="wb-pw-note">3 days free, then $29.99/year</div>
+     <div class="wb-pw-foot"><span>Restore</span><span>Terms</span><span>Privacy</span></div></div>
+   .wb-pw-x.wb-right puts the X on the right, .wb-faint makes it the barely-there one. */
+.wb-paywall { display: flex; flex-direction: column; align-items: stretch; padding: 0 calc(20 * var(--pt)) calc(30 * var(--pt)); --brand: #5856d6; }
+.wb-pw-hero { position: relative; flex: none; height: calc(218 * var(--pt)); margin: 0 calc(-20 * var(--pt)); overflow: hidden;
+  background: linear-gradient(160deg, var(--brand), color-mix(in srgb, var(--brand) 55%, #000)); }
+.wb-pw-hero > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.wb-pw-hero > img.wb-appicon { position: absolute; inset: auto; left: 50%; top: calc(86 * var(--pt)); width: calc(96 * var(--pt)); height: calc(96 * var(--pt));
+  margin-left: calc(-48 * var(--pt)); border-radius: calc(22 * var(--pt)); box-shadow: 0 calc(8 * var(--pt)) calc(24 * var(--pt)) rgba(0, 0, 0, 0.25); }
+.wb-pw-hero::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 32%; background: linear-gradient(rgba(255, 255, 255, 0), #fff); }
+.wb-pw-x { position: absolute; z-index: 3; left: calc(18 * var(--pt)); top: calc(60 * var(--pt)); width: calc(30 * var(--pt)); height: calc(30 * var(--pt)); border-radius: 50%;
+  display: grid; place-items: center; background: rgba(0, 0, 0, 0.28); color: #fff; font-size: calc(16 * var(--pt)); }
+.wb-pw-x.wb-right { left: auto; right: calc(18 * var(--pt)); }
+.wb-pw-x.wb-faint { background: rgba(0, 0, 0, 0.1); color: rgba(255, 255, 255, 0.55); }
+.wb-pw-h { margin-top: calc(6 * var(--pt)); text-align: center; font-size: calc(28 * var(--pt)); font-weight: 800; letter-spacing: -0.025em; line-height: 1.15; }
+.wb-pw-feats { align-self: center; margin-top: calc(12 * var(--pt)); display: flex; flex-direction: column; gap: calc(8 * var(--pt)); font-size: calc(16 * var(--pt)); font-weight: 500; }
+.wb-pw-feats > span { display: flex; align-items: center; gap: calc(10 * var(--pt)); }
+.wb-pw-feats > span::before { content: ""; width: calc(20 * var(--pt)); height: calc(20 * var(--pt)); border-radius: 50%; flex: none;
+  background: var(--brand) url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4L18 8' fill='none' stroke='%23fff' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 72% no-repeat; }
+.wb-pw-plans { margin-top: calc(18 * var(--pt)); display: flex; flex-direction: column; gap: calc(10 * var(--pt)); }
+.wb-plan { position: relative; height: calc(64 * var(--pt)); border-radius: calc(16 * var(--pt)); box-shadow: inset 0 0 0 calc(1.5 * var(--pt)) #d1d1d6; display: flex; align-items: center;
+  gap: calc(12 * var(--pt)); padding: 0 calc(16 * var(--pt)); background: #fff; }
+.wb-plan.wb-on { box-shadow: inset 0 0 0 calc(2.5 * var(--pt)) var(--brand); background: color-mix(in srgb, var(--brand) 8%, #fff); }
+.wb-plan > i { width: calc(22 * var(--pt)); height: calc(22 * var(--pt)); border-radius: 50%; box-shadow: inset 0 0 0 calc(1.8 * var(--pt)) #c7c7cc; flex: none; background: #fff; }
+.wb-plan.wb-on > i { box-shadow: inset 0 0 0 calc(7 * var(--pt)) var(--brand); }
+.wb-plan > div { display: flex; flex-direction: column; gap: calc(2 * var(--pt)); min-width: 0; }
+.wb-plan b { font-size: calc(17 * var(--pt)); font-weight: 700; }
+.wb-plan > div > span { font-size: calc(13 * var(--pt)); color: #6e6e73; white-space: nowrap; }
+.wb-plan > strong { margin-left: auto; font-size: calc(18 * var(--pt)); font-weight: 800; white-space: nowrap; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.wb-plan > em { position: absolute; right: calc(14 * var(--pt)); top: calc(-10 * var(--pt)); font-style: normal; font-size: calc(10.5 * var(--pt)); font-weight: 800; letter-spacing: 0.05em;
+  color: #fff; background: var(--brand); border-radius: calc(6 * var(--pt)); padding: calc(3 * var(--pt)) calc(7 * var(--pt)); }
+.wb-pw-trial { margin-top: calc(12 * var(--pt)); display: flex; align-items: center; justify-content: space-between; gap: calc(10 * var(--pt)); padding: calc(10 * var(--pt)) calc(10 * var(--pt)) calc(10 * var(--pt)) calc(16 * var(--pt));
+  border-radius: calc(14 * var(--pt)); background: #f2f2f7; font-size: calc(16 * var(--pt)); font-weight: 600; }
+.wb-pw-cta { margin-top: calc(14 * var(--pt)); height: calc(56 * var(--pt)); border-radius: calc(16 * var(--pt)); font-size: calc(18 * var(--pt)); font-weight: 700; }
+.wb-pw-note { margin-top: calc(9 * var(--pt)); text-align: center; font-size: calc(13 * var(--pt)); color: #6e6e73; }
+.wb-pw-foot { margin-top: auto; display: flex; justify-content: center; gap: calc(16 * var(--pt)); font-size: calc(12 * var(--pt)); color: var(--wb-ios-grey); }
+.wb-swapt { display: inline-grid; }
+.wb-swapt > * { grid-area: 1 / 1; }
+.wb-swapt > :not(:first-child) { opacity: 0; }
+
+/* ---------- GitHub: the Code button, its clone menu, the "Copied!" tip and the URL chip ----------
+   <div class="wb-gh-bar"><span class="wb-gh-bbtn"><i data-i="branch"></i>main<i data-i="caret"></i></span>
+     <span class="wb-gh-find"><i data-i="search"></i>Go to file<kbd>t</kbd></span><span class="wb-gh-bbtn">Add file<i data-i="caret"></i></span>
+     <span class="wb-gh-code" id="X-code"><i data-i="code"></i>Code<i data-i="caret"></i></span></div>
+   <div class="wb-gh-clone" id="X-menu"><div class="wb-gh-ctabs"><span class="wb-on">Local</span><span>Codespaces</span></div>
+     <div class="wb-gh-cbody"><div class="wb-gh-ch"><i data-i="terminal"></i>Clone<i data-i="help"></i></div>
+       <div class="wb-gh-proto"><span class="wb-on">HTTPS</span><span>SSH</span><span>GitHub CLI</span></div>
+       <div class="wb-gh-url"><span>https://github.com/owner/repo.git</span><span class="wb-gh-copy" id="X-copy"><i data-i="copy"></i><i data-i="check" class="wb-ok"></i></span></div>
+       <div class="wb-gh-hint">Clone using the web URL.</div></div>
+     <div class="wb-gh-crow"><i data-i="desktop"></i>Open with GitHub Desktop</div><div class="wb-gh-crow"><i data-i="zip"></i>Download ZIP</div></div>
+   The URL chip (a pasted link): <span class="wb-urlchip"><i data-i="link"></i>github.com/owner/repo</span>, sized by its font-size. */
+.wb-gh-bar { display: flex; align-items: center; gap: 12px; padding: 0 36px; }
+.wb-gh-bbtn, .wb-gh-find, .wb-gh-code { display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border-radius: 9px; font-size: 23px; white-space: nowrap; flex: none; }
+.wb-gh-bbtn { font-weight: 600; color: #25292e; background: #f6f8fa; border: 1.5px solid #d1d9e0; }
+.wb-gh-bbtn .wb-i, .wb-gh-find .wb-i { color: #59636e; font-size: 22px; }
+.wb-gh-find { flex: 1; min-width: 0; color: #59636e; border: 1.5px solid #d1d9e0; background: #fff; }
+.wb-gh-find kbd { margin-left: auto; font-family: var(--wb-mono); font-size: 18px; color: #59636e; border: 1.5px solid #d1d9e0; border-radius: 6px; padding: 0 8px; }
+.wb-gh-code { position: relative; font-weight: 600; color: #fff; background: #1f883d; border: 1.5px solid rgba(31, 35, 40, 0.15); box-shadow: 0 1px 0 rgba(31, 35, 40, 0.1); }
+.wb-gh-code .wb-i { font-size: 23px; }
+.wb-gh-clone { position: absolute; z-index: 20; width: 640px; background: #fff; border: 1.5px solid #d1d9e0; border-radius: 14px; overflow: hidden; color: #1f2328;
+  box-shadow: 0 10px 28px rgba(66, 74, 83, 0.16), 0 1px 3px rgba(31, 35, 40, 0.12); transform-origin: 100% 0; opacity: 0; font-family: var(--wb-sans); }
+.wb-gh-clone.wb-on { opacity: 1; }
+.wb-gh-ctabs { display: flex; border-bottom: 1.5px solid #d1d9e0; }
+.wb-gh-ctabs > span { flex: 1; text-align: center; padding: 14px 0 12px; font-size: 22px; font-weight: 600; color: #59636e; }
+.wb-gh-ctabs > span.wb-on { color: #1f2328; box-shadow: inset 0 -3px 0 #fd8c73; }
+.wb-gh-cbody { padding: 18px 22px 20px; }
+.wb-gh-ch { display: flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 600; }
+.wb-gh-ch .wb-i { font-size: 24px; color: #59636e; }
+.wb-gh-ch .wb-i:last-child { margin-left: auto; }
+.wb-gh-proto { display: flex; gap: 26px; margin: 14px 0 16px; border-bottom: 1.5px solid #d1d9e0; font-size: 21px; font-weight: 600; color: #59636e; }
+.wb-gh-proto > span { padding-bottom: 10px; }
+.wb-gh-proto > span.wb-on { color: #1f2328; box-shadow: inset 0 -3px 0 #fd8c73; }
+.wb-gh-url { display: flex; align-items: center; gap: 10px; }
+.wb-gh-url > span:first-child { flex: 1; min-width: 0; height: 52px; display: flex; align-items: center; padding: 0 14px; font-family: var(--wb-mono); font-size: 20px; color: #1f2328;
+  background: #f6f8fa; border: 1.5px solid #d1d9e0; border-radius: 9px; white-space: nowrap; overflow: hidden; }
+.wb-gh-copy { position: relative; flex: none; width: 52px; height: 52px; display: grid; place-items: center; border: 1.5px solid #d1d9e0; border-radius: 9px; background: #f6f8fa;
+  color: #59636e; font-size: 24px; }
+.wb-gh-copy > .wb-i { grid-area: 1 / 1; }
+.wb-gh-copy > .wb-ok { color: #1a7f37; opacity: 0; }
+.wb-gh-hint { margin-top: 10px; font-size: 19px; color: #59636e; }
+.wb-gh-crow { display: flex; align-items: center; gap: 12px; padding: 15px 22px; border-top: 1.5px solid #d1d9e0; font-size: 22px; font-weight: 600; }
+.wb-gh-crow .wb-i { font-size: 24px; color: #59636e; }
+/* a tooltip ("Copied!"): AR.wbCopied puts it over its button; or place it yourself */
+.wb-tip { position: absolute; z-index: 70; padding: 8px 16px 9px; border-radius: 10px; background: #25292e; color: #fff; font-family: var(--wb-sans); font-size: 26px; font-weight: 600;
+  white-space: nowrap; opacity: 0; pointer-events: none; transform-origin: 50% 100%; }
+.wb-tip::after { content: ""; position: absolute; left: 50%; bottom: -8px; margin-left: -8px; border: 8px solid transparent; border-bottom: 0; border-top-color: #25292e; }
+.wb-urlchip { display: inline-flex; align-items: center; gap: 0.42em; padding: 0.2em 0.62em 0.22em 0.48em; border-radius: 0.55em; background: #edf4ff; color: #0969da;
+  box-shadow: inset 0 0 0 0.06em #a9cbff; font-family: var(--wb-sans); font-weight: 600; white-space: nowrap; line-height: 1.25; vertical-align: 0.02em; letter-spacing: -0.01em; }
+.wb-urlchip > .wb-i { font-size: 0.92em; }
+span.wb-urlchip.wb-fly { position: absolute; z-index: 50; box-shadow: inset 0 0 0 0.06em #a9cbff, 0 0.35em 1em rgba(9, 105, 218, 0.28); opacity: 0; }
+
+/* ---------- overworld map (AR.questMap; the quest-map blueprint) ----------
+   AR.questMap(parent, {id, w, h, nodes: [{icon, tag}], start, goal, pts, size, seed}) draws the island, the route
+   and the nodes into parent. A node: .wb-qm-node (--qm: its size) > .wb-qm-ring + .wb-qm-disc + .wb-qm-icon +
+   .wb-qm-num + .wb-qm-tag + .wb-qm-mark (x) + .wb-qm-mark.wb-qm-ok (check). The big numeral: .wb-qm-big.px2 */
+.wb-qm { position: absolute; left: 0; top: 0; }
+.wb-qm-world, .wb-qm-route { position: absolute; left: 0; top: 0; overflow: visible; }
+.wb-qm-node { position: absolute; width: var(--qm, 140px); height: var(--qm, 140px); margin: calc(var(--qm, 140px) / -2) 0 0 calc(var(--qm, 140px) / -2); }
+.wb-qm-disc { position: absolute; inset: 0; border-radius: 50%; background: #fffdf6; border: calc(var(--qm, 140px) * 0.064) solid #1d1b2e;
+  box-shadow: 0 calc(var(--qm, 140px) * 0.07) 0 rgba(0, 0, 0, 0.28); }
+.wb-qm-node.wb-qm-bad .wb-qm-disc { background: #ffe9e4; border-color: #8f1d17; }
+.wb-qm-icon { position: absolute; left: 19%; top: 17%; width: 62%; height: 62%; object-fit: contain; image-rendering: pixelated; display: grid; place-items: center;
+  font-size: calc(var(--qm, 140px) * 0.46); line-height: 1; }
+.wb-qm-icon > svg { width: 100%; height: 100%; display: block; }
+.wb-qm-num { position: absolute; right: -13%; top: -14%; width: 43%; height: 43%; border-radius: 50%; background: #d9473a; color: #fff; display: grid; place-items: center;
+  border: calc(var(--qm, 140px) * 0.043) solid #1d1b2e; font-family: var(--pixel); font-weight: 700; font-size: calc(var(--qm, 140px) * 0.23); line-height: 1; }
+.wb-qm-node:not(.wb-qm-bad) .wb-qm-num { background: #2f6fd6; }
+.wb-qm-tag { position: absolute; left: 50%; top: calc(100% + var(--qm, 140px) * 0.08); transform: translateX(-50%); font-family: var(--pixel); font-weight: 700;
+  font-size: calc(var(--qm, 140px) * 0.21); line-height: 1; color: #fff; background: #1d1b2e; padding: 0.22em 0.42em; white-space: nowrap; letter-spacing: 0.06em; }
+.wb-qm-mark { position: absolute; left: 6%; top: 6%; width: 88%; height: 88%; opacity: 0; }
+.wb-qm-mark > svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.wb-qm-ring { position: absolute; inset: -16%; border-radius: 50%; border: calc(var(--qm, 140px) * 0.07) solid #f7c531; opacity: 0; }
+.wb-qm-big { position: absolute; color: #f7c531; line-height: 1; white-space: nowrap; opacity: 0; font-size: 128px;
+  text-shadow: -0.07em 0 0 #3a1d00, 0.07em 0 0 #3a1d00, 0 -0.07em 0 #3a1d00, 0 0.07em 0 #3a1d00, -0.07em -0.07em 0 #3a1d00, 0.07em 0.07em 0 #3a1d00,
+    -0.07em 0.07em 0 #3a1d00, 0.07em -0.07em 0 #3a1d00, 0.1em 0.13em 0 rgba(0, 0, 0, 0.35); }
+.wb-qm-title { position: absolute; font-family: var(--pixel); font-weight: 700; color: #fff; background: #1d1b2e; border: 6px solid #fff; box-shadow: 0 0 0 6px #1d1b2e, 0 12px 0 6px rgba(0, 0, 0, 0.3);
+  padding: 12px 26px; letter-spacing: 0.06em; white-space: nowrap; line-height: 1; }

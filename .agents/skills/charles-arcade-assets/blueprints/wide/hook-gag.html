@@ -1,0 +1,214 @@
+<!-- BLUEPRINT hook-gag, wide frame (laid out at 1280x630, the 2:1 card): the hook as a pixel gag the mascot causes.
+     A pixel battlestation drawn in code (a blue foam wall, six live candle-chart monitors, a desk with an RGB
+     keyboard and a green LED strip, a gaming chair). The critter stands at the wall outlet holding the plug; it
+     yanks it out (leans back, the cord snaps taut, a spark), every screen dies in a random stagger, the lights go
+     out, then an RIP tombstone slams down with dust and a camera shake, and the critter reacts.
+     Use for: "Claude just killed X", "X is dead", "this ends Y", any hook where the mascot pulls the plug on a thing.
+     Edit: HOST ("critter", "pal", or a cast.py character's folder in assets/cast such as "charles": it reaches out in
+     its point pose with the plug in its hand, the outlet drawn where the plug is, and leans back to yank it; HOST_H
+     its height), TICKERS (what the screens show; or replace .SCENE-scr contents with any live UI), EPITAPH (the stone's
+     word, short), the critter's eyes and props, and the T times: T.pull (the yank, on "killed"), T.die (screens
+     start dying), T.rip (the stone lands, on the thing's name), T.end (the beat length). The camera is locked;
+     only the shake moves it. Screens hold texture text (18 px; their reading-time warning is expected, they die on
+     purpose); the epitaph is the key text. Uses critter.js, cast.js and motion.js (AR.tether for the cord,
+     AR.screensOff).
+     mount.py copies it to compositions/<id>.html with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #1f3388; }
+    #SCENE-shake { position: absolute; left: 0; top: 0; width: 1280px; height: 630px; }
+    #SCENE-room, #SCENE-fx { position: absolute; left: 0; top: 0; width: 1280px; height: 630px; overflow: visible; shape-rendering: crispEdges; }
+    .SCENE-mon { position: absolute; width: 212px; height: 128px; background: #0a0c12; box-shadow: 0 0 0 6px #050608, 0 10px 0 6px rgba(0,0,0,.25); }
+    .SCENE-scr { position: absolute; inset: 4px; background: #0f141d; overflow: hidden; }
+    .SCENE-scr svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; shape-rendering: crispEdges; }
+    .SCENE-tick { position: absolute; left: 8px; top: 5px; font-family: var(--mono); font-weight: 700; font-size: 18px; color: #e9edf5; white-space: nowrap; }
+    .SCENE-tick b { color: #2fbf71; font-weight: 700; margin-left: 6px; }
+    #SCENE-crit { left: 92px; top: 472px; --u: 16px; --crit-ground: rgba(8, 14, 50, 0.35); }
+    #SCENE-stone { position: absolute; left: 700px; top: 408px; width: 160px; height: 186px; transform-origin: 50% 100%; }
+    #SCENE-stone svg { position: absolute; inset: 0; width: 100%; height: 100%; shape-rendering: crispEdges; }
+    #SCENE-rip { position: absolute; left: 0; right: 0; top: 42px; text-align: center; font-size: 54px; color: #4a4a50; text-shadow: 0 3px 0 #d4d4d0; }
+    #SCENE-spark { position: absolute; left: 300px; top: 500px; width: 46px; height: 46px; opacity: 0; transform-origin: 50% 50%; }
+    #SCENE-pc { position: absolute; left: 1036px; top: 536px; width: 8px; height: 8px; }
+    .SCENE-dust { position: absolute; width: 12px; height: 12px; background: #c9cbd6; opacity: 0; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div id="SCENE-shake" data-layout-allow-overflow>
+      <svg id="SCENE-room" viewBox="0 0 1280 630" data-layout-ignore></svg>
+      <div id="SCENE-mons"></div>
+      <div id="SCENE-pc" data-layout-ignore></div>
+      <div class="critter" id="SCENE-crit"></div>
+      <div id="SCENE-stone" data-layout-ignore><svg viewBox="0 0 16 18"></svg><div class="px" id="SCENE-rip">RIP</div></div>
+      <svg id="SCENE-spark" viewBox="0 0 7 7" data-layout-ignore>
+        <rect x="3" y="0" width="1" height="7" fill="#ffe45c" /><rect x="0" y="3" width="7" height="1" fill="#ffe45c" />
+        <rect x="2" y="2" width="3" height="3" fill="#fff6c2" /><rect x="1" y="1" width="1" height="1" fill="#ffb13b" /><rect x="5" y="5" width="1" height="1" fill="#ffb13b" />
+      </svg>
+      <div id="SCENE-fx" data-layout-ignore></div>
+    </div>
+  </div>
+  <script>
+    const T = { pull: 0.42, die: 0.5, rip: 0.96, end: 1.4 };
+    const TICKERS = [["NVDA", "216.76"], ["TSLA", "364.18"], ["AAPL", "245.23"], ["AMD", "144.36"], ["META", "698.61"], ["PLTR", "182.17"]];
+    const EPITAPH = "RIP";
+    const HOST = "critter";                   // "critter", "pal", or a cast.py character ("charles")
+    const HOST_H = 240;                       // a generated character's height (px)
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    const castHost = HOST !== "critter" && HOST !== "pal";
+    const PLUG = { src: "data:image/svg+xml," + encodeURIComponent(
+      "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 9' shape-rendering='crispEdges'><rect x='0' y='1' width='8' height='7' fill='#3a3a3f'/>" +
+      "<rect x='1' y='2' width='6' height='5' fill='#f6f4ee'/><rect x='1' y='6' width='6' height='1' fill='#d6d3cb'/><rect x='2' y='3' width='4' height='1' fill='#d6d3cb'/>" +
+      "<rect x='8' y='2' width='3' height='1' fill='#b9bec8'/><rect x='8' y='5' width='3' height='1' fill='#b9bec8'/></svg>"), size: [12, 9], w: 3, grip: [0.08, 0.6] };
+    // the outlet: where the critter's plug is, or (a generated character) wherever its reaching hand puts the plug
+    let OUT = [268, 494];
+    if (castHost) {
+      AR.crit.prop("plug", PLUG);
+      const spot = document.getElementById("SCENE-crit");
+      const me = AR.cast.make(spot.parentElement, HOST, { id: "SCENE-crit", x: 150, y: 600, h: HOST_H, pose: "point", hold: ["plug"] });
+      spot.replaceWith(me);
+      me.style.setProperty("--cast-ground", "rgba(8, 14, 50, 0.35)");
+      const hand = AR.cast.handAt(me, "r", "point"), img = me.querySelector("[data-prop='plug'] img");
+      const W = parseFloat(img.style.width), H = parseFloat(img.style.height);
+      OUT = [Math.round(hand.x + 0.92 * W - 22), Math.round(hand.y - 0.2 * H - 27)];
+    }
+    const NS = "http://www.w3.org/2000/svg", r = AR.rnd(17);
+    const rect = (p, x, y, w, h, fill) => { const e = document.createElementNS(NS, "rect"); e.setAttribute("x", x); e.setAttribute("y", y); e.setAttribute("width", w); e.setAttribute("height", h); e.setAttribute("fill", fill); p.appendChild(e); return e; };
+    const g = (p) => { const e = document.createElementNS(NS, "g"); p.appendChild(e); return e; };
+
+    // ---- the room: foam wall, floor, desk, chair, outlet (8 px art pixels) ----
+    const room = document.getElementById("SCENE-room");
+    rect(room, 0, 0, 1280, 470, "#2b47ae");
+    for (let ty = 0; ty < 470; ty += 96) for (let tx = 0; tx < 1280; tx += 96) [[0, 0, 1], [48, 0, 0], [0, 48, 0], [48, 48, 1]].forEach(([qx, qy, v]) => {
+      rect(room, tx + qx + 2, ty + qy + 2, 44, 44, "#2f4dba");
+      for (let k = 0; k < 3; k++) v ? rect(room, tx + qx + 6 + k * 14, ty + qy + 4, 8, 40, "#3a5ccb") : rect(room, tx + qx + 4, ty + qy + 6 + k * 14, 40, 8, "#3a5ccb");
+    });
+    rect(room, 0, 470, 1280, 160, "#1f3388");
+    rect(room, 0, 470, 1280, 8, "#2a42a0");
+    for (let x = 0; x < 1280; x += 64) rect(room, x, 520 + (x / 64 % 2) * 40, 32, 8, "#24399a");
+    // monitor stand
+    rect(room, 632, 300, 16, 72, "#101218");
+    // desk
+    rect(room, 150, 372, 1090, 20, "#16181f"); rect(room, 150, 372, 1090, 4, "#2a2e3a");
+    const led = rect(room, 150, 392, 1090, 6, "#3be36b");
+    rect(room, 190, 398, 24, 140, "#101218"); rect(room, 1176, 398, 24, 140, "#101218");
+    rect(room, 184, 530, 36, 10, "#0b0c10"); rect(room, 1170, 530, 36, 10, "#0b0c10");
+    // desk items: headphones stand, cans, RGB keyboard, mug
+    rect(room, 236, 318, 8, 54, "#15171d"); rect(room, 222, 300, 36, 12, "#1d2029"); rect(room, 218, 306, 10, 26, "#1d2029"); rect(room, 252, 306, 10, 26, "#1d2029");
+    [["#3fbf4f", 300], ["#3b6fd8", 324], ["#b9bec8", 348]].forEach(([c, x]) => { rect(room, x, 336, 18, 36, c); rect(room, x + 3, 340, 4, 26, "rgba(255,255,255,.35)"); });
+    const rgb = g(room);
+    ["#ff5a5a", "#ffb13b", "#ffe45c", "#5be07a", "#4fa8ff", "#a66bff", "#ff5a5a", "#ffb13b", "#ffe45c", "#5be07a"].forEach((c, i) => {
+      rect(rgb, 470 + i * 16, 356, 14, 6, c); rect(rgb, 470 + i * 16, 364, 14, 6, c);
+    });
+    rect(room, 466, 352, 166, 2, "#2a2e3a");
+    rect(room, 970, 340, 30, 32, "#f2f0ea"); rect(room, 1000, 346, 10, 16, "#f2f0ea"); rect(room, 974, 344, 22, 4, "#5a3a22");
+    // the computer under the desk, where the cord goes
+    rect(room, 1036, 448, 86, 116, "#0b0c10"); rect(room, 1040, 452, 78, 108, "#191b23"); rect(room, 1048, 462, 4, 86, "#262a35");
+    for (let k = 0; k < 6; k++) rect(room, 1062, 470 + k * 12, 46, 4, "#262a35");
+    const pcLed = rect(room, 1100, 548, 10, 6, "#3be36b");
+    // gaming chair
+    rect(room, 584, 286, 112, 150, "#14161c"); rect(room, 592, 278, 96, 10, "#14161c"); rect(room, 600, 270, 80, 10, "#14161c");
+    rect(room, 596, 300, 10, 40, "#3be36b"); rect(room, 674, 300, 10, 40, "#3be36b"); rect(room, 610, 296, 60, 6, "#262a35");
+    rect(room, 560, 430, 160, 26, "#14161c"); rect(room, 632, 456, 16, 50, "#0d0f14"); rect(room, 580, 504, 120, 10, "#0d0f14");
+    [584, 632, 688].forEach((x) => rect(room, x - 6, 512, 16, 12, "#0a0b0f"));
+    // the wall outlet (the plug sits in its top socket)
+    const [ox, oy] = OUT;
+    rect(room, ox, oy, 64, 90, "#3a3a3f"); rect(room, ox + 4, oy + 4, 56, 82, "#f2f0ea"); rect(room, ox + 4, oy + 82, 56, 4, "#d6d3cb");
+    [[ox + 18, oy + 16], [ox + 18, oy + 52]].forEach(([x, y]) => { rect(room, x, y, 28, 22, "#d9d6ce"); rect(room, x + 6, y + 6, 4, 8, "#3a3a3f"); rect(room, x + 18, y + 6, 4, 8, "#3a3a3f"); rect(room, x + 12, y + 16, 4, 4, "#3a3a3f"); });
+
+    // ---- six live monitors ----
+    const mons = document.getElementById("SCENE-mons"), scrs = [];
+    TICKERS.forEach(([sym, px], i) => {
+      const m = document.createElement("div");
+      m.className = "SCENE-mon";
+      m.id = `SCENE-mon${i}`;
+      Object.assign(m.style, { left: 330 + (i % 3) * 228 + "px", top: 30 + Math.floor(i / 3) * 146 + "px" });
+      const s = document.createElement("div");
+      s.className = "SCENE-scr";
+      s.id = `SCENE-scr${i}`;
+      const svg = document.createElementNS(NS, "svg");
+      svg.setAttribute("viewBox", "0 0 204 120");
+      svg.setAttribute("preserveAspectRatio", "none");
+      let v = 70 + r() * 10;
+      const candles = [];
+      for (let k = 0; k < 15; k++) {
+        const o = v, c = v + (r() - 0.48) * 14, hi = Math.max(o, c) + r() * 5, lo = Math.min(o, c) - r() * 5;
+        const col = c <= o ? "#2fbf71" : "#e5484d";   // y grows down: a lower close is a rise
+        const wick = rect(svg, 8 + k * 12 + 4, Math.min(lo, hi), 2, Math.abs(hi - lo) + 2, col);
+        const body = rect(svg, 8 + k * 12 + 1, Math.min(o, c), 8, Math.max(3, Math.abs(c - o)), col);
+        candles.push([body, wick, col]);
+        v = c;
+      }
+      rect(svg, 176, v - 6, 28, 12, "#2fbf71");
+      s.appendChild(svg);
+      const tick = document.createElement("div");
+      tick.className = "SCENE-tick";
+      tick.innerHTML = `${sym}<b>${px}</b>`;
+      s.appendChild(tick);
+      m.appendChild(s);
+      mons.appendChild(m);
+      scrs.push(s);
+      // live: the last candle keeps ticking until the power dies
+      const [body] = candles[candles.length - 1], y0 = +body.getAttribute("y"), h0 = +body.getAttribute("height");
+      for (let k = 0; k * 0.12 < T.die; k++) {
+        const dh = Math.round((r() - 0.3) * 8);
+        tl.set(body, { attr: { y: y0 - Math.max(0, dh), height: Math.max(3, h0 + Math.abs(dh)) } }, 0.06 + k * 0.12);
+      }
+    });
+
+    // ---- the critter holds the plug, its prongs in the socket ----
+    if (!castHost) {
+      AR.crit.prop("plug", PLUG);
+      AR.critter("#SCENE-crit", Object.assign({ eyes: "look-right", hold: ["plug"] }, HOST === "pal" ? { shape: "pal" } : {}));
+    }
+    AR.crit.blink(tl, "#SCENE-crit", 0.16, { back: "look-right" });
+
+    // ---- the yank ----
+    const body = document.querySelector("#SCENE-crit .crit-body, #SCENE-crit .cast-body");
+    tl.to(body, { scaleY: 0.86, scaleX: 1.08, duration: 0.12, ease: "power2.out" }, T.pull - 0.12);
+    tl.set(body, { scaleY: 1.08, scaleX: 0.94 }, T.pull);
+    tl.to(body, { scaleY: 1, scaleX: 1, duration: 0.2, ease: "back.out(2.5)" }, T.pull + 0.02);
+    tl.to(body, { rotation: -18, duration: 0.09, ease: "power3.out" }, T.pull);
+    tl.to(body, { rotation: -6, duration: 0.4, ease: "back.out(2)" }, T.pull + 0.12);
+    tl.to("#SCENE-crit", { x: -38, duration: 0.14, ease: "power3.out" }, T.pull);
+    AR.crit.eyes(tl, "#SCENE-crit", T.pull, "squeeze");
+    AR.crit.eyes(tl, "#SCENE-crit", T.pull + 0.22, "look-right");
+    AR.cast.act(tl, "#SCENE-crit", T.pull + 0.3, "cheer");      // a generated character: the plug held up
+    AR.burst(tl, "#SCENE-spark", T.pull, { scale: 1.3 });
+
+    // ---- the screens die in a random stagger, then the lights ----
+    AR.screensOff(tl, scrs, T.die, { crt: true, span: 0.3, seed: 7 });
+    tl.set(led, { attr: { fill: "#1c2a22" } }, T.die + 0.32);
+    tl.set(pcLed, { attr: { fill: "#1c2a22" } }, T.die);
+    tl.to(rgb, { opacity: 0.12, duration: 0.04 }, T.die + 0.26);
+
+    // ---- the tombstone slams down: dust, shake, the critter reacts ----
+    const stone = document.querySelector("#SCENE-stone svg");
+    [[3, 0, 10, 1, "#3a3a40"], [2, 1, 12, 1, "#3a3a40"], [1, 2, 14, 16, "#3a3a40"], [3, 1, 10, 1, "#b8b8b4"], [2, 2, 12, 15, "#a3a3a0"],
+     [2, 2, 1, 15, "#c4c4c0"], [13, 3, 1, 14, "#86868a"], [3, 17, 11, 1, "#86868a"], [4, 11, 1, 3, "#7d7d82"], [4, 10, 1, 1, "#7d7d82"],
+     [6, 12, 1, 2, "#7d7d82"], [6, 11, 1, 1, "#7d7d82"], [9, 11, 1, 3, "#7d7d82"], [11, 12, 1, 2, "#7d7d82"], [11, 10, 1, 1, "#7d7d82"], [0, 17, 16, 1, "#2a2a30"]]
+      .forEach(([x, y, w, h, c]) => rect(stone, x, y, w, h, c));
+    document.getElementById("SCENE-rip").textContent = EPITAPH;
+    tl.fromTo("#SCENE-stone", { y: -600 }, { y: 0, duration: 0.17, ease: "power3.in" }, T.rip - 0.17);
+    tl.set("#SCENE-stone", { scaleY: 0.82, scaleX: 1.12 }, T.rip);
+    tl.to("#SCENE-stone", { scaleY: 1, scaleX: 1, duration: 0.26, ease: "back.out(3)" }, T.rip);
+    const fx = document.getElementById("SCENE-fx");
+    for (let i = 0; i < 12; i++) {
+      const d = document.createElement("div");
+      d.className = "SCENE-dust";
+      fx.appendChild(d);
+      const side = i % 2 ? 1 : -1, x0 = 780 + side * (60 + r() * 20), y0 = 588 - r() * 8;
+      tl.set(d, { x: x0, y: y0, opacity: 0.95, scale: 0.6 + r() * 0.8 }, T.rip);
+      tl.to(d, { x: x0 + side * (50 + r() * 110), y: y0 - 20 - r() * 50, duration: 0.45, ease: "power2.out" }, T.rip);
+      tl.to(d, { opacity: 0, duration: 0.2 }, T.rip + 0.3 + r() * 0.12);
+    }
+    AR.shake(tl, "#SCENE-shake", T.rip, { amp: 12, dur: 0.3 });
+    AR.crit.eyes(tl, "#SCENE-crit", T.rip + 0.02, "wide");
+    AR.cast.act(tl, "#SCENE-crit", T.rip + 0.02, "shock");
+    AR.hop(tl, "#SCENE-crit", T.rip + 0.02, { h: 22, dur: 0.24 });
+    AR.crit.eyes(tl, "#SCENE-crit", T.rip + 0.34, "closed");
+    AR.crit.eyes(tl, "#SCENE-crit", T.rip + 0.44, "look-right");
+    // the cord, from the plug to the computer under the desk (last: it follows the moves above)
+    const plugEl = document.querySelector("#SCENE-crit [data-prop='plug'] img");
+    AR.tether(tl, plugEl, "#SCENE-pc", T.pull, 0.1, { color: "#ece9e2", light: "#cfcac0", width: 8, sag: 26, at: [[0.3, 0.92], [0.5, 0.5]], start: 0, until: T.end, layer: "#SCENE-shake" });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

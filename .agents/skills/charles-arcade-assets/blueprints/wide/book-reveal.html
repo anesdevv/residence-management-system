@@ -1,0 +1,220 @@
+<!-- BLUEPRINT book-reveal, wide frame (laid out at 1280x630, the 2:1 card; it lays itself out for the tall card too):
+     "number one, the book Influence by Robert Cialdini". A legendary-loot reveal for a real book (or a course, an app
+     icon, a product): a pixel treasure chest drawn in code rattles; the lid bursts open on the cue, the real cover
+     rises out of it on the title's word with gold rays, a flash and sparkles, and the title nameplate lands; the
+     author nameplate slams on the author's name. Optional: the host beside the chest (it kicks the lid open and
+     cheers), a glow on the floor instead of the chest, a shelf the cover flies onto, the loot bar (the cover flies
+     into its slot).
+     Use for: a resource, a book, a course, a tool named in a list ("number two: ..."); "it's basically the cheat code"
+     after it; any "the real thing comes out of the box" moment.
+     Edit: COVER (src: the real cover from source.py book, size: [w, h] its pixels; the cover is never generated),
+     MODE ("chest" or "glow"), PLATE (a generated scene image behind, or null for the code-drawn vault), HOST
+     ("critter", "pal", a cast.py character's folder such as "charles", or null), LOOK (role, colour; h), SHELF (null,
+     or {books: [cover srcs already on it]}: the cover lands on the shelf at T.shelf), LOOT (null, or {n, have, items}:
+     the bar on top, the cover flies into the next slot at T.loot), the plates' words ([data-name] "book" and "author"
+     in names.js, or edit the spans), and the T times: T.open (the lid bursts), T.title (the cover rises: the title's
+     word), T.author (the author's name), T.loot / T.shelf (or null), T.end. Key text: the nameplates (43 px or more on
+     the card). Needs cast.js. mount.py copies it to compositions/<id>.html with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #1c1630; }
+    #SCENE-vault { position: absolute; inset: 0; background: linear-gradient(#2a2147 0%, #1c1630 70%); }
+    #SCENE-vault::before { content: ""; position: absolute; inset: 0; opacity: 0.5;
+      background-image: linear-gradient(rgba(0, 0, 0, 0.35) 4px, transparent 4px), linear-gradient(90deg, rgba(0, 0, 0, 0.35) 4px, transparent 4px);
+      background-size: 96px 48px, 96px 48px; }
+    #SCENE-floor { position: absolute; left: 0; right: 0; bottom: 0; background: #3a2f55; border-top: 8px solid #4d4270; }
+    #SCENE-shake, #SCENE-stage { position: absolute; left: 0; top: 0; }
+    #SCENE-rays { position: absolute; opacity: 0; pointer-events: none; }
+    #SCENE-rays svg { width: 100%; height: 100%; overflow: visible; }
+    #SCENE-glow { position: absolute; border-radius: 50%; opacity: 0; background: radial-gradient(closest-side, rgba(255, 236, 160, 0.95), rgba(255, 210, 80, 0.5) 45%, rgba(255, 200, 60, 0)); }
+    #SCENE-cover { position: absolute; box-shadow: 0 0 0 5px #1a1426, 0 14px 0 5px rgba(0, 0, 0, 0.35); }
+    #SCENE-chest, #SCENE-lidbox { position: absolute; overflow: visible; transform-origin: 50% 100%; }
+    #SCENE-chest svg, #SCENE-lidbox svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; shape-rendering: crispEdges; }
+    #SCENE-lid { transform-origin: 50% 100%; }
+    .SCENE-plate { position: absolute; white-space: nowrap; line-height: 1; padding: 0.22em 0.5em 0.18em; z-index: 6; }
+    #SCENE-ptitle { color: #1d1b2e; background: #f7c531; box-shadow: 0 0 0 6px #1d1b2e, 0 12px 0 6px rgba(0, 0, 0, 0.35); }
+    #SCENE-pauthor { color: #ffffff; background: #1d1b2e; border: 5px solid #ffffff; box-shadow: 0 0 0 5px #1d1b2e, 0 10px 0 5px rgba(0, 0, 0, 0.35); }
+    .SCENE-spark { position: absolute; opacity: 0; z-index: 7; pointer-events: none; }
+    .SCENE-spark svg { width: 100%; height: 100%; overflow: visible; shape-rendering: crispEdges; }
+    #SCENE-shelf { position: absolute; }
+    #SCENE-board { position: absolute; left: 0; right: 0; bottom: 0; background: #7a4a26; border-top: 8px solid #a8693a; box-shadow: 0 10px 0 rgba(0, 0, 0, 0.3); }
+    .SCENE-book { position: absolute; box-shadow: 0 0 0 4px #1a1426; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div id="SCENE-vault" data-layout-ignore></div>
+    <div id="SCENE-floor" data-layout-ignore></div>
+    <div id="SCENE-shake" data-layout-allow-overflow>
+      <div id="SCENE-stage">
+        <div id="SCENE-rays" data-layout-ignore></div>
+        <div id="SCENE-glow" data-layout-ignore></div>
+        <div id="SCENE-lidbox"><svg viewBox="0 0 32 24" id="SCENE-lidsvg"></svg></div>
+        <img id="SCENE-cover" alt="" />
+        <div id="SCENE-chest"><svg viewBox="0 0 32 24" id="SCENE-chestsvg"></svg></div>
+        <div class="SCENE-plate px" id="SCENE-ptitle"><span data-name="book">Influence</span></div>
+        <div class="SCENE-plate px" id="SCENE-pauthor"><span data-name="author">Robert Cialdini</span></div>
+      </div>
+    </div>
+    <div class="flash" id="SCENE-flash" data-layout-ignore></div>
+  </div>
+  <script>
+    const T = { open: 0.18, title: 0.42, author: 0.95, loot: null, shelf: null, end: 1.7 };
+    const COVER = { src: "assets/cast/props/scroll.png", size: [525, 525] };   // the real cover: { src: "assets/real/influence.jpg", size: [312, 475] }
+    const MODE = "chest";                            // "chest" or "glow"
+    const PLATE = null;                              // a generated scene behind (assets/art/vault.png), or null
+    const HOST = "critter";                          // "critter", "pal", a cast.py character ("charles"), or null
+    const LOOK = { role: null, color: null, h: 260 };
+    const SHELF = null;                              // { books: ["assets/real/a.jpg", ...] }: the cover lands on it at T.shelf
+    const LOOT = null;                               // { n: 5, have: 0, items: FACTS.loot }: the cover flies into it at T.loot
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    const $ = (id) => document.getElementById("SCENE-" + id);
+    const rootEl = document.querySelector('[data-composition-id="SCENE"][data-width]');
+    const W = +(rootEl && rootEl.dataset.width) || 1280, H = +(rootEl && rootEl.dataset.height) || 630, tall = H > W * 0.9;
+    ["shake", "stage"].forEach((id) => Object.assign($(id).style, { width: W + "px", height: H + "px" }));
+    if (PLATE) { const bg = document.createElement("img"); bg.className = "bg-art pixel"; bg.src = PLATE; bg.alt = ""; bg.setAttribute("data-layout-ignore", ""); rootEl.insertBefore(bg, $("shake")); $("vault").style.display = "none"; $("floor").style.display = "none"; }
+    const stage = $("stage");
+    // ---- layout: the chest and the rising cover in the middle-left, the plates to the right (stacked in a tall card) ----
+    const floorY = tall ? 1250 : 560;
+    $("floor").style.top = floorY + "px";
+    const cx = tall ? W / 2 : (HOST ? 470 : 360);
+    const chW = tall ? 420 : 250, chH = chW * 0.75, chX = cx - chW / 2, chY = floorY + (tall ? 20 : 12) - chH;
+    ["chest", "lidbox"].forEach((id) => Object.assign($(id).style, { left: chX + "px", top: chY + "px", width: chW + "px", height: chH + "px" }));
+    if (MODE !== "chest") { $("chest").style.display = "none"; $("lidbox").style.display = "none"; }
+    const topY = LOOT ? (tall ? 250 : 112) : (tall ? 70 : 26);
+    // the plates' sizes first: a tall card stacks the title over the cover
+    const pt = $("ptitle"), pa = $("pauthor");
+    pt.style.fontSize = (tall ? 92 : 58) + "px";
+    pa.style.fontSize = (tall ? 58 : 40) + "px";
+    const fitTo = (el, maxW) => { if (el.offsetWidth > maxW) el.style.fontSize = parseFloat(el.style.fontSize) * maxW / el.offsetWidth + "px"; };
+    if (tall) { fitTo(pt, W - 120); fitTo(pa, W - 120); }
+    const restBottom = MODE === "chest" ? chY + chH * 0.28 - (tall ? 40 : 18) : floorY - (tall ? 70 : 34);
+    const coverH = tall ? Math.min(620, restBottom - (topY + pt.offsetHeight + 70)) : Math.min(372, chY - topY + chH * 0.18), coverW = (coverH * COVER.size[0]) / COVER.size[1];
+    const restY = restBottom - coverH;
+    const cover = $("cover");
+    cover.src = COVER.src;
+    Object.assign(cover.style, { left: cx - coverW / 2 + "px", top: restY + "px", width: coverW + "px", height: coverH + "px" });
+    // the chest: a pixel treasure chest (lid, gold bands, lock) on a 32 x 24 grid; the lid and the gold inside sit
+    // behind the cover, the body in front of it, so the cover rises out from between them
+    const NS = "http://www.w3.org/2000/svg", svg = $("chestsvg"), lsvg = $("lidsvg");
+    const px = (p, x, y, w, h, fill) => { const r = document.createElementNS(NS, "rect"); [["x", x], ["y", y], ["width", w], ["height", h], ["fill", fill]].forEach(([k, v]) => r.setAttribute(k, v)); p.appendChild(r); return r; };
+    const inside = document.createElementNS(NS, "g"), body = document.createElementNS(NS, "g"), lid = document.createElementNS(NS, "g");
+    lid.id = "SCENE-lid";
+    lsvg.appendChild(inside);
+    lsvg.appendChild(lid);
+    svg.appendChild(body);
+    px(inside, 3, 9, 26, 4, "#2a1606"); px(inside, 4, 9, 24, 3, "#ffd34d");
+    px(body, 1, 11, 30, 13, "#2a1606"); px(body, 2, 12, 28, 11, "#8a4b22"); px(body, 2, 12, 28, 2, "#a65e2c"); px(body, 2, 20, 28, 3, "#6b3816");
+    [5, 25].forEach((x) => { px(body, x, 11, 2, 13, "#2a1606"); px(body, x, 12, 2, 11, "#e2a72c"); px(body, x, 12, 1, 11, "#ffd34d"); });
+    px(body, 13, 13, 6, 7, "#2a1606"); px(body, 14, 14, 4, 5, "#e2a72c"); px(body, 15, 15, 2, 2, "#2a1606"); px(body, 15, 16, 1, 2, "#2a1606");
+    px(lid, 2, 2, 28, 1, "#2a1606"); px(lid, 1, 3, 30, 9, "#2a1606"); px(lid, 2, 3, 28, 7, "#9c5628"); px(lid, 3, 3, 26, 2, "#b86d34"); px(lid, 2, 9, 28, 2, "#6b3816");
+    [5, 25].forEach((x) => { px(lid, x, 2, 2, 10, "#2a1606"); px(lid, x, 3, 2, 8, "#e2a72c"); px(lid, x, 3, 1, 8, "#ffd34d"); });
+    px(lid, 13, 8, 6, 4, "#2a1606"); px(lid, 14, 8, 4, 3, "#ffd34d");
+    // rays and the glow behind the cover
+    const rr = tall ? 520 : 300, rays = $("rays");
+    Object.assign(rays.style, { left: cx - rr + "px", top: restY + coverH / 2 - rr + "px", width: 2 * rr + "px", height: 2 * rr + "px" });
+    let rs = '<svg viewBox="-100 -100 200 200"><defs><radialGradient id="SCENE-rg" cx="0" cy="0" r="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff2b0"/><stop offset="0.45" stop-color="#ffd34d" stop-opacity="0.7"/><stop offset="1" stop-color="#ffd34d" stop-opacity="0"/></radialGradient></defs>';
+    for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2, w = (Math.PI / 14) * 0.55; rs += `<polygon points="0,0 ${Math.cos(a - w) * 100},${Math.sin(a - w) * 100} ${Math.cos(a + w) * 100},${Math.sin(a + w) * 100}" fill="url(#SCENE-rg)"/>`; }
+    rays.innerHTML = rs + '<circle cx="0" cy="0" r="32" fill="url(#SCENE-rg)"/></svg>';
+    const gw = coverW * 2.4;
+    Object.assign($("glow").style, { left: cx - gw / 2 + "px", top: (MODE === "chest" ? chY + chH * 0.3 : floorY) - gw * 0.25 + "px", width: gw + "px", height: gw * 0.5 + "px" });
+    // the nameplates: to the right of the chest (a wide card); the title over the cover and the author under the
+    // floor line (a tall card)
+    if (tall) {
+      Object.assign(pt.style, { left: (W - pt.offsetWidth) / 2 + "px", top: topY + "px" });
+      Object.assign(pa.style, { left: (W - pa.offsetWidth) / 2 + "px", top: floorY + 70 + "px" });
+    } else {
+      const px0 = cx + Math.max(coverW, chW) / 2 + 60;
+      fitTo(pt, W - 50 - px0); fitTo(pa, W - 50 - px0);
+      Object.assign(pt.style, { left: px0 + "px", top: (LOOT ? 200 : 170) + "px" });
+      Object.assign(pa.style, { left: px0 + 6 + "px", top: (LOOT ? 200 : 170) + pt.offsetHeight + 40 + "px" });
+    }
+    // ---- the host beside the chest ----
+    const host = HOST ? AR.cast.host(stage, HOST, Object.assign({ id: "SCENE-host", u: tall ? 26 : 15, x: cx - chW / 2 - (tall ? 190 : 110), y: floorY + 6, eyes: "look-right" },
+      LOOK.color ? { color: LOOK.color } : {}, LOOK.role ? { role: LOOK.role } : {},
+      HOST === "critter" || HOST === "pal" ? {} : { h: tall ? LOOK.h * 1.9 : LOOK.h })) : null;
+    // ---- the shelf and the loot bar ----
+    let shelfSlot = null, bar = null;
+    if (SHELF) {
+      // a low bookshelf: on the floor beside the chest (a tall card), under the plates (a wide card)
+      const sx = tall ? cx + chW / 2 + 40 : W - 410, sw = tall ? W - 40 - sx : 360, sh = tall ? 280 : 160, sy = tall ? floorY + 10 - sh : floorY - 30 - sh;
+      const shelf = document.createElement("div");
+      shelf.id = "SCENE-shelf";
+      Object.assign(shelf.style, { left: sx + "px", top: sy + "px", width: sw + "px", height: sh + "px" });
+      shelf.innerHTML = `<div id="SCENE-board" style="height:${tall ? 30 : 18}px"></div>`;
+      stage.insertBefore(shelf, $("ptitle"));
+      const bh = sh - (tall ? 38 : 24), books = (SHELF.books || []).slice(0, 4);
+      let x = 14;
+      books.forEach((src, i) => {
+        const b = document.createElement("img");
+        b.className = "SCENE-book";
+        b.id = `SCENE-book${i}`;
+        b.src = src;
+        b.alt = "";
+        Object.assign(b.style, { left: x + "px", top: sh - (tall ? 30 : 18) - bh + "px", width: bh * 0.66 + "px", height: bh + "px" });
+        shelf.appendChild(b);
+        x += bh * 0.66 + 14;
+      });
+      shelfSlot = { x: sx + x + (bh * coverW) / coverH / 2, y: sy + sh - (tall ? 30 : 18) - bh / 2, k: bh / coverH };
+    }
+    if (LOOT) bar = AR.loot.bar(stage, { id: "SCENE-loot", n: LOOT.n, have: LOOT.have, items: LOOT.items, size: tall ? 120 : 64, x: W / 2, center: true, y: tall ? 50 : 22 });
+
+    // ---- the chest rattles, the lid bursts open ----
+    const chest = [$("chest"), $("lidbox")];
+    if (MODE === "chest") {
+      for (let i = 0; i < 4; i++) tl.to(chest, { rotation: i % 2 ? 3 : -3, duration: 0.04, ease: "none" }, Math.max(0, T.open - 0.18) + i * 0.04);
+      tl.to(chest, { rotation: 0, duration: 0.04 }, T.open - 0.02);
+      tl.to(lid, { y: -10, rotation: -24, svgOrigin: "2 12", duration: 0.12, ease: "back.out(3)" }, T.open);
+      tl.set(chest, { scaleY: 0.9, scaleX: 1.06, transformOrigin: "50% 100%" }, T.open);
+      tl.to(chest, { scaleY: 1, scaleX: 1, duration: 0.2, ease: "back.out(3)" }, T.open);
+      if (host) { AR.hop(tl, host, Math.max(0, T.open - 0.16), { h: tall ? 60 : 30, dur: 0.24 }); AR.crit.eyes(tl, host, T.open, "wide"); AR.cast.act(tl, host, T.open, "shock"); }
+    }
+    // ---- the cover rises on its title, rays and a flash; the title plate lands ----
+    const from = MODE === "chest" ? chY + chH * 0.45 - restY : floorY - restY;
+    tl.fromTo(cover, { y: from, scale: 0.5, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.26, ease: "back.out(1.6)" }, Math.max(0, T.title - 0.14));
+    if (MODE === "chest") tl.fromTo($("glow"), { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.2, ease: "power2.out" }, Math.max(0, T.title - 0.14));
+    else {
+      // the glow is on the floor from the cut, pulsing, and flares as the cover rises out of it
+      const g = $("glow"), t1 = Math.max(0.1, T.title - 0.14);
+      gsap.set(g, { opacity: 0.45, scale: 0.75 });
+      for (let i = 0; i * 0.22 < t1 - 0.05; i++) tl.to(g, { opacity: i % 2 ? 0.45 : 0.65, scale: i % 2 ? 0.75 : 0.82, duration: Math.min(0.22, t1 - i * 0.22), ease: "sine.inOut" }, i * 0.22);
+      tl.to(g, { opacity: 1, scale: 1, duration: 0.2, ease: "power2.out" }, t1);
+    }
+    tl.fromTo(rays, { opacity: 0, scale: 0.3 }, { opacity: 0.9, scale: 1, duration: 0.24, ease: "back.out(2)" }, T.title);
+    tl.fromTo(rays, { rotation: 0 }, { rotation: 36, duration: Math.max(0.3, T.end - T.title), ease: "none", immediateRender: false }, T.title);
+    AR.flash(tl, "#SCENE-flash", T.title, { peak: 0.6, dur: 0.18 });
+    tl.fromTo(pt, { opacity: 0, scale: 2.2, rotation: -6 }, { opacity: 1, scale: 1, rotation: -3, duration: 0.12, ease: "power4.in" }, T.title - 0.04);
+    tl.set(pt, { scaleX: 1.08, scaleY: 0.92 }, T.title + 0.08);
+    tl.to(pt, { scaleX: 1, scaleY: 1, duration: 0.18, ease: "back.out(3)" }, T.title + 0.08);
+    const r = AR.rnd(9);
+    for (let i = 0; i < 8; i++) {
+      const s = document.createElement("div"), sz = (tall ? 54 : 34) * (0.6 + r() * 0.7), a = (i / 8) * Math.PI * 2 + r() * 0.5, d = coverH * (0.55 + r() * 0.3);
+      s.className = "SCENE-spark";
+      s.setAttribute("data-layout-ignore", "");
+      s.innerHTML = `<svg viewBox="0 0 7 7"><rect x="3" y="0" width="1" height="7" fill="${i % 2 ? "#fff" : "#ffe27a"}"/><rect x="0" y="3" width="7" height="1" fill="${i % 2 ? "#fff" : "#ffe27a"}"/><rect x="2" y="2" width="3" height="3" fill="${i % 2 ? "#fff" : "#ffe27a"}"/></svg>`;
+      Object.assign(s.style, { left: cx - sz / 2 + "px", top: restY + coverH / 2 - sz / 2 + "px", width: sz + "px", height: sz + "px" });
+      stage.appendChild(s);
+      const tk = T.title + 0.04 + i * 0.02;
+      tl.fromTo(s, { opacity: 0, x: 0, y: 0, scale: 0.3 }, { opacity: 1, x: Math.cos(a) * d, y: Math.sin(a) * d * 0.8, scale: 1, duration: 0.3, ease: "power3.out" }, tk);
+      tl.to(s, { opacity: 0, scale: 0.4, duration: 0.16 }, tk + 0.34);
+    }
+    if (host) { AR.crit.victory(tl, host, T.title + 0.04); AR.crit.eyes(tl, host, T.title + 0.5, "look-right"); }
+    // ---- the author plate slams on the name ----
+    tl.fromTo(pa, { opacity: 0, scale: 2.4, rotation: 4 }, { opacity: 1, scale: 1, rotation: 2, duration: 0.1, ease: "power4.in" }, T.author - 0.1);
+    tl.set(pa, { scaleX: 1.1, scaleY: 0.9 }, T.author);
+    tl.to(pa, { scaleX: 1, scaleY: 1, duration: 0.18, ease: "back.out(3)" }, T.author);
+    AR.shake(tl, "#SCENE-shake", T.author, { amp: tall ? 10 : 7, dur: 0.2 });
+    // ---- the cover flies into the loot bar, or onto the shelf ----
+    if (bar && T.loot != null) {
+      tl.to(cover, { opacity: 0, duration: 0.06 }, T.loot - 0.28);
+      AR.loot.fill(tl, bar, T.loot, { from: [cx, restY + coverH / 2], dur: 0.28, scale: coverH / (tall ? 120 : 64) * 0.7 });
+    } else if (shelfSlot && T.shelf != null) {
+      const k = shelfSlot.k, d = 0.3;
+      tl.to(cover, { x: shelfSlot.x - cx, y: shelfSlot.y - (restY + coverH / 2), scale: k, rotation: 0, duration: d, ease: "power2.inOut" }, T.shelf - d);
+      tl.set(cover, { scaleY: k * 0.9, scaleX: k * 1.06 }, T.shelf);
+      tl.to(cover, { scaleX: k, scaleY: k, duration: 0.16, ease: "back.out(3)" }, T.shelf);
+      tl.to(rays, { opacity: 0, duration: 0.2 }, T.shelf - d);
+      tl.to($("glow"), { opacity: 0, duration: 0.2 }, T.shelf - d);
+    }
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

@@ -1,0 +1,96 @@
+<!-- BLUEPRINT montage, wide frame (laid out at 1280x630, the 2:1 card): a stacked-cards montage. App screens land one
+     on top of the other (each cross-fades in slightly larger, the older ones step back into a stack), each gets a
+     check as it lands, then the whole deck fans out into a hand held by the mascot.
+     Use for: "it works on any app", "Notion, Todoist, Trello, Linear...", "every one of them passed", lists of
+     things the voice names quickly (about 0.25 s each).
+     Edit: the four cards (#SCENE-c1..c4: the app's title, its content and its label pill), add or remove cards
+     (keep the class SCENE-card and a .SCENE-check inside each), the backdrop colour, and the T times: T.cards (the
+     first card's time; the rest follow every T.gap, so land T.cards + n*T.gap on the n-th name), T.fan (the hand
+     opens), T.end (the beat length). The camera is locked.
+     mount.py copies it to compositions/<id>.html with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background-color: #2a40bd;
+      background-image: linear-gradient(rgba(255,255,255,.06) 2px, transparent 2px), linear-gradient(90deg, rgba(255,255,255,.06) 2px, transparent 2px);
+      background-size: 64px 64px; }
+    .SCENE-card { position: absolute; left: 300px; top: 92px; width: 680px; height: 410px; }
+    .SCENE-face { position: absolute; inset: 0; background: #fff; border-radius: 24px; overflow: hidden; box-shadow: 0 14px 34px rgba(8,16,60,.35); font-family: var(--sans); color: #1f1e1c; }
+    .SCENE-bar { height: 50px; display: flex; align-items: center; gap: 10px; padding: 0 20px; border-bottom: 2px solid #ece9e2; font-size: 22px; font-weight: 600; color: #5c5a55; }
+    .SCENE-bar i { width: 14px; height: 14px; border-radius: 50%; background: #ff5f57; }
+    .SCENE-bar i:nth-child(2) { background: #febc2e; }
+    .SCENE-bar i:nth-child(3) { background: #28c840; margin-right: 8px; }
+    .SCENE-body { position: absolute; left: 0; right: 0; top: 52px; bottom: 0; padding: 18px 24px; }
+    .SCENE-label { position: absolute; left: 18px; bottom: 18px; display: flex; align-items: center; gap: 10px; background: #1f1e1c; color: #fff; font-weight: 700; font-size: 30px; border-radius: 12px; padding: 6px 16px 6px 10px; }
+    .SCENE-label b { width: 30px; height: 30px; border-radius: 8px; display: block; }
+    .SCENE-check { position: absolute; right: -22px; top: -22px; width: 84px; height: 84px; opacity: 0; }
+    .SCENE-row { display: flex; align-items: center; gap: 14px; height: 52px; border-bottom: 2px solid #f0eee8; font-size: 22px; }
+    .SCENE-row em { width: 36px; height: 36px; border-radius: 50%; background: #e3eafc; flex: none; }
+    .SCENE-row span { color: #6f6b64; margin-left: auto; font-size: 18px; }
+    .SCENE-week { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; height: 250px; }
+    .SCENE-week div { position: relative; background: #f6f6f9; border-radius: 10px; font-size: 18px; color: #6f6b64; padding: 8px; }
+    .SCENE-week b { position: absolute; left: 8px; right: 8px; border-radius: 8px; color: #fff; font-size: 18px; padding: 6px 8px; }
+    .SCENE-doc h3 { font-family: var(--serif); font-size: 34px; margin-bottom: 14px; }
+    .SCENE-doc p { height: 16px; border-radius: 8px; background: #ece9e2; margin-bottom: 14px; }
+    .SCENE-task { display: flex; align-items: center; gap: 14px; height: 50px; font-size: 22px; }
+    .SCENE-task i { width: 28px; height: 28px; border-radius: 8px; border: 3px solid #b8b3a8; }
+    .SCENE-task.SCENE-done i { background: #2fa35b; border-color: #2fa35b; }
+    .SCENE-task.SCENE-done { color: #77736c; text-decoration: line-through; }
+    #SCENE-hero { left: 547px; top: 424px; width: 186px; height: 155px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div class="SCENE-card" data-layout-allow-overlap id="SCENE-c1"><div class="SCENE-face">
+      <div class="SCENE-bar"><i></i><i></i><i></i>Inbox</div>
+      <div class="SCENE-body">
+        <div class="SCENE-row"><em></em><b>Maya Chen</b> Intro call next week? <span>9:41</span></div>
+        <div class="SCENE-row"><em></em><b>Stripe</b> Payout sent <span>9:12</span></div>
+        <div class="SCENE-row"><em></em><b>Daniel</b> Re: the deck <span>8:55</span></div>
+        <div class="SCENE-row"><em></em><b>Priya</b> Thursday works <span>8:20</span></div>
+      </div>
+      <div class="SCENE-label"><b style="background:#e5483b"></b>Inbox</div></div>
+      <svg class="SCENE-check" viewBox="0 0 84 84"><circle cx="42" cy="42" r="38" fill="#2fa35b" stroke="#fff" stroke-width="6" /><path d="M24 43 L37 56 L61 30" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+    </div>
+    <div class="SCENE-card" data-layout-allow-overlap id="SCENE-c2"><div class="SCENE-face">
+      <div class="SCENE-bar"><i></i><i></i><i></i>Calendar</div>
+      <div class="SCENE-body"><div class="SCENE-week">
+        <div>Mon<b style="top:60px;height:70px;background:#2f5bd0">Standup</b></div>
+        <div>Tue<b style="top:110px;height:90px;background:#b4532f">Design review</b></div>
+        <div>Wed<b style="top:50px;height:60px;background:#23864a">Lunch</b></div>
+        <div>Thu<b style="top:90px;height:100px;background:#2f5bd0">Investor call</b></div>
+        <div>Fri<b style="top:140px;height:60px;background:#6a52c9">Demo</b></div>
+      </div></div>
+      <div class="SCENE-label"><b style="background:#3f6fe0"></b>Calendar</div></div>
+      <svg class="SCENE-check" viewBox="0 0 84 84"><circle cx="42" cy="42" r="38" fill="#2fa35b" stroke="#fff" stroke-width="6" /><path d="M24 43 L37 56 L61 30" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+    </div>
+    <div class="SCENE-card" data-layout-allow-overlap id="SCENE-c3"><div class="SCENE-face">
+      <div class="SCENE-bar"><i></i><i></i><i></i>Notes</div>
+      <div class="SCENE-body SCENE-doc"><h3>Launch plan</h3><p style="width:92%"></p><p style="width:84%"></p><p style="width:96%"></p><p style="width:62%"></p><p style="width:88%"></p></div>
+      <div class="SCENE-label"><b style="background:#1f1e1c;border:2px solid #fff"></b>Notes</div></div>
+      <svg class="SCENE-check" viewBox="0 0 84 84"><circle cx="42" cy="42" r="38" fill="#2fa35b" stroke="#fff" stroke-width="6" /><path d="M24 43 L37 56 L61 30" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+    </div>
+    <div class="SCENE-card" data-layout-allow-overlap id="SCENE-c4"><div class="SCENE-face">
+      <div class="SCENE-bar"><i></i><i></i><i></i>Tasks</div>
+      <div class="SCENE-body">
+        <div class="SCENE-task SCENE-done"><i></i>Clone the booking page</div>
+        <div class="SCENE-task SCENE-done"><i></i>Write 214 tests</div>
+        <div class="SCENE-task SCENE-done"><i></i>Fix 7 bugs</div>
+        <div class="SCENE-task"><i></i>Ship it</div>
+      </div>
+      <div class="SCENE-label"><b style="background:#2fa35b"></b>Tasks</div></div>
+      <svg class="SCENE-check" viewBox="0 0 84 84"><circle cx="42" cy="42" r="38" fill="#2fa35b" stroke="#fff" stroke-width="6" /><path d="M24 43 L37 56 L61 30" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+    </div>
+    <div class="sprite" id="SCENE-hero">
+      <img class="pose on" data-pose="idle" src="assets/cast/claude/poses/idle.png" />
+      <img class="pose" data-pose="cheer" src="assets/cast/claude/poses/cheer.png" />
+    </div>
+  </div>
+  <script>
+    const T = { cards: 0, gap: 0.26, fan: 1.3, end: 2.3 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] / [data-fact] elements from assets/names.js
+    AR.deck(tl, ".SCENE-card", T.cards, { gap: T.gap, step: 9, tilt: 1.6, check: ".SCENE-check" });
+    AR.fan(tl, ".SCENE-card", T.fan, { spread: 370, angle: 10, scale: 0.5, y: -14 });
+    tl.fromTo("#SCENE-hero", { y: 220 }, { y: 0, duration: 0.24, ease: "back.out(1.7)" }, T.fan + 0.04);
+    AR.pose(tl, "#SCENE-hero", "cheer", T.fan + 0.22);
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

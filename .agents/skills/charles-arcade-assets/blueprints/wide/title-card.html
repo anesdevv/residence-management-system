@@ -1,0 +1,62 @@
+<!-- BLUEPRINT title-card, wide frame (laid out at 1280x630, the 2:1 card): "It's called X". A white card with a sand
+     mound; the host, already in its role's costume, drops onto the mound and squashes; on "called" one more piece of
+     the costume drops onto it (it squashes, then stretches up into it); the title lands big in black sans on the name.
+     The subtitle is on screen from the cut, as in @opusjake's.
+     Use for: "it's called X", naming a skill, tool, pack or product; the reveal after a hook.
+     Edit: HOST ("critter" for Claude topics, "pal" for the rest, or a cast.py character's folder in assets/cast, e.g.
+     "charles": it stands HOST_H px tall and cheers on the name), the title (a [data-name="skill"] span, so names.js can
+     fill it; over ~7 letters lower its font-size so it stays inside x 620-1240), the subtitle, the costume (ROLE.wear /
+     ROLE.hold: code-drawn coat suit vest shirt, hats fedora hardhat cap beret crown, headset visor goggles sunglasses
+     goldshades glasses, or any prop from cast/props; a generated character keeps the props and hats and leaves the
+     drawn clothes off), EQUIP (the piece that drops on the word, or null), and the T times: T.land (the host lands;
+     keep it about 0.12 so it is already there on the cut), T.equip (the word "called"), T.title (the name), T.end (the
+     beat length, for the idle blinks). The camera is locked. Key text stays 43 px or more (the card shows at ~0.7).
+     Needs cast.js (every project since the cast kit). mount.py copies it to compositions/<id>.html with SCENE
+     replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #ffffff; }
+    #SCENE-mound {
+      position: absolute; left: -170px; top: 455px; width: 940px; height: 520px; border-radius: 50%;
+      background: radial-gradient(ellipse 46% 30% at 48% 16%, #f3dfb6 0%, #ecd09a 55%, #e5c07f 100%);
+    }
+    #SCENE-crit { left: 160px; top: 327px; --u: 26px; }
+    #SCENE-title { position: absolute; left: 628px; top: 166px; font-size: 156px; line-height: 1; white-space: nowrap; }
+    #SCENE-sub { position: absolute; left: 636px; top: 352px; font-family: var(--sans); font-weight: 600; font-size: 46px; color: #6e6b66; white-space: nowrap; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div id="SCENE-mound" data-layout-ignore></div>
+    <div class="critter" id="SCENE-crit"></div>
+    <div class="title-xl" id="SCENE-title"><span data-name="skill">Scout</span></div>
+    <div id="SCENE-sub">A Claude skill pack</div>
+  </div>
+  <script>
+    const T = { land: 0.12, equip: 0.34, title: 0.56, end: 1.6 };
+    const HOST = "critter";                                   // "critter", "pal", or a cast.py character ("charles")
+    const HOST_H = 300;                                       // a generated character's height (px, head to feet)
+    const ROLE = { wear: ["coat"], hold: ["binoculars"] };   // the costume it arrives in
+    const EQUIP = "fedora";                                   // drops on at T.equip (null for none)
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    if (HOST === "critter" || HOST === "pal") {
+      AR.critter("#SCENE-crit", Object.assign({ wear: ROLE.wear, hold: ROLE.hold, eyes: "look-right", ground: false }, HOST === "pal" ? { shape: "pal" } : {}));
+    } else {
+      // a generated character takes the critter's place: feet where the critter's are (316, 535), on the mound
+      const spot = document.getElementById("SCENE-crit");
+      spot.replaceWith(AR.cast.make(spot.parentElement, HOST, { id: "SCENE-crit", x: 316, y: 535, h: HOST_H, ground: false, wear: ROLE.wear, hold: ROLE.hold }));
+    }
+    // the host is already falling into the frame on the cut and lands on the mound
+    AR.drop(tl, "#SCENE-crit", 0, { dy: -150, dur: T.land + 0.3 });
+    AR.crit.eyes(tl, "#SCENE-crit", T.land, "normal");
+    if (EQUIP) AR.crit.dress(tl, "#SCENE-crit", EQUIP, T.equip, { dur: 0.2 });
+    // the name lands big; the host hops on it (a critter's eyes light up, a generated character cheers)
+    tl.fromTo("#SCENE-title", { opacity: 0, scale: 1.18, transformOrigin: "0% 60%" },
+      { opacity: 1, scale: 1, duration: 0.12, ease: "power4.out" }, T.title);
+    AR.hop(tl, "#SCENE-crit", T.title + 0.02, { h: 34, dur: 0.26 });
+    AR.crit.eyes(tl, "#SCENE-crit", T.title + 0.02, "happy");
+    AR.crit.eyes(tl, "#SCENE-crit", T.title + 0.45, "look-right");
+    AR.cast.act(tl, "#SCENE-crit", T.title + 0.02, "cheer", { dur: 0.5 });
+    AR.crit.alive(tl, "#SCENE-crit", T.title + 0.6, Math.max(0.2, T.end - T.title - 0.6), { bob: false, seed: 3 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

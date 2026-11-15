@@ -1,0 +1,61 @@
+/* cast.css: generated characters (tools/cast.py) as actors (cast.js renders them). An actor's box is its reference pose's
+   own pixels (head top to feet, at the body height asked for), its feet on the box's bottom edge; every pose is drawn
+   around it by the pose's feet, so poses, props and hats line up whatever canvas the cast has. Speech bubbles share the
+   critter's look (critter.css). */
+
+.cast-actor {
+  position: absolute;
+  transform-origin: 50% 100%;
+  --cast-ground: rgba(31, 30, 28, 0.16);
+}
+.cast-actor > .cast-ground {
+  position: absolute; z-index: 0; border-radius: 50%; background: var(--cast-ground); pointer-events: none;
+}
+.cast-actor > .cast-body { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 1; }
+.cast-actor .cast-flip { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.cast-actor .cast-pose { position: absolute; display: block; max-width: none; opacity: 0; image-rendering: pixelated; pointer-events: none; }
+.cast-actor .cast-pose.on { opacity: 1; }
+
+/* worn items (hats on the head anchor) and hands (props at the hand anchors) move with the pose */
+.cast-actor .cast-worn, .cast-actor .cast-hand { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.cast-actor .cast-worn { z-index: 6; }
+.cast-actor .cast-worn > .cast-move { position: absolute; transform-origin: 50% 100%; }
+.cast-actor .cast-worn img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.cast-actor .cast-hand { z-index: 7; }
+.cast-actor .cast-hand[data-hand="l"] { z-index: 5; }
+.cast-actor .cast-item, .cast-actor .cast-grip { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
+.cast-actor .cast-grip > img { position: absolute; display: block; max-width: none; image-rendering: pixelated; }
+
+/* fx (emotes, bits) stay unmirrored when the actor turns around */
+.cast-actor .cast-fx { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 9; overflow: visible; }
+.cast-actor .cast-fx > * { position: absolute; }
+.cast-actor svg.crit-emote { opacity: 0; transform-origin: 50% 100%; overflow: visible; shape-rendering: crispEdges; }
+.cast-actor .crit-bit { width: 10px; height: 10px; opacity: 0; }
+.cast-actor .crit-say-tail { shape-rendering: crispEdges; }
+
+/* a head tile (AR.cast.portrait): the pose cropped to the head */
+.cast-portrait { position: relative; overflow: hidden; }
+.cast-portrait > img { position: absolute; display: block; max-width: none; image-rendering: pixelated; }
+
+/* the loot bar (AR.loot): a dark pixel panel, N slots, a k/N counter. Sizes follow --k (1 = 76 px slots) */
+.loot-bar {
+  position: absolute; --k: 1; display: flex; align-items: center; gap: calc(12px * var(--k)); white-space: nowrap;
+  padding: calc(12px * var(--k)) calc(16px * var(--k)); background: #1d1b2e; z-index: 30;
+  border: calc(5px * var(--k)) solid #ffffff;
+  box-shadow: 0 0 0 calc(5px * var(--k)) #1d1b2e, 0 calc(9px * var(--k)) 0 calc(5px * var(--k)) rgba(0, 0, 0, 0.35);
+}
+.loot-bar .loot-label { color: #f7c531; font-size: calc(28px * var(--k)); line-height: 1; margin-right: calc(4px * var(--k)); }
+.loot-bar .loot-slot {
+  position: relative; flex: none; width: calc(76px * var(--k)); height: calc(76px * var(--k)); background: #2c2945;
+  border: calc(4px * var(--k)) solid #4b4772;
+}
+.loot-bar .loot-slot > img { position: absolute; left: 8%; top: 8%; width: 84%; height: 84%; object-fit: contain; }
+.loot-bar .loot-slot > img.pixel { image-rendering: pixelated; }
+.loot-bar .loot-slot > .loot-text { position: absolute; inset: 0; display: grid; place-items: center; font-size: calc(44px * var(--k)); line-height: 1; }
+.loot-bar .loot-slot > i { position: absolute; inset: calc(-4px * var(--k)); border: calc(4px * var(--k)) solid #f7c531; opacity: 0; }
+.loot-bar .loot-count { color: #ffffff; font-size: calc(30px * var(--k)); line-height: 1; margin-left: calc(4px * var(--k)); min-width: 2.6em; text-align: right; }
+.loot-bar .loot-done {
+  position: absolute; left: 0; top: 100%; margin: calc(14px * var(--k)) 0 0 0; transform-origin: 50% 50%; white-space: nowrap;
+  font-size: calc(34px * var(--k)); color: #1d1b2e; background: #f7c531; padding: 0.3em 0.6em 0.26em; opacity: 0;
+  box-shadow: 0 0 0 calc(4px * var(--k)) #1d1b2e, 0 calc(6px * var(--k)) 0 calc(4px * var(--k)) rgba(0, 0, 0, 0.3);
+}

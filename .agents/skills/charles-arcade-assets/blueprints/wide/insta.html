@@ -1,0 +1,86 @@
+<!-- BLUEPRINT insta, wide (1280x630, the 2:1 card; fills the frame edge to edge): a rebuilt Instagram profile.
+     It cuts in on the creator's header; the page scrolls to the grid and every post gets selected (blue tint, a
+     check per post) while the POSTS counter races to 738/738, then a hard cut swaps to the second profile (the
+     clone) with the same posts and the finished counter.
+     Use for: "clone an entire creator", "grab all their posts", "it copies every video", "your account gets X".
+     Edit: both headers (handle, counts, bio, avatar), the post thumbnails (img.wb-thumb in each .wb-ig-tile: a
+     real frame replaces data-ph; the same images in both grids), view counts, the counter total (738 in two
+     places), T.sel (selection starts), T.swap (the cut to the clone). Grid columns: --cols (3) and --tile-ar (3/4).
+     mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #fff; }
+    #SCENE-ig { left: 0; top: 0; width: 1280px; height: 630px; }
+    #SCENE-ig .wb-ig-grid { padding: 0 140px; }
+    #SCENE-count { right: 22px; top: 6px; }
+    #SCENE-b { opacity: 0; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div class="wb-ig" id="SCENE-ig">
+      <div class="wb-ig-scroll" id="SCENE-a">
+        <div class="wb-ig-head">
+          <div class="wb-ig-ring"><img class="wb-avatar" data-ph="person:mia" alt=""></div>
+          <div class="wb-ig-info">
+            <div class="wb-ig-name">mia.moves<i data-i="verified"></i><span class="wb-ig-btn wb-blue">Follow</span><span class="wb-ig-btn">Message</span><i data-i="more-h"></i></div>
+            <div class="wb-ig-counts"><span><b>738</b> posts</span><span><b>4.2M</b> followers</span><span><b>929</b> following</span></div>
+            <div class="wb-ig-bio"><b>Mia Park</b><br>Choreographer · Los Angeles<br>New class every Sunday<br><a>mia.moves/classes</a></div>
+          </div>
+        </div>
+        <div class="wb-ig-hl"><span><img class="wb-thumb" data-ph="thumb:h1" alt="">Tour</span><span><img class="wb-thumb" data-ph="thumb:h2" alt="">Classes</span><span><img class="wb-thumb" data-ph="thumb:h3" alt="">BTS</span><span><img class="wb-thumb" data-ph="thumb:h4" alt="">Merch</span></div>
+        <div class="wb-ig-tabs"><i data-i="grid" class="wb-on"></i><i data-i="reels"></i><i data-i="tagged"></i></div>
+        <div class="wb-ig-grid" id="SCENE-grid">
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:1" alt=""><span class="wb-ig-views"><i data-i="play"></i>3.2M</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:2" alt=""><span class="wb-ig-views"><i data-i="play"></i>22.4M</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:3" alt=""><span class="wb-ig-views"><i data-i="play"></i>654K</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:4" alt=""><span class="wb-ig-views"><i data-i="play"></i>1.4M</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:5" alt=""><span class="wb-ig-views"><i data-i="play"></i>2.5M</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:6" alt=""><span class="wb-ig-views"><i data-i="play"></i>1.3M</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:7" alt=""><span class="wb-ig-views"><i data-i="play"></i>888K</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:8" alt=""><span class="wb-ig-views"><i data-i="play"></i>5.1M</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:9" alt=""><span class="wb-ig-views"><i data-i="play"></i>420K</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:10" alt=""><span class="wb-ig-views"><i data-i="play"></i>2.2M</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:11" alt=""><span class="wb-ig-views"><i data-i="play"></i>760K</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:12" alt=""><span class="wb-ig-views"><i data-i="play"></i>1.9M</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:13" alt=""><span class="wb-ig-views"><i data-i="play"></i>3.7M</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:14" alt=""><span class="wb-ig-views"><i data-i="play"></i>512K</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:15" alt=""><span class="wb-ig-views"><i data-i="play"></i>1.1M</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:16" alt=""><span class="wb-ig-views"><i data-i="play"></i>9.8M</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:17" alt=""><span class="wb-ig-views"><i data-i="play"></i>640K</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:18" alt=""><span class="wb-ig-views"><i data-i="play"></i>2.9M</span></div>
+        </div>
+      </div>
+      <div class="wb-ig-scroll" id="SCENE-b">
+        <div class="wb-ig-head">
+          <div class="wb-ig-ring"><img class="wb-avatar" data-ph="person:you-7" alt=""></div>
+          <div class="wb-ig-info">
+            <div class="wb-ig-name"><span data-name="handle">yourbrand</span><span class="wb-ig-btn">Edit profile</span><span class="wb-ig-btn">View archive</span></div>
+            <div class="wb-ig-counts"><span><b>738</b> posts</span><span><b>12.1K</b> followers</span><span><b>310</b> following</span></div>
+            <div class="wb-ig-bio"><b>Your Brand</b><br>Every post, cloned with one prompt<br>New drops daily<br><a>yourbrand.com</a></div>
+          </div>
+        </div>
+        <div class="wb-ig-hl"><span><img class="wb-thumb" data-ph="thumb:h5" alt="">New</span><span><img class="wb-thumb" data-ph="thumb:h6" alt="">Drops</span><span><img class="wb-thumb" data-ph="thumb:h7" alt="">Team</span></div>
+        <div class="wb-ig-tabs"><i data-i="grid" class="wb-on"></i><i data-i="reels"></i><i data-i="tagged"></i></div>
+        <div class="wb-ig-grid">
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:1" alt=""><span class="wb-ig-views"><i data-i="play"></i>0</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:2" alt=""><span class="wb-ig-views"><i data-i="play"></i>0</span></div>
+          <div class="wb-ig-tile"><img class="wb-thumb" data-ph="thumb:3" alt=""><span class="wb-ig-views"><i data-i="play"></i>0</span></div>
+        </div>
+      </div>
+      <div class="wb-ig-top"><span class="wb-ig-word">Instagram</span></div>
+      <div class="wb-counter" id="SCENE-count"><i data-i="copy"></i><span class="wb-ct-label">POSTS</span><b><span class="wb-ct-n">0</span>/738</b><i data-i="check" class="wb-ct-done"></i></div>
+    </div>
+  </div>
+  <script>
+    const T = { sel: 0.55, swap: 2.15 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fills [data-name] text, icons, image placeholders and the tiles' select overlays
+    const grid = document.querySelector("#SCENE-grid"), rowH = grid.querySelector(".wb-ig-tile").offsetHeight + 4;
+    const rows = Math.ceil(grid.children.length / 3), sel = 1.35, per = sel / rows;
+    // the page scrolls to the grid, then keeps scrolling a row at a time while the selection runs
+    AR.pageTo(tl, "#SCENE-a", T.sel - 0.3, { to: grid, pad: 4, dur: 0.3 });
+    for (let k = 1; k < rows - 1; k++) AR.pageTo(tl, "#SCENE-a", T.sel + k * per - 0.06, { y: grid.offsetTop + k * rowH - 90, dur: Math.min(0.2, per * 0.8) });
+    AR.selectGrid(tl, "#SCENE-grid .wb-ig-tile", T.sel, { dur: sel, counter: "#SCENE-count", to: 738 });
+    AR.navigate(tl, "#SCENE-a", "#SCENE-b", T.swap, { load: 0 }); // the hard cut to the clone's profile
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

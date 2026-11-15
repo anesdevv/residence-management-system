@@ -1,0 +1,80 @@
+<!-- BLUEPRINT chart, wide frame (laid out at 1280x630 for the 2:1 card; fills the frame edge to edge): two charts in
+     one beat. First a bar card: three bars grow staggered while their percentages count. Then a hard cut to an
+     analytics card: a line draws left to right with the mascot riding its tip, the big number counts with the
+     line, and a dashed goal line lands across it with a tag on the axis.
+     Use for: "here's how it ends" (outcome split), growth ("my views went from 0 to 1.2 million"), any number
+     the voice says that has a shape.
+     Edit: the bar data (label, value, color), BARS.max and the axis ticks; the line data (VIEWS: the end value,
+     the curve's bend, its points), the axis ticks, the goal line; the titles; T.bars, T.cut, T.line, T.lineDur,
+     T.goal. One chart only: delete the other card and its lines in the script (and T.cut). Both cards are
+     complete on their first frame; only the marks move.
+     mount.py copies it to compositions/<id>.html with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    .SCENE-card { position: absolute; left: 36px; top: 30px; width: 1208px; height: 570px; border-radius: 26px; font-family: var(--sans); color: var(--ink); }
+    #SCENE-bars-title { left: 52px; top: 40px; }
+    #SCENE-bars-sub { left: 54px; top: 106px; font-weight: 600; color: #4a4741; font-size: 28px; }
+    #SCENE-bars { left: 40px; top: 168px; width: 1110px; height: 360px; }
+    #SCENE-line-card { opacity: 0; }
+    #SCENE-views-label { left: 52px; top: 38px; display: flex; align-items: center; gap: 14px; }
+    #SCENE-views-label svg { width: 36px; height: 36px; }
+    #SCENE-views { right: 52px; top: 34px; font-size: 62px; }
+    #SCENE-chips { position: absolute; left: 52px; top: 120px; display: flex; gap: 14px; }
+    #SCENE-chips span { padding: 12px 26px; border-radius: 999px; background: #efedea; font-size: 26px; font-weight: 700; color: #2b2a28; }
+    #SCENE-chips span:first-child { background: #111; color: #fff; }
+    #SCENE-line { left: 30px; top: 196px; width: 1140px; height: 350px; }
+    #SCENE-rider { width: 128px; height: 107px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div class="stage" data-layout-ignore></div>
+    <div class="card SCENE-card" id="SCENE-bar-card">
+      <div class="dv-title" id="SCENE-bars-title">How the 10,000 replays end</div>
+      <div class="dv-sub" id="SCENE-bars-sub">First level hit, out of 10,000 replays</div>
+      <div class="dv" id="SCENE-bars"></div>
+    </div>
+    <div class="card SCENE-card" id="SCENE-line-card">
+      <div class="dv-title" id="SCENE-views-label">Views <svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="#1f1e1c" stroke-width="3"/><rect x="16.2" y="15" width="3.6" height="11" rx="1.6" fill="#1f1e1c"/><circle cx="18" cy="10.5" r="2.3" fill="#1f1e1c"/></svg></div>
+      <div class="dv-big" id="SCENE-views">0</div>
+      <div id="SCENE-chips"><span>All</span><span>Followers</span><span>Non-followers</span></div>
+      <div class="dv" id="SCENE-line"></div>
+      <div class="sprite" id="SCENE-rider">
+        <img class="pose on" data-pose="idle" src="assets/cast/claude/poses/idle.png" />
+        <img class="pose" data-pose="jump" src="assets/cast/claude/poses/jump.png" />
+        <img class="pose" data-pose="cheer" src="assets/cast/claude/poses/cheer.png" />
+      </div>
+    </div>
+  </div>
+  <script>
+    const T = { bars: 0.1, cut: 1.5, line: 1.62, lineDur: 1.35, goal: 3.0 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] / [data-fact] elements from assets/names.js
+
+    // 1. the outcome split: bars grow while their labels count
+    AR.bars(tl, "#SCENE-bars", T.bars, {
+      data: [
+        { label: "Target first", value: 29.4, color: "#22894f" },
+        { label: "Stop first", value: 25.5, color: "#d9714f" },
+        { label: "Neither by 4 PM", value: 45.1, color: "#b0ad9f" },
+      ],
+      max: 50, format: { style: "pct", digits: 1 }, ticks: [0, 25, 50], tickFormat: { style: "pct", digits: 0 },
+      labelW: 300, dur: 0.7, gap: 0.14,
+    });
+
+    // 2. hard cut to the analytics card: the line draws with the mascot riding its tip, the number tracks it
+    tl.set("#SCENE-bar-card", { opacity: 0 }, T.cut);
+    tl.set("#SCENE-line-card", { opacity: 1 }, T.cut);
+    const VIEWS = 1248390, r = AR.rnd(5);
+    const data = Array.from({ length: 31 }, (_, k) => {
+      const u = k / 30, base = (Math.exp(3.1 * u) - 1) / (Math.exp(3.1) - 1);
+      return k === 30 ? VIEWS : Math.max(0, VIEWS * (base + (k ? (r() - 0.5) * 0.025 : 0)));
+    });
+    AR.lineChart(tl, "#SCENE-line", T.line, T.lineDur, {
+      data, color: "#b5179e", width: 6, area: true, ticks: [0, 600000, 1200000], yMax: 1300000,
+      tickFormat: { style: "compact" }, rider: "#SCENE-rider", riderDy: 6, counter: "#SCENE-views",
+      levels: [{ y: 1000000, label: "Goal 1M", color: "#d97757", t: T.goal, tag: "1M" }],
+    });
+    AR.poses(tl, "#SCENE-rider", [[T.line, "jump"], [T.line + T.lineDur, "cheer"]]);
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

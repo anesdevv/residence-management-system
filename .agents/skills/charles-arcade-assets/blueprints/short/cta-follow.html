@@ -1,0 +1,73 @@
+<!-- BLUEPRINT cta-follow, short frame (laid out at 1080x960; the start for any frame under 1400 px tall): the comment-a-keyword ending.
+     Follow flips to Following, the keyword types into the comment box, the cast cheers below through the hold.
+     Use for: the last beat when the voiceover says "follow me and comment X".
+     Edit: HANDLE, the avatar image, KEYWORD, the DM line, T.follow (the word "follow"), T.comment (the
+     keyword), T.end (the beat length). Text stays between y 170 and y 880.
+     mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    #SCENE-card { left: 60px; top: 165px; width: 960px; padding: 40px 44px 34px; font-family: var(--sans); }
+    .SCENE-line { display: flex; align-items: center; gap: 24px; }
+    .SCENE-n { width: 56px; height: 56px; border-radius: 50%; background: var(--claude); color: #fff; font-weight: 900; font-size: 32px; display: grid; place-items: center; flex: none; }
+    #SCENE-avatar { width: 100px; height: 100px; border-radius: 50%; background: #f2efe8; border: 4px solid #fff; box-shadow: 0 0 0 3px #e8b9a6; object-fit: contain; image-rendering: pixelated; }
+    .SCENE-big { font-weight: 900; font-size: 58px; color: var(--ink); }
+    .SCENE-handle { font-size: 34px; color: var(--muted); }
+    #SCENE-btns { position: relative; margin-left: auto; width: 250px; height: 76px; }
+    #SCENE-btns span { position: absolute; inset: 0; border-radius: 16px; display: grid; place-items: center; font-weight: 700; font-size: 34px; }
+    #SCENE-follow { background: #0095f6; color: #fff; }
+    #SCENE-following { background: #efefef; color: var(--ink); opacity: 0; }
+    #SCENE-box { position: relative; flex: 1; height: 92px; border: 3px solid var(--app-line); border-radius: 18px; background: #f7f6f3; }
+    #SCENE-ph { position: absolute; left: 26px; top: 22px; font-size: 34px; color: #b0aca4; }
+    #SCENE-kw { position: absolute; left: 26px; top: 14px; font-size: 50px; font-weight: 900; color: var(--ink); letter-spacing: 0.02em; }
+    #SCENE-dm { margin: 24px 0 0 80px; font-size: 34px; color: var(--muted); font-weight: 600; }
+    #SCENE-sep { height: 2px; background: var(--app-line); margin: 28px 0; }
+    #SCENE-a { left: 210px; top: 620px; width: 290px; height: 242px; }
+    #SCENE-b { left: 580px; top: 600px; width: 260px; height: 266px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1080" data-height="960">
+    <div class="stage" data-layout-ignore></div>
+    <div class="card" id="SCENE-card">
+      <div class="SCENE-line">
+        <span class="SCENE-n">1</span>
+        <img id="SCENE-avatar" src="assets/cast/claude/ref.png" />
+        <div><div class="SCENE-big">Follow</div><div class="SCENE-handle">@yourhandle</div></div>
+        <div id="SCENE-btns"><span id="SCENE-follow">Follow</span><span id="SCENE-following">Following</span></div>
+      </div>
+      <div id="SCENE-sep"></div>
+      <div class="SCENE-line">
+        <span class="SCENE-n">2</span>
+        <div class="SCENE-big">Comment</div>
+        <div id="SCENE-box"><span id="SCENE-ph">Add a comment…</span><span id="SCENE-kw">SCOUT</span></div>
+      </div>
+      <div id="SCENE-dm">✈ I'll DM you the full setup</div>
+    </div>
+    <div class="sprite" id="SCENE-a">
+      <img class="pose on" data-pose="idle" src="assets/cast/claude/poses/idle.png" />
+      <img class="pose" data-pose="cheer" src="assets/cast/claude/poses/cheer.png" />
+    </div>
+    <div class="sprite" id="SCENE-b">
+      <img class="pose on" data-pose="idle" src="assets/cast/gpt/poses/idle.png" />
+      <img class="pose" data-pose="cheer" src="assets/cast/gpt/poses/cheer.png" />
+    </div>
+  </div>
+  <script>
+    const T = { follow: 0.45, comment: 1.3, end: 2.6 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] elements from assets/names.js
+    AR.settle(tl, "#SCENE-card", 0, { dy: 18 });
+    AR.press(tl, "#SCENE-btns", T.follow);
+    tl.set("#SCENE-follow", { opacity: 0 }, T.follow + 0.07);
+    tl.set("#SCENE-following", { opacity: 1 }, T.follow + 0.07);
+    AR.poses(tl, "#SCENE-a", [[T.follow, "cheer"]]);
+    AR.hop(tl, "#SCENE-a", T.follow, { h: 50, dur: 0.32 });
+    tl.to("#SCENE-box", { borderColor: "#d97757", backgroundColor: "#ffffff", duration: 0.15 }, T.comment - 0.15);
+    tl.set("#SCENE-ph", { opacity: 0 }, T.comment);
+    AR.type(tl, "#SCENE-kw", T.comment, { cps: 16 });
+    AR.poses(tl, "#SCENE-b", [[T.comment, "cheer"]]);
+    AR.hop(tl, "#SCENE-b", T.comment, { h: 50, dur: 0.32 });
+    AR.bob(tl, "#SCENE-a .pose", T.follow + 0.35, T.end - T.follow - 0.35, { fps: 4, amp: 7 });
+    AR.bob(tl, "#SCENE-b .pose", T.comment + 0.35, T.end - T.comment - 0.35, { fps: 4, amp: 7 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

@@ -1,0 +1,118 @@
+<!-- BLUEPRINT lineup, wide frame (laid out at 1280x630): a police lineup for a list of named things said fast ("rocket,
+     sparkles, lightning bolt"; "the three suspects"). A booking-room wall with a height chart. On each word the camera
+     cuts in on the next spot, the suspect steps in holding its placard (name and number) and the camera flash fires;
+     then a wide shot of the whole lineup, the photographer (the host with a camera) flashing once more.
+     Use for: the bad patterns, the usual suspects, the things a fix removes, any 2-5 named items.
+     Edit: ITEMS (label, "@key" reads NAMES.key; and emoji: "🚀", or img: "assets/...png", or crit: {shape, role,
+     color} for a critter or pal, or cast: "mrno" for a cast.py character; no: the placard number; 4-5 items get
+     narrower spots), CLOSE (true: a cut-in per item; false: the wide shot throughout), HOST (the photographer:
+     "critter", "pal", a cast.py character's folder such as "charles", or null for none), LOOK (its role and colour;
+     h for a generated character), and the T times: T.items (one word time per item), T.wide (the cut to the wide
+     shot), T.end. Cuts only: the camera never drifts. Needs cast.js. mount.py copies it to compositions/<id>.html
+     with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #33404f; }
+    #SCENE-cam { position: absolute; left: 0; top: 0; width: 1280px; height: 630px; }
+    #SCENE-wall { position: absolute; left: 0; top: 0; width: 1280px; height: 522px; background: #3e4c5d; }
+    #SCENE-floor { position: absolute; left: 0; top: 522px; width: 1280px; height: 108px; background: #262f3a; border-top: 6px solid #1b222b; }
+    .SCENE-line { position: absolute; left: 0; width: 1280px; height: 4px; background: rgba(255,255,255,.26); }
+    .SCENE-line b { position: absolute; left: 46px; top: -32px; font-family: var(--mono); font-size: 24px; font-weight: 400; color: rgba(255,255,255,.6); }
+    .SCENE-line b + b { left: auto; right: 46px; }
+    .SCENE-spot { position: absolute; top: 96px; width: 360px; height: 420px; }
+    .SCENE-item { position: absolute; left: 0; top: 0; width: 360px; height: 300px; display: flex; align-items: flex-end; justify-content: center; font-size: 220px; line-height: 1; }
+    .SCENE-item img { max-width: 300px; max-height: 280px; image-rendering: pixelated; }
+    .SCENE-plac { position: absolute; left: 10px; top: 300px; width: 340px; height: 100px; background: #f5f2ea; border: 5px solid #171511; border-radius: 6px; text-align: center; font-family: var(--sans); color: #171511; box-shadow: 0 6px 0 rgba(0,0,0,.3); }
+    .SCENE-plac b { display: block; margin-top: 10px; font-size: 44px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; line-height: 1.05; }
+    .SCENE-plac small { display: block; margin-top: 4px; font-family: var(--mono); font-size: 22px; color: #555; }
+    #SCENE-cast { position: absolute; left: 0; top: 0; width: 1280px; height: 630px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div id="SCENE-cam" data-layout-allow-overflow>
+      <div id="SCENE-wall" data-layout-ignore></div>
+      <div id="SCENE-lines" data-layout-ignore></div>
+      <div id="SCENE-floor" data-layout-ignore></div>
+      <div id="SCENE-spots"></div>
+    </div>
+    <div id="SCENE-cast"></div>
+    <div class="flash" id="SCENE-flash" data-layout-ignore></div>
+  </div>
+  <script>
+    const T = { items: [0.12, 0.7, 1.35], wide: 1.95, end: 2.9 };
+    const ITEMS = [
+      { label: "ROCKET", emoji: "🚀" },
+      { label: "SPARKLES", emoji: "✨" },
+      { label: "LIGHTNING BOLT", emoji: "⚡" },
+    ];
+    const CLOSE = true;
+    const HOST = "critter";                       // the photographer: "critter", "pal", a cast.py character, or null
+    const LOOK = { role: "photographer", color: null, h: 230 };          // h: a generated character's height
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    const $ = (id) => document.getElementById("SCENE-" + id);
+    ITEMS.forEach((it) => { if (typeof it.label === "string" && it.label[0] === "@") it.label = String((window.NAMES || {})[it.label.slice(1)] ?? it.label.slice(1)); });
+    // the height chart
+    ["7 ft", "6 ft", "5 ft", "4 ft", "3 ft"].forEach((lab, i) => {
+      const d = document.createElement("div");
+      d.className = "SCENE-line";
+      d.style.top = 58 + i * 92 + "px";
+      d.innerHTML = `<b>${lab}</b><b>${lab}</b>`;
+      $("lines").appendChild(d);
+    });
+    // the spots: evenly spaced, each an item over its placard
+    const n = ITEMS.length, gap = Math.min(400, 1200 / n), x0 = 640 - (gap * (n - 1)) / 2, k = Math.min(1, (gap - 24) / 360);
+    const spots = ITEMS.map((it, i) => {
+      const s = document.createElement("div");
+      s.className = "SCENE-spot";
+      s.id = `SCENE-s${i}`;
+      s.style.left = x0 + i * gap - 180 + "px";
+      if (k < 1) gsap.set(s, { scale: k, transformOrigin: "50% 100%" });   // narrower spots when there are many
+      const item = document.createElement("div");
+      item.className = "SCENE-item";
+      item.id = `SCENE-i${i}`;
+      if (it.img) item.innerHTML = `<img src="${it.img}" alt="" />`;
+      else if (!it.crit) item.textContent = it.emoji || "";
+      const plac = document.createElement("div");
+      plac.className = "SCENE-plac";
+      const long = it.label.length > 11;
+      plac.innerHTML = `<b style="${long ? "font-size:" + Math.max(26, Math.round(44 * 11 / it.label.length)) + "px; margin-top:" + (long ? 16 : 10) + "px" : ""}">${it.label}</b><small>No. ${String(it.no ?? i + 1).padStart(3, "0")}</small>`;
+      s.appendChild(item);
+      s.appendChild(plac);
+      $("spots").appendChild(s);
+      if (it.crit) AR.crit.make(item, Object.assign({ u: 20, x: 180, y: 292 }, it.crit));
+      if (it.cast) AR.cast.make(item, it.cast, { id: `SCENE-c${i}`, x: 180, y: 296, h: it.h || 270, ground: false });
+      return s;
+    });
+    const host = HOST ? AR.cast.host($("cast"), HOST, Object.assign({ id: "SCENE-host", u: 14, x: 640, y: 650, eyes: "look-up" },
+      LOOK.color ? { color: LOOK.color } : {}, LOOK.role ? { role: LOOK.role } : {},
+      HOST === "critter" || HOST === "pal" ? {} : { h: LOOK.h, y: 690 })) : null;
+    if (host) host.style.opacity = 0;
+    // each word: cut in on the spot, the suspect steps in with its placard, flash
+    T.items.forEach((t, i) => {
+      const s = spots[i], cut = i === 0 ? 0 : Math.max(T.items[i - 1] + 0.2, t - 0.12);
+      if (CLOSE) {
+        AR.zoomCut(tl, "#SCENE-cam", s, cut, { pad: [60, 50] });
+        spots.forEach((o, j) => { if (j < i) tl.set(o, { opacity: 0 }, cut); });
+      }
+      const t0 = Math.max(0, t - 0.14);
+      if (t0 > 0.001) { s.style.opacity = 0; tl.set(s, { opacity: 1 }, t0); }
+      tl.fromTo(s, { x: 150 }, { x: 0, duration: Math.max(0.04, t - t0), ease: "power2.out", immediateRender: t0 <= 0.001 }, t0);
+      tl.fromTo(s, { y: 0 }, { y: -22, duration: 0.07, ease: "power2.out", immediateRender: false }, t0);
+      tl.to(s, { y: 0, duration: 0.09, ease: "power2.in" }, t0 + 0.07);
+      tl.fromTo(`#SCENE-i${i}`, { scale: 1.1, transformOrigin: "50% 100%" }, { scale: 1, duration: 0.16, ease: "power2.out", immediateRender: false }, t);
+      AR.flash(tl, "#SCENE-flash", t, { peak: 0.9, dur: 0.22 });
+    });
+    // wide: the whole lineup, and the photographer
+    const tw = T.wide;
+    if (CLOSE) AR.frameReset(tl, "#SCENE-cam", tw, 0);
+    tl.set(spots, { opacity: 1 }, tw);
+    spots.forEach((s, i) => AR.bob(tl, `#SCENE-i${i}`, tw + 0.08 + i * 0.1, Math.max(0.2, T.end - tw - 0.2), { fps: 3, amp: 6 }));
+    if (host) {
+      tl.set(host, { opacity: 1 }, tw);
+      AR.crit.photo(tl, host, tw + 0.35, { flash: "#SCENE-flash", peak: 0.7, hold: 0.3 });
+      AR.crit.eyes(tl, host, tw + 0.7, "happy");
+      AR.crit.alive(tl, host, tw, T.end - tw, { bob: false });
+    }
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

@@ -1,0 +1,73 @@
+/* Store screenshot base. A set is one .strip of .frame sections, each 440 x 956 CSS px, rendered @3x to
+   1320 x 2868 (Apple's 6.9" iPhone size) and sliced at the frame edges by shots.py render.
+   Anything that crosses a seam is ONE element placed in strip coordinates with .at, never two halves. */
+:root { --fw: 440px; --fh: 956px; }
+html, body { margin: 0; background: #000; -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; }
+.strip { position: relative; display: flex; width: max-content; height: var(--fh); overflow: hidden; isolation: isolate; }
+.frame { position: relative; width: var(--fw); height: var(--fh); flex: none; }
+
+/* Place in strip coordinates: --f is the frame (1-based); --x/--y the offset inside that frame. */
+.at { position: absolute; left: calc((var(--f, 1) - 1) * var(--fw) + var(--x, 0px)); top: var(--y, 0px); }
+/* A layer spanning frames --from..--to (inclusive), e.g. a background that runs through the hook spread. */
+.span { position: absolute; top: 0; height: var(--fh); left: calc((var(--from, 1) - 1) * var(--fw));
+        width: calc((var(--to, 1) - var(--from, 1) + 1) * var(--fw)); }
+.fill { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Headline basics. Size, face, colour and emphasis are the set's own; these only keep type crisp and balanced. */
+.hd { margin: 0; text-wrap: balance; font-kerning: normal; font-feature-settings: "kern" 1; font-synthesis: none; }
+
+/* Generic upright phone with a polished steel rim lit from above (no Apple bezel art).
+   --w is the SCREEN width; everything scales from one device point (--u). Markup:
+   <div class="phone at" style="--f:3;--x:45px;--y:200px;--w:350px">
+     <div class="glass"><img class="screen" src="ui/tracker.png" alt=""><i class="island"></i></div>
+     <i class="key l a"></i><i class="key l v1"></i><i class="key l v2"></i><i class="key r s"></i></div> */
+.phone {
+  --w: 350px; --u: calc(var(--w) / 402);
+  --bez: calc(var(--u) * 6.4); --band: calc(var(--u) * 4.8); --rs: calc(var(--u) * 60);
+  --ro: calc(var(--rs) + var(--bez) + var(--band));
+  position: absolute;
+  width: calc(var(--w) + 2 * (var(--bez) + var(--band)));
+  height: calc(var(--w) * 874 / 402 + 2 * (var(--bez) + var(--band)));
+  border-radius: var(--ro);
+  background:
+    radial-gradient(42% calc(var(--u) * 9) at 50% 0, rgba(255,255,255,.95), rgba(255,255,255,0) 100%),
+    radial-gradient(calc(var(--u) * 70) calc(var(--u) * 90) at calc(var(--u) * 22) calc(var(--u) * 24), rgba(255,255,255,.55), rgba(255,255,255,0) 100%),
+    radial-gradient(calc(var(--u) * 70) calc(var(--u) * 90) at calc(100% - var(--u) * 22) calc(var(--u) * 24), rgba(255,255,255,.55), rgba(255,255,255,0) 100%),
+    linear-gradient(180deg, #c9ced1 0, #8f969b calc(var(--u) * 18), #5f666b calc(var(--u) * 60), #3d4246 calc(var(--u) * 200), #2b2f32 calc(var(--u) * 400), #222528 calc(var(--u) * 560), #2c3033 calc(var(--u) * 720), #41464a calc(var(--u) * 820), #555b60 100%);
+  box-shadow: 0 0 0 calc(var(--u) * .6) rgba(0,0,0,.75), 0 calc(var(--u) * 26) calc(var(--u) * 64) calc(var(--u) * -6) rgba(0,0,0,.55);
+}
+.phone::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; padding: calc(var(--u) * 1.1);
+  background: linear-gradient(180deg, rgba(255,255,255,.9) 0, rgba(255,255,255,.45) calc(var(--u) * 40), rgba(255,255,255,.14) calc(var(--u) * 260), rgba(255,255,255,.06) calc(var(--u) * 560), rgba(255,255,255,.16) calc(var(--u) * 820), rgba(255,255,255,.22) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.phone > .glass { position: absolute; inset: var(--band); border-radius: calc(var(--rs) + var(--bez)); background: #020303; overflow: hidden;
+  box-shadow: 0 0 0 calc(var(--u) * .8) rgba(0,0,0,.95), inset 0 calc(var(--u) * .9) 0 rgba(255,255,255,.10); }
+.phone .screen { position: absolute; left: var(--bez); top: var(--bez); width: var(--w); height: calc(var(--w) * 874 / 402);
+  border-radius: var(--rs); overflow: hidden; display: block; object-fit: cover; object-position: top; }
+.phone .island { position: absolute; left: 50%; top: calc(var(--bez) + var(--u) * 11); width: calc(var(--u) * 124);
+  height: calc(var(--u) * 36.5); transform: translateX(-50%); border-radius: 999px; background: #000; }
+.phone > .key { position: absolute; width: calc(var(--u) * 3.2); border-radius: calc(var(--u) * 1.6); background: linear-gradient(180deg, #9aa1a6, #3a3f43 30%, #23272a); }
+.phone > .key.l { left: calc(var(--u) * -2.4); } .phone > .key.r { right: calc(var(--u) * -2.4); }
+.phone > .key.a { top: calc(var(--u) * 118); height: calc(var(--u) * 30); }
+.phone > .key.v1 { top: calc(var(--u) * 172); height: calc(var(--u) * 54); }
+.phone > .key.v2 { top: calc(var(--u) * 238); height: calc(var(--u) * 54); }
+.phone > .key.s { top: calc(var(--u) * 186); height: calc(var(--u) * 86); }
+/* Matte black phone for light or playful sets: same geometry, no steel. */
+.phone.matte { background: #0d0e0f; box-shadow: 0 0 0 calc(var(--u) * 1) rgba(255,255,255,.08) inset, 0 calc(var(--u) * 30) calc(var(--u) * 70) calc(var(--u) * -10) rgba(0,0,0,.45); }
+.phone.matte::before { display: none; }
+.phone.matte > .key { background: #1a1b1d; }
+
+/* Frameless UI: the real capture as a rounded card. --w is its width; the radius matches a phone display. */
+.card { position: absolute; width: var(--w, 330px); border-radius: calc(var(--w, 330px) * 0.149); overflow: hidden;
+  box-shadow: 0 2px 0 rgba(255,255,255,.06) inset, 0 40px 90px -30px rgba(0,0,0,.55); }
+.card > img { display: block; width: 100%; height: auto; }
+/* A window onto part of a capture, magnified: --s scales the capture, --ox/--oy shift it (negative = move left/up). */
+.crop { position: absolute; overflow: hidden; border-radius: var(--r, 28px); }
+.crop > img { position: absolute; width: calc(var(--s, 1) * 100%); left: var(--ox, 0px); top: var(--oy, 0px); max-width: none; }
+
+/* Film grain from an SVG turbulence: use on backgrounds and photos, never on type or UI. */
+.grain { position: absolute; inset: 0; pointer-events: none; opacity: var(--grain, .22); mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 110px 110px; }

@@ -1,0 +1,9 @@
+{
+  "name": "arcade-run",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "npx --yes hyperframes@0.8.217 check",
+    "render": "npx --yes hyperframes@0.8.217 render"
+  }
+}

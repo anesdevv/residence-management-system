@@ -1,0 +1,112 @@
+<!-- BLUEPRINT data-table, wide (1280x630, the 2:1 card; fills the frame edge to edge): a live data site in Chrome.
+     New rows insert at the top and push the table down (each flashes once), the cursor moves onto the newest
+     row and clicks, the row's detail page cuts in, scrolls to one field and a red box lands on it.
+     Use for: "it tracks every trade as it's filed", "new leads come in", "click any one and see...", any live feed
+     with a detail behind each row.
+     Edit: the site (tab title, URL: the data-page spans), the column widths (--cols) and headers, the rows (newest
+     first: the first two are the live inserts), avatars and logos (real images replace data-ph), the detail page,
+     the field to land on (#SCENE-gap), the T times. Light page: delete wb-dark on the two .wb-table/.wb-detail.
+     T: r1, r2 (inserts), move (cursor sets off), click, scroll (detail page scrolls), mark (the box lands).
+     mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #111214; }
+    #SCENE-br { left: 0; top: 0; width: 1280px; height: 630px; }
+    #SCENE-tbl { position: relative; width: 100%; height: 100%; --cols: 1.45fr 1.4fr 112px 150px 130px 44px; }
+    #SCENE-cur { left: 1080px; top: 480px; }
+    #SCENE-hero { height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      background: linear-gradient(180deg, #0d3b38 0%, #111214 100%); color: #e8eaed; }
+    #SCENE-hero .SCENE-ring { width: 128px; height: 128px; border-radius: 50%; background: #1f2a2a; display: grid; place-items: center;
+      font-size: 34px; font-weight: 700; color: #4ade80; letter-spacing: .06em; box-shadow: 0 0 0 6px rgba(74,222,128,.12); }
+    #SCENE-hero .SCENE-size { font-size: 46px; font-weight: 600; margin-top: 8px; }
+    #SCENE-hero .SCENE-who { font-size: 30px; color: #5aaaf5; font-weight: 500; }
+    #SCENE-hero .SCENE-sub { font-size: 22px; color: #9aa0a6; }
+    #SCENE-p2 .wb-detail { padding: 10px 150px 400px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div class="wb-browser" id="SCENE-br">
+      <div class="wb-tabs">
+        <div class="wb-lights"><i></i><i></i><i></i></div>
+        <div class="wb-tab wb-on"><span class="wb-fav"><img class="wb-favicon" data-ph="logo:Tradewatch" alt=""></span>
+          <span class="wb-swap"><span data-page="SCENE-p1">Politician trades</span><span data-page="SCENE-p2">Salazar bought META</span></span><i data-i="x"></i></div>
+        <i class="wb-newtab" data-i="plus"></i>
+      </div>
+      <div class="wb-bar"><i data-i="back"></i><i data-i="fwd"></i><i data-i="reload"></i>
+        <div class="wb-omni"><i data-i="tune"></i>
+          <span class="wb-url wb-swap"><span data-page="SCENE-p1"><b>tradewatch.app</b><span>/trades</span></span><span data-page="SCENE-p2"><b>tradewatch.app</b><span>/trades/20003803023</span></span></span>
+          <i data-i="star"></i></div>
+        <i data-i="puzzle"></i><img class="wb-avatar wb-prof" data-ph="avatar:Charles" alt=""><i data-i="kebab"></i></div>
+      <div class="wb-view">
+        <div class="wb-page wb-on" id="SCENE-p1">
+          <div class="wb-table wb-dark" id="SCENE-tbl">
+            <div class="wb-thead"><div class="wb-tr"><div class="wb-th">Politician <i data-i="sort"></i></div><div class="wb-th">Traded issuer <i data-i="sort"></i></div>
+              <div class="wb-th">Type</div><div class="wb-th">Size</div><div class="wb-th">Traded</div><div class="wb-th"></div></div></div>
+            <div class="wb-tbody" id="SCENE-rows">
+              <div class="wb-tr" id="SCENE-new2"><div class="wb-td wb-who"><img class="wb-avatar" data-ph="person:Maria Salazar" alt=""><div><b class="wb-name">Maria Salazar</b><span class="wb-sub">Republican | House | FL</span></div></div>
+                <div class="wb-td wb-who"><img class="wb-logo" data-ph="logo:meta" alt=""><div><b class="wb-name">Meta Platforms Inc</b><span class="wb-sub">META:US</span></div></div>
+                <div class="wb-td"><span class="wb-pill wb-buy">BUY</span></div><div class="wb-td">1K–15K</div><div class="wb-td wb-sub">Oct 21</div>
+                <div class="wb-td"><span class="wb-go" id="SCENE-go"><i data-i="arrow-r"></i></span></div><i class="wb-hover" id="SCENE-hov"></i></div>
+              <div class="wb-tr" id="SCENE-new1"><div class="wb-td wb-who"><img class="wb-avatar" data-ph="person:Dana Whitfield" alt=""><div><b class="wb-name">Dana Whitfield</b><span class="wb-sub">Democrat | House | CA</span></div></div>
+                <div class="wb-td wb-who"><img class="wb-logo" data-ph="logo:Bloom Energy" alt=""><div><b class="wb-name">Bloom Energy Corp</b><span class="wb-sub">BE:US</span></div></div>
+                <div class="wb-td"><span class="wb-pill wb-buy">BUY</span></div><div class="wb-td">1M–5M</div><div class="wb-td wb-sub">Oct 20</div>
+                <div class="wb-td"><span class="wb-go"><i data-i="arrow-r"></i></span></div></div>
+              <div class="wb-tr"><div class="wb-td wb-who"><img class="wb-avatar" data-ph="person:Josh Reyes" alt=""><div><b class="wb-name">Josh Reyes</b><span class="wb-sub">Democrat | Senate | NJ</span></div></div>
+                <div class="wb-td wb-who"><img class="wb-logo" data-ph="logo:Applied Materials" alt=""><div><b class="wb-name">Applied Materials</b><span class="wb-sub">AMAT:US</span></div></div>
+                <div class="wb-td"><span class="wb-pill wb-sell">SELL</span></div><div class="wb-td">15K–50K</div><div class="wb-td wb-sub">Oct 18</div>
+                <div class="wb-td"><span class="wb-go"><i data-i="arrow-r"></i></span></div></div>
+              <div class="wb-tr"><div class="wb-td wb-who"><img class="wb-avatar" data-ph="person:Michael Rowe" alt=""><div><b class="wb-name">Michael Rowe</b><span class="wb-sub">Republican | House | OH</span></div></div>
+                <div class="wb-td wb-who"><img class="wb-logo" data-ph="logo:microsoft" alt=""><div><b class="wb-name">Microsoft Corp</b><span class="wb-sub">MSFT:US</span></div></div>
+                <div class="wb-td"><span class="wb-pill wb-buy">BUY</span></div><div class="wb-td">50K–100K</div><div class="wb-td wb-sub">Oct 17</div>
+                <div class="wb-td"><span class="wb-go"><i data-i="arrow-r"></i></span></div></div>
+              <div class="wb-tr"><div class="wb-td wb-who"><img class="wb-avatar" data-ph="person:Cleo Hart" alt=""><div><b class="wb-name">Cleo Hart</b><span class="wb-sub">Democrat | House | LA</span></div></div>
+                <div class="wb-td wb-who"><img class="wb-logo" data-ph="logo:Intel" alt=""><div><b class="wb-name">Intel Corp</b><span class="wb-sub">INTC:US</span></div></div>
+                <div class="wb-td"><span class="wb-pill wb-sell">SELL</span></div><div class="wb-td">1K–15K</div><div class="wb-td wb-sub">Oct 16</div>
+                <div class="wb-td"><span class="wb-go"><i data-i="arrow-r"></i></span></div></div>
+              <div class="wb-tr"><div class="wb-td wb-who"><img class="wb-avatar" data-ph="person:Ana Torres" alt=""><div><b class="wb-name">Ana Torres</b><span class="wb-sub">Democrat | Senate | NM</span></div></div>
+                <div class="wb-td wb-who"><img class="wb-logo" data-ph="logo:Apple" alt=""><div><b class="wb-name">Apple Inc</b><span class="wb-sub">AAPL:US</span></div></div>
+                <div class="wb-td"><span class="wb-pill wb-buy">BUY</span></div><div class="wb-td">15K–50K</div><div class="wb-td wb-sub">Oct 15</div>
+                <div class="wb-td"><span class="wb-go"><i data-i="arrow-r"></i></span></div></div>
+              <div class="wb-tr"><div class="wb-td wb-who"><img class="wb-avatar" data-ph="person:Ray Okafor" alt=""><div><b class="wb-name">Ray Okafor</b><span class="wb-sub">Republican | Senate | TX</span></div></div>
+                <div class="wb-td wb-who"><img class="wb-logo" data-ph="logo:Nvidia" alt=""><div><b class="wb-name">NVIDIA Corp</b><span class="wb-sub">NVDA:US</span></div></div>
+                <div class="wb-td"><span class="wb-pill wb-buy">BUY</span></div><div class="wb-td">100K–250K</div><div class="wb-td wb-sub">Oct 14</div>
+                <div class="wb-td"><span class="wb-go"><i data-i="arrow-r"></i></span></div></div>
+              <div class="wb-tr"><div class="wb-td wb-who"><img class="wb-avatar" data-ph="person:Lena Park" alt=""><div><b class="wb-name">Lena Park</b><span class="wb-sub">Democrat | House | WA</span></div></div>
+                <div class="wb-td wb-who"><img class="wb-logo" data-ph="logo:Tesla" alt=""><div><b class="wb-name">Tesla Inc</b><span class="wb-sub">TSLA:US</span></div></div>
+                <div class="wb-td"><span class="wb-pill wb-sell">SELL</span></div><div class="wb-td">1K–15K</div><div class="wb-td wb-sub">Oct 14</div>
+                <div class="wb-td"><span class="wb-go"><i data-i="arrow-r"></i></span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="wb-page" id="SCENE-p2"><div class="wb-scroll wb-table wb-dark" id="SCENE-s2" style="position:absolute">
+          <div id="SCENE-hero"><div class="SCENE-ring">BUY</div><div class="SCENE-size">1K–15K</div>
+            <div class="SCENE-who">Maria Salazar</div><div class="SCENE-sub">Republican / House / Florida</div></div>
+          <div class="wb-detail">
+            <div class="wb-field"><span>Issuer</span><b>Meta Platforms Inc · META:US</b></div>
+            <div class="wb-field"><span>Traded</span><b>Oct 21, 2026</b></div>
+            <div class="wb-field"><span>Published</span><b>Nov 4, 2026</b></div>
+            <div class="wb-field" id="SCENE-gap"><span>Reporting gap</span><b>14 days</b><i class="wb-mark" id="SCENE-mark"></i></div>
+            <div class="wb-field"><span>Owner</span><b>Spouse</b></div>
+            <div class="wb-field"><span>Price</span><b>$583.12</b></div>
+          </div>
+        </div></div>
+        <div class="wb-cursor" id="SCENE-cur" data-layout-ignore></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const T = { r1: 0.3, r2: 0.8, move: 1.05, click: 1.62, scroll: 2.0, mark: 2.5 };
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fills [data-name] text, icons and image placeholders
+    AR.rowInsert(tl, "#SCENE-rows", "#SCENE-new1", T.r1 - 0.06);
+    AR.rowInsert(tl, "#SCENE-rows", "#SCENE-new2", T.r2 - 0.06);
+    AR.cursorTo(tl, "#SCENE-cur", "#SCENE-go", T.move, T.click - 0.12 - T.move);
+    tl.fromTo("#SCENE-hov", { opacity: 0 }, { opacity: 1, duration: 0.001 }, T.click - 0.2); // row hover tint
+    AR.cursorShape(tl, "#SCENE-cur", "hand", T.click - 0.2);
+    AR.click(tl, "#SCENE-cur", T.click);
+    AR.navigate(tl, "#SCENE-p1", "#SCENE-p2", T.click + 0.04, { load: 0.14 });
+    AR.cursorShape(tl, "#SCENE-cur", "arrow", T.click + 0.18);
+    AR.pageTo(tl, "#SCENE-s2", T.scroll, { to: "#SCENE-gap", pad: 250, dur: 0.42 });
+    tl.fromTo("#SCENE-mark", { opacity: 0, scale: 1.12 }, { opacity: 1, scale: 1, duration: 0.14, ease: "power3.out" }, T.mark);
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

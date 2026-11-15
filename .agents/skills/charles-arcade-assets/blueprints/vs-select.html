@@ -1,0 +1,49 @@
+<!-- BLUEPRINT vs-select: fighting-game character select. A diagonal split holds two silhouettes; each lights
+     up with its nameplate on the word that names it, then VS slams in.
+     Use for: introducing two sides of a comparison or fight ("make ChatGPT and Claude fight").
+     Edit: names (real product or model names read best), the two cast members (b top right on the dark side,
+     a bottom left), T.b / T.vs / T.a. A long name: lower its nameplate font-size so it stays inside x 80-1000.
+     Length 1.2-2.2 s. mount.py copies it to compositions/<id>.html with SCENE replaced by the scene id. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: #17161a; }
+    #SCENE-cam { position: absolute; inset: 0; }
+    #SCENE-light { position: absolute; inset: -40px; background: var(--stage); clip-path: polygon(0 0, 26% 0, 72% 100%, 0 100%); }
+    #SCENE-edge { position: absolute; inset: -40px; background: var(--claude); clip-path: polygon(26% 0, 28.4% 0, 74.4% 100%, 72% 100%); }
+    #SCENE-b { left: 590px; top: 300px; width: 420px; height: 429px; }
+    #SCENE-plate-b { right: 80px; top: 748px; background: #fff; color: var(--ink); }
+    #SCENE-vs { left: 220px; top: 760px; }
+    #SCENE-a { left: 70px; top: 950px; width: 460px; height: 384px; }
+    #SCENE-plate-a { left: 80px; top: 1350px; }
+    .SCENE-sil { filter: brightness(0) invert(0.16); }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1080" data-height="1920">
+    <div id="SCENE-cam" data-layout-allow-overflow>
+      <div id="SCENE-light" data-layout-ignore></div>
+      <div id="SCENE-edge" data-layout-ignore></div>
+      <div class="sprite SCENE-sil" id="SCENE-b"><img class="pose on" data-pose="fight_ready" src="assets/cast/gpt/poses/fight_ready.png" /></div>
+      <div class="sprite SCENE-sil" id="SCENE-a"><img class="pose on" data-pose="fight_ready" src="assets/cast/claude/poses/fight_ready.png" /></div>
+      <div class="nameplate" id="SCENE-plate-b">CHATGPT</div>
+      <div class="nameplate" id="SCENE-plate-a">CLAUDE</div>
+      <div class="vs" id="SCENE-vs">VS</div>
+    </div>
+    <div class="flash" id="SCENE-flash" data-layout-ignore></div>
+  </div>
+  <script>
+    const T = { b: 0.25, vs: 0.6, a: 1.05 }; // land each on the word that names it
+    const tl = gsap.timeline({ paused: true });
+    AR.names(); // fill [data-name] elements from assets/names.js
+    // silhouettes are there from frame 0; each fills with colour on its name
+    tl.fromTo("#SCENE-b", { filter: "brightness(0) invert(0.16)" }, { filter: "brightness(1) invert(0)", duration: 0.12, ease: "none" }, T.b);
+    AR.flash(tl, "#SCENE-flash", T.b, { peak: 0.5, dur: 0.12 });
+    AR.slide(tl, "#SCENE-plate-b", T.b, { from: "right", dist: 600, dur: 0.3 });
+    AR.hop(tl, "#SCENE-b", T.b + 0.05, { h: 50, dur: 0.3 });
+    AR.stamp(tl, "#SCENE-vs", T.vs, { rot: -8, from: 3 });
+    AR.shake(tl, "#SCENE-cam", T.vs + 0.16, { amp: 18, dur: 0.25 });
+    tl.fromTo("#SCENE-a", { filter: "brightness(0) invert(0.16)" }, { filter: "brightness(1) invert(0)", duration: 0.12, ease: "none" }, T.a);
+    AR.flash(tl, "#SCENE-flash", T.a, { peak: 0.5, dur: 0.12 });
+    AR.slide(tl, "#SCENE-plate-a", T.a, { from: "left", dist: 700, dur: 0.3 });
+    AR.hop(tl, "#SCENE-a", T.a + 0.05, { h: 50, dur: 0.3 });
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>

@@ -1,19 +1,12 @@
 ---
 /**
  * RÉSIVO — ResidentPass (docs/DESIGN.md §1, §6, §8).
- * The ONE place the brand gradient + gold live on the web portal.
- *
- * Legibility: the gradient is overlaid with a translucent navy plate
- * (`bg-navy-900/45`, a token utility — no raw colour) so every label keeps
- * WCAG AA against the teal/green end of the gradient; the QR block sits on a
- * solid `surface` plate with `navy-900` modules.
- *
- * The QR-style block is deterministic: a pure function of `cardId`
- * (FNV-1a seed → xorshift32 bit stream on a 21×21 grid with the three real
- * finder patterns and the timing rows). No Date, no Math.random, no library —
- * the same card id always renders byte-identical SVG.
+ * Official digital resident credential card.
+ * World-class institutional credential with crisp border framing,
+ * high-contrast typography, strict tabular figures, and official verified status badge.
  */
 import BrandMark from './BrandMark.astro';
+import Icon from './Icon.astro';
 import { t, type SupportedLocale } from '../lib/i18n';
 
 interface Props {
@@ -31,123 +24,139 @@ interface Props {
 const { fullName, cardId, block, floor, room, studyLevel, university, issuedAt, class: className = '' } = Astro.props;
 const locale: SupportedLocale = Astro.locals.locale || 'en';
 
-/* --- deterministic QR-style grid ------------------------------------------ */
-const GRID = 21;
-
-let seed = 0x811c9dc5;
-for (const char of cardId || 'RÉSIVO') {
-  seed ^= char.codePointAt(0) ?? 0;
-  seed = Math.imul(seed, 0x01000193);
-}
-seed = (seed >>> 0) || 0x9e3779b9;
-
-const nextBit = () => {
-  seed ^= seed << 13;
-  seed >>>= 0;
-  seed ^= seed >>> 17;
-  seed ^= seed << 5;
-  seed >>>= 0;
-  return (seed & 1) === 1;
-};
-
-/** Finder-pattern value at (x, y); null outside the three 7×7 blocks. */
-const finderValue = (x: number, y: number): boolean | null => {
-  let lx = -1;
-  let ly = -1;
-  if (x < 7 && y < 7) {
-    lx = x;
-    ly = y;
-  } else if (x >= 14 && y < 7) {
-    lx = x - 14;
-    ly = y;
-  } else if (x < 7 && y >= 14) {
-    lx = x;
-    ly = y - 14;
-  }
-  if (lx < 0) return null;
-  return Math.max(Math.abs(lx - 3), Math.abs(ly - 3)) !== 2;
-};
-
-/** Quiet separators around each finder block. */
-const inFinderArea = (x: number, y: number) =>
-  (x < 8 && y < 8) || (x >= 13 && y < 8) || (x < 8 && y >= 13);
-
-let modules = '';
-for (let y = 0; y < GRID; y += 1) {
-  for (let x = 0; x < GRID; x += 1) {
-    const finder = finderValue(x, y);
-    let dark: boolean;
-    if (finder !== null) dark = finder;
-    else if (inFinderArea(x, y)) dark = false;
-    else if (y === 6) dark = x % 2 === 0; // timing row
-    else if (x === 6) dark = y % 2 === 0; // timing column
-    else dark = nextBit();
-    if (dark) modules += `M${x} ${y}h1v1h-1z`;
-  }
-}
-
-const meta = [studyLevel, university].filter(Boolean).join(' · ');
+const institutionLabel = locale === 'fr'
+  ? 'Direction des Œuvres Universitaires · DOU Tlemcen'
+  : 'Direction des Œuvres Universitaires · DOU Tlemcen';
+const stateLabel = locale === 'fr'
+  ? 'République Algérienne Démocratique et Populaire'
+  : "People's Democratic Republic of Algeria";
 ---
 
 <article
-  class={`relative overflow-hidden rounded-hero shadow-e2 ${className}`}
-  style="background-image: var(--grad-brand)"
+  class={`relative overflow-hidden rounded-hero border border-white/20 shadow-e2 ${className}`}
+  style="background-image: var(--grad-brand);"
   aria-label="Resident pass"
 >
-  <!-- Legibility plate: keeps every label AA against the gradient. -->
-  <span class="absolute inset-0 bg-navy-900/45" aria-hidden="true"></span>
+  <!-- Legibility plate: guarantees AA/AAA contrast on every text element against gradient -->
+  <span class="absolute inset-0 bg-navy-900/60 backdrop-blur-[1px]" aria-hidden="true"></span>
 
-  <div class="relative flex flex-col gap-5 p-5 sm:p-6">
-    <div class="flex items-start justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <BrandMark variant="mark" tone="white" size={36} alt="" />
-        <div>
-          <p class="font-display text-h2 text-surface">RÉSIVO</p>
-          <p class="text-small font-normal text-on-dark">Cité Universitaire · Tlemcen</p>
+  <!-- Security guilloche micro-texture watermark -->
+  <svg
+    class="pointer-events-none absolute inset-0 h-full w-full opacity-[0.05] text-surface"
+    xmlns="http://www.w3.org/2000/svg"
+    width="100%"
+    height="100%"
+    aria-hidden="true"
+  >
+    <defs>
+      <pattern id="pass-security-grid" width="32" height="32" patternUnits="userSpaceOnUse">
+        <circle cx="16" cy="16" r="0.75" fill="currentColor" />
+        <path d="M0 16h32M16 0v32" stroke="currentColor" stroke-width="0.5" stroke-dasharray="2 4" />
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#pass-security-grid)" />
+  </svg>
+
+  <!-- Inset hairline security perimeter framing -->
+  <div
+    class="pointer-events-none absolute inset-1.5 sm:inset-2.5 rounded-[12px] border border-white/10"
+    aria-hidden="true"
+  >
+    <!-- Corner registration marks -->
+    <span class="absolute top-1 left-1.5 font-mono text-[9px] text-gold-300/40 select-none">+</span>
+    <span class="absolute top-1 right-1.5 font-mono text-[9px] text-gold-300/40 select-none">+</span>
+    <span class="absolute bottom-1 left-1.5 font-mono text-[9px] text-gold-300/40 select-none">+</span>
+    <span class="absolute bottom-1 right-1.5 font-mono text-[9px] text-gold-300/40 select-none">+</span>
+  </div>
+
+  <div class="relative flex flex-col gap-5 p-5 sm:p-7">
+    <!-- Institutional Top Authority Header -->
+    <div class="flex flex-col gap-2 border-b border-white/15 pb-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono uppercase tracking-widest text-on-dark-2">
+        <span>{stateLabel}</span>
+        <span class="text-gold-300/90 font-semibold">{institutionLabel}</span>
+      </div>
+
+      <div class="flex items-center justify-between gap-4 pt-1">
+        <div class="flex items-center gap-3">
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-input border border-white/15 bg-white/10 p-1.5 shadow-sm">
+            <BrandMark variant="mark" tone="white" size={32} alt="" />
+          </div>
+          <div>
+            <p class="font-display text-h2 font-bold tracking-tight text-surface">RÉSIVO</p>
+            <p class="text-small font-normal text-on-dark-2">Cité Universitaire · Tlemcen</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center gap-1.5 rounded-input border border-gold-500/35 bg-gold-500/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-gold-300 shadow-sm">
+            <span class="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true"></span>
+            <span>{t(locale, 'dashboard.pass_title')}</span>
+          </span>
         </div>
       </div>
-      <p class="overline text-gold-300 text-right">{t(locale, 'dashboard.pass_title')}</p>
     </div>
 
+    <!-- Resident Identity Block -->
     <div>
-      <p class="overline text-on-dark">{t(locale, 'terms.resident')}</p>
-      <p class="font-display text-h1 text-surface">{fullName}</p>
-      {meta && <p class="mt-0.5 text-small font-normal text-on-dark">{meta}</p>}
+      <p class="overline text-on-dark-2">{t(locale, 'terms.resident')}</p>
+      <p class="font-display text-h1 sm:text-display font-bold tracking-tight text-surface">
+        {fullName}
+      </p>
+      <div class="mt-1 flex flex-wrap items-center gap-2 text-small font-normal text-on-dark">
+        {studyLevel && (
+          <span class="inline-flex items-center rounded-pill border border-white/20 bg-white/10 px-2 py-0.5 text-xs font-semibold text-surface">
+            {studyLevel}
+          </span>
+        )}
+        {studyLevel && university && <span class="text-on-dark-2">·</span>}
+        <span>{university || 'Université de Tlemcen'}</span>
+      </div>
     </div>
 
-    <dl class="grid grid-cols-3 gap-4 border-y border-surface/25 py-4">
-      <div class="min-w-0">
-        <dt class="overline text-on-dark">{t(locale, 'fields.block')}</dt>
-        <dd class="font-display text-h1 tnum text-surface">{block}</dd>
+    <!-- Quarters Allocation Matrix (Block / Floor / Room) -->
+    <dl class="grid grid-cols-3 divide-x divide-white/15 rounded-input border border-white/20 bg-white/[0.04] p-3.5 sm:p-4 text-center sm:text-left backdrop-blur-[2px]">
+      <div class="min-w-0 px-2 sm:px-3 first:pl-0 last:pr-0">
+        <dt class="overline text-on-dark-2">{t(locale, 'fields.block')}</dt>
+        <dd class="tnum font-display text-h1 sm:text-display font-semibold text-surface tracking-tight">
+          {block}
+        </dd>
       </div>
-      <div class="min-w-0">
-        <dt class="overline text-on-dark">{t(locale, 'fields.floor')}</dt>
-        <dd class="font-display text-h1 tnum text-surface">{floor}</dd>
+      <div class="min-w-0 px-2 sm:px-3 first:pl-0 last:pr-0">
+        <dt class="overline text-on-dark-2">{t(locale, 'fields.floor')}</dt>
+        <dd class="tnum font-display text-h1 sm:text-display font-semibold text-surface tracking-tight">
+          {floor}
+        </dd>
       </div>
-      <div class="min-w-0">
-        <dt class="overline text-on-dark">{t(locale, 'fields.room')}</dt>
-        <dd class="font-display text-h1 tnum text-surface">{room}</dd>
+      <div class="min-w-0 px-2 sm:px-3 first:pl-0 last:pr-0">
+        <dt class="overline text-on-dark-2">{t(locale, 'fields.room')}</dt>
+        <dd class="tnum font-display text-h1 sm:text-display font-semibold text-surface tracking-tight">
+          {room}
+        </dd>
       </div>
     </dl>
 
-    <div class="flex items-end justify-between gap-4">
+    <!-- Security & Verification Bottom Bar (Card ID + Verified status badge) -->
+    <div class="flex flex-col gap-4 border-t border-white/15 pt-4 sm:flex-row sm:items-end sm:justify-between">
       <div class="min-w-0">
-        <p class="overline text-on-dark">{t(locale, 'fields.card_id')}</p>
-        <p class="tnum font-display text-h2 text-surface">{cardId}</p>
-        {issuedAt && <p class="mt-1 text-small font-normal text-on-dark">Issued {issuedAt}</p>}
+        <dt class="overline text-on-dark-2">{t(locale, 'fields.card_id')}</dt>
+        <dd class="tnum font-mono text-h2 font-semibold tracking-wider text-surface">
+          {cardId}
+        </dd>
+        {issuedAt && (
+          <p class="tnum mt-1 flex items-center gap-1.5 text-xs text-on-dark-2">
+            <Icon name="calendar" size={13} class="text-gold-300" />
+            <span>Issued {issuedAt}</span>
+          </p>
+        )}
       </div>
-      <div class="shrink-0 rounded-input bg-surface p-2">
-        <svg
-          viewBox={`0 0 ${GRID} ${GRID}`}
-          width={96}
-          height={96}
-          class="block h-24 w-24 text-navy-900"
-          shape-rendering="crispEdges"
-          aria-hidden="true"
-          focusable="false"
-        >
-          <path d={modules} fill="currentColor" />
-        </svg>
+
+      <!-- Official Verified Status Badge -->
+      <div class="inline-flex items-center gap-2 rounded-input border border-teal-400/40 bg-teal-500/20 px-3.5 py-2 text-on-dark shadow-sm">
+        <Icon name="shield-check" size={18} class="text-teal-300 shrink-0" />
+        <span class="text-xs font-semibold uppercase tracking-wider text-teal-200">
+          {t(locale, 'dashboard.pass_verified')}
+        </span>
       </div>
     </div>
   </div>

@@ -1,11 +1,17 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
+    "openfilm": {
+      "source": "openfilm/openfilm",
+      "sourceType": "github",
+      "skillPath": "skills/openfilm/SKILL.md",
+      "computedHash": "c5a254e8aed6cbfd2098cae414081fa155b6e22fbd409a4460f8931565729fb1"
+    },
     "reverse-engineer-anything": {
       "source": "morluto/rea",
       "sourceType": "github",
       "skillPath": ".agents/skills/reverse-engineer-anything/SKILL.md",
-      "computedHash": "e40d61061a2ae78efb4c9059b4b1f519b14539186d34b7fa52e5a25a347cf337"
+      "computedHash": "f298f1b63eec2cba92adb803da7209b82312ead116e1df9c8084159630ca0cb2"
     }
   }
 }

@@ -3,7 +3,8 @@ import type { APIRoute } from 'astro';
 import { createSupabaseServerClient, cardIdToEmail } from '../../lib/supabase';
 import { validateRegistration, normalizeEmail, mapEmailErrorCode } from '../../lib/validation';
 import { checkRegistrationGate, getResidencePublic } from '../../lib/residence';
-import { localizePath, resolveRequestLocale } from '../../lib/i18n';
+import { isContactEmailTaken } from '../../lib/contact-email';
+import { localizePath, resolveRequestLocale, t } from '../../lib/i18n';
 import { TIMEOUT_MESSAGES } from '../../lib/timeouts';
 
 export const POST: APIRoute = async (context) => {
@@ -44,6 +45,14 @@ export const POST: APIRoute = async (context) => {
       return context.redirect(`${registerPath}?error=${encodeURIComponent(gateError)}`);
     }
 
+    // Auth trigger exceptions are masked by GoTrue ("Database error saving new user"),
+    // so reject a duplicate contact email here while we can still show a friendly message.
+    if (await isContactEmailTaken(supabase, cleanEmail)) {
+      return context.redirect(
+        `${registerPath}?error=${encodeURIComponent(mapEmailErrorCode('email_in_use', locale))}`,
+      );
+    }
+
     // Contact email is stored only in students.email via handle_new_user() metadata;
     // auth.users uses the hidden synthetic card-ID address so zero emails are ever sent.
     const { data: signUpData, error } = await supabase.auth.signUp({
@@ -79,6 +88,15 @@ export const POST: APIRoute = async (context) => {
         return context.redirect(
           `${registerPath}?error=${encodeURIComponent('An account with this student card ID already exists. Please sign in.')}`,
         );
+      }
+      if (lower.includes('database error saving new user') || lower.includes('unexpected_failure')) {
+        // A race can still hit the trigger's unique-email guard; re-check to explain it.
+        if (await isContactEmailTaken(supabase, cleanEmail)) {
+          return context.redirect(
+            `${registerPath}?error=${encodeURIComponent(mapEmailErrorCode('email_in_use', locale))}`,
+          );
+        }
+        return context.redirect(`${registerPath}?error=${encodeURIComponent(t(locale, 'errors.generic'))}`);
       }
       return context.redirect(`${registerPath}?error=${encodeURIComponent(error.message)}`);
     }

@@ -1,0 +1,227 @@
+<!-- BLUEPRINT roster, wide frame (laid out at 1280x630, the 2:1 card; it lays itself out for any frame, 1280x1550 tall
+     cards included): "it's not one skill, it's N of them, each does a different job", then "but the craziest part is X".
+     @opusjake's most used beat. The lone host fills the frame on the cream stage (about a third of its height) doing
+     its job while the camera pushes in slowly; a count chip reads "1 SKILL". On "N of them" the camera pulls back, the
+     host shrinks into slot 1 of a line-up while the other role variants pop in and the chip counts to "N SKILLS"; white
+     tiles rise, every critter hops into its tile with its label; a spotlight dims the others and rings one tile; that
+     critter scales out of its tile toward the camera.
+     Use for: a skill pack, a team of agents, the parts of a product, any "N things, each with a job" list.
+     Edit: ROLES (label + a role from AR.crit.ROLES, or wear/hold lists, optional shape/color; 2 to 12), HOST (who every
+     variant is: "critter" for Claude topics, "pal" otherwise, or a cast.py character's folder in assets/cast such as
+     "charles": its variants hold the role's props and wear its hats), COLOR (a colour every critter or pal variant
+     shares, or null), HERO (the lone one, an index in
+     ROLES), ACT ("auto": the hero uses its prop; or "wave"), COUNT (the chip's noun; null for no chip), PICK (the
+     spotlit one, or -1), and the T times: T.split ("N of them"), T.tiles (tiles rise, critters fly in), T.labels,
+     T.spot ("the craziest part"), T.promote (its name), T.end (the beat length). Labels stay readable for at least
+     LABEL_HOLD (0.7 s) before the spotlight dims them: if T.spot comes sooner, the tiles and labels are pulled earlier
+     (a console warning says when even that is not enough). Cut the beat after the labels (PICK = -1) for a plain grid.
+     Layout: the grid picks the column count that gives the biggest critters while every label fits in two lines at
+     no less than 28 px (40 px in a tall frame) per 1280 px of width. In a tall frame it leaves GUTTER clear where the
+     caption pill passes, with rows above and below it. Uses critter.js and motion.js (AR.shrinkInto, AR.flyToSlot,
+     AR.spotlight, AR.promote) and cast.js. mount.py copies it to compositions/<id>.html with SCENE replaced. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; }
+    #SCENE-cam { position: absolute; left: 0; top: 0; width: 1280px; height: 630px; }
+    #SCENE-frame, #SCENE-tiles, #SCENE-crits, #SCENE-hud { position: absolute; left: 0; top: 0; width: 1280px; height: 630px; }
+  </style>
+  <div id="root" data-composition-id="SCENE" data-width="1280" data-height="630">
+    <div id="SCENE-cam" data-layout-allow-overflow>
+      <div class="stage" data-layout-ignore></div>
+      <div id="SCENE-frame" data-layout-ignore></div>
+      <div id="SCENE-tiles"></div>
+      <div id="SCENE-crits"></div>
+    </div>
+    <div id="SCENE-hud"><div class="crit-count" id="SCENE-count"><b id="SCENE-n">1</b><span id="SCENE-noun">SKILL</span></div></div>
+  </div>
+  <script>
+    const T = { split: 0.75, tiles: 1.3, labels: 1.55, spot: 2.75, promote: 3.15, end: 3.7 };
+    const ROLES = [
+      { label: "Competitor Scout", role: "scout" },
+      { label: "Investor Finder", role: "analyst" },
+      { label: "Business Planner", role: "planner" },
+      { label: "Pitch Deck Designer", role: "designer" },
+      { label: "The Closer", role: "closer" },
+      { label: "Market Sizer", hold: ["target"] },
+      { label: "Builder", role: "builder" },
+      { label: "QA Tester", role: "qa" },
+    ];
+    const HOST = "critter";                           // "pal" for topics that are not about Claude, or a cast.py character
+    const COLOR = null;                               // a colour every critter or pal variant shares
+    const HERO = 0, PICK = 4, ACT = "auto";
+    const COUNT = { one: "SKILL", many: "SKILLS" };   // null: no chip
+    const RING = "#E2B84F";                            // the spotlight outline
+    const LABEL_HOLD = 0.7;                            // seconds every label stays readable before anything dims it
+    const tl = gsap.timeline({ paused: true });
+    AR.names();
+    const tilesEl = document.getElementById("SCENE-tiles"), critsEl = document.getElementById("SCENE-crits");
+    // the frame size comes from the root (mount.py sets it to the project's size); the layers get it in px
+    const rootEl = document.querySelector('[data-composition-id="SCENE"][data-width]');
+    const W = +(rootEl && rootEl.dataset.width) || 1280, H = +(rootEl && rootEl.dataset.height) || 630, N = ROLES.length;
+    ["SCENE-cam", "SCENE-frame", "SCENE-tiles", "SCENE-crits", "SCENE-hud"].forEach((id) => Object.assign(document.getElementById(id).style, { width: W + "px", height: H + "px" }));
+    const tall = H > W, k = W / 1280;
+    const GUTTER = tall ? { y: H * 0.48, h: 96 } : null;   // where the caption pill passes in a tall card
+
+    // ---- the count chip, top centre ----
+    const chip = document.getElementById("SCENE-count"), chipFs = Math.round((tall ? 62 : 46) * k);
+    if (COUNT) {
+      chip.style.fontSize = chipFs + "px";
+      document.getElementById("SCENE-noun").textContent = COUNT.one;
+      chip.style.top = Math.round((tall ? 40 : 18) * k) + "px";
+      chip.style.left = "0px"; chip.style.right = "0px"; chip.style.margin = "0 auto"; chip.style.width = "fit-content";
+    } else chip.style.display = "none";
+    const chipBottom = COUNT ? parseFloat(chip.style.top) + chipFs * 1.5 + 12 * k : 0;
+
+    // ---- the grid: the biggest critters whose labels still read (at least fsMin, at most two lines) ----
+    const mx = Math.round(34 * k), my = Math.round(26 * k), gx = Math.round(18 * k), gy = Math.round(18 * k);
+    const top0 = Math.max(my, chipBottom);
+    const bands = GUTTER ? [[top0, GUTTER.y - GUTTER.h / 2], [GUTTER.y + GUTTER.h / 2, H - my]] : [[top0, H - my]];
+    const fsMin = Math.round((tall ? 40 : 28) * k), fsMax = Math.round((tall ? 52 : 34) * k);
+    // lines a label needs at font size fs in width w (Inter bold averages about 0.6 em a character)
+    const lines = (txt, fs, w) => {
+      let n = 1, cur = 0;
+      for (const word of String(txt).split(/\s+/)) {
+        const ww = word.length * fs * 0.6, sp = cur ? fs * 0.28 : 0;
+        if (ww > w) return 99;
+        if (cur + sp + ww > w) { n++; cur = ww; } else cur += sp + ww;
+      }
+      return n;
+    };
+    let G = null;
+    for (let rows = 1; rows <= 7; rows++) {
+      const cols = Math.ceil(N / rows), tw = (W - 2 * mx - (cols - 1) * gx) / cols, lw = tw - 16 * k;
+      // rows above and below the caption gutter: try every split
+      const splits = GUTTER ? Array.from({ length: rows - 1 }, (_, a) => [a + 1, rows - a - 1]) : [[rows]];
+      splits.forEach((split) => {
+        let th = tw * 0.9;
+        bands.forEach(([a, b], i) => { if (split[i]) th = Math.min(th, (b - a - (split[i] - 1) * gy) / split[i]); });
+        for (let fs = fsMax; fs >= Math.min(fsMin, 14); fs--) {
+          const nl = Math.max(...ROLES.map((R) => lines(R.label, fs, lw)));
+          if (nl > 2) continue;
+          const labelH = nl * fs * 1.08 + fs * 0.62;
+          const u = Math.floor(Math.min((tw * 0.68) / 12, (th - labelH - 8 * k) / 10.6));
+          const score = (fs >= fsMin && u >= 6 ? 1000 : 0) + u * 12 + fs * 0.5;
+          if (!G || score > G.score) G = { rows, cols, tw, th, split, fs, labelH, u, score };
+        }
+      });
+    }
+    const { fs, labelH, u } = G;
+    const tiles = [];
+    let placed = 0;
+    bands.forEach(([a, b], i) => {
+      const r = G.split[i] || 0, bandH = r * G.th + (r - 1) * gy;
+      let y = a + (b - a - bandH) / 2;   // centred in its band (in a tall frame the bands sit above and below the gutter)
+      for (let j = 0; j < r && placed < N; j++) {
+        const n = Math.min(G.cols, N - placed), rowW = n * G.tw + (n - 1) * gx;
+        for (let c = 0; c < n; c++) tiles.push({ x: (W - rowW) / 2 + c * (G.tw + gx), y, w: G.tw, h: G.th });
+        placed += n;
+        y += G.th + gy;
+      }
+    });
+    // the line-up before the tiles: the variants a size up from their tiles, in one to three rows under the chip
+    const perRow = Math.min(N, tall ? 4 : N > 6 ? Math.ceil(N / 2) : N), lineRows = Math.ceil(N / perRow), lg = 30 * k;
+    const uLine = Math.max(u, Math.floor(Math.min((W - 2 * mx - (perRow - 1) * lg) / (12 * perRow), (H - top0 - my - (lineRows - 1) * lg) / (10.6 * lineRows), Math.min(H / 24, (W * 0.62) / 12) * 0.62)));
+    const step = 12 * uLine + lg, rowGap = 10.6 * uLine + lg, lineH = (lineRows - 1) * rowGap;
+    const loose = ROLES.map((_, i) => {
+      const r = Math.floor(i / perRow), c = i % perRow, n = Math.min(perRow, N - r * perRow);
+      return { x: (W - (n - 1) * step) / 2 + c * step, y: top0 + (H - top0) / 2 + 4 * uLine - lineH / 2 + r * rowGap };
+    });
+
+    // ---- the labels hold: pull the tiles earlier when the spotlight would come too soon ----
+    if (PICK >= 0 && T.spot - T.labels < LABEL_HOLD) {
+      const need = LABEL_HOLD - (T.spot - T.labels), room = Math.max(0, T.tiles - (T.split + 0.32));
+      const pull = Math.min(need, room);
+      T.tiles -= pull; T.labels -= pull;
+      if (T.spot - T.labels < LABEL_HOLD - 1e-3) console.warn(`roster SCENE: labels show ${(T.spot - T.labels).toFixed(2)} s before the spotlight; give the beat more time before T.spot`);
+    }
+
+    // ---- build: tiles, labels, seats (where each critter stands), the cast ----
+    const seat = (parent, x, y, id, su = u) => {
+      const s = document.createElement("div");
+      s.id = id;
+      Object.assign(s.style, { position: "absolute", left: x - 6 * su + "px", top: y - 8 * su + "px", width: 12 * su + "px", height: 8 * su + "px" });
+      parent.appendChild(s);
+      return s;
+    };
+    const tileEls = [], labelEls = [], seats = [], looseSeats = [], crits = [];
+    const uHero = Math.round(Math.min(H / 24, (W * 0.62) / 12));
+    const heroX = W / 2, heroY = Math.min(H - my - 0.4 * uHero, H * (tall ? 0.86 : 0.9));
+    ROLES.forEach((R, i) => {
+      const t = tiles[i], el = document.createElement("div");
+      el.className = "crit-tile";
+      el.id = `SCENE-tile${i}`;
+      Object.assign(el.style, { left: t.x + "px", top: t.y + "px", width: t.w + "px", height: t.h + "px", opacity: 0, borderRadius: Math.round(18 * k) + "px" });
+      const lab = document.createElement("div");
+      lab.className = "crit-tile-label";
+      lab.id = `SCENE-label${i}`;
+      lab.textContent = R.label;
+      Object.assign(lab.style, { fontSize: fs + "px", bottom: Math.round(fs * 0.36) + "px" });
+      el.appendChild(lab);
+      tilesEl.appendChild(el);
+      tileEls.push(el); labelEls.push(lab);
+      seats.push(seat(tilesEl, t.x + t.w / 2, t.y + t.h - labelH - 4 * k, `SCENE-seat${i}`));
+      looseSeats.push(seat(tilesEl, loose[i].x, loose[i].y, `SCENE-loose${i}`, uLine));
+      const opts = Object.assign({ id: `SCENE-c${i}` }, COLOR ? { color: COLOR } : {}, R.color ? { color: R.color } : {},
+        R.role ? { role: R.role } : {}, R.wear ? { wear: R.wear } : {}, R.hold ? { hold: R.hold } : {});
+      if (i === HERO) Object.assign(opts, { u: uHero, x: heroX, y: heroY });
+      else Object.assign(opts, { u: uLine, x: loose[i].x, y: loose[i].y });
+      // a generated character stands as tall as a critter's box (8u), so it fits the same seats and tiles; the lone
+      // hero stands taller (it is narrower than a critter) and shrinks into its seat like the critter does
+      crits.push(AR.cast.host(critsEl, R.shape || HOST, Object.assign(opts, { h: (i === HERO ? 11 : 8) * opts.u })));
+    });
+    const hero = crits[HERO], others = crits.filter((c, i) => i !== HERO);
+
+    // ---- the lone hero fills the frame from the cut, at work, while the camera pushes in slowly ----
+    const cam = document.getElementById("SCENE-cam");
+    gsap.set(cam, { transformOrigin: `${heroX}px ${heroY - 4 * uHero}px` });
+    tl.fromTo(cam, { scale: 1 }, { scale: 1.07, duration: T.split, ease: "sine.inOut" }, 0);
+    tl.to(cam, { scale: 1, duration: 0.26, ease: "power3.inOut" }, T.split);
+    const held = AR.cast.items(hero).filter((r) => r.slot === "hand").map((r) => r.name);
+    const has = (...names) => names.find((n) => held.includes(n));
+    const a0 = 0.15, ad = Math.max(0.3, T.split - 0.3);
+    if (AR.cast.isCast(hero)) {   // a generated character: swings its tool, takes a photo, or points and hops
+      if (ACT === "auto" && has("hammer", "sword", "wrench", "roller", "brush", "bugnet", "shovel")) AR.crit.swing(tl, hero, a0 + 0.1, { prop: has("hammer", "sword", "wrench", "roller", "brush", "bugnet", "shovel"), n: Math.max(1, Math.floor(ad / 0.3)) });
+      else if (ACT === "auto" && has("camera")) AR.crit.photo(tl, hero, a0 + 0.2);
+      else { AR.cast.act(tl, hero, a0, "point", { dur: Math.min(0.9, ad) }); AR.hop(tl, hero, a0 + Math.min(0.45, ad / 2), { h: 1.2 * uHero, dur: 0.32 }); }
+    }
+    else if (ACT === "auto" && has("magnifier")) AR.crit.sweep(tl, hero, a0, ad, { prop: "magnifier" });
+    else if (ACT === "auto" && has("binoculars")) AR.crit.lookout(tl, hero, a0, ad);
+    else if (ACT === "auto" && has("hammer", "sword", "wrench", "roller", "brush", "bugnet")) AR.crit.swing(tl, hero, a0 + 0.1, { prop: has("hammer", "sword", "wrench", "roller", "brush", "bugnet"), n: Math.max(1, Math.floor(ad / 0.3)) });
+    else if (ACT === "auto" && has("shovel")) AR.crit.dig(tl, hero, a0, ad);
+    else if (ACT === "auto" && has("wateringcan")) AR.crit.water(tl, hero, a0, ad);
+    else if (ACT === "auto" && has("whistle")) AR.crit.blow(tl, hero, a0 + 0.1, Math.min(0.6, ad));
+    else if (ACT === "auto" && has("camera")) AR.crit.photo(tl, hero, a0 + 0.2);
+    else if (ACT === "auto" && has("coin")) AR.crit.flip(tl, hero, a0);
+    else { AR.crit.arms(tl, hero, a0, "wave", { dur: Math.min(0.9, ad) }); AR.hop(tl, hero, a0, { h: 1.2 * uHero, dur: 0.32 }); }
+    AR.crit.blink(tl, hero, Math.min(0.45, T.split - 0.15));
+
+    // ---- N of them: the camera pulls back, the hero shrinks into slot 1, the rest pop in, the chip counts ----
+    AR.shrinkInto(tl, hero, looseSeats[HERO], T.split, 0.26, { fit: 1, at: [0.5, 1], anchor: [0.5, 1], ease: "power3.inOut" });
+    const popAt = (j) => T.split + 0.06 + j * 0.035;
+    others.forEach((c, j) => tl.fromTo(c, { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.24, ease: "back.out(2.4)" }, popAt(j)));
+    if (COUNT) {
+      const nEl = document.getElementById("SCENE-n"), noun = document.getElementById("SCENE-noun");
+      others.forEach((c, j) => tl.set(nEl, { textContent: String(j + 2) }, popAt(j)));
+      if (N > 1) tl.set(noun, { textContent: COUNT.many }, popAt(0));
+      tl.fromTo(chip, { scale: 1 }, { scale: 1.16, duration: 0.07, ease: "power2.out", immediateRender: false }, popAt(Math.max(0, N - 2)));
+      tl.to(chip, { scale: 1, duration: 0.2, ease: "back.out(3)" }, popAt(Math.max(0, N - 2)) + 0.07);
+    }
+    // tiles rise, the critters hop on arcs into them, the labels fade in
+    tl.fromTo(tileEls, { y: 36 * k, opacity: 0 }, { y: 0, opacity: 1, duration: 0.24, ease: "power3.out", stagger: 0.03 }, T.tiles);
+    AR.flyToSlot(tl, crits, seats, T.tiles + 0.1, 0.34, { at: [0.5, 1], anchor: [0.5, 1], arc: 64 * k, gap: 0.03, fit: 1 });
+    tl.fromTo(labelEls, { opacity: 0, y: 8 * k }, { opacity: 1, y: 0, duration: 0.16, ease: "power2.out", stagger: 0.02 }, T.labels);
+    AR.crit.alive(tl, crits, T.tiles + 0.6, Math.max(0.3, T.end - T.tiles - 0.6), { bob: false, seed: 21 });
+    // the craziest part: the others dim, the pick gets a ring, then scales out of its tile toward the camera
+    if (PICK >= 0) {
+      AR.spotlight(tl, tileEls, tileEls[PICK], T.spot, { dim: 0.3, color: RING, width: 5 });
+      tl.to(crits.filter((c, i) => i !== PICK), { opacity: 0.3, duration: 0.12, ease: "power2.out" }, T.spot);
+      AR.crit.eyes(tl, crits[PICK], T.spot, "look-right");
+      tl.set(crits[PICK], { zIndex: 30 }, T.promote);
+      // about 0.78 of a 2:1 card's height; a taller frame gets the same width share
+      AR.promote(tl, crits[PICK], T.promote, { size: 0.78 * Math.min(1, W / H / 2.03), at: [0.48, 0.6], frame: "#SCENE-frame" });
+      AR.crit.eyes(tl, crits[PICK], T.promote + 0.1, "happy");
+      AR.cast.act(tl, crits[PICK], T.promote + 0.1, "cheer");
+    }
+    window.__timelines["SCENE"] = tl;
+  </script>
+</template>
