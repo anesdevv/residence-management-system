@@ -118,11 +118,20 @@ class _Task(QRunnable):
                 exc.__class__.__name__,
                 message,
             )
-            self.signals.failed.emit(message)
+            try:
+                self.signals.failed.emit(message)
+            except RuntimeError:
+                pass
         else:
-            self.signals.succeeded.emit(result)
+            try:
+                self.signals.succeeded.emit(result)
+            except RuntimeError:
+                pass
         finally:
-            self.signals.finished.emit()
+            try:
+                self.signals.finished.emit()
+            except RuntimeError:
+                _task_finished()
 
 
 @dataclass

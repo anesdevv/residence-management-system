@@ -702,7 +702,11 @@
         "retry_detail": "Retry",
         "loading_detail": "Loading details...",
         "copy_summary": "Copy summary",
-        "summary_copied": "Summary copied"
+        "summary_copied": "Summary copied",
+        "fact_decision_note": "Decision note",
+        "fact_decided_by": "Decided by",
+        "fact_decided_at": "Decided",
+        "awaiting_decision": "Awaiting decision"
     },
     "rooms": {
         "add_block_btn": "Add block",

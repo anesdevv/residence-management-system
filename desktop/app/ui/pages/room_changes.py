@@ -45,7 +45,7 @@ from __future__ import annotations
 import json
 
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QBrush, QColor
+from PySide6.QtGui import QBrush, QColor, QGuiApplication
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -63,11 +63,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...client import official_lookup, room_occupancy
+from ...client import get_room_change_detail, invalidate_detail_cache, official_lookup, room_occupancy
 try:
-    from i18n import current_language, t, tn
+    from i18n import current_language, format_date, format_datetime, format_time, t, tn
 except ImportError:
-    from desktop.i18n import current_language, t, tn
+    from desktop.i18n import current_language, format_date, format_datetime, format_time, t, tn
 
 from ...timeouts import execute_network_call
 from .. import theme
@@ -82,12 +82,14 @@ from ..components import (
     IconButton,
     InlineBanner,
     KeyValueList,
+    KeyValueRow,
     PageHeader,
     RoomOccupancyBar,
     SearchField,
     SegmentedControl,
     StatusPill,
     configure_table,
+    show_toast,
 )
 from ..icons import get_pixmap
 from ..infocard import StudentInfoCardDialog
@@ -250,18 +252,75 @@ def _status_meta(raw_status) -> tuple[str, str]:
     return _STATUS_KINDS.get(str(raw_status), _DEFAULT_STATUS)
 
 
+def _format_dt(value) -> str:
+    """Format timestamp to user's locale ('12 Nov 2026, 22:28'), never raw ISO."""
+    if not value:
+        return "—"
+    try:
+        d = format_date(value, "medium")
+        tm = format_time(value)
+        if d and tm:
+            return f"{d}, {tm}"
+        return d or tm or str(value)[:16]
+    except Exception:
+        text = str(value or "").replace("T", " ").replace("Z", "").strip()
+        if "." in text:
+            text = text.split(".")[0]
+        if "+" in text:
+            text = text.split("+")[0]
+        return text or "—"
+
+
 def _fmt_date(value) -> str:
     """Date-only value (raw data, never invented)."""
     text = str(value or "").strip()
     return text[:10] if text else "—"
 
 
-def _fmt_stamp(value) -> str:
-    """Readable timestamp for the record block (raw value, never invented)."""
+def _fmt_raw_stamp(value) -> str:
+    """Raw formatted timestamp (e.g. '2026-10-20 14:30:00')."""
     text = str(value or "").strip()
     if not text:
         return "—"
-    return text.replace("T", " ").replace("Z", "").strip()
+    return text.replace("T", " ").replace("Z", "").strip()[:19]
+
+
+def _fmt_stamp(value) -> str:
+    """Readable timestamp for the record block (local formatted, never raw ISO)."""
+    return _format_dt(value)
+
+
+def _format_room_text(room_obj: dict | None, is_target: bool = False, room_id: str | None = None) -> tuple[str, str, bool]:
+    """Return (value_str, meta_str, is_empty)."""
+    if isinstance(room_obj, dict) and (room_obj.get("block") or room_obj.get("number")):
+        block = str(room_obj.get("block") or "—")
+        floor = room_obj.get("floor")
+        number = str(room_obj.get("number") or "—")
+        floor_str = t("rooms.cell_floor", floor=floor) if floor is not None and str(floor) != "" else ""
+        return f"Block {block} · Room {number}", floor_str, False
+
+    if room_id:
+        return f"Room {str(room_id)[:8]}", "", False
+
+    if is_target:
+        return t("room_changes.no_preference"), "", True
+    return t("room_changes.no_room_assigned"), "", True
+
+
+def _format_room_summary(room_obj: dict | None, is_target: bool = False, room_id: str | None = None) -> str:
+    """Single-line room description for rejection card, record block, and copy summary."""
+    if isinstance(room_obj, dict) and (room_obj.get("block") or room_obj.get("number")):
+        block = str(room_obj.get("block") or "—")
+        floor = room_obj.get("floor") if room_obj.get("floor") is not None else "—"
+        number = str(room_obj.get("number") or "—")
+        return t("room_changes.room_format", block=block, floor=floor, number=number)
+
+    if room_id:
+        return f"Room ID: {room_id}"
+
+    if is_target:
+        return t("room_changes.no_preference")
+    return t("room_changes.no_room_assigned")
 
 
 def _short_id(value) -> str:
@@ -320,6 +379,7 @@ class _QuotedBlock(QFrame):
         self.body = QLabel("")
         theme.apply_role(self.body, "body")
         self.body.setWordWrap(True)
+        self.body.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         column.addWidget(self.overline)
         column.addWidget(self.body)
         self.setStyleSheet(
@@ -327,9 +387,15 @@ class _QuotedBlock(QFrame):
             f" border: 1px solid {C('border')}; border-radius: {C('radius-input')}; }}"
         )
 
-    def set_text(self, text: str) -> None:
+    def set_text(self, text: str, *, is_empty: bool = False) -> None:
         """Set the quoted body text."""
         self.body.setText(str(text))
+        if is_empty:
+            theme.apply_role(self.body, "muted")
+            self.body.setStyleSheet(f"color: {C('text-muted')}; font-style: italic;")
+        else:
+            self.body.setStyleSheet("")
+            theme.apply_role(self.body, "body")
 
 
 class RoomChangesPage(QWidget):
@@ -351,6 +417,7 @@ class RoomChangesPage(QWidget):
         # Successfully deleted request ids: a permanently deleted row must
         # never come back from a stale in-flight or replicated snapshot.
         self._deleted_ids: set[str] = set()
+        self._detail_req_id: int = 0
         self.tasks = TaskRunner(self)
 
         layout = QVBoxLayout(self)
@@ -471,7 +538,19 @@ class RoomChangesPage(QWidget):
         inspector.setContentsMargins(0, 0, 0, 0)
         inspector.setSpacing(S("space-3"))
 
-        # Resident identity.
+        # 0. Detail error banner (with retry)
+        self.detail_error_banner = InlineBanner(
+            "error",
+            title=t("room_changes.error_detail_title"),
+            message="",
+        )
+        self.detail_retry_btn = Button(t("room_changes.retry_detail"), "ghost", icon="refresh")
+        self.detail_retry_btn.clicked.connect(self._retry_detail_fetch)
+        self.detail_error_banner.add_action(self.detail_retry_btn)
+        self.detail_error_banner.setVisible(False)
+        inspector.addWidget(self.detail_error_banner)
+
+        # 1. Resident identity with status pill & View profile button.
         self.identity = QWidget()
         identity = QHBoxLayout(self.identity)
         identity.setContentsMargins(0, 0, 0, 0)
@@ -492,9 +571,13 @@ class RoomChangesPage(QWidget):
         self.status_pill = StatusPill("pending", "Pending")
         identity_column.addWidget(self.status_pill, 0, Qt.AlignmentFlag.AlignLeft)
         identity.addLayout(identity_column, 1)
+        self.view_profile_btn = Button(t("room_changes.view_profile"), "ghost", icon="user")
+        self.view_profile_btn.setToolTip(t("room_changes.view_profile"))
+        self.view_profile_btn.clicked.connect(self._open_student_card)
+        identity.addWidget(self.view_profile_btn, 0, Qt.AlignmentFlag.AlignVCenter)
         inspector.addWidget(self.identity)
 
-        # Current room › requested room.
+        # 2. Current room › requested room.
         self.move_section = QWidget()
         move_layout = QVBoxLayout(self.move_section)
         move_layout.setContentsMargins(0, 0, 0, 0)
@@ -519,7 +602,7 @@ class RoomChangesPage(QWidget):
         move_layout.addLayout(cards_row)
         inspector.addWidget(self.move_section)
 
-        # Rejection record: same tinted card style as the applications page.
+        # 3. Rejection record: same tinted card style as the applications page.
         self.rejection_card = QFrame()
         self.rejection_card.setObjectName("recordBlock")
         rejection = QVBoxLayout(self.rejection_card)
@@ -563,15 +646,15 @@ class RoomChangesPage(QWidget):
         self.rejection_card.setVisible(False)
         inspector.addWidget(self.rejection_card)
 
-        # Stated reason (quoted block).
+        # 4. Stated reason (quoted block).
         self.motive_block = _QuotedBlock(t("room_changes.stated_reason"))
         inspector.addWidget(self.motive_block)
 
-        # Key facts.
+        # 5. Key facts.
         self.facts = KeyValueList()
         inspector.addWidget(self.facts)
 
-        # ------------------------------------------------------- actions
+        # 6. Status actions.
         self.actions_row = QWidget()
         actions = QVBoxLayout(self.actions_row)
         actions.setContentsMargins(0, 0, 0, 0)
@@ -588,6 +671,11 @@ class RoomChangesPage(QWidget):
         actions.addWidget(self.delete_btn)
         inspector.addWidget(self.actions_row)
 
+        # 7. Copy summary button.
+        self.copy_summary_btn = Button(t("room_changes.copy_summary"), "secondary", icon="copy")
+        self.copy_summary_btn.clicked.connect(self.on_copy_summary)
+        inspector.addWidget(self.copy_summary_btn)
+
         inspector.addStretch(1)
         self.inspector_scroll.setWidget(inspector_body)
         self.panel.body.addWidget(self.inspector_scroll, 1)
@@ -597,11 +685,12 @@ class RoomChangesPage(QWidget):
         self.detail_text.setMinimumHeight(S("space-12"))
         self.detail_text.setMaximumHeight(S("space-12") * 2 + S("space-6"))
         self.detail_text.setPlaceholderText("Select a transfer request to inspect the full record…")
+        self.detail_text.setVisible(False)
         theme.enable_tabular(self.detail_text)
         self.panel.body.addWidget(self.detail_text, 0)
 
         # Widgets revealed only while a request is selected.
-        self._selection_widgets = [self.inspector_scroll, self.detail_text]
+        self._selection_widgets = [self.inspector_scroll]
 
         self.splitter.addWidget(self.panel)
         self.splitter.setStretchFactor(0, 3)
@@ -665,15 +754,29 @@ class RoomChangesPage(QWidget):
 
     def _clear_selection_state(self):
         """No selected request: clear the inspector and the action guards."""
+        self._detail_req_id += 1
         self.detail_text.clear()
-        self.target_bar.setVisible(False)
-        self.rejection_card.setVisible(False)
-        self.approve_btn.setEnabled(False)
-        self.approve_btn.setToolTip("Select a request to approve.")
-        self.reject_btn.setEnabled(False)
-        self.reject_btn.setToolTip("Select a request to record a rejection reason.")
-        self.delete_btn.setEnabled(False)
-        self.delete_btn.setToolTip("Select a request to delete it.")
+        if hasattr(self, "facts"):
+            self.facts.clear()
+        if hasattr(self, "motive_block"):
+            self.motive_block.set_text("", is_empty=True)
+        if hasattr(self, "target_bar"):
+            self.target_bar.setVisible(False)
+        if hasattr(self, "rejection_card"):
+            self.rejection_card.setVisible(False)
+        if hasattr(self, "detail_error_banner"):
+            self.detail_error_banner.setVisible(False)
+        if hasattr(self, "approve_btn"):
+            self.approve_btn.setEnabled(False)
+            self.approve_btn.setToolTip("Select a request to approve.")
+        if hasattr(self, "reject_btn"):
+            self.reject_btn.setEnabled(False)
+            self.reject_btn.setToolTip("Select a request to record a rejection reason.")
+        if hasattr(self, "delete_btn"):
+            self.delete_btn.setEnabled(False)
+            self.delete_btn.setToolTip("Select a request to delete it.")
+        if hasattr(self, "copy_summary_btn"):
+            self.copy_summary_btn.setEnabled(False)
         self._show_selection(False)
 
     # ------------------------------------------------------------------ data
@@ -772,6 +875,11 @@ class RoomChangesPage(QWidget):
         local decision. The view key, the search text and the selected request
         id are all preserved.
         """
+        for r in rows or []:
+            rid = r.get("id")
+            if rid:
+                invalidate_detail_cache("room_change", str(rid), client=self.client)
+
         current_by_id = {str(row.get("id")): row for row in self.all_rows}
         incoming = [
             _guard_decision_regression(
@@ -791,6 +899,11 @@ class RoomChangesPage(QWidget):
         self.rows = incoming
         self._render_table(selected_id)
         self.filter_table()
+        if selected_id:
+            for r in self.rows:
+                if str(r.get("id")) == str(selected_id):
+                    self.show_detail()
+                    break
 
     def _render_table(self, selected_id=None):
         """Rebuild the table from ``rows`` and restore the selection by id."""
@@ -819,18 +932,17 @@ class RoomChangesPage(QWidget):
                 self.table.setItem(i, 1, status_item)
                 self.table.setItem(i, 2, reason_item)
                 self.table.setItem(i, 3, date_item)
+
+            if restore_row < 0:
+                self.table.clearSelection()
+                self.table.setCurrentCell(-1, -1)
+                self._clear_selection_state()
         finally:
             self.table.blockSignals(False)
             self.table.setUpdatesEnabled(True)
 
         if restore_row >= 0:
             self.table.selectRow(restore_row)
-        else:
-            # The selected request vanished: clear the stale current index too,
-            # otherwise selected() would resolve to whatever row took its place.
-            self.table.clearSelection()
-            self.table.setCurrentCell(-1, -1)
-            self._clear_selection_state()
 
     # ------------------------------------------------------- background data
     def _fetch_requests(self):
@@ -1069,91 +1181,127 @@ class RoomChangesPage(QWidget):
             self._clear_selection_state()
             return
 
-        self.approve_btn.setEnabled(True)
-        self.approve_btn.setToolTip("")
-        self.reject_btn.setEnabled(True)
-        self.reject_btn.setToolTip("")
-        self.delete_btn.setEnabled(True)
-        self.delete_btn.setToolTip("")
+        self._detail_req_id += 1
+        current_req_id = self._detail_req_id
+        self.detail_error_banner.setVisible(False)
 
+        # 1. Immediate paint with available data from list row
+        self._apply_row_display(r)
+        self._show_selection(True)
+
+        # 2. Enrich off-thread via get_room_change_detail
+        request_id = r.get("id")
+        if request_id and "room_change_selects" not in getattr(self.client, "__dict__", {}):
+            started = self.tasks.run(
+                f"detail:{request_id}",
+                lambda: get_room_change_detail(self.client, request_id),
+                on_success=lambda detail, qid=current_req_id, req_id=request_id: self._on_detail_loaded(qid, req_id, detail),
+                on_failed=lambda err, qid=current_req_id: self._on_detail_failed(qid, err),
+            )
+
+    def _on_detail_loaded(self, qid: int, req_id: str, detail: dict | None):
+        if qid != self._detail_req_id:
+            return
+        if not detail:
+            return
+        current = self.selected()
+        if not current or str(current.get("id")) != str(req_id):
+            return
+        current.update(detail)
+        for row in self.all_rows:
+            if str(row.get("id")) == str(req_id):
+                row.update(detail)
+                break
+        self._apply_row_display(current)
+
+    def _on_detail_failed(self, qid: int, error_msg: str):
+        if qid != self._detail_req_id:
+            return
+        self.detail_error_banner.set_title(t("room_changes.error_detail_title"))
+        self.detail_error_banner.set_message(error_msg or "")
+        self.detail_error_banner.setVisible(True)
+
+    def _retry_detail_fetch(self):
+        r = self.selected()
+        if not r:
+            return
+        request_id = r.get("id")
+        if not request_id:
+            return
+        self._detail_req_id += 1
+        current_req_id = self._detail_req_id
+        self.detail_error_banner.setVisible(False)
+        self.tasks.run(
+            f"detail:{request_id}",
+            lambda: get_room_change_detail(self.client, request_id, force=True),
+            on_success=lambda detail, qid=current_req_id, req_id=request_id: self._on_detail_loaded(qid, req_id, detail),
+            on_failed=lambda err, qid=current_req_id: self._on_detail_failed(qid, err),
+        )
+
+    def _apply_row_display(self, r: dict):
         status = str(r.get("status", "pending"))
         status_kind, status_text = _status_meta(status)
-        if status != "pending":
-            # Processed requests stay inspectable but cannot be decided again.
-            self.approve_btn.setEnabled(False)
-            self.approve_btn.setToolTip("Only pending requests can be approved.")
-            self.reject_btn.setEnabled(False)
-            self.reject_btn.setToolTip("Only pending requests can be rejected.")
         st = _normalise_student(r)
         name = f"{st.get('first_name', '')} {st.get('last_name', '')}".strip() or "Unnamed resident"
 
-        # Resident identity.
+        # Resident identity
         self.avatar.set_name(name)
         self.name_label.setText(name)
         self.meta_label.setText(f"Card ID {st.get('card_id') or '—'}")
         self.status_pill.set_kind(status_kind, status_text)
 
-        # Rooms: requested-room details come from the cache; a miss schedules a
-        # background lookup so selecting a row never blocks on the network.
-        pref_id = r.get("preferred_room_id")
-        room_data = None
-        pref_info = "No specific room requested"
-        if pref_id:
-            pref_key = str(pref_id)
-            if pref_key in self._room_cache:
-                room_data = self._room_cache[pref_key]
-                if room_data:
-                    pref_info = f"Block {room_data['block']} — Room {room_data['number']} (Floor {room_data['floor']})"
-                else:
-                    # Cached lookup failed: keep the raw room reference.
-                    pref_info = f"Room ID: {pref_id}"
-            else:
-                pref_info = f"Room ID: {pref_id}"
-                self._request_room_details(pref_key)
-
+        # Rooms
         current_id = r.get("current_room_id")
-        current_info = f"Room ID: {current_id}" if current_id else "Not recorded"
-        if current_id:
-            self.current_value.setText(_short_id(current_id))
-            self.current_value.setToolTip(str(current_id))
-            self.current_meta.setText("Room reference recorded when the request was filed.")
-        else:
-            self.current_value.setText("Not recorded")
-            self.current_value.setToolTip("")
-            self.current_meta.setText("The request carries no current-room reference.")
+        pref_id = r.get("preferred_room_id")
+        c_room = r.get("current_room")
+        p_room = r.get("preferred_room")
 
-        if room_data:
-            floor = room_data.get("floor")
-            self.target_value.setText(
-                f"Block {room_data.get('block', '—')} — Room {room_data.get('number', '—')}"
-            )
-            self.target_meta.setText(f"Floor {floor}" if floor is not None and str(floor) != "" else "")
-            capacity = room_data.get("capacity")
-            if capacity:
-                self.target_bar.set_values(int(room_data.get("occupied") or 0), int(capacity))
-                self.target_bar.setVisible(True)
-            else:
-                self.target_bar.setVisible(False)
+        c_val, c_meta, c_empty = _format_room_text(c_room, is_target=False, room_id=current_id)
+        self.current_value.setText(c_val)
+        self.current_meta.setText(c_meta)
+        if c_empty:
+            self.current_value.setStyleSheet(f"color: {C('text-muted')}; font-style: italic;")
         else:
-            self.target_value.setText(pref_info)
-            self.target_meta.setText(
-                "The resident did not name a room." if not pref_id else "Room details could not be retrieved."
-            )
+            self.current_value.setStyleSheet("")
+
+        p_val, p_meta, p_empty = _format_room_text(p_room, is_target=True, room_id=pref_id)
+        self.target_value.setText(p_val)
+        self.target_meta.setText(p_meta)
+        if p_empty:
+            self.target_value.setStyleSheet(f"color: {C('text-muted')}; font-style: italic;")
+        else:
+            self.target_value.setStyleSheet("")
+
+        if p_room and p_room.get("capacity"):
+            self.target_bar.set_values(int(p_room.get("occupied") or 0), int(p_room.get("capacity") or 1))
+            self.target_bar.setVisible(True)
+        else:
             self.target_bar.setVisible(False)
 
-        # Stated reason (quoted block).
+        # Stated reason (quoted block)
         reason = str(r.get("reason") or "").strip()
-        self.motive_block.set_text(f"“{reason}”" if reason else "No reason recorded.")
+        self.motive_block.set_text(reason if reason else t("room_changes.no_reason"), is_empty=not bool(reason))
 
-        # Rejection record (desk inquiry reference) — rejected rows only.
+        # Rejection record (desk inquiry reference) — rejected rows only
         decider_name = _staff_name(r)
-        decided_at = _fmt_stamp(r.get("decided_at"))
+        decided_raw = r.get("decided_at")
+        decided_at = _format_dt(decided_raw)
+        raw_stamp = _fmt_raw_stamp(decided_raw)
         decision_note = str(r.get("decision_note") or "").strip()
         is_rejected = status == "rejected"
         self.rejection_card.setVisible(is_rejected)
+
+        current_info = _format_room_summary(c_room, False, current_id)
+        pref_info = _format_room_summary(p_room, True, pref_id)
+
         if is_rejected:
-            self.rejection_body.setText(f"“{decision_note or 'No reason recorded'}”")
-            self.rejection_meta.setText(f"Decided by {decider_name} · {decided_at}")
+            self.rejection_body.setText(f"“{decision_note or t('room_changes.no_reason')}”")
+            meta_parts = [f"Decided by {decider_name}"]
+            if decided_at and decided_at != "—":
+                meta_parts.append(decided_at)
+            if raw_stamp and raw_stamp != "—" and raw_stamp not in meta_parts:
+                meta_parts.append(raw_stamp)
+            self.rejection_meta.setText(" · ".join(meta_parts))
             self.rejection_student_label.setText(
                 f"Student: {name} — Card ID {st.get('card_id') or '—'}"
             )
@@ -1161,76 +1309,153 @@ class RoomChangesPage(QWidget):
                 f"Current room: {current_info} → Requested room: {pref_info}"
             )
             self.rejection_motive_label.setText(
-                f"Student's original motive: “{reason or 'No reason recorded'}”"
+                f"Student's original motive: “{reason or t('room_changes.no_reason')}”"
             )
 
-        # Key facts (raw data only).
+        # Key facts
+        sub_dt = _format_dt(r.get("created_at"))
+        upd_dt = _format_dt(r.get("updated_at"))
         facts = [
-            ("Submitted", _fmt_date(r.get("created_at"))),
-            ("Last update", _fmt_stamp(r.get("updated_at"))),
+            (t("room_changes.submitted"), sub_dt, not bool(r.get("created_at"))),
+            (t("room_changes.last_update"), upd_dt, not bool(r.get("updated_at"))),
         ]
         if status == "pending":
-            facts.append(("Decision note", decision_note or "Awaiting decision"))
+            facts.append((
+                t("room_changes.fact_decision_note"),
+                decision_note or t("room_changes.awaiting_decision"),
+                not bool(decision_note),
+            ))
         else:
-            facts.append(("Decision note", decision_note or "—"))
-            facts.append(("Decided by", decider_name))
-            facts.append(("Decided", decided_at))
+            facts.append((
+                t("room_changes.fact_decision_note"),
+                decision_note or "—",
+                not bool(decision_note),
+            ))
+            facts.append((
+                t("room_changes.fact_decided_by"),
+                decider_name,
+                not bool(r.get("decided_by") or r.get("staff")),
+            ))
+            facts.append((
+                t("room_changes.fact_decided_at"),
+                decided_at if r.get("decided_at") else t("room_changes.not_decided_yet"),
+                not bool(r.get("decided_at")),
+            ))
         self.facts.set_rows(facts)
 
-        # Plain-text record block (the desk reference for inquiries).
+        # Status actions & guards
+        self.approve_btn.setEnabled(True)
+        self.approve_btn.setToolTip("")
+        self.reject_btn.setEnabled(True)
+        self.reject_btn.setToolTip("")
+        self.delete_btn.setEnabled(True)
+        self.delete_btn.setToolTip("")
+        self.copy_summary_btn.setEnabled(True)
+
+        if status != "pending":
+            self.approve_btn.setEnabled(False)
+            self.approve_btn.setToolTip(t("room_changes.only_pending_warning"))
+            self.reject_btn.setEnabled(False)
+            self.reject_btn.setToolTip(t("room_changes.only_pending_warning"))
+
+        if self._working:
+            self.approve_btn.setEnabled(False)
+            self.reject_btn.setEnabled(False)
+            self.delete_btn.setEnabled(False)
+
+        # Plain-text record block (kept hidden, updated for inquiry reference / tests)
+        sub_stamp = _fmt_raw_stamp(r.get("created_at"))
+        dec_stamp = raw_stamp or decided_at
         notes = (
             f"RESIDENT: {name}\n"
             f"Card ID: {st.get('card_id', '—')}\n"
             f"Status: {status_text}\n"
             f"Preferred Room: {pref_info}\n"
-            f"Submitted: {_fmt_stamp(r.get('created_at'))}\n\n"
+            f"Submitted: {sub_stamp}\n\n"
             f"----------------------------------------\n"
             f"STATED REASON FOR TRANSFER:\n{reason}\n\n"
-            f"Decision Note: {r.get('decision_note') or 'None'}\n"
+            f"Decision Note: {decision_note or 'None'}\n"
             f"Decided By: {decider_name}\n"
-            f"Decided At: {decided_at}"
+            f"Decided At: {dec_stamp}"
         )
         if is_rejected:
             notes += (
                 f"\n\n{_REJECTION_OVERLINE}\n"
                 f"Reason: {decision_note or 'No reason recorded'}\n"
                 f"Decided by: {decider_name}\n"
-                f"Decided at: {decided_at}\n"
+                f"Decided at: {dec_stamp}\n"
                 f"Student: {name} | Card ID: {st.get('card_id') or '—'}\n"
                 f"Current room: {current_info} | Requested room: {pref_info}\n"
                 f"Student's original motive: {reason or 'No reason recorded'}"
             )
         self.detail_text.setPlainText(notes)
-        if self._working:
-            # Never re-enable action controls mid-flight (selection changes and
-            # live-sync repaints both call this method).
-            self.approve_btn.setEnabled(False)
-            self.reject_btn.setEnabled(False)
-            self.delete_btn.setEnabled(False)
         self._show_selection(True)
 
-    def on_row_double_clicked(self, row: int, col: int):
+    def _build_copy_summary(self, r: dict) -> str:
+        st = _normalise_student(r)
+        name = f"{st.get('first_name', '')} {st.get('last_name', '')}".strip() or "Unnamed resident"
+        card_id = st.get("card_id") or "—"
+        status = str(r.get("status") or "pending").title()
+        c_room = r.get("current_room")
+        p_room = r.get("preferred_room")
+        c_str = _format_room_summary(c_room, False, r.get("current_room_id"))
+        p_str = _format_room_summary(p_room, True, r.get("preferred_room_id"))
+        sub_str = _format_dt(r.get("created_at"))
+        upd_str = _format_dt(r.get("updated_at"))
+        reason = str(r.get("reason") or "").strip() or "None"
+        decider = _staff_name(r)
+        decided_at = _format_dt(r.get("decided_at"))
+        note = str(r.get("decision_note") or "").strip() or "None"
+
+        lines = [
+            f"RESIDENT: {name} (Card ID: {card_id})",
+            f"STATUS: {status}",
+            f"CURRENT ROOM: {c_str}",
+            f"REQUESTED ROOM: {p_str}",
+            f"SUBMITTED: {sub_str}",
+            f"LAST UPDATE: {upd_str}",
+            f"REASON: {reason}",
+        ]
+        if status.lower() != "pending":
+            lines.extend([
+                f"DECISION NOTE: {note}",
+                f"DECIDED BY: {decider}",
+                f"DECIDED AT: {decided_at}",
+            ])
+        return "\n".join(lines)
+
+    def on_copy_summary(self):
         r = self.selected()
-        if r and r.get("students"):
-            st_raw = r.get("students")
-            if isinstance(st_raw, list) and st_raw:
-                st = dict(st_raw[0])
-            elif isinstance(st_raw, dict):
-                st = dict(st_raw)
-            else:
-                st = {}
-            # The roster lookup is optional data too: fetch it off-thread and
-            # only then open the (unchanged) info card on the GUI thread.
-            student = dict(st)
-            key = f"roster:{student.get('card_id') or id(student)}"
-            if self.tasks.is_busy(key):
-                return
-            self.tasks.run(
-                key,
-                lambda: official_lookup(self.client),
-                on_success=lambda roster, s=student: self._show_info_card(s, roster),
-                on_failed=lambda _message, s=student: self._show_info_card(s, {}),
-            )
+        if not r:
+            return
+        text = self._build_copy_summary(r)
+        cb = QGuiApplication.clipboard()
+        if cb:
+            cb.setText(text)
+        show_toast(self, t("room_changes.summary_copied"), "success", icon="check")
+
+    def _open_student_card(self):
+        r = self.selected()
+        if not r:
+            return
+        st = _normalise_student(r)
+        if not st:
+            return
+        student = dict(st)
+        if "id" not in student and r.get("student_id"):
+            student["id"] = r["student_id"]
+        key = f"roster:{student.get('card_id') or student.get('id') or id(student)}"
+        if self.tasks.is_busy(key):
+            return
+        self.tasks.run(
+            key,
+            lambda: official_lookup(self.client),
+            on_success=lambda roster, s=student: self._show_info_card(s, roster),
+            on_failed=lambda _message, s=student: self._show_info_card(s, {}),
+        )
+
+    def on_row_double_clicked(self, row: int, col: int):
+        self._open_student_card()
 
     # ------------------------------------------------------------- decisions
     def _require_pending(self, request: dict) -> bool:

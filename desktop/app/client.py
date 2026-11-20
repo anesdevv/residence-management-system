@@ -827,6 +827,13 @@ STUDENT_PROFILE_PROJECTION = (
 )
 
 
+def _safe_limit(query, n: int = 1):
+    """Safely apply .limit(n) if supported by the query builder or mock."""
+    if hasattr(query, "limit"):
+        return query.limit(n)
+    return query
+
+
 def get_ticket_detail(client: Client, ticket_id: str | Any, *, force: bool = False) -> dict | None:
     """Fetch complete ticket details by ID with embedded relations.
 
@@ -845,17 +852,16 @@ def get_ticket_detail(client: Client, ticket_id: str | Any, *, force: bool = Fal
 
     with CLIENT_LOCK:
         resp = execute_network_call(
-            lambda: (
+            lambda: _safe_limit(
                 client.table("maintenance_reports")
                 .select(TICKET_DETAIL_PROJECTION)
                 .eq("id", tid)
-                .limit(1)
-                .execute()
-            ),
+            ).execute(),
             is_write=False,
             force=force,
         )
     rows = list(resp.data or []) if getattr(resp, "data", None) else []
+    rows = [r for r in rows if str(r.get("id")) == tid]
     if not rows:
         return None
     ticket = dict(rows[0])
@@ -878,7 +884,7 @@ def get_ticket_detail(client: Client, ticket_id: str | Any, *, force: bool = Fal
         try:
             with CLIENT_LOCK:
                 r_resp = execute_network_call(
-                    lambda: client.table("rooms").select("id, block, floor, number, capacity").eq("id", str(st["room_id"])).limit(1).execute(),
+                    lambda: _safe_limit(client.table("rooms").select("id, block, floor, number, capacity").eq("id", str(st["room_id"]))).execute(),
                     is_write=False,
                     force=force,
                 )
@@ -922,17 +928,16 @@ def get_room_change_detail(client: Client, request_id: str | Any, *, force: bool
 
     with CLIENT_LOCK:
         resp = execute_network_call(
-            lambda: (
+            lambda: _safe_limit(
                 client.table("room_change_requests")
                 .select(ROOM_CHANGE_DETAIL_PROJECTION)
                 .eq("id", rid)
-                .limit(1)
-                .execute()
-            ),
+            ).execute(),
             is_write=False,
             force=force,
         )
     rows = list(resp.data or []) if getattr(resp, "data", None) else []
+    rows = [r for r in rows if str(r.get("id")) == rid]
     if not rows:
         return None
     req = dict(rows[0])
@@ -963,7 +968,7 @@ def get_room_change_detail(client: Client, request_id: str | Any, *, force: bool
         try:
             with CLIENT_LOCK:
                 r_resp = execute_network_call(
-                    lambda: client.table("rooms").select("id, block, floor, number, capacity").eq("id", str(req["current_room_id"])).limit(1).execute(),
+                    lambda: _safe_limit(client.table("rooms").select("id, block, floor, number, capacity").eq("id", str(req["current_room_id"]))).execute(),
                     is_write=False,
                     force=force,
                 )
@@ -984,7 +989,7 @@ def get_room_change_detail(client: Client, request_id: str | Any, *, force: bool
         try:
             with CLIENT_LOCK:
                 r_resp = execute_network_call(
-                    lambda: client.table("rooms").select("id, block, floor, number, capacity").eq("id", str(req["preferred_room_id"])).limit(1).execute(),
+                    lambda: _safe_limit(client.table("rooms").select("id, block, floor, number, capacity").eq("id", str(req["preferred_room_id"]))).execute(),
                     is_write=False,
                     force=force,
                 )
@@ -1022,32 +1027,30 @@ def get_student_profile(client: Client, student_id: str | Any, *, force: bool = 
 
     with CLIENT_LOCK:
         resp = execute_network_call(
-            lambda: (
+            lambda: _safe_limit(
                 client.table("students")
                 .select(STUDENT_PROFILE_PROJECTION)
                 .eq(col, sid)
-                .limit(1)
-                .execute()
-            ),
+            ).execute(),
             is_write=False,
             force=force,
         )
     rows = list(resp.data or []) if getattr(resp, "data", None) else []
+    rows = [r for r in rows if str(r.get(col)) == sid or str(r.get("id")) == sid or str(r.get("card_id")) == sid]
     if not rows and not is_uuid:
         # Fallback to id if card_id lookup yielded nothing
         with CLIENT_LOCK:
             resp = execute_network_call(
-                lambda: (
+                lambda: _safe_limit(
                     client.table("students")
                     .select(STUDENT_PROFILE_PROJECTION)
                     .eq("id", sid)
-                    .limit(1)
-                    .execute()
-                ),
+                ).execute(),
                 is_write=False,
                 force=force,
             )
         rows = list(resp.data or []) if getattr(resp, "data", None) else []
+        rows = [r for r in rows if str(r.get("id")) == sid or str(r.get("card_id")) == sid]
 
     if not rows:
         return None
@@ -1063,7 +1066,7 @@ def get_student_profile(client: Client, student_id: str | Any, *, force: bool = 
         try:
             with CLIENT_LOCK:
                 r_resp = execute_network_call(
-                    lambda: client.table("rooms").select("id, block, floor, number, capacity").eq("id", str(student["room_id"])).limit(1).execute(),
+                    lambda: _safe_limit(client.table("rooms").select("id, block, floor, number, capacity").eq("id", str(student["room_id"]))).execute(),
                     is_write=False,
                     force=force,
                 )

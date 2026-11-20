@@ -702,7 +702,11 @@
         "retry_detail": "Réessayer",
         "loading_detail": "Chargement des détails...",
         "copy_summary": "Copier le résumé",
-        "summary_copied": "Résumé copié"
+        "summary_copied": "Résumé copié",
+        "fact_decision_note": "Note de décision",
+        "fact_decided_by": "Décidé par",
+        "fact_decided_at": "Décidé le",
+        "awaiting_decision": "En attente de décision"
     },
     "rooms": {
         "add_block_btn": "Ajouter un bloc",
