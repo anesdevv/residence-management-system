@@ -297,6 +297,51 @@ def test_rooms_and_blocks_projections_contract(rooms_required_fields, blocks_req
     assert blocks_required_fields.issubset(b_fields)
 
 
+def test_detail_fetchers_projections_contract():
+    """Verify detail fetchers in client.py include all fields required by detail views."""
+    from desktop.app.client import (
+        TICKET_DETAIL_PROJECTION,
+        ROOM_CHANGE_DETAIL_PROJECTION,
+        STUDENT_PROFILE_PROJECTION,
+    )
+
+    # Ticket detail contract
+    ticket_fields = parse_projection_fields(TICKET_DETAIL_PROJECTION)
+    expected_ticket_fields = {
+        "id", "student_id", "category", "description", "photo_path",
+        "status", "staff_note", "handled_by", "created_at", "updated_at",
+    }
+    assert expected_ticket_fields.issubset(ticket_fields)
+    assert "students(" in TICKET_DETAIL_PROJECTION
+    assert "rooms(" in TICKET_DETAIL_PROJECTION
+    assert "staff(" in TICKET_DETAIL_PROJECTION
+
+    # Room change detail contract
+    rc_fields = parse_projection_fields(ROOM_CHANGE_DETAIL_PROJECTION)
+    expected_rc_fields = {
+        "id", "student_id", "current_room_id", "preferred_room_id",
+        "reason", "status", "decision_note", "decided_by", "decided_at",
+        "created_at", "updated_at",
+    }
+    assert expected_rc_fields.issubset(rc_fields)
+    assert "students(" in ROOM_CHANGE_DETAIL_PROJECTION
+    assert "staff(" in ROOM_CHANGE_DETAIL_PROJECTION
+    assert "current_room:rooms!current_room_id(" in ROOM_CHANGE_DETAIL_PROJECTION
+    assert "preferred_room:rooms!preferred_room_id(" in ROOM_CHANGE_DETAIL_PROJECTION
+
+    # Student profile contract
+    student_fields = parse_projection_fields(STUDENT_PROFILE_PROJECTION)
+    expected_student_fields = {
+        "id", "card_id", "first_name", "last_name", "birth_date", "gender",
+        "phone", "email", "university", "faculty", "study_level", "wilaya",
+        "status", "rejection_reason", "room_id", "reviewed_by", "reviewed_at",
+        "created_at", "updated_at",
+    }
+    assert expected_student_fields.issubset(student_fields)
+    assert "rooms(" in STUDENT_PROFILE_PROJECTION
+    assert "staff:reviewed_by(" in STUDENT_PROFILE_PROJECTION
+
+
 # -----------------------------------------------------------------------------
 # Regression Grep Test: No Wildcard Selects in App Code
 # -----------------------------------------------------------------------------

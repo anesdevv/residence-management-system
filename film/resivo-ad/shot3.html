@@ -1,0 +1,248 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>03 — One tap</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  .stage { background: #04101A; }
+
+  .bloom {
+    position: absolute; inset: 0;
+    background: radial-gradient(58vmin 58vmin at 50% 48%, rgba(16, 157, 154, 0.55) 0%, rgba(13, 113, 128, 0.30) 38%, rgba(10, 47, 90, 0.10) 66%, rgba(4, 16, 26, 0) 100%);
+    opacity: 0;
+  }
+  .wash {
+    position: absolute; inset: 0;
+    background: radial-gradient(120vmin 90vmin at 50% 40%, #F2F9FA 0%, #DCEDF0 42%, #BFDDE3 70%, #8FBFC9 100%);
+    opacity: 0;
+  }
+
+  .papers { position: absolute; inset: 0; }
+  .pc {
+    position: absolute; width: 9vmin; height: 11.5vmin;
+    background: linear-gradient(175deg, #FFFFFF, #EDF2F7);
+    border: 0.1vmin solid rgba(11, 27, 51, 0.12);
+    border-radius: 0.4vmin;
+    box-shadow: 0 0.8vmin 2vmin rgba(1, 10, 18, 0.45);
+  }
+  .pc::before {
+    content: ''; position: absolute; left: 16%; right: 16%; top: 22%; bottom: 22%;
+    background: repeating-linear-gradient(to bottom, rgba(11, 27, 51, 0.16) 0 0.2vmin, transparent 0.2vmin 1.5vmin);
+  }
+
+  .phone {
+    position: absolute; left: 50%; top: 50%; width: 35vmin; height: 71vmin;
+    margin-left: -17.5vmin; margin-top: -35.5vmin;
+    border-radius: 5.4vmin;
+    background: linear-gradient(160deg, #16303F 0%, #0B1F2C 52%, #061520 100%);
+    padding: 1.1vmin;
+    box-shadow:
+      inset 0 0 0 0.35vmin rgba(180, 220, 230, 0.22),
+      0 2vmin 6vmin rgba(0, 0, 0, 0.55);
+    transform-origin: 50% 60%;
+  }
+  .screen {
+    position: absolute; inset: 1.1vmin; border-radius: 4.4vmin;
+    background: linear-gradient(178deg, #0D7180 0%, #109D9A 42%, #0CA792 100%);
+    overflow: hidden;
+  }
+  .screen::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(150deg, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0) 42%);
+    pointer-events: none;
+  }
+  .notch {
+    position: absolute; left: 50%; top: 2.1vmin; width: 9vmin; height: 1.9vmin;
+    margin-left: -4.5vmin; border-radius: 2vmin; background: #05121B; z-index: 4;
+  }
+  .veil { position: absolute; inset: 0; background: #061620; z-index: 3; }
+
+  .ui { position: absolute; inset: 0; padding: 5.4vmin 2.4vmin 2.4vmin; }
+  .bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2vmin; opacity: 0; }
+  .bar b { font: 700 2.05vmin/1 Outfit, sans-serif; letter-spacing: 0.16em; color: #FFFFFF; }
+  .bar span { font: 600 1.55vmin/1 Inter, sans-serif; color: rgba(255, 255, 255, 0.72); }
+
+  .card {
+    position: relative; background: #FFFFFF; border-radius: 2.4vmin; padding: 2.4vmin;
+    box-shadow: 0 1.6vmin 3.6vmin rgba(4, 30, 40, 0.35);
+    opacity: 0;
+  }
+  .card .lbl { font: 600 1.5vmin/1 Inter, sans-serif; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
+  .card h3 { margin: 1.2vmin 0 1.6vmin; font: 700 3.5vmin/1 Outfit, sans-serif; color: var(--text-primary); letter-spacing: -0.02em; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 0.7vmin;
+    background: var(--status-ok-bg); color: var(--status-ok); border: 0.15vmin solid var(--status-ok-line);
+    border-radius: 99vmin; padding: 0.62vmin 1.33vmin; font: 600 1.6vmin/1 Inter, sans-serif;
+  }
+  .dot { width: 0.9vmin; height: 0.9vmin; border-radius: 50%; background: currentColor; }
+  .rows { margin-top: 1.8vmin; border-top: 0.14vmin solid var(--border); }
+  .row { display: flex; justify-content: space-between; padding: 1.15vmin 0; border-bottom: 0.14vmin solid var(--border); }
+  .row span { font: 500 1.65vmin/1 Inter, sans-serif; color: var(--text-muted); }
+  .row b { font: 600 1.65vmin/1 Inter, sans-serif; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .cta {
+    margin-top: 2.2vmin; border-radius: 1.4vmin; padding: 1.7vmin; text-align: center;
+    background: var(--navy-800); color: #FFFFFF; font: 600 1.8vmin/1 Inter, sans-serif;
+    box-shadow: 0 1.2vmin 2.4vmin rgba(10, 47, 90, 0.35);
+  }
+  .ok {
+    width: 5.2vmin; height: 5.2vmin; border-radius: 50%;
+    background: var(--status-ok-bg); border: 0.2vmin solid var(--status-ok-line);
+    display: grid; place-items: center; margin: 2vmin auto 0;
+  }
+  .ok i { width: 2.4vmin; height: 1.3vmin; border-left: 0.42vmin solid var(--status-ok); border-bottom: 0.42vmin solid var(--status-ok); transform: rotate(-45deg) translate(0.15vmin, -0.35vmin); display: block; }
+
+  .tapring {
+    position: absolute; left: 50%; top: 46%; width: 8vmin; height: 8vmin; margin: -4vmin 0 0 -4vmin;
+    border: 0.35vmin solid rgba(255, 255, 255, 0.9); border-radius: 50%; opacity: 0; z-index: 5;
+  }
+
+  .type { position: absolute; left: 10.5vmin; bottom: 11vmin; }
+  .rule { width: 9vmin; height: 0.45vmin; background: var(--gold-500); margin-bottom: 3vmin; }
+  .overline { color: var(--navy-700); margin-bottom: 2.2vmin; opacity: 0; }
+  h1 { margin: 0; font-family: Outfit, sans-serif; font-weight: 700; font-size: 11.4vmin; line-height: 0.98; letter-spacing: -0.035em; }
+  .ln { display: block; }
+  .ln span { display: block; transform: translateY(110%); }
+  .sub { margin-top: 2.2vmin; font: 500 2.35vmin/1.4 Inter, sans-serif; color: var(--navy-800); opacity: 0; }
+
+  /* 9:16 — the phone stays centred, the words clear the player UI */
+  @media (aspect-ratio < 1) {
+    .type { left: 8vmin; bottom: 23vmin; }
+    h1 { font-size: 13vmin; }
+    .sub { font-size: 2.9vmin; margin-top: 2.6vmin; }
+  }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="wash" id="wash"></div>
+  <div class="papers" id="papers"></div>
+  <div class="bloom" id="bloom"></div>
+
+  <div class="phone" id="phone">
+    <div class="screen">
+      <div class="notch"></div>
+      <div class="veil" id="veil"></div>
+      <div class="ui">
+        <div class="bar" id="bar"><b>RÉSIVO</b><span>Student pass</span></div>
+        <div class="card" id="card">
+          <div class="lbl">Application</div>
+          <h3>Approved</h3>
+          <span class="pill"><i class="dot"></i>Active resident</span>
+          <div class="rows">
+            <div class="row"><span>Residence</span><b>Bloc B</b></div>
+            <div class="row"><span>Room</span><b>102</b></div>
+            <div class="row"><span>Roster</span><b style="color:#05603A">Matched</b></div>
+          </div>
+          <div class="cta">Open room pass</div>
+        </div>
+
+      </div>
+      <div class="tapring" id="tapring"></div>
+    </div>
+  </div>
+
+  <div class="type">
+    <div class="rule" id="rule"></div>
+    <div class="overline" id="ov">The student</div>
+    <h1>
+      <span class="ln"><span id="l1">One tap.</span></span>
+    </h1>
+    <div class="sub" id="sub">Everything else is automatic.</div>
+  </div>
+  <div class="grain" id="grain"></div>
+</div>
+
+<script type="module">
+import { clamp, mix, ramp, easeOut, easeOut5, easeIn, set, seeded } from './lib.js';
+
+const rnd = seeded(7717);
+const papers = document.getElementById('papers');
+const bits = [];
+for (let i = 0; i < 14; i++) {
+  const d = document.createElement('div');
+  d.className = 'pc';
+  const a = (i / 14) * Math.PI * 2 + rnd() * 0.4;
+  const rad = 38 + rnd() * 26;
+  const x = 50 + Math.cos(a) * rad * 0.72;
+  const y = 47 + Math.sin(a) * rad * 0.42;
+  set(d, { left: x + 'vmin', top: y + 'vmin' });
+  d.dataset.a = a; d.dataset.rad = rad;
+  papers.appendChild(d); bits.push(d);
+}
+
+const bloom = document.getElementById('bloom');
+const wash = document.getElementById('wash');
+const phone = document.getElementById('phone');
+const veil = document.getElementById('veil');
+const bar = document.getElementById('bar');
+const card = document.getElementById('card');
+const okc = document.getElementById('okc');
+const tapring = document.getElementById('tapring');
+const ov = document.getElementById('ov');
+const rule = document.getElementById('rule');
+const l1 = document.getElementById('l1');
+const sub = document.getElementById('sub');
+const grain = document.getElementById('grain');
+
+window.film = {
+  duration: 3,
+  ready: document.fonts.ready,
+  frame(t) {
+    // 1. the phone arrives out of the dark
+    const rise = easeOut5(ramp(t, 0.0, 0.85));
+    phone.style.transform = `translateY(${mix(6, 0, rise)}vmin) scale(${mix(0.94, 1, rise)}) rotate(${mix(-2.4, 0, rise)}deg)`;
+    phone.style.opacity = '1';
+    veil.style.opacity = String(1 - ramp(t, 0.34, 0.78));
+
+    // 2. the screen ignites: teal bloom, then the room turns light
+    bloom.style.opacity = String(ramp(t, 0.42, 0.85));
+    const light = easeOut(ramp(t, 0.85, 2.05));
+    wash.style.opacity = String(light * 0.97);
+    bloom.style.transform = `scale(${1 + 0.25 * light})`;
+    grain.style.opacity = String(mix(0.55, 0.18, light));
+
+    // 3. the paperwork is drawn in and gone
+    for (let i = 0; i < bits.length; i++) {
+      const b = bits[i];
+      const p = easeIn(ramp(t, 0.25 + i * 0.012, 1.15 + i * 0.012));
+      const rad = parseFloat(b.dataset.rad);
+      const a = parseFloat(b.dataset.a);
+      const r2 = rad * (1 - p);
+      const x = 50 + Math.cos(a) * r2 * 0.72;
+      const y = 47 + Math.sin(a) * r2 * 0.42;
+      b.style.left = x + 'vmin';
+      b.style.top = y + 'vmin';
+      b.style.opacity = String((1 - p) * 0.9);
+      b.style.transform = `scale(${mix(1, 0.25, p)}) rotate(${p * 140}deg)`;
+    }
+
+    // 4. the tap
+    const tr = ramp(t, 0.72, 1.15);
+    tapring.style.opacity = String(tr > 0 && tr < 1 ? (1 - tr) * 0.9 : 0);
+    tapring.style.transform = `scale(${0.35 + tr * 2.1})`;
+
+    // 5. the answer lands
+    const inCard = easeOut5(ramp(t, 1.05, 1.5));
+    bar.style.opacity = String(ramp(t, 1.0, 1.3));
+    card.style.opacity = String(ramp(t, 1.05, 1.25));
+    card.style.transform = `translateY(${mix(3, 0, inCard)}vmin)`;
+
+    // 6. type, while the phone drifts up into the light band
+    phone.style.transform = `translateY(${mix(6, 0, rise) - 1.6 * light}vmin) scale(${mix(0.94, 1, rise)}) rotate(${mix(-2.4, 0, rise)}deg)`;
+
+    ov.style.opacity = String(ramp(t, 1.15, 1.6) * 0.95);
+    ov.style.transform = `translateY(${mix(1, 0, easeOut(ramp(t, 1.15, 1.7)))}vmin)`;
+    rule.style.transform = `scaleX(${easeOut5(ramp(t, 1.05, 1.6))})`;
+    rule.style.transformOrigin = 'left center';
+    l1.style.transform = `translateY(${mix(0.42, 0, easeOut5(ramp(t, 1.25, 1.75)))}em)`;
+    l1.style.opacity = String(easeOut5(ramp(t, 1.25, 1.75)));
+    l1.style.color = '#0A2342';
+    sub.style.opacity = String(ramp(t, 1.85, 2.25));
+    sub.style.transform = `translateY(${mix(1.2, 0, easeOut(ramp(t, 1.85, 2.3)))}vmin)`;
+  }
+};
+</script>
+</body>
+</html>

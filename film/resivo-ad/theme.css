@@ -1,0 +1,66 @@
+@font-face { font-family: Outfit; src: url(fonts/outfit-700.woff2) format('woff2'); font-weight: 700; font-display: block; }
+@font-face { font-family: Outfit; src: url(fonts/outfit-600.woff2) format('woff2'); font-weight: 600; font-display: block; }
+@font-face { font-family: Outfit; src: url(fonts/outfit-500.woff2) format('woff2'); font-weight: 500; font-display: block; }
+@font-face { font-family: Inter; src: url(fonts/inter-400.woff2) format('woff2'); font-weight: 400; font-display: block; }
+@font-face { font-family: Inter; src: url(fonts/inter-500.woff2) format('woff2'); font-weight: 500; font-display: block; }
+@font-face { font-family: Inter; src: url(fonts/inter-600.woff2) format('woff2'); font-weight: 600; font-display: block; }
+
+:root {
+  --navy-900: #0A2342;
+  --navy-800: #0A2F5A;
+  --navy-700: #0D436F;
+  --teal-600: #0D7180;
+  --teal-500: #109D9A;
+  --green-500: #0CA792;
+  --gold-500: #E5A853;
+  --gold-300: #F1CE92;
+  --canvas: #F5F8FB;
+  --surface: #FFFFFF;
+  --surface-subtle: #EDF2F7;
+  --border: #DCE4EE;
+  --border-strong: #C5D0DE;
+  --text-primary: #0B1B33;
+  --text-secondary: #44546A;
+  --text-muted: #5B6B82;
+  --text-on-dark: #E6EDF6;
+  --text-on-dark-muted: #9FB3CC;
+  --status-ok: #05603A; --status-ok-bg: #E8F7EF; --status-ok-line: #A9E2C4;
+  --status-pending: #8A4B08; --status-pending-bg: #FFF6E5; --status-pending-line: #F3D49B;
+  --status-progress: #174EA6; --status-progress-bg: #EAF1FD; --status-progress-line: #B9D0F7;
+  --status-danger: #9B1C1C; --status-danger-bg: #FDEDED; --status-danger-line: #F5B9B9;
+  --grad-brand: linear-gradient(135deg, #0A2F5A 0%, #0D7180 55%, #0CA792 100%);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.display { font-family: Outfit, "Segoe UI", system-ui, sans-serif; font-weight: 700; letter-spacing: -0.025em; }
+
+.overline {
+  font: 600 1.95vmin/1 Inter, sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.grain {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}

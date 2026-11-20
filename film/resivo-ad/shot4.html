@@ -1,0 +1,325 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>04 — The console</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  .stage {
+    background:
+      radial-gradient(90vmin 70vmin at 78% 12%, rgba(16, 157, 154, 0.10) 0%, rgba(16, 157, 154, 0) 62%),
+      radial-gradient(80vmin 60vmin at 8% 92%, rgba(10, 47, 90, 0.10) 0%, rgba(10, 47, 90, 0) 60%),
+      linear-gradient(160deg, #F7FAFC 0%, #EDF2F7 58%, #E4EBF3 100%);
+  }
+
+  .app {
+    position: absolute; left: 520px; top: 78px; width: 1320px; height: 924px;
+    background: var(--surface);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 60px 120px -40px rgba(10, 35, 66, 0.45), 0 6px 18px -8px rgba(10, 35, 66, 0.16);
+    overflow: hidden;
+    transform-origin: 30% 40%;
+  }
+  .topline { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, #0A2F5A, #0D7180, #0CA792); }
+
+  .side {
+    position: absolute; left: 0; top: 3px; bottom: 0; width: 250px;
+    background: #0A2342; color: var(--text-on-dark);
+    padding: 22px 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 20px; }
+  .brand img { width: 34px; height: 34px; object-fit: contain; }
+  .brand b { font: 700 19px/1 Outfit, sans-serif; letter-spacing: 0.14em; color: #fff; display: block; }
+  .brand span { font: 500 10.5px/1.3 Inter, sans-serif; color: var(--text-on-dark-muted); letter-spacing: 0.02em; }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav a {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 10px; border-radius: 8px; color: var(--text-on-dark-muted);
+    font: 500 13px/1 Inter, sans-serif;
+  }
+  .nav a.on { background: #10305A; color: #fff; border-left: 3px solid var(--gold-500); padding-left: 7px; }
+  .nav a i { font-style: normal; font: 600 11px/1 Inter, sans-serif; background: rgba(229, 168, 83, 0.18); color: var(--gold-300); padding: 3px 6px; border-radius: 99px; }
+  .me { position: absolute; left: 16px; right: 16px; bottom: 20px; display: flex; gap: 10px; align-items: center; border-top: 1px solid rgba(159, 179, 204, 0.18); padding-top: 14px; }
+  .me .av { width: 34px; height: 34px; border-radius: 50%; background: var(--gold-300); color: var(--navy-900); display: grid; place-items: center; font: 700 12px/1 Inter, sans-serif; }
+  .me b { font: 600 12.5px/1.3 Inter, sans-serif; color: #fff; display: block; }
+  .me span { font: 500 10.5px/1.3 Inter, sans-serif; color: var(--text-on-dark-muted); }
+
+  .main { position: absolute; left: 250px; right: 0; top: 3px; bottom: 0; padding: 24px 30px; }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; }
+  h2 { margin: 0; font: 600 25px/1.2 Outfit, sans-serif; color: var(--text-primary); letter-spacing: -0.01em; }
+  .sub { font: 400 13px/1.4 Inter, sans-serif; color: var(--text-muted); margin-top: 4px; }
+  .live { display: flex; align-items: center; gap: 7px; font: 600 11.5px/1 Inter, sans-serif; color: var(--status-ok); background: var(--status-ok-bg); border: 1px solid var(--status-ok-line); padding: 7px 11px; border-radius: 99px; }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: var(--status-ok); }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 20px; }
+  .kpi { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: #fff; }
+  .kpi .t { font: 500 11.5px/1.3 Inter, sans-serif; color: var(--text-muted); display: flex; align-items: center; gap: 7px; }
+  .kpi .t i { width: 7px; height: 7px; border-radius: 2px; background: var(--teal-500); }
+  .kpi .n { font: 600 30px/1 Outfit, sans-serif; color: var(--text-primary); margin-top: 10px; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  .kpi .d { font: 500 10.5px/1 Inter, sans-serif; color: var(--text-muted); margin-top: 8px; }
+
+  .panel { margin-top: 16px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #fff; }
+  .panel .ph { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .panel .ph b { font: 600 13px/1 Inter, sans-serif; color: var(--text-primary); }
+  .panel .ph span { font: 500 11px/1 Inter, sans-serif; color: var(--text-muted); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font: 600 10px/1 Inter, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); padding: 9px 16px; background: var(--surface-subtle); }
+  td { font: 500 12.5px/1 Inter, sans-serif; color: var(--text-secondary); padding: 11px 16px; border-top: 1px solid var(--border); }
+  td b { color: var(--text-primary); font-weight: 600; }
+  .mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  tr { opacity: 0; }
+
+  .blk span { font: 500 11px/1.3 Inter, sans-serif; color: var(--text-muted); }
+  .blk b { font: 600 15px/1 Outfit, sans-serif; color: var(--text-primary); float: right; font-variant-numeric: tabular-nums; }
+  .blk i { display: block; height: 7px; border-radius: 99px; background: var(--surface-subtle); margin-top: 8px; position: relative; overflow: hidden; }
+  .blk i::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--w); background: var(--c); border-radius: 99px; }
+
+  .evrow { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-top: 1px solid var(--border); }
+  .evrow i { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+  .evrow b { font: 500 12px/1 Inter, sans-serif; color: var(--text-secondary); font-weight: 500; }
+  .evrow span { margin-left: auto; font: 500 11px/1 Inter, sans-serif; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+  .pill { display: inline-flex; width: fit-content; align-items: center; gap: 5px; border-radius: 99px; padding: 4px 8px; font: 600 10.5px/1 Inter, sans-serif; border: 1px solid; }
+  .pill.ok { color: var(--status-ok); background: var(--status-ok-bg); border-color: var(--status-ok-line); }
+  .pill.wait { color: var(--status-pending); background: var(--status-pending-bg); border-color: var(--status-pending-line); }
+  .pill i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+  /* floating ticket */
+  .ticket {
+    position: absolute; left: 1080px; top: 812px; width: 470px;
+    background: #fff; border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: 0 30px 60px -24px rgba(10, 35, 66, 0.5);
+    padding: 14px; display: flex; gap: 12px; align-items: center;
+    opacity: 0;
+  }
+  .ticket .shot { width: 86px; height: 66px; border-radius: 8px; flex: none; overflow: hidden; position: relative;
+    background: linear-gradient(160deg, #123247, #071A27 60%, #0B2C3A); }
+  .ticket .shot::before { content: ''; position: absolute; left: 26px; top: 12px; width: 12px; height: 30px; border-radius: 6px; background: linear-gradient(100deg, #DCE9F2, #7C93A5 60%, #B9CBD9); }
+  .ticket .shot::after { content: ''; position: absolute; left: 31px; top: 42px; width: 3px; height: 3px; border-radius: 50%; background: #9FE3EC; box-shadow: 0 0 7px #6FD3DF; }
+  .ticket .tx { min-width: 0; flex: 1; }
+  .ticket .tx b { display: block; font: 600 13px/1.35 Inter, sans-serif; color: var(--text-primary); }
+  .ticket .tx span { display: block; font: 500 11px/1.4 Inter, sans-serif; color: var(--text-muted); margin: 3px 0 7px; }
+
+  .col { position: absolute; left: 92px; top: 250px; width: 360px; }
+  .rule { width: 62px; height: 4px; background: var(--gold-500); margin-bottom: 26px; }
+  .overline { color: var(--teal-600); margin-bottom: 18px; opacity: 0; }
+  h1 { margin: 0; font: 700 60px/1.03 Outfit, sans-serif; letter-spacing: -0.03em; color: var(--navy-800); }
+  .ln { display: block; }
+  .ln span { display: block; transform: translateY(110%); }
+  .bl { display: flex; gap: 11px; align-items: flex-start; margin-top: 22px; opacity: 0; }
+  .bl .ck { width: 21px; height: 21px; border-radius: 50%; background: var(--status-ok-bg); border: 1px solid var(--status-ok-line); flex: none; position: relative; }
+  .bl .ck::after { content: ''; position: absolute; left: 6px; top: 6px; width: 8px; height: 4px; border-left: 2px solid var(--status-ok); border-bottom: 2px solid var(--status-ok); transform: rotate(-45deg); }
+  .bl p { margin: 2px 0 0; font: 500 16px/1.35 Inter, sans-serif; color: var(--text-secondary); }
+  .bl b { color: var(--text-primary); font-weight: 600; }
+
+  /* 9:16 — headline on top, the console beneath it at frame width, the ticket below */
+  @media (aspect-ratio < 1) {
+    .col { left: 74px; top: 84px; width: 720px; }
+    .col h1 { font-size: 55px; }
+    .col .rule { margin-bottom: 20px; }
+    .col .overline { margin-bottom: 14px; }
+    .bl { margin-top: 14px; }
+    .bl p { font-size: 15px; }
+    .app { left: 50%; top: 52%; transform-origin: 50% 50%; }
+    .ticket { left: 50%; top: 74%; }
+  }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+
+  <div class="app" id="app">
+    <div class="topline"></div>
+    <div class="side">
+      <div class="brand">
+        <img src="assets/mark-white.png" alt="">
+        <div><b>RÉSIVO</b><span>Cité universitaire · Tlemcen</span></div>
+      </div>
+      <div class="nav">
+        <a class="on">Overview</a>
+        <a>Pending accounts <i>24</i></a>
+        <a>Residents</a>
+        <a>Rooms</a>
+        <a>Maintenance <i>9</i></a>
+        <a>Room changes</a>
+        <a>Official list</a>
+        <a>Settings</a>
+      </div>
+      <div class="me">
+        <div class="av">AM</div>
+        <div><b>Dr. A. Mansouri</b><span>Housing staff</span></div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="head">
+        <div>
+          <h2>Overview</h2>
+          <div class="sub">Campus operations at a glance</div>
+        </div>
+        <div class="live"><i></i>Live sync · 2 s</div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="t"><i></i>Pending applications</div><div class="n" id="k1">0</div><div class="d">Awaiting review</div></div>
+        <div class="kpi"><div class="t"><i style="background:#E5A853"></i>Open tickets</div><div class="n" id="k2">0</div><div class="d">Still unresolved</div></div>
+        <div class="kpi"><div class="t"><i style="background:#0A2F5A"></i>Occupied beds</div><div class="n" id="k3">0</div><div class="d">Residents housed</div></div>
+        <div class="kpi"><div class="t"><i style="background:#0CA792"></i>Room changes</div><div class="n" id="k4">0</div><div class="d">Awaiting decision</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><b>Pending applications</b><span>Cross-checked with the official roster</span></div>
+        <table>
+          <thead><tr><th>Student</th><th>Card ID</th><th>Faculty</th><th>Verification</th></tr></thead>
+          <tbody>
+            <tr id="r1"><td><b>Yasmine Mansouri</b></td><td class="mono">202437010002</td><td>Medicine</td><td><span class="pill ok"><i></i>Roster match</span></td></tr>
+            <tr id="r2"><td><b>Amine Benali</b></td><td class="mono">202437010001</td><td>Technology</td><td><span class="pill ok"><i></i>Roster match</span></td></tr>
+            <tr id="r3"><td><b>Sarah Saidi</b></td><td class="mono">202437010004</td><td>Economics</td><td><span class="pill ok"><i></i>Roster match</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel" id="occ" style="opacity:0">
+        <div class="ph"><b>Occupancy by block</b><span>Beds occupied per residential block</span></div>
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:18px; padding:16px">
+          <div class="blk"><span>Bloc A</span><b>92%</b><i style="--w:92%; --c:#0D7180"></i></div>
+          <div class="blk"><span>Bloc B</span><b>78%</b><i style="--w:78%; --c:#109D9A"></i></div>
+          <div class="blk"><span>Bloc C</span><b>64%</b><i style="--w:64%; --c:#0CA792"></i></div>
+          <div class="blk"><span>Bloc D</span><b>41%</b><i style="--w:41%; --c:#E5A853"></i></div>
+        </div>
+      </div>
+
+      <div class="panel" id="ev" style="opacity:0">
+        <div class="ph"><b>Recent events</b><span>Live sync · newest first</span></div>
+        <div class="evrow"><i style="background:#109D9A"></i><b>New application — Yasmine M.</b><span>2 s ago</span></div>
+        <div class="evrow"><i style="background:#0CA792"></i><b>Ticket resolved — Bloc B · 102</b><span>18 s ago</span></div>
+        <div class="evrow"><i style="background:#E5A853"></i><b>Room change requested — Bloc C</b><span>41 s ago</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ticket" id="ticket">
+    <div class="shot"></div>
+    <div class="tx">
+      <b>Leaking tap — Bloc B · 102</b>
+      <span>Photo attached · assigned to maintenance</span>
+      <span class="pill wait" id="tstate"><i></i>In progress</span>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="rule" id="rule"></div>
+    <div class="overline" id="ov">The residence</div>
+    <h1>
+      <span class="ln"><span id="l1">The whole</span></span>
+      <span class="ln"><span id="l2">residence,</span></span>
+      <span class="ln"><span id="l3">live.</span></span>
+    </h1>
+    <div class="bl" id="b1"><div class="ck"></div><p><b>Roster-verified</b> applications</p></div>
+    <div class="bl" id="b2"><div class="ck"></div><p><b>Photo-backed</b> maintenance</p></div>
+    <div class="bl" id="b3"><div class="ck"></div><p><b>Live</b> room occupancy</p></div>
+  </div>
+
+  <div class="grain" style="opacity:.22"></div>
+</div>
+
+<script type="module">
+import { clamp, mix, ramp, easeOut, easeOut5, set, isVertical } from './lib.js';
+
+const V = isVertical();
+
+const app = document.getElementById('app');
+const ticket = document.getElementById('ticket');
+const occ = document.getElementById('occ');
+const ev = document.getElementById('ev');
+const tstate = document.getElementById('tstate');
+const k = ['k1', 'k2', 'k3', 'k4'].map(id => document.getElementById(id));
+const rows = ['r1', 'r2', 'r3'].map(id => document.getElementById(id));
+const ov = document.getElementById('ov');
+const rule = document.getElementById('rule');
+const l = ['l1', 'l2', 'l3'].map(id => document.getElementById(id));
+const bl = ['b1', 'b2', 'b3'].map(id => document.getElementById(id));
+const targets = [24, 9, 1284, 3];
+
+window.film = {
+  duration: 5,
+  ready: document.fonts.ready,
+  frame(t) {
+    // the console settles in, then keeps pushing in
+    const inA = easeOut5(ramp(t, 0, 0.9));
+    const push = ramp(t, 0.9, 5);
+    const scale = mix(0.955, 1, inA) * (1 + 0.028 * easeOut(push));
+    app.style.transform = V
+      ? `translate(-50%, -50%) scale(${(scale * 0.78).toFixed(4)})`
+      : `scale(${scale}) translate(${mix(-1.4, 0.5, easeOut(push))}%, ${mix(1.0, -0.6, easeOut(push))}%)`;
+    app.style.opacity = '1';
+
+    // counters
+    for (let i = 0; i < 4; i++) {
+      const p = easeOut(ramp(t, 0.15 + i * 0.08, 1.15 + i * 0.08));
+      k[i].textContent = Math.round(targets[i] * p).toLocaleString('en-US');
+    }
+
+    // rows arrive
+    for (let i = 0; i < 3; i++) {
+      const p = easeOut5(ramp(t, 1.0 + i * 0.13, 1.42 + i * 0.13));
+      rows[i].style.opacity = String(p);
+      rows[i].style.transform = `translateY(${mix(8, 0, p)}px)`;
+    }
+
+    // the maintenance ticket slides in, then resolves
+    const tp = easeOut5(ramp(t, 2.25, 2.7));
+    ticket.style.opacity = String(tp);
+    ticket.style.transform = V
+      ? `translate(calc(-50% + ${mix(40, 0, tp).toFixed(1)}px), ${mix(10, 0, tp).toFixed(1)}px)`
+      : `translate(${mix(46, 0, tp).toFixed(1)}px, ${mix(12, 0, tp).toFixed(1)}px)`;
+
+    // occupancy panel fades up under the table
+    const op = easeOut(ramp(t, 1.4, 1.9));
+    occ.style.opacity = String(op);
+    occ.style.transform = `translateY(${mix(10, 0, op)}px)`;
+    occ.querySelectorAll('.blk i').forEach((bar, i) => {
+      const w = [92, 78, 64, 41][i];
+      const q = easeOut5(ramp(t, 1.5 + i * 0.09, 2.3 + i * 0.09));
+      bar.style.setProperty('--w', (w * q).toFixed(1) + '%');
+    });
+
+    // recent events
+    const evp = easeOut(ramp(t, 2.0, 2.5));
+    ev.style.opacity = String(evp);
+    ev.style.transform = `translateY(${mix(10, 0, evp)}px)`;
+    ev.querySelectorAll('.evrow').forEach((row, i) => {
+      const q = ramp(t, 2.0 + i * 0.18, 2.3 + i * 0.18);
+      row.style.opacity = String(q);
+    });
+    const done = ramp(t, 3.15, 3.45);
+    if (done > 0) {
+      tstate.className = 'pill ok';
+      tstate.innerHTML = '<i></i>Resolved';
+      tstate.style.transform = `scale(${mix(1.16, 1, easeOut(done))})`;
+    } else {
+      tstate.className = 'pill wait';
+      tstate.innerHTML = '<i></i>In progress';
+    }
+
+    // type
+    ov.style.opacity = String(ramp(t, 0.2, 0.75) * 0.96);
+    ov.style.transform = `translateY(${mix(1, 0, easeOut(ramp(t, 0.2, 0.8)))}vmin)`;
+    rule.style.transform = `scaleX(${easeOut5(ramp(t, 0.05, 0.6))})`;
+    rule.style.transformOrigin = 'left center';
+    for (let i = 0; i < 3; i++) {
+      l[i].style.transform = `translateY(${mix(0.42, 0, easeOut5(ramp(t, 0.3 + i * 0.1, 0.95 + i * 0.1)))}em)`;
+    l[i].style.opacity = String(easeOut5(ramp(t, 0.3 + i * 0.1, 0.95 + i * 0.1)));
+    }
+    for (let i = 0; i < 3; i++) {
+      const p = ramp(t, 1.5 + i * 0.95, 1.85 + i * 0.95);
+      bl[i].style.opacity = String(p);
+      bl[i].style.transform = `translateY(${mix(10, 0, easeOut(p))}px)`;
+    }
+  }
+};
+</script>
+</body>
+</html>

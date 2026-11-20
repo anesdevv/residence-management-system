@@ -3,6 +3,7 @@ import time
 import logging
 import re
 import threading
+from typing import Any
 
 from supabase import create_client, Client
 from supabase.lib.client_options import ClientOptions
@@ -766,3 +767,283 @@ def warm_connection(
             pg_session.head(f"{pg_url_str.rstrip('/')}/", timeout=timeout)
     except Exception:
         pass
+
+
+# ---------------------------------------------------------------------------
+# Detail Fetchers (One Source of Truth Per Detail View)
+# ---------------------------------------------------------------------------
+
+TICKET_DETAIL_PROJECTION = (
+    "id, student_id, category, description, photo_path, status, "
+    "staff_note, handled_by, created_at, updated_at, "
+    "students(id, card_id, first_name, last_name, gender, phone, email, status, room_id, "
+    "rooms(id, block, floor, number, capacity)), "
+    "staff(id, full_name, position)"
+)
+
+ROOM_CHANGE_DETAIL_PROJECTION = (
+    "id, student_id, current_room_id, preferred_room_id, reason, status, "
+    "decision_note, decided_by, decided_at, created_at, updated_at, "
+    "students(id, card_id, first_name, last_name, gender, phone, email, status), "
+    "staff(id, full_name, position), "
+    "current_room:rooms!current_room_id(id, block, floor, number, capacity), "
+    "preferred_room:rooms!preferred_room_id(id, block, floor, number, capacity)"
+)
+
+STUDENT_PROFILE_PROJECTION = (
+    "id, card_id, first_name, last_name, birth_date, gender, phone, email, "
+    "university, faculty, study_level, wilaya, status, rejection_reason, "
+    "room_id, reviewed_by, reviewed_at, created_at, updated_at, "
+    "rooms(id, block, floor, number, capacity), "
+    "staff:reviewed_by(id, full_name, position)"
+)
+
+
+def get_ticket_detail(client: Client, ticket_id: str | Any, *, force: bool = False) -> dict | None:
+    """Fetch complete ticket details by ID with embedded relations.
+
+    Includes student summary, assigned room, and handling staff member.
+    """
+    if not ticket_id:
+        return None
+    tid = str(ticket_id).strip()
+    with CLIENT_LOCK:
+        resp = execute_network_call(
+            lambda: (
+                client.table("maintenance_reports")
+                .select(TICKET_DETAIL_PROJECTION)
+                .eq("id", tid)
+                .limit(1)
+                .execute()
+            ),
+            is_write=False,
+            force=force,
+        )
+    rows = list(resp.data or []) if getattr(resp, "data", None) else []
+    if not rows:
+        return None
+    ticket = dict(rows[0])
+
+    # Normalize student embed
+    st = ticket.get("students")
+    if isinstance(st, list) and st:
+        st = st[0]
+    elif not isinstance(st, dict):
+        st = {}
+    ticket["students"] = st
+
+    # Normalize room embed
+    room = st.get("rooms")
+    if isinstance(room, list) and room:
+        room = room[0]
+    elif not isinstance(room, dict):
+        room = None
+    if room is None and st.get("room_id"):
+        try:
+            with CLIENT_LOCK:
+                r_resp = execute_network_call(
+                    lambda: client.table("rooms").select("id, block, floor, number, capacity").eq("id", str(st["room_id"])).limit(1).execute(),
+                    is_write=False,
+                    force=force,
+                )
+            r_data = list(r_resp.data or []) if getattr(r_resp, "data", None) else []
+            if r_data:
+                room = dict(r_data[0])
+        except Exception:
+            pass
+    ticket["room"] = room
+    ticket["rooms"] = room
+
+    # Normalize staff embed
+    staff_obj = ticket.get("staff")
+    if isinstance(staff_obj, list) and staff_obj:
+        staff_obj = staff_obj[0]
+    elif not isinstance(staff_obj, dict):
+        staff_obj = None
+    ticket["staff"] = staff_obj
+
+    return ticket
+
+
+def get_room_change_detail(client: Client, request_id: str | Any, *, force: bool = False) -> dict | None:
+    """Fetch complete room change request details by ID with embedded relations.
+
+    Includes student summary, deciding staff member, current room, and preferred room.
+    """
+    if not request_id:
+        return None
+    rid = str(request_id).strip()
+    with CLIENT_LOCK:
+        resp = execute_network_call(
+            lambda: (
+                client.table("room_change_requests")
+                .select(ROOM_CHANGE_DETAIL_PROJECTION)
+                .eq("id", rid)
+                .limit(1)
+                .execute()
+            ),
+            is_write=False,
+            force=force,
+        )
+    rows = list(resp.data or []) if getattr(resp, "data", None) else []
+    if not rows:
+        return None
+    req = dict(rows[0])
+
+    # Normalize student embed
+    st = req.get("students")
+    if isinstance(st, list) and st:
+        st = st[0]
+    elif not isinstance(st, dict):
+        st = {}
+    req["students"] = st
+
+    # Normalize staff embed
+    staff_obj = req.get("staff")
+    if isinstance(staff_obj, list) and staff_obj:
+        staff_obj = staff_obj[0]
+    elif not isinstance(staff_obj, dict):
+        staff_obj = None
+    req["staff"] = staff_obj
+
+    # Normalize current room
+    c_room = req.get("current_room")
+    if isinstance(c_room, list) and c_room:
+        c_room = c_room[0]
+    elif not isinstance(c_room, dict):
+        c_room = None
+    if c_room is None and req.get("current_room_id"):
+        try:
+            with CLIENT_LOCK:
+                r_resp = execute_network_call(
+                    lambda: client.table("rooms").select("id, block, floor, number, capacity").eq("id", str(req["current_room_id"])).limit(1).execute(),
+                    is_write=False,
+                    force=force,
+                )
+            r_data = list(r_resp.data or []) if getattr(r_resp, "data", None) else []
+            if r_data:
+                c_room = dict(r_data[0])
+        except Exception:
+            pass
+    req["current_room"] = c_room
+
+    # Normalize preferred room
+    p_room = req.get("preferred_room")
+    if isinstance(p_room, list) and p_room:
+        p_room = p_room[0]
+    elif not isinstance(p_room, dict):
+        p_room = None
+    if p_room is None and req.get("preferred_room_id"):
+        try:
+            with CLIENT_LOCK:
+                r_resp = execute_network_call(
+                    lambda: client.table("rooms").select("id, block, floor, number, capacity").eq("id", str(req["preferred_room_id"])).limit(1).execute(),
+                    is_write=False,
+                    force=force,
+                )
+            r_data = list(r_resp.data or []) if getattr(r_resp, "data", None) else []
+            if r_data:
+                p_room = dict(r_data[0])
+        except Exception:
+            pass
+    req["preferred_room"] = p_room
+
+    return req
+
+
+def get_student_profile(client: Client, student_id: str | Any, *, force: bool = False) -> dict | None:
+    """Fetch complete student profile by student ID or card ID with embedded relations.
+
+    Includes room assignment, reviewing staff member, and official roster cross-check.
+    """
+    if not student_id:
+        return None
+    sid = str(student_id).strip()
+    is_uuid = bool(re.match(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", sid))
+    col = "id" if is_uuid else "card_id"
+
+    with CLIENT_LOCK:
+        resp = execute_network_call(
+            lambda: (
+                client.table("students")
+                .select(STUDENT_PROFILE_PROJECTION)
+                .eq(col, sid)
+                .limit(1)
+                .execute()
+            ),
+            is_write=False,
+            force=force,
+        )
+    rows = list(resp.data or []) if getattr(resp, "data", None) else []
+    if not rows and not is_uuid:
+        # Fallback to id if card_id lookup yielded nothing
+        with CLIENT_LOCK:
+            resp = execute_network_call(
+                lambda: (
+                    client.table("students")
+                    .select(STUDENT_PROFILE_PROJECTION)
+                    .eq("id", sid)
+                    .limit(1)
+                    .execute()
+                ),
+                is_write=False,
+                force=force,
+            )
+        rows = list(resp.data or []) if getattr(resp, "data", None) else []
+
+    if not rows:
+        return None
+    student = dict(rows[0])
+
+    # Normalize room
+    room = student.get("rooms")
+    if isinstance(room, list) and room:
+        room = room[0]
+    elif not isinstance(room, dict):
+        room = None
+    if room is None and student.get("room_id"):
+        try:
+            with CLIENT_LOCK:
+                r_resp = execute_network_call(
+                    lambda: client.table("rooms").select("id, block, floor, number, capacity").eq("id", str(student["room_id"])).limit(1).execute(),
+                    is_write=False,
+                    force=force,
+                )
+            r_data = list(r_resp.data or []) if getattr(r_resp, "data", None) else []
+            if r_data:
+                room = dict(r_data[0])
+        except Exception:
+            pass
+    student["rooms"] = room
+    student["room"] = room
+
+    # Normalize reviewing staff
+    staff_obj = student.get("staff")
+    if isinstance(staff_obj, list) and staff_obj:
+        staff_obj = staff_obj[0]
+    elif not isinstance(staff_obj, dict):
+        staff_obj = None
+    student["staff"] = staff_obj
+
+    # Roster match cross-check
+    card_id = student.get("card_id")
+    roster_map = official_lookup(client, force=force)
+    official_row = roster_map.get(card_id) if card_id else None
+
+    differing_fields: list[str] = []
+    if official_row:
+        roster_match = True
+        for field in ("first_name", "last_name", "birth_date", "gender", "university", "faculty"):
+            s_val = str(student.get(field) or "").strip().lower()
+            o_val = str(official_row.get(field) or "").strip().lower()
+            if s_val != o_val:
+                differing_fields.append(field)
+    else:
+        roster_match = False
+
+    student["roster_match"] = roster_match
+    student["official_roster"] = official_row
+    student["roster_differing_fields"] = differing_fields
+
+    return student
+

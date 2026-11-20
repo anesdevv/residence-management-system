@@ -1,0 +1,206 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>05 — Benefits</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  .stage { background: #08243C; }
+
+  .bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, #0A2F5A 0%, #0D3F63 40%, #0D7180 100%);
+  }
+  .glow {
+    position: absolute; width: 120vmin; height: 120vmin; border-radius: 50%;
+    background: radial-gradient(circle, rgba(16, 157, 154, 0.55) 0%, rgba(16, 157, 154, 0.12) 45%, rgba(16, 157, 154, 0) 70%);
+    filter: blur(0.5vmin);
+  }
+  .mesh {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(230, 237, 246, 0.045) 0.14vmin, transparent 0.14vmin),
+      linear-gradient(90deg, rgba(230, 237, 246, 0.045) 0.14vmin, transparent 0.14vmin);
+    background-size: 12vmin 12vmin;
+    mask-image: radial-gradient(70vmin 60vmin at 66% 50%, #000 12%, transparent 78%);
+  }
+
+  .slides { position: absolute; inset: 0; }
+  .slide {
+    position: absolute; left: 12vmin; top: 50%; width: 100vmin;
+    transform: translateY(-50%);
+    opacity: 0;
+  }
+  .idx {
+    font: 600 1.9vmin/1 Inter, sans-serif; letter-spacing: 0.24em; color: var(--gold-300);
+    margin-bottom: 2.4vmin; display: flex; align-items: center; gap: 1.4vmin;
+  }
+  .idx::after { content: ''; width: 7vmin; height: 0.12vmin; background: rgba(241, 206, 146, 0.5); }
+  h1 {
+    margin: 0; font-family: Outfit, sans-serif; font-weight: 700; color: #FFFFFF;
+    font-size: 10.5vmin; line-height: 1.0; letter-spacing: -0.035em;
+  }
+  .sub { margin-top: 2.6vmin; font: 500 2.9vmin/1.35 Inter, sans-serif; color: rgba(230, 237, 246, 0.78); }
+  .ln { display: block; }
+  .ln span { display: block; }
+
+  .artwrap {
+    position: absolute; right: 16vmin; top: 50%; width: 46vmin; height: 46vmin;
+    transform: translateY(-50%);
+  }
+  .art { position: absolute; inset: 0; }
+  .ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 0.16vmin solid rgba(230, 237, 246, 0.22);
+  }
+  .ring:nth-child(2) { inset: 6vmin; border-color: rgba(230, 237, 246, 0.16); }
+  .ring:nth-child(3) { inset: 12vmin; border-color: rgba(230, 237, 246, 0.10); }
+  .glyph {
+    position: absolute; inset: 15vmin;
+    display: grid; place-items: center;
+  }
+  .glyph svg { width: 100%; height: 100%; }
+
+  .bar {
+    position: absolute; left: 12vmin; right: 12vmin; bottom: 10vmin; height: 0.3vmin;
+    display: flex; gap: 1vmin;
+  }
+  .seg { flex: 1; background: rgba(230, 237, 246, 0.16); overflow: hidden; border-radius: 1vmin; }
+  .seg i { display: block; height: 100%; width: 0; background: var(--gold-500); }
+  .foot {
+    position: absolute; left: 12vmin; bottom: 5.6vmin;
+    font: 600 1.7vmin/1 Inter, sans-serif; letter-spacing: 0.2em; text-transform: uppercase;
+    color: rgba(230, 237, 246, 0.45);
+  }
+
+  /* 9:16 — the art sits above the words, the captions clear the player UI */
+  @media (aspect-ratio < 1) {
+    .artwrap { left: 50%; right: auto; top: 27%; width: 34vmin; height: 34vmin; transform: translate(-50%, -50%); }
+    .slide { left: 9vmin; width: 84vmin; top: 59%; }
+    h1 { font-size: 9.4vmin; }
+    .sub { font-size: 3.1vmin; }
+    .bar { left: 9vmin; right: 9vmin; bottom: 21vmin; }
+    .foot { left: 9vmin; bottom: 26vmin; }
+  }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="bg"></div>
+  <div class="glow" id="glow"></div>
+  <div class="mesh"></div>
+
+  <div class="slides" id="slides">
+    <div class="slide">
+      <div class="idx">01 — Applications</div>
+      <h1><span class="ln"><span>Verified.</span></span></h1>
+      <div class="sub">Every application matched against the official university roster.</div>
+    </div>
+    <div class="slide">
+      <div class="idx">02 — Maintenance</div>
+      <h1><span class="ln"><span>Photographed.</span></span></h1>
+      <div class="sub">A photo, a ticket, a technician — and a record of the fix.</div>
+    </div>
+    <div class="slide">
+      <div class="idx">03 — Occupancy</div>
+      <h1><span class="ln"><span>Live.</span></span></h1>
+      <div class="sub">Beds, rooms and blocks, updated every two seconds.</div>
+    </div>
+    <div class="slide">
+      <div class="idx">04 — The console</div>
+      <h1><span class="ln"><span>One console.</span></span></h1>
+      <div class="sub">The whole residence on a single screen.</div>
+    </div>
+  </div>
+
+  <div class="artwrap">
+    <div class="art" id="art">
+      <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+      <div class="glyph" id="glyph"></div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <div class="seg"><i id="s0"></i></div>
+    <div class="seg"><i id="s1"></i></div>
+    <div class="seg"><i id="s2"></i></div>
+    <div class="seg"><i id="s3"></i></div>
+  </div>
+  <div class="foot">RÉSIVO — Student housing, handled</div>
+  <div class="grain" style="opacity:.3"></div>
+</div>
+
+<script type="module">
+import { mix, ramp, easeOut, easeOut5, easeIn, set, isVertical } from './lib.js';
+
+const V = isVertical();
+
+const GLYPHS = [
+  // shield + check
+  `<svg viewBox="0 0 100 100" fill="none"><path d="M50 10 L84 24 V52 C84 70 69 84 50 90 C31 84 16 70 16 52 V24 Z" stroke="#F1CE92" stroke-width="3.4" stroke-linejoin="round"/><path d="M34 50 L45 61 L67 39" stroke="#FFFFFF" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  // camera
+  `<svg viewBox="0 0 100 100" fill="none"><rect x="12" y="30" width="76" height="52" rx="10" stroke="#F1CE92" stroke-width="3.4"/><path d="M34 30 L40 19 H60 L66 30" stroke="#F1CE92" stroke-width="3.4" stroke-linejoin="round"/><circle cx="50" cy="56" r="15" stroke="#FFFFFF" stroke-width="3.4"/><circle cx="50" cy="56" r="6" fill="#FFFFFF"/></svg>`,
+  // buildings + bars
+  `<svg viewBox="0 0 100 100" fill="none"><rect x="14" y="34" width="20" height="52" rx="3" stroke="#F1CE92" stroke-width="3.2"/><rect x="40" y="20" width="20" height="66" rx="3" stroke="#F1CE92" stroke-width="3.2"/><rect x="66" y="44" width="20" height="42" rx="3" stroke="#F1CE92" stroke-width="3.2"/><path d="M45 32 H55 M45 44 H55 M45 56 H55" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/><path d="M19 46 H29 M19 58 H29" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/></svg>`,
+  // console window
+  `<svg viewBox="0 0 100 100" fill="none"><rect x="10" y="20" width="80" height="60" rx="8" stroke="#F1CE92" stroke-width="3.4"/><path d="M10 34 H90" stroke="#F1CE92" stroke-width="3.4"/><rect x="18" y="43" width="20" height="29" rx="3" fill="#FFFFFF" opacity=".9"/><path d="M46 46 H82 M46 56 H74 M46 66 H80" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round"/></svg>`
+];
+
+const slides = [...document.querySelectorAll('.slide')];
+const glyph = document.getElementById('glyph');
+const glow = document.getElementById('glow');
+const segs = [0, 1, 2, 3].map(i => document.getElementById('s' + i));
+const art = document.getElementById('art');
+const BEAT = 0.75;
+
+window.film = {
+  duration: 3,
+  ready: document.fonts.ready,
+  frame(t) {
+    const i = Math.min(3, Math.floor(t / BEAT));
+    const p = (t - i * BEAT) / BEAT;   // 0..1 inside the beat
+
+    for (let n = 0; n < 4; n++) {
+      const s = slides[n];
+      if (n === i) {
+        const ein = easeOut(Math.min(1, p / 0.9));
+        const out = easeIn(Math.max(0, (p - 0.86) / 0.14));
+        s.style.opacity = String(1 - out * 0.85);
+        s.style.transform = `translateY(calc(-50% + ${(2.4 - 2.4 * ein - out * 3.4).toFixed(2)}vmin))`;
+        s.style.filter = `blur(${out * 0.55}vmin)`;
+        s.style.zIndex = '3';
+      } else if (n === i - 1) {
+        const out = easeIn(Math.min(1, p / 0.16));
+        s.style.opacity = String(1 - out);
+        s.style.transform = `translateY(calc(-50% - ${out * 4}vmin))`;
+        s.style.filter = `blur(${out * 0.6}vmin)`;
+        s.style.zIndex = '2';
+      } else {
+        s.style.opacity = '0';
+        s.style.zIndex = '0';
+      }
+    }
+
+    // the art follows the beat: one glyph, cut, with a quarter turn
+    glyph.innerHTML = GLYPHS[i];
+    const gp = easeOut(Math.min(1, p / 0.5));
+    art.style.opacity = String(0.35 + 0.65 * gp);
+    art.style.transform = `rotate(${mix(-8, 0, gp) + i * 1.5}deg) scale(${mix(0.94, 1, gp)})`;
+
+    // glow drifts to the art side, warmer each beat
+    const gx = 62 + i * 4;
+    glow.style.left = V ? `calc(50% - 60vmin)` : `calc(${gx}% - 60vmin)`;
+    glow.style.top = V ? `calc(27% - 60vmin)` : `calc(50% - 60vmin)`;
+    glow.style.opacity = '0.9';
+
+    for (let n = 0; n < 4; n++) {
+      if (n < i) segs[n].style.width = '100%';
+      else if (n > i) segs[n].style.width = '0%';
+      else segs[n].style.width = (p * 100).toFixed(1) + '%';
+    }
+  }
+};
+</script>
+</body>
+</html>

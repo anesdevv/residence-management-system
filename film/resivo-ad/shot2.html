@@ -1,0 +1,385 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>02 — The drip</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  .stage { background: #030B11; }
+
+  /* everything the camera sees scales together */
+  .world { position: absolute; inset: 0; transform-origin: 56% 62%; }
+
+  /* the room: a cold window on the left, one warm lamp far right */
+  .room {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(58vmin 48vmin at 22% 10%, rgba(206, 234, 244, 0.26) 0%, rgba(206, 234, 244, 0) 72%),
+      radial-gradient(46vmin 40vmin at 92% 6%, rgba(229, 168, 83, 0.20) 0%, rgba(229, 168, 83, 0) 74%),
+      linear-gradient(178deg, #16404F 0%, #0C2634 34%, #061722 66%, #030D15 100%);
+  }
+  /* the window light falls across the wall in one soft shaft */
+  .shaft {
+    position: absolute; inset: -10% -20%;
+    background: linear-gradient(112deg, rgba(214, 240, 250, 0.20) 0%, rgba(214, 240, 250, 0.06) 26%, rgba(214, 240, 250, 0) 46%);
+    filter: blur(2.4vmin);
+  }
+
+  /* the tiled wall behind, out of focus */
+  .tiles {
+    position: absolute; inset: -10%;
+    background-image:
+      linear-gradient(rgba(220, 242, 250, 0.26) 0.16vmin, transparent 0.16vmin),
+      linear-gradient(90deg, rgba(220, 242, 250, 0.26) 0.16vmin, transparent 0.16vmin);
+    background-size: 13vmin 13vmin;
+    filter: blur(0.85vmin);
+    opacity: 0.9;
+    transform: perspective(90vmin) rotateX(8deg) scale(1.14);
+    transform-origin: 50% 100%;
+    mask-image: linear-gradient(to bottom, #000 0%, #000 34%, rgba(0,0,0,0.45) 48%, rgba(0,0,0,0) 58%);
+  }
+  /* the basin's back wall catches the window */
+  .backlight {
+    position: absolute; left: 6%; right: 26%; top: 2%; height: 70%;
+    background: radial-gradient(48vmin 36vmin at 30% 62%, rgba(196, 228, 240, 0.18) 0%, rgba(196, 228, 240, 0) 72%);
+    filter: blur(1.2vmin);
+  }
+
+  /* the cropped tip of the spout, at the top edge */
+  .tip {
+    position: absolute; left: 56%; top: -3vmin; margin-left: -8vmin;
+    width: 16vmin; height: 12vmin;
+  }
+  .tip .barrel {
+    position: absolute; inset: 0;
+    border-radius: 0 0 0.9vmin 0.9vmin;
+    background: linear-gradient(90deg,
+      #0A141A 0%, #25383F 8%, #4E6A76 20%, #8DA8B4 32%, #C6DBE4 44%, #7E99A6 58%, #45606D 74%, #23343C 88%, #0C171D 100%);
+    box-shadow: 0 0.7vmin 2.6vmin rgba(160, 208, 224, 0.24);
+  }
+  .tip .barrel::before {
+    content: ''; position: absolute; left: 34%; top: 0; width: 5%; bottom: 8%;
+    background: rgba(240, 253, 255, 0.85); filter: blur(0.14vmin);
+  }
+  .tip .barrel::after {
+    content: ''; position: absolute; right: 8%; top: 0; width: 3.5%; bottom: 8%;
+    background: rgba(212, 240, 250, 0.45); filter: blur(0.28vmin);
+  }
+  .tip .face {
+    position: absolute; left: -0.9vmin; bottom: -1.5vmin; width: 17.8vmin; height: 3.6vmin;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 44% 30%, #47626F 0%, #24373F 46%, #0B161C 84%, #050D11 100%);
+    box-shadow:
+      inset 0 0.24vmin 0.45vmin rgba(228, 250, 255, 0.65),
+      0 0.5vmin 1.3vmin rgba(0, 0, 0, 0.75);
+  }
+  /* the aerator screen, catching the light */
+  .tip .screen {
+    position: absolute; left: 2.2vmin; bottom: -0.5vmin; width: 11.6vmin; height: 2vmin;
+    border-radius: 50%;
+    background-image: radial-gradient(circle, rgba(198, 232, 244, 0.34) 0.07vmin, rgba(198, 232, 244, 0) 0.09vmin);
+    background-size: 0.4vmin 0.4vmin;
+    opacity: 0.9;
+  }
+
+  /* the water */
+  .thread {
+    position: absolute; left: 56%; top: 9.6vmin; width: 0.22vmin; margin-left: -0.11vmin;
+    border-radius: 1vmin;
+    background: linear-gradient(to bottom,
+      rgba(236, 252, 255, 0.98) 0%, rgba(206, 242, 252, 0.82) 26%, rgba(170, 220, 236, 0.6) 62%, rgba(160, 216, 232, 0.42) 100%);
+    box-shadow: 0 0 0.8vmin rgba(180, 232, 244, 0.65);
+  }
+  .bead {
+    position: absolute; left: 56%; top: 0; width: 1.5vmin; height: 1.8vmin; margin-left: -0.75vmin;
+    border-radius: 50% 50% 50% 50% / 58% 58% 42% 42%;
+    background: radial-gradient(circle at 36% 28%, rgba(255, 255, 255, 0.99) 0%, rgba(222, 246, 252, 0.95) 24%, rgba(140, 198, 214, 0.85) 62%, rgba(56, 108, 124, 0.75) 100%);
+    box-shadow: 0 0 1.7vmin rgba(170, 228, 242, 0.7);
+    opacity: 0;
+  }
+
+  /* the water surface: a dark mirror with a bright water line */
+  .surface {
+    position: absolute; left: -14%; right: -14%; top: 58%; bottom: -10%;
+    background:
+      radial-gradient(38vmin 9vmin at 56% 6%, rgba(212, 242, 252, 0.26) 0%, rgba(212, 242, 252, 0) 74%),
+      radial-gradient(60vmin 26vmin at 22% 38%, rgba(120, 186, 204, 0.14) 0%, rgba(120, 186, 204, 0) 70%),
+      linear-gradient(to bottom, #1A4A5A 0%, #0D2E3A 26%, #071B26 58%, #030E16 100%);
+  }
+  .surface::before {
+    content: ''; position: absolute; left: 0; right: 0; top: 0; height: 0.16vmin;
+    background: linear-gradient(90deg, rgba(206, 240, 250, 0) 0%, rgba(206, 240, 250, 0.55) 36%, rgba(206, 240, 250, 0.68) 66%, rgba(206, 240, 250, 0) 100%);
+  }
+  /* the far rim of the basin, curving above the water */
+  .faredge {
+    position: absolute; left: -8%; right: -8%; top: 51.6%; height: 9vmin;
+    border-radius: 50%;
+    border-top: 0.22vmin solid rgba(200, 238, 250, 0.42);
+    box-shadow: 0 -2vmin 4vmin rgba(110, 172, 190, 0.10);
+  }
+  /* the light the spout and the stream throw down into the water */
+  .glow {
+    position: absolute; left: 56%; top: 57%; width: 24vmin; height: 26vmin; margin-left: -12vmin;
+    background: radial-gradient(ellipse at 50% 18%, rgba(214, 246, 254, 0.30) 0%, rgba(160, 214, 230, 0.10) 42%, rgba(148, 200, 218, 0) 72%);
+    filter: blur(1.4vmin);
+  }
+  /* long reflections of the window, lying on the water */
+  .streaks { position: absolute; inset: 0; }
+  .streaks i {
+    position: absolute; border-radius: 50%;
+    background: linear-gradient(90deg, rgba(200, 236, 248, 0) 0%, rgba(200, 236, 248, 0.16) 32%, rgba(214, 244, 252, 0.24) 58%, rgba(200, 236, 248, 0) 100%);
+    filter: blur(0.9vmin);
+  }
+  /* still water catches the wall: a few soft caustics */
+  .caustics { position: absolute; inset: 0; }
+  .caustics i {
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(196, 234, 246, 0.18) 0%, rgba(196, 234, 246, 0) 70%);
+    filter: blur(1.1vmin);
+  }
+
+  /* the near rim of the basin, out of focus in the bottom right corner */
+  .rim {
+    position: absolute; left: 42%; right: -22%; top: 82%; height: 46vmin;
+    border-radius: 50% 50% 0 0 / 30% 30% 0 0;
+    background: linear-gradient(to bottom, rgba(17, 42, 54, 0.94) 0%, rgba(7, 20, 28, 0.98) 42%, #020A10 100%);
+    box-shadow: 0 -0.35vmin 1.2vmin rgba(150, 200, 216, 0.10);
+    filter: blur(0.35vmin);
+  }
+
+  .rings { position: absolute; inset: 0; }
+  .ring {
+    position: absolute; left: 56%; top: 66%; width: 26vmin; height: 5.4vmin;
+    margin-left: -13vmin; margin-top: -2.7vmin;
+    border: 0.18vmin solid rgba(214, 244, 252, 0.8);
+    border-radius: 50%;
+    box-shadow: 0 0 1.6vmin rgba(180, 232, 246, 0.35), inset 0 0 1.2vmin rgba(180, 232, 246, 0.25);
+    opacity: 0;
+  }
+  .boil {
+    position: absolute; left: 56%; top: 66%; width: 9vmin; height: 1.9vmin;
+    margin-left: -4.5vmin; margin-top: -0.95vmin;
+    border: 0.14vmin solid rgba(220, 248, 255, 0.7);
+    border-radius: 50%;
+    opacity: 0;
+  }
+  .crown {
+    position: absolute; left: 56%; top: 66%; width: 8vmin; height: 4vmin;
+    margin-left: -4vmin; margin-top: -0.6vmin;
+    background:
+      radial-gradient(ellipse at 50% 100%, rgba(246, 254, 255, 0.95) 0%, rgba(206, 240, 250, 0.3) 40%, rgba(206, 240, 250, 0) 70%);
+    filter: blur(0.2vmin);
+    opacity: 0;
+  }
+  .spray { position: absolute; left: 56%; top: 66%; }
+  .spray i {
+    position: absolute; width: 0.34vmin; height: 0.34vmin; border-radius: 50%;
+    background: rgba(240, 252, 255, 0.92);
+    box-shadow: 0 0 0.6vmin rgba(196, 236, 248, 0.7);
+  }
+
+  .vig {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(to top, rgba(2, 9, 14, 0.92) 0%, rgba(2, 9, 14, 0.42) 24%, rgba(2, 9, 14, 0) 50%),
+      radial-gradient(78vmin 60vmin at 54% 48%, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.34) 66%, rgba(0, 0, 0, 0.78) 100%);
+  }
+
+  .type { position: absolute; left: 10.5vmin; bottom: 10.5vmin; width: 82vmin; }
+  .rule { width: 9vmin; height: 0.45vmin; background: var(--gold-500); margin-bottom: 3vmin; }
+  .overline { color: var(--gold-300); margin-bottom: 2.2vmin; opacity: 0; }
+  h1 {
+    margin: 0; color: #F4F8FC; font-family: Outfit, sans-serif; font-weight: 600;
+    font-size: 6.4vmin; line-height: 1.12; letter-spacing: -0.022em;
+  }
+  .ln { display: block; }
+  .ln span { display: block; }
+
+  /* 9:16 — the drip stays centred, the words clear the player UI */
+  @media (aspect-ratio < 1) {
+    .type { left: 8vmin; bottom: 24vmin; width: 84vmin; }
+    h1 { font-size: 7.6vmin; }
+    .rim { left: 30%; right: -30%; top: 84%; }
+  }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="world" id="world">
+    <div class="room"></div>
+    <div class="shaft"></div>
+    <div class="tiles"></div>
+    <div class="backlight"></div>
+
+    <div class="tip">
+      <div class="barrel"></div>
+      <div class="face"></div>
+      <div class="screen"></div>
+    </div>
+
+    <div class="faredge"></div>
+    <div class="surface"></div>
+    <div class="streaks" id="streaks"></div>
+    <div class="caustics" id="caustics"></div>
+    <div class="glow"></div>
+
+    <div class="thread" id="thread"></div>
+    <div class="bead" id="bead"></div>
+
+    <div class="rings">
+      <div class="ring" id="r1"></div>
+      <div class="ring" id="r2"></div>
+      <div class="ring" id="r3"></div>
+      <div class="boil" id="boil"></div>
+    </div>
+    <div class="crown" id="crown"></div>
+    <div class="spray" id="spray"></div>
+
+    <div class="rim"></div>
+  </div>
+
+  <div class="vig"></div>
+
+  <div class="type">
+    <div class="rule" id="rule"></div>
+    <div class="overline" id="ov">Maintenance</div>
+    <h1>
+      <span class="ln"><span id="l1">Reported in September.</span></span>
+      <span class="ln"><span id="l2">Fixed in October.</span></span>
+    </h1>
+  </div>
+  <div class="grain"></div>
+</div>
+
+<script type="module">
+import { clamp, mix, ramp, easeOut, easeOut5, easeIn, set, seeded } from './lib.js';
+
+const world = document.getElementById('world');
+const thread = document.getElementById('thread');
+const bead = document.getElementById('bead');
+const crown = document.getElementById('crown');
+const spray = document.getElementById('spray');
+const boil = document.getElementById('boil');
+const rings = [document.getElementById('r1'), document.getElementById('r2'), document.getElementById('r3')];
+const ov = document.getElementById('ov');
+const rule = document.getElementById('rule');
+const l1 = document.getElementById('l1');
+const l2 = document.getElementById('l2');
+
+const rnd = seeded(4407);
+const drops = [];
+for (let i = 0; i < 7; i++) {
+  const d = document.createElement('i');
+  spray.appendChild(d);
+  drops.push({ el: d, dx: (rnd() - 0.5) * 9, h: 1.2 + rnd() * 2.6, delay: rnd() * 0.12 });
+}
+
+/* soft light caught on the still water */
+const caustics = document.getElementById('caustics');
+for (let i = 0; i < 7; i++) {
+  const d = document.createElement('i');
+  const w = 6 + rnd() * 22;
+  set(d, {
+    left: (rnd() * 100) + '%',
+    top: (60 + rnd() * 34) + '%',
+    width: w + 'vmin',
+    height: (w * (0.18 + rnd() * 0.16)) + 'vmin',
+    opacity: String(0.3 + rnd() * 0.7)
+  });
+  caustics.appendChild(d);
+}
+
+/* the window, reflected along the water */
+const streaks = document.getElementById('streaks');
+for (let i = 0; i < 4; i++) {
+  const d = document.createElement('i');
+  const w = 26 + rnd() * 40;
+  set(d, {
+    left: (4 + rnd() * 44) + '%',
+    top: (61 + rnd() * 24) + '%',
+    width: w + 'vmin',
+    height: (0.5 + rnd() * 1.1) + 'vmin',
+    opacity: String(0.35 + rnd() * 0.5)
+  });
+  streaks.appendChild(d);
+}
+
+const WATER = 66;    // vmin from the top: where the water meets the frame
+const TIP = 9.6;       // where the stream leaves the spout
+const PINCH = 0.98;    // the stream breaks
+const LAND = 1.5;      // and lands
+
+window.film = {
+  duration: 3,
+  ready: document.fonts.ready,
+  frame(t) {
+    // the camera: a slow push in on the water, breathing a little
+    const p = easeOut(ramp(t, 0, 3));
+    const breath = 1 + 0.0032 * Math.sin(t * 2.1);
+    world.style.transform = `scale(${((1.02 + 0.10 * p) * breath).toFixed(4)}) translate(${mix(0, -0.4, p).toFixed(3)}%, ${mix(0, -0.5, p).toFixed(3)}%)`;
+
+    // the stream: runs, pinches, then returns once the drop has gone
+    const back = ramp(t, LAND + 0.2, LAND + 0.46);
+    const threadOn = t < PINCH ? 1 : back;
+    thread.style.opacity = String(threadOn * 0.95);
+    thread.style.height = ((WATER - TIP) * clamp(threadOn, 0, 1)).toFixed(2) + 'vmin';
+
+    // the bead gathers at the break, then falls
+    const gather = ramp(t, PINCH, PINCH + 0.16);
+    if (t < LAND) {
+      if (t < PINCH + 0.02) {
+        bead.style.opacity = String(gather * 0.95);
+        bead.style.transform = `translateY(${(TIP - 1.0).toFixed(2)}vmin) scale(${mix(0.3, 1.05, easeOut(gather)).toFixed(3)})`;
+      } else {
+        const f = ramp(t, PINCH + 0.02, LAND);
+        bead.style.opacity = '0.95';
+        bead.style.transform =
+          `translateY(${(TIP - 1.0 + (WATER - TIP) * Math.pow(f, 1.55)).toFixed(2)}vmin) scale(${mix(1.05, 0.86, f).toFixed(3)}, ${mix(1.05, 1.42, f).toFixed(3)})`;
+      }
+    } else {
+      bead.style.opacity = '0';
+    }
+
+    // the water is never still: a small ring keeps boiling at the impact
+    const cycle = (t % 0.78) / 0.78;
+    boil.style.opacity = String(t < LAND ? (1 - cycle) * 0.8 : 0);
+    boil.style.transform = `scale(${(0.35 + cycle * 1.5).toFixed(3)}, ${(0.35 + cycle * 1.5).toFixed(3)})`;
+
+    // the landing: a flash, three rings, a crown, spray
+    const hit = ramp(t, LAND, LAND + 0.2);
+    crown.style.opacity = String(t < LAND ? 0 : (1 - hit) * 0.95);
+    crown.style.transform = `scale(${mix(0.5, 2.1, easeOut(hit)).toFixed(3)}, ${mix(0.6, 2.4, easeOut(hit)).toFixed(3)})`;
+
+    for (let i = 0; i < 3; i++) {
+      const x = clamp((t - LAND - i * 0.11) / 1.15);
+      if (x <= 0 || x >= 1) { rings[i].style.opacity = '0'; continue; }
+      const sc = 0.2 + 1.6 * easeOut(x);
+      rings[i].style.opacity = String(Math.pow(1 - x, 1.5) * 0.85);
+      rings[i].style.transform = `scale(${sc.toFixed(3)}, ${(sc * 0.92).toFixed(3)})`;
+    }
+
+    for (const d of drops) {
+      const x = clamp((t - LAND - d.delay) / 0.46);
+      if (x <= 0 || x >= 1) { d.el.style.opacity = '0'; continue; }
+      const up = Math.sin(x * Math.PI);
+      d.el.style.opacity = String(up * 0.85);
+      d.el.style.transform = `translate(${(d.dx * x).toFixed(2)}vmin, ${(-d.h * up).toFixed(2)}vmin)`;
+    }
+
+    // type
+    ov.style.opacity = String(ramp(t, 0.18, 0.7) * 0.95);
+    ov.style.transform = `translateY(${mix(1, 0, easeOut(ramp(t, 0.18, 0.78)))}vmin)`;
+    rule.style.transform = `scaleX(${easeOut5(ramp(t, 0.04, 0.58))})`;
+    rule.style.transformOrigin = 'left center';
+    const p1 = easeOut5(ramp(t, 0.3, 0.9));
+    l1.style.transform = `translateY(${mix(0.42, 0, p1)}em)`;
+    l1.style.opacity = String(p1);
+    const p2 = easeOut5(ramp(t, 0.44, 1.04));
+    l2.style.transform = `translateY(${mix(0.42, 0, p2)}em)`;
+    l2.style.opacity = String(p2);
+  }
+};
+</script>
+</body>
+</html>

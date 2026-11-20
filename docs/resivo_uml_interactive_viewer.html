@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RÉSIVO — Interactive UML Architecture & Schema</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#0f172a',
+        primaryColor: '#1e293b',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#38bdf8',
+        lineColor: '#38bdf8',
+        secondaryColor: '#334155',
+        tertiaryColor: '#1e293b'
+      }
+    });
+  </script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            resivo: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              800: '#075985',
+              900: '#0c4a6e',
+              950: '#082f49'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0b0f19;
+      color: #e2e8f0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .grid-bg {
+      background-size: 32px 32px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    }
+    .blueprint-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(56, 189, 248, 0.1);
+    }
+    .tab-active {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+    }
+    pre code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+  </style>
+</head>
+<body class="grid-bg min-h-screen text-slate-200">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 sticky top-0 z-50 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-sky-600 flex items-center justify-center font-bold text-white shadow-lg shadow-sky-500/20">
+          R
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+            RÉSIVO <span class="text-xs px-2 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-800">UML 2.5 Specification</span>
+          </h1>
+          <p class="text-xs text-slate-400">Direction des Œuvres Universitaires • Cité Universitaire • Tlemcen</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-950 text-emerald-400 border border-emerald-800">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>
+          100% Verified
+        </span>
+        <a href="UML_SCHEMA_SPECIFICATION.md" target="_blank" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-md border border-slate-700 transition">
+          Markdown Spec
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- Hero / Nano Banana Blueprint Visualizer -->
+    <section class="blueprint-card rounded-2xl p-6 relative overflow-hidden">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-800">
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-sky-400">Generative Architectural Rendering</span>
+          <h2 class="text-2xl font-bold text-white mt-0.5">Nano Banana UML Class Diagram Blueprint</h2>
+          <p class="text-sm text-slate-400">Synthesized high-density technical blueprint rendering representing all core entities, data types, and structural associations.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="toggleImageModal()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition flex items-center gap-1.5 shadow-md shadow-sky-600/30">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+            Fullscreen HD
+          </button>
+        </div>
+      </div>
+
+      <div class="rounded-xl overflow-hidden border border-slate-700 bg-slate-950 relative group cursor-pointer" onclick="toggleImageModal()">
+        <img src="visuals/resivo_uml_class_diagram_nanobanana.jpg" alt="RÉSIVO UML Architecture Blueprint" class="w-full h-auto object-cover rounded-xl transition duration-300 group-hover:scale-[1.01]">
+        <div class="absolute inset-0 bg-slate-950/20 group-hover:bg-transparent transition"></div>
+        <div class="absolute bottom-3 right-3 bg-slate-900/90 border border-slate-700 px-3 py-1 rounded-md text-xs text-sky-300 backdrop-blur-sm pointer-events-none">
+          Click to Zoom / Inspect Blueprint (Nano Banana Engine)
+        </div>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <div class="flex overflow-x-auto space-x-2 border-b border-slate-800 pb-2">
+      <button onclick="showTab('class-diagram')" id="tab-btn-class-diagram" class="px-4 py-2 rounded-lg text-sm font-medium border border-transparent tab-active transition">
+        1. UML Class Diagram
+      </button>
+      <button onclick="showTab('component-diagram')" id="tab-btn-component-diagram" class="px-4 py-2 rounded-lg text-sm font-medium border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white transition">
+        2. Component Architecture
+      </button>
+      <button onclick="showTab('sequence-diagram')" id="tab-btn-sequence-diagram" class="px-4 py-2 rounded-lg text-sm font-medium border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white transition">
+        3. Sequence Diagrams
+      </button>
+      <button onclick="showTab('state-diagram')" id="tab-btn-state-diagram" class="px-4 py-2 rounded-lg text-sm font-medium border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white transition">
+        4. State Machines
+      </button>
+      <button onclick="showTab('plantuml')" id="tab-btn-plantuml" class="px-4 py-2 rounded-lg text-sm font-medium border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white transition">
+        5. PlantUML Source
+      </button>
+      <button onclick="showTab('data-dictionary')" id="tab-btn-data-dictionary" class="px-4 py-2 rounded-lg text-sm font-medium border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white transition">
+        6. Invariants & Constraints
+      </button>
+    </div>
+
+    <!-- TAB 1: UML Class Diagram -->
+    <div id="tab-class-diagram" class="tab-pane space-y-6">
+      <div class="blueprint-card rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-xl font-bold text-white">Interactive UML 2.5 Class Diagram</h3>
+            <p class="text-sm text-slate-400">Formal object-oriented domain model with stereotyping, access visibility, operations, and multiplicity.</p>
+          </div>
+          <button onclick="copyMermaid('mermaid-class')" class="text-xs bg-slate-800 hover:bg-slate-700 text-sky-400 px-3 py-1.5 rounded border border-slate-700 transition">
+            Copy Mermaid Code
+          </button>
+        </div>
+        <div class="p-4 bg-slate-950/70 rounded-xl border border-slate-800 overflow-x-auto">
+          <pre class="mermaid text-center" id="mermaid-class">
+classDiagram
+    direction TB
+
+    class UserRole {
+        <<enumeration>>
+        STUDENT
+        STAFF
+        ADMIN
+    }
+
+    class Gender {
+        <<enumeration>>
+        MALE
+        FEMALE
+    }
+
+    class StudyLevel {
+        <<enumeration>>
+        L1
+        L2
+        L3
+        M1
+        M2
+        DOCTORAT
+    }
+
+    class StudentStatus {
+        <<enumeration>>
+        PENDING
+        ACTIVE
+        REJECTED
+    }
+
+    class ReportStatus {
+        <<enumeration>>
+        PENDING
+        IN_PROGRESS
+        RESOLVED
+    }
+
+    class RequestStatus {
+        <<enumeration>>
+        PENDING
+        APPROVED
+        REJECTED
+    }
+
+    class MaintenanceCategory {
+        <<enumeration>>
+        PLUMBING
+        ELECTRICAL
+        FURNITURE
+        HEATING
+        INTERNET
+        GENERAL
+        OTHER
+    }
+
+    class Profile {
+        <<entity>>
+        +UUID id {PK}
+        +UserRole role
+        +Timestamp created_at
+        +getRole() UserRole
+        +isStaff() Boolean
+        +isAdmin() Boolean
+    }
+
+    class Student {
+        <<entity>>
+        +UUID id {PK, FK}
+        +String card_id {UK}
+        +String first_name
+        +String last_name
+        +Date birth_date
+        +Gender gender
+        +String phone
+        +String email {UK, ContactOnly}
+        +String university
+        +String faculty
+        +StudyLevel study_level
+        +String wilaya
+        +StudentStatus status
+        +String rejection_reason
+        +UUID room_id {FK, Nullable}
+        +UUID reviewed_by {FK, Nullable}
+        +Timestamp reviewed_at
+        +Timestamp created_at
+        +Timestamp updated_at
+        +register(data: StudentDTO) Boolean
+        +checkRosterMatch() Boolean
+        +assignRoom(room: Room) Boolean
+        +reject(reason: String, officerId: UUID) Boolean
+        +canFileRequests() Boolean
+        +getDigitalPass() ResidentPassDTO
+    }
+
+    class Staff {
+        <<entity>>
+        +UUID id {PK, FK}
+        +String full_name
+        +String position
+        +Timestamp created_at
+        +triageApplication(studentId: UUID, action: Action) Boolean
+        +resolveMaintenance(reportId: UUID, note: String) Boolean
+        +adjudicateSwap(requestId: UUID, approved: Boolean) Boolean
+        +canDelete(targetStaffId: UUID) Boolean
+    }
+
+    class Block {
+        <<entity>>
+        +UUID id {PK}
+        +String name {UK}
+        +Gender gender {Nullable}
+        +String description
+        +Timestamp created_at
+        +Timestamp updated_at
+        +getRooms() List~Room~
+        +getTotalCapacity() Integer
+        +getCurrentOccupancy() Integer
+    }
+
+    class Room {
+        <<entity>>
+        +UUID id {PK}
+        +String block {FK}
+        +Integer floor
+        +String number
+        +Integer capacity
+        +Gender gender
+        +Timestamp created_at
+        +Timestamp updated_at
+        +getOccupants() List~Student~
+        +getOccupancyCount() Integer
+        +hasAvailableBed() Boolean
+        +isFull() Boolean
+        +allocateBed(student: Student) Boolean
+        +releaseBed(student: Student) Boolean
+    }
+
+    class MaintenanceReport {
+        <<entity>>
+        +UUID id {PK}
+        +UUID student_id {FK}
+        +MaintenanceCategory category
+        +String description
+        +String photo_path
+        +ReportStatus status
+        +String staff_note
+        +UUID handled_by {FK, Nullable}
+        +Timestamp created_at
+        +Timestamp updated_at
+        +submit(photo: File) Boolean
+        +assignTechnician(staffId: UUID) Boolean
+        +markInProgress() Boolean
+        +markResolved(notes: String) Boolean
+    }
+
+    class RoomChangeRequest {
+        <<entity>>
+        +UUID id {PK}
+        +UUID student_id {FK}
+        +UUID current_room_id {FK, Nullable}
+        +UUID preferred_room_id {FK, Nullable}
+        +String reason
+        +RequestStatus status
+        +String decision_note
+        +UUID decided_by {FK, Nullable}
+        +Timestamp decided_at
+        +Timestamp created_at
+        +Timestamp updated_at
+        +submitRequest(preferredRoom: Room, motive: String) Boolean
+        +approve(officerId: UUID) Boolean
+        +reject(officerId: UUID, note: String) Boolean
+    }
+
+    class OfficialResident {
+        <<entity>>
+        +UUID id {PK}
+        +String card_id {UK}
+        +String first_name
+        +String last_name
+        +Date birth_date
+        +Gender gender {Nullable}
+        +String university
+        +String faculty
+        +Timestamp created_at
+        +verifyMatricule(inputCardId: String) Boolean
+    }
+
+    class ResidenceSettings {
+        <<singleton>>
+        +Integer id {PK, Singleton=1}
+        +String residence_name
+        +Gender residence_gender {Nullable}
+        +Timestamp updated_at
+        +UUID updated_by {FK, Nullable}
+        +updateResidenceName(name: String) Boolean
+        +updateResidenceGender(newGender: Gender) ImpactReportDTO
+    }
+
+    class ResidenceSettingsAudit {
+        <<entity>>
+        +BigInt id {PK}
+        +Timestamp changed_at
+        +UUID changed_by {FK, Nullable}
+        +Gender old_gender
+        +Gender new_gender
+        +JSON impact
+    }
+
+    class McpAuditLog {
+        <<entity>>
+        +BigInt id {PK}
+        +Timestamp created_at
+        +String tool
+        +JSON args
+        +logExecution(tool: String, payload: JSON) Void
+    }
+
+    Profile <|-- Student : specializes
+    Profile <|-- Staff : specializes
+
+    Block "1" *-- "1..*" Room : contains
+    Room "0..1" o-- "0..*" Student : accommodates
+    Student "1" *-- "0..*" MaintenanceReport : files
+    Staff "0..1" --> "0..*" MaintenanceReport : resolves
+    Student "1" *-- "0..*" RoomChangeRequest : submits
+    Room "0..1" <-- "0..*" RoomChangeRequest : target_room
+    Staff "0..1" --> "0..*" RoomChangeRequest : adjudicates
+    OfficialResident "0..1" ..> "1" Student : validates matricule
+    ResidenceSettings "1" --> "0..*" ResidenceSettingsAudit : records change
+    Profile "1" --> "0..*" ResidenceSettingsAudit : authored by
+    Profile "1" --> "0..*" McpAuditLog : executed by
+    Staff "0..1" --> "0..*" Student : reviews application
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: Component Architecture -->
+    <div id="tab-component-diagram" class="tab-pane hidden space-y-6">
+      <div class="blueprint-card rounded-2xl p-6">
+        <h3 class="text-xl font-bold text-white mb-2">Package & Component Architecture</h3>
+        <p class="text-sm text-slate-400 mb-6">Structural decomposition showing Presentation, Gateway, Edge Services, and PostgreSQL Database tiers.</p>
+        <div class="p-4 bg-slate-950/70 rounded-xl border border-slate-800 overflow-x-auto">
+          <pre class="mermaid text-center">
+flowchart TB
+    subgraph Package_Presentation["Presentation Tier (Client Surfaces)"]
+        direction LR
+        subgraph WebClient["web/ (Student Portal)"]
+            AstroSSR["Astro 5 SSR Core"]
+            TailwindUI["Tailwind CSS v4"]
+            PhotoCompressor["Photo Optimizer"]
+        end
+        subgraph DesktopClient["desktop/ (Staff Console)"]
+            PySideMain["PySide6 MainWindow"]
+            LiveSync["LiveSyncWorker (2s Polling)"]
+            PhotoViewer["PhotoViewerDialog (QThread)"]
+            DPAPISession["DPAPI Session Store"]
+        end
+        subgraph AIClient["mcp-worker/ (AI Operations)"]
+            MCPWorker["Cloudflare Worker MCP"]
+            ToolRouter["JSON-RPC Execution"]
+        end
+    end
+
+    subgraph Package_MiddleTier["Middle Tier & Gateway"]
+        direction TB
+        AuthService["Supabase Auth (Role Claims)"]
+        EdgeUsers["Edge Function: admin-users"]
+        EdgeLogin["Edge Function: student-login"]
+        StorageEngine["Supabase Storage (maintenance-photos)"]
+    end
+
+    subgraph Package_DataTier["Database Tier (PostgreSQL 15)"]
+        direction TB
+        RelationalTables[("Relational Schemas<br/>students, rooms, blocks, profiles")]
+        RLSEngine["Row Level Security Policies"]
+        StoredProcedures["SECURITY DEFINER RPCs<br/>allocate_room, reject_student, delete_staff"]
+        AuditTrails["Audit Logs<br/>mcp_audit_log, residence_settings_audit"]
+    end
+
+    WebClient --> AuthService
+    WebClient --> StorageEngine
+    WebClient --> RelationalTables
+
+    DesktopClient --> RelationalTables
+    DesktopClient --> StorageEngine
+    DesktopClient --> EdgeUsers
+    DesktopClient --> AuthService
+
+    AIClient --> StoredProcedures
+    AIClient --> RelationalTables
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Sequence Diagrams -->
+    <div id="tab-sequence-diagram" class="tab-pane hidden space-y-6">
+      <div class="blueprint-card rounded-2xl p-6">
+        <h3 class="text-xl font-bold text-white mb-2">Core Workflow 1: Roster Match & Concurrency-Safe Room Allocation</h3>
+        <div class="p-4 bg-slate-950/70 rounded-xl border border-slate-800 overflow-x-auto">
+          <pre class="mermaid text-center">
+sequenceDiagram
+    autonumber
+    actor Officer as Housing Intake Officer
+    participant GUI as Desktop Console (PendingPage)
+    participant RPC as PostgreSQL allocate_room()
+    participant RoomTab as rooms Table
+    participant StudTab as students Table
+
+    Officer->>GUI: Selects student record from 'Pending Applications'
+    Officer->>GUI: Clicks 'Approve & Assign Room'
+    GUI->>GUI: Displays available rooms modal (calculates occupancy < capacity)
+    Officer->>GUI: Confirms room selection
+    GUI->>RPC: invoke allocate_room(p_student_id, p_room_id, p_officer_id)
+    RPC->>RoomTab: SELECT * FROM rooms WHERE id = p_room_id FOR UPDATE
+    Note over RPC,RoomTab: Acquires row-level pessimistic lock
+    RPC->>StudTab: SELECT COUNT(*) WHERE room_id = p_room_id
+    alt Room is Available (occupants < capacity)
+        RPC->>StudTab: UPDATE students SET room_id = p_room_id, status = 'active', reviewed_at = now()
+        RPC-->>GUI: Success (Transaction Committed)
+        GUI->>GUI: Removes student from Pending tab; moves to Approved Residents
+    else Room is Concurrently Full
+        RPC-->>GUI: Error 409: "Room reached maximum capacity"
+        GUI->>Officer: Alert dialog: "Room filled by another officer. Choose another."
+    end
+          </pre>
+        </div>
+      </div>
+
+      <div class="blueprint-card rounded-2xl p-6">
+        <h3 class="text-xl font-bold text-white mb-2">Core Workflow 2: Asynchronous Maintenance Photo Triage</h3>
+        <div class="p-4 bg-slate-950/70 rounded-xl border border-slate-800 overflow-x-auto">
+          <pre class="mermaid text-center">
+sequenceDiagram
+    autonumber
+    actor Res as Active Resident
+    participant Mobile as Web Portal (Mobile Browser)
+    participant Bucket as Storage (maintenance-photos)
+    participant DB as PostgreSQL
+    participant Worker as LiveSyncWorker (PySide6)
+    participant UI as Desktop Console
+    actor Tech as Facility Technician
+
+    Res->>Mobile: Selects Category, inputs description, snaps photo
+    Mobile->>Mobile: Optimizes photo client-side (WebP, max 1600px)
+    Mobile->>Bucket: Uploads optimized photo
+    Bucket-->>Mobile: Returns signed photo_path
+    Mobile->>DB: INSERT into maintenance_reports (status = 'pending')
+    DB-->>Worker: Detected during 2000ms polling cycle
+    Worker->>UI: Triggers live alert & increments pending maintenance badge
+    Tech->>UI: Selects ticket in Maintenance Operations panel
+    UI->>UI: Spawns PhotoFetchWorker (background QThread)
+    UI-->>Tech: Displays low-res thumbnail immediately
+    PhotoFetchWorker->>Bucket: Downloads high-res image stream
+    PhotoFetchWorker-->>UI: Emits pixmapLoaded signal
+    Tech->>UI: Opens PhotoViewerDialog (Zoom 25%-400%)
+    Tech->>UI: Selects 'In Progress' -> 'Resolved' + enters staff notes
+    UI->>DB: UPDATE maintenance_reports SET status = 'resolved', staff_note = 'Fixed'
+    DB-->>Mobile: Student dashboard displays green 'Resolved' status
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: State Machines -->
+    <div id="tab-state-diagram" class="tab-pane hidden space-y-6">
+      <div class="blueprint-card rounded-2xl p-6">
+        <h3 class="text-xl font-bold text-white mb-2">Student Residency Lifecycle Statechart</h3>
+        <p class="text-sm text-slate-400 mb-6">Enforces pending deletion lockouts and room assignment prerequisites.</p>
+        <div class="p-4 bg-slate-950/70 rounded-xl border border-slate-800 overflow-x-auto">
+          <pre class="mermaid text-center">
+stateDiagram-v2
+    [*] --> Unregistered : Student navigates to portal
+
+    Unregistered --> PendingReview : Registers with Card ID & Contact Email
+    
+    state PendingReview {
+        [*] --> RosterVerification
+        RosterVerification --> AwaitingStaffDecision : Checked against official_residents
+    }
+
+    PendingReview --> ActiveResident : Staff approves & assigns room [capacity available]
+    PendingReview --> RejectedApplication : Staff rejects [mandatory justification entered]
+
+    state ActiveResident {
+        [*] --> Accommodated
+        Accommodated --> MaintenanceReporting : Submits fault tickets
+        Accommodated --> RoomTransferRequested : Files swap request
+        RoomTransferRequested --> Accommodated : Swap approved / rejected
+    }
+
+    ActiveResident --> ArchivedDeleted : Permanent deletion [room unassigned & cascaded]
+    RejectedApplication --> ActiveResident : Staff re-evaluates & approves
+    RejectedApplication --> ArchivedDeleted : Permanent pruning [records cascaded]
+
+    ArchivedDeleted --> [*]
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: PlantUML -->
+    <div id="tab-plantuml" class="tab-pane hidden space-y-6">
+      <div class="blueprint-card rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-xl font-bold text-white">PlantUML Enterprise Source Code</h3>
+            <p class="text-sm text-slate-400">Copy this specification directly into PlantUML, StarUML, or Enterprise Architect.</p>
+          </div>
+          <button onclick="copyPlantUML()" class="text-xs bg-sky-600 hover:bg-sky-500 text-white px-3 py-1.5 rounded transition">
+            Copy PlantUML Code
+          </button>
+        </div>
+        <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 overflow-x-auto">
+          <pre class="text-xs text-sky-300" id="plantuml-code">@startuml resivo_uml_class_diagram
+!theme blueprint
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam roundcorner 8
+skinparam shadowing true
+
+title RÉSIVO - University Residence & Facility Management System\nUML 2.5 Class Architecture
+
+enum UserRole {
+  STUDENT
+  STAFF
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum StudentStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum ReportStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+class Profile {
+  +id: UUID [PK]
+  +role: UserRole
+  +created_at: Timestamp
+  +getRole(): UserRole
+  +isStaff(): Boolean
+  +isAdmin(): Boolean
+}
+
+class Student {
+  +id: UUID [PK, FK]
+  +card_id: String [UK]
+  +first_name: String
+  +last_name: String
+  +birth_date: Date
+  +gender: Gender
+  +phone: String
+  +email: String [UK]
+  +university: String
+  +faculty: String
+  +study_level: String
+  +wilaya: String
+  +status: StudentStatus
+  +rejection_reason: String
+  +room_id: UUID [FK]
+  +reviewed_by: UUID [FK]
+  +reviewed_at: Timestamp
+  +register(): Boolean
+  +assignRoom(r: Room): Boolean
+  +reject(reason: String): Boolean
+  +getDigitalPass(): PassDTO
+}
+
+class Staff {
+  +id: UUID [PK, FK]
+  +full_name: String
+  +position: String
+  +created_at: Timestamp
+  +triageApplication(): Boolean
+  +resolveMaintenance(): Boolean
+  +canDelete(targetId: UUID): Boolean
+}
+
+class Block {
+  +id: UUID [PK]
+  +name: String [UK]
+  +gender: Gender
+  +getTotalCapacity(): Integer
+  +getCurrentOccupancy(): Integer
+}
+
+class Room {
+  +id: UUID [PK]
+  +block: String [FK]
+  +floor: Integer
+  +number: String
+  +capacity: Integer
+  +gender: Gender
+  +getOccupants(): List<Student>
+  +hasAvailableBed(): Boolean
+}
+
+class MaintenanceReport {
+  +id: UUID [PK]
+  +student_id: UUID [FK]
+  +category: String
+  +description: String
+  +photo_path: String
+  +status: ReportStatus
+  +staff_note: String
+  +submit(): Boolean
+  +markResolved(): Boolean
+}
+
+class RoomChangeRequest {
+  +id: UUID [PK]
+  +student_id: UUID [FK]
+  +current_room_id: UUID [FK]
+  +preferred_room_id: UUID [FK]
+  +reason: String
+  +status: RequestStatus
+  +approve(): Boolean
+  +reject(): Boolean
+}
+
+class OfficialResident {
+  +id: UUID [PK]
+  +card_id: String [UK]
+  +first_name: String
+  +last_name: String
+  +university: String
+  +faculty: String
+  +verify(): Boolean
+}
+
+class ResidenceSettings {
+  +id: Integer [PK=1]
+  +residence_name: String
+  +residence_gender: Gender
+  +updateSettings(): Boolean
+}
+
+Profile <|-- Student
+Profile <|-- Staff
+Block "1" *-- "1..*" Room : contains >
+Room "0..1" o-- "0..*" Student : accommodates >
+Student "1" *-- "0..*" MaintenanceReport : files >
+Staff "0..1" --> "0..*" MaintenanceReport : resolves >
+Student "1" *-- "0..*" RoomChangeRequest : submits >
+Room "0..1" <-- "0..*" RoomChangeRequest : targets >
+Staff "0..1" --> "0..*" RoomChangeRequest : adjudicates >
+OfficialResident "0..1" ..> "1" Student : verifies >
+ResidenceSettings "1" --> "0..*" Room : configures >
+
+@enduml</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: Data Dictionary & OCL -->
+    <div id="tab-data-dictionary" class="tab-pane hidden space-y-6">
+      <div class="blueprint-card rounded-2xl p-6">
+        <h3 class="text-xl font-bold text-white mb-4">Object Constraint Language (OCL) Formal Constraints</h3>
+        <div class="space-y-4">
+          <div class="p-4 bg-slate-900/80 rounded-lg border border-slate-800">
+            <h4 class="text-sm font-bold text-emerald-400 mb-1">Invariant 1: Room Bed Capacity Non-Exceedance</h4>
+            <pre class="text-xs text-slate-300">context Room
+inv CapacityNotExceeded:
+    self.occupants->size() <= self.capacity
+
+inv BedAvailable:
+    self.hasAvailableBed() = (self.occupants->size() < self.capacity)</pre>
+          </div>
+
+          <div class="p-4 bg-slate-900/80 rounded-lg border border-slate-800">
+            <h4 class="text-sm font-bold text-emerald-400 mb-1">Invariant 2: Student Status & Room Assignment Pairing</h4>
+            <pre class="text-xs text-slate-300">context Student
+inv ActiveStudentMustHaveRoom:
+    self.status = StudentStatus::ACTIVE implies self.room <> null
+
+inv PendingStudentHasNoRoom:
+    self.status = StudentStatus::PENDING implies self.room = null
+
+inv DeletionGuardOnPending:
+    self.status = StudentStatus::PENDING implies not self.canBeDeleted()</pre>
+          </div>
+
+          <div class="p-4 bg-slate-900/80 rounded-lg border border-slate-800">
+            <h4 class="text-sm font-bold text-emerald-400 mb-1">Invariant 3: Single-Gender Dormitory Accommodation</h4>
+            <pre class="text-xs text-slate-300">context Room
+inv SingleGenderIntegrity:
+    residence_settings.residence_gender <> null implies
+        (self.gender = residence_settings.residence_gender)</pre>
+          </div>
+
+          <div class="p-4 bg-slate-900/80 rounded-lg border border-slate-800">
+            <h4 class="text-sm font-bold text-rose-400 mb-1">Invariant 4: Staff Multi-Tier Self-Deletion Shield</h4>
+            <pre class="text-xs text-slate-300">context Staff
+inv CannotDeleteSelf:
+    targetStaff.id <> currentSessionUser.id</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Fullscreen Image Modal -->
+  <div id="imageModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4" onclick="toggleImageModal()">
+    <div class="relative max-w-6xl w-full max-h-[90vh] flex flex-col items-center">
+      <img src="visuals/resivo_uml_class_diagram_nanobanana.jpg" alt="Nano Banana UML Blueprint Fullscreen" class="max-w-full max-h-[85vh] rounded-xl border border-sky-500/40 shadow-2xl object-contain">
+      <p class="text-xs text-slate-400 mt-2">Click anywhere to close fullscreen preview</p>
+    </div>
+  </div>
+
+  <footer class="border-t border-slate-800 py-6 mt-12 bg-slate-950 text-center text-xs text-slate-500">
+    <p>RÉSIVO Academic Architecture & UML Schema • Direction des Œuvres Universitaires • Cité Universitaire • Tlemcen</p>
+    <p class="mt-1">Generated and verified in compliance with OMG UML 2.5 standards.</p>
+  </footer>
+
+  <script>
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.getElementById('tab-' + tabId).classList.remove('hidden');
+
+      document.querySelectorAll('[id^="tab-btn-"]').forEach(btn => {
+        btn.classList.remove('tab-active');
+        btn.classList.add('border-slate-800', 'bg-slate-900/60', 'text-slate-400');
+      });
+      const activeBtn = document.getElementById('tab-btn-' + tabId);
+      activeBtn.classList.add('tab-active');
+      activeBtn.classList.remove('border-slate-800', 'bg-slate-900/60', 'text-slate-400');
+    }
+
+    function toggleImageModal() {
+      const modal = document.getElementById('imageModal');
+      modal.classList.toggle('hidden');
+    }
+
+    function copyPlantUML() {
+      const text = document.getElementById('plantuml-code').innerText;
+      navigator.clipboard.writeText(text);
+      alert('PlantUML specification copied to clipboard!');
+    }
+
+    function copyMermaid(id) {
+      const text = document.getElementById(id).innerText;
+      navigator.clipboard.writeText(text);
+      alert('Mermaid specification copied to clipboard!');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<style>
+  html, body { margin: 0; background: #000; }
+  iframe { border: 0; }
+</style>
+</head>
+<body>
+<!-- pictures: one shot per page, cut end to end -->
+<section>
+  <iframe id="shot1" src="shot1.html"></iframe>
+  <iframe id="shot2" src="shot2.html" at="3"></iframe>
+  <iframe id="shot3" src="shot3.html" at="6"></iframe>
+  <iframe id="shot4" src="shot4.html" at="9"></iframe>
+  <iframe id="shot5" src="shot5.html" at="14"></iframe>
+  <iframe id="shot6" src="shot6.html" at="17" overrides='[{"at":"#cta","text":"resivo-orcin.vercel.app"}]'></iframe>
+</section>
+<!-- music bed: 20 s, no lyrics -->
+<section>
+  <audio id="marimba-strings-build-58d043" src="assets/marimba-strings-build-58d043.mp3#t=0,20"></audio>
+</section>
+<!-- sound effects, each at the frame it belongs to -->
+<section>
+  <audio id="paper-stamp-thump-e00c70" src="assets/paper-stamp-thump-e00c70.mp3" at="2.02" volume="0.8"></audio>
+  <audio id="soft-precise-ping-4e0959" src="assets/soft-precise-ping-4e0959.mp3" at="7.1" volume="0.6"></audio>
+</section>
+<section>
+  <audio id="soft-outward-whoosh-22a3d2" src="assets/soft-outward-whoosh-22a3d2.mp3" at="2.86" volume="0.55"></audio>
+  <audio id="soft-outward-whoosh-22a3d2-2" src="assets/soft-outward-whoosh-22a3d2.mp3" at="16.88" volume="0.5"></audio>
+  <audio id="ElevenLabs_2026-11-14T23_52_42_Elisa---Dynamic-French-Commercial_pvc_s50_v3" src="assets/ElevenLabs_2026-11-14T23_52_42_Elisa - Dynamic French Commercial_pvc_s50_v3.mp3" at="21.367"></audio>
+</section>
+<section>
+  <audio id="ElevenLabs_2026-11-14T23_52_42_Elisa---Dynamic-French-Commercial_pvc_s50_v3-2" src="assets/ElevenLabs_2026-11-14T23_52_42_Elisa - Dynamic French Commercial_pvc_s50_v3.mp3" at="10.833"></audio>
+</section>
+</body>
+</html>

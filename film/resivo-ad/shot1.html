@@ -1,0 +1,206 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>01 — The queue</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  .stage { background: #EDF1F6; }
+
+  .wall {
+    position: absolute; left: 50%; top: 50%;
+    width: 240vmin; height: 190vmin;
+    transform-origin: 50% 45%;
+  }
+
+  .sheet {
+    position: absolute;
+    background: linear-gradient(178deg, #FFFFFF 0%, #FBFCFD 62%, #F2F5F9 100%);
+    border: 0.1vmin solid rgba(11, 27, 51, 0.10);
+    border-radius: 0.55vmin;
+    box-shadow: 0 1.1vmin 2.6vmin rgba(10, 35, 66, 0.13), 0 0.2vmin 0.4vmin rgba(10, 35, 66, 0.07);
+    overflow: hidden;
+  }
+  .sheet::before {
+    content: ''; position: absolute; left: 13%; right: 13%; top: 41%; bottom: 15%;
+    background: repeating-linear-gradient(to bottom,
+      rgba(11, 27, 51, 0.15) 0 0.26vmin,
+      transparent 0.26vmin 1.65vmin);
+  }
+  .sheet::after {
+    content: ''; position: absolute; left: 13%; top: 13%; width: 42%; height: 0.75vmin;
+    background: rgba(11, 27, 51, 0.24); border-radius: 1vmin;
+  }
+  .sheet i.ph {
+    position: absolute; right: 12%; top: 11%; width: 24%; height: 21%;
+    background: #E7EDF4; border: 0.1vmin solid rgba(11, 27, 51, 0.10);
+  }
+  .sheet i.st {
+    position: absolute; right: 13%; bottom: 9%; width: 26%; aspect-ratio: 1;
+    border: 0.34vmin solid rgba(155, 28, 28, 0.42); border-radius: 50%;
+    opacity: 0.75;
+  }
+  .sheet i.st::before {
+    content: ''; position: absolute; inset: 22%;
+    border: 0.2vmin solid rgba(155, 28, 28, 0.26); border-radius: 50%;
+  }
+
+  /* the sheet that gets stamped */
+  .target { box-shadow: 0 2.4vmin 5vmin rgba(10, 35, 66, 0.26), 0 0.2vmin 0.4vmin rgba(10, 35, 66, 0.1); }
+  .target i.st { border-color: rgba(155, 28, 28, 0.92); opacity: 1; transform-origin: 50% 50%; }
+  .target i.st::after {
+    content: ''; position: absolute; inset: 34%;
+    background: rgba(155, 28, 28, 0.55); border-radius: 50%;
+    filter: blur(0.2vmin);
+  }
+  .ink {
+    position: absolute; inset: -30%; border-radius: 50%;
+    background: radial-gradient(circle, rgba(155, 28, 28, 0.30) 0%, rgba(155, 28, 28, 0.10) 45%, rgba(155, 28, 28, 0) 72%);
+    opacity: 0;
+  }
+
+  .scrim {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(96deg, rgba(237, 241, 246, 0.985) 0%, rgba(237, 241, 246, 0.96) 22%, rgba(237, 241, 246, 0.72) 40%, rgba(237, 241, 246, 0) 64%),
+      linear-gradient(to top, rgba(237, 241, 246, 0.55) 0%, rgba(237, 241, 246, 0) 30%);
+  }
+
+  .type { position: absolute; left: 10.5vmin; bottom: 11.5vmin; width: 78vmin; }
+  .rule { width: 9vmin; height: 0.45vmin; background: var(--gold-500); margin-bottom: 3.2vmin; }
+  .overline { color: var(--teal-600); margin-bottom: 2.6vmin; opacity: 0; }
+  h1 {
+    margin: 0; font-size: 8.4vmin; line-height: 1.04; color: var(--navy-800);
+    font-family: Outfit, sans-serif; font-weight: 700; letter-spacing: -0.03em;
+  }
+  .ln { display: block; }
+  .ln span { display: block; transform: translateY(110%); }
+  .ln:nth-child(2) span { color: var(--navy-900); }
+
+  /* 9:16 — the stamped sheet sits above the words, the words clear the player UI */
+  @media (aspect-ratio < 1) {
+    .scrim {
+      background:
+        linear-gradient(to top, rgba(237, 241, 246, 0.99) 0%, rgba(237, 241, 246, 0.95) 24%, rgba(237, 241, 246, 0.55) 46%, rgba(237, 241, 246, 0) 70%);
+    }
+    .type { left: 8vmin; bottom: 25vmin; width: 84vmin; }
+    h1 { font-size: 9.2vmin; }
+  }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="wall" id="wall"></div>
+  <div class="scrim"></div>
+  <div class="type">
+    <div class="rule" id="rule"></div>
+    <div class="overline" id="ov">Cité universitaire — September</div>
+    <h1>
+      <span class="ln"><span id="l1">Every September,</span></span>
+      <span class="ln"><span id="l2">the same queue.</span></span>
+    </h1>
+  </div>
+  <div class="grain"></div>
+</div>
+
+<script type="module">
+import { clamp, mix, ramp, easeOut, easeOut5, set, seeded, isVertical } from './lib.js';
+
+const V = isVertical();
+
+const rnd = seeded(20260914);
+const wall = document.getElementById('wall');
+const sheets = [];
+const COL = 9, ROW = 7, CW = 29, CH = 29;
+let targetSheet = null, targetStamp = null;
+
+for (let r = 0; r < ROW; r++) {
+  for (let c = 0; c < COL; c++) {
+    const d = document.createElement('div');
+    d.className = 'sheet';
+    const jx = (rnd() - 0.5) * 3.2;
+    const jy = (rnd() - 0.5) * 3.2;
+    const rot = (rnd() - 0.5) * 7;
+    const dep = rnd();
+    set(d, {
+      left: (c * CW + jx + 3) + 'vmin',
+      top: (r * CH + jy + 3) + 'vmin',
+      width: (CW - 3.4) + 'vmin',
+      height: (CH - 4.2) + 'vmin'
+    });
+    d.innerHTML = '<i class="ph"></i>' + (rnd() > 0.58 ? '<i class="st"></i>' : '');
+    d.dataset.rot = rot;
+    d.dataset.dep = dep;
+    wall.appendChild(d);
+    sheets.push(d);
+    // the sheet nearest the lens, right of centre
+    if (r === 3 && c === 6) { targetSheet = d; targetSheet.classList.add('target'); }
+  }
+}
+
+/* the stamped sheet sits in front, near the type */
+if (targetSheet) {
+  set(targetSheet, {
+    left: V ? '107vmin' : '104vmin',
+    top: V ? '45vmin' : '40vmin',
+    width: '27vmin', height: '33vmin', zIndex: 5
+  });
+  targetStamp = targetSheet.querySelector('i.st') || (() => {
+    const s = document.createElement('i'); s.className = 'st'; targetSheet.appendChild(s); return s;
+  })();
+  const ink = document.createElement('div'); ink.className = 'ink'; targetStamp.appendChild(ink);
+  targetSheet.dataset.ink = '1';
+}
+
+const ov = document.getElementById('ov');
+const rule = document.getElementById('rule');
+const l1 = document.getElementById('l1');
+const l2 = document.getElementById('l2');
+const stage = document.getElementById('stage');
+
+window.film = {
+  duration: 3,
+  ready: document.fonts.ready,
+  frame(t) {
+    const p = ramp(t, 0, 3);
+    const push = 1.03 + 0.115 * easeOut(p);
+    const jitter = 1 + 0.004 * Math.sin(t * 3.1);
+    set(wall, {
+      transform: `translate(-50%, -50%) scale(${push * jitter})`,
+      filter: `saturate(${0.62 - 0.06 * p}) contrast(1.03)`
+    });
+
+    // sheets drift apart very slightly, each at its own depth
+    for (let i = 0; i < sheets.length; i++) {
+      const d = sheets[i];
+      const dep = parseFloat(d.dataset.dep);
+      const rot = parseFloat(d.dataset.rot);
+      d.style.transform = `rotate(${rot - 0.9 * p * (0.3 + dep)}deg) translate(${(dep * 0.9 * p).toFixed(3)}vmin, ${(dep * -0.8 * p).toFixed(3)}vmin)`;
+    }
+
+    // type
+    ov.style.opacity = String(ramp(t, 0.12, 0.7) * 0.9);
+    ov.style.transform = `translateY(${mix(1.2, 0, easeOut(ramp(t, 0.12, 0.75)))}vmin)`;
+    rule.style.transform = `scaleX(${easeOut5(ramp(t, 0, 0.55))})`;
+    rule.style.transformOrigin = 'left center';
+    l1.style.transform = `translateY(${mix(0.42, 0, easeOut5(ramp(t, 0.28, 0.85)))}em)`;
+    l1.style.opacity = String(easeOut5(ramp(t, 0.28, 0.85)));
+    l2.style.transform = `translateY(${mix(0.42, 0, easeOut5(ramp(t, 0.4, 0.98)))}em)`;
+    l2.style.opacity = String(easeOut5(ramp(t, 0.4, 0.98)));
+
+    // the stamp lands at 2.0 s
+    if (targetStamp) {
+      const hit = ramp(t, 1.98, 2.16);
+      targetStamp.style.transform = `rotate(-9deg) scale(${mix(1.75, 1, easeOut(hit))})`;
+      targetStamp.style.opacity = String(ramp(t, 1.96, 2.04));
+      const ink = targetStamp.querySelector('.ink');
+      if (ink) ink.style.opacity = String(ramp(t, 2.02, 2.3) * 0.9);
+      const shake = t > 1.98 && t < 2.22 ? (1 - ramp(t, 1.98, 2.22)) * 0.5 : 0;
+      stage.style.transform = `translate(${Math.sin(t * 90) * shake}vmin, ${Math.cos(t * 77) * shake}vmin)`;
+    }
+  }
+};
+</script>
+</body>
+</html>
