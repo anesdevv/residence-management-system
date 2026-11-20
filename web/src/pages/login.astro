@@ -8,6 +8,7 @@ import Icon from '../components/Icon.astro';
 import BrandMark from '../components/BrandMark.astro';
 import InlineBanner from '../components/InlineBanner.astro';
 import PageHeader from '../components/PageHeader.astro';
+import Turnstile from '../components/Turnstile.astro';
 import { localizePath, t, type SupportedLocale } from '../lib/i18n';
 
 export const prerender = false;
@@ -19,8 +20,8 @@ const registered = Astro.url.searchParams.get('registered');
 ---
 
 <Layout title={locale === 'fr' ? 'Connexion Résident — RÉSIVO' : 'Resident Sign In — RÉSIVO'} activeNav="login">
-  <div class="mx-auto flex w-full max-w-md flex-col gap-6 py-6 sm:py-8">
-    <div class="card p-6 sm:p-8">
+  <div class="mx-auto flex w-full max-w-md flex-col gap-6 py-4 sm:py-8">
+    <div class="card p-5 sm:p-8">
       <div class="mb-6 flex justify-center">
         <BrandMark variant="mark" size={48} />
       </div>
@@ -68,7 +69,7 @@ const registered = Astro.url.searchParams.get('registered');
           <label class="label" for="password">{t(locale, 'fields.password')}</label>
           <div class="relative">
             <input
-              class="input pr-12"
+              class="input pe-12"
               type="password"
               name="password"
               id="password"
@@ -79,7 +80,9 @@ const registered = Astro.url.searchParams.get('registered');
             <button
               type="button"
               id="toggle-password"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition-colors p-1"
+              class="absolute end-1 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition-colors touch-target-44 rounded-input"
+              data-label-show={locale === 'fr' ? 'Afficher le mot de passe' : 'Show password'}
+              data-label-hide={locale === 'fr' ? 'Masquer le mot de passe' : 'Hide password'}
               aria-label={locale === 'fr' ? 'Afficher le mot de passe' : 'Show password'}
               title={locale === 'fr' ? 'Afficher le mot de passe' : 'Show password'}
             >
@@ -89,7 +92,11 @@ const registered = Astro.url.searchParams.get('registered');
           <p class="field-hint">{t(locale, 'auth.forgot_password_office')}</p>
         </div>
 
-        <button class="btn btn-primary w-full mt-2" type="submit">
+        <div class="my-2 flex justify-center">
+          <Turnstile action="login" />
+        </div>
+
+        <button class="btn btn-primary w-full mt-2 min-h-[44px]" type="submit">
           <Icon name="log-in" size={18} />
           <span>{t(locale, 'auth.login_btn')}</span>
         </button>
@@ -118,11 +125,15 @@ const registered = Astro.url.searchParams.get('registered');
   const eyeIcon = document.getElementById('toggle-eye-icon');
 
   if (toggleBtn && pwdInput) {
+    const labelShow = toggleBtn.getAttribute('data-label-show') || 'Show password';
+    const labelHide = toggleBtn.getAttribute('data-label-hide') || 'Hide password';
+
     toggleBtn.addEventListener('click', () => {
       const isPassword = pwdInput.getAttribute('type') === 'password';
       pwdInput.setAttribute('type', isPassword ? 'text' : 'password');
-      toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
-      toggleBtn.setAttribute('title', isPassword ? 'Hide password' : 'Show password');
+      const nextLabel = isPassword ? labelHide : labelShow;
+      toggleBtn.setAttribute('aria-label', nextLabel);
+      toggleBtn.setAttribute('title', nextLabel);
       if (eyeIcon) {
         eyeIcon.style.opacity = isPassword ? '0.5' : '1';
       }

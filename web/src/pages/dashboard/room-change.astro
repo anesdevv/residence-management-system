@@ -88,7 +88,7 @@ const motives = [
   >
     <Fragment slot="actions">
       <a href={localizePath(locale, '/dashboard')} class="btn btn-secondary">
-        <Icon name="arrow-left" size={16} />
+        <Icon name="arrow-left" size={16} class="rtl-mirror" />
         <span>{t(locale, 'room_change.back_to_dashboard')}</span>
       </a>
     </Fragment>
@@ -102,13 +102,13 @@ const motives = [
   )}
 
   {queryError && (
-    <InlineBanner kind="error" title="Connection error" class="mb-6">
+    <InlineBanner kind="error" title={t(locale, 'errors.connection_error')} class="mb-6">
       {queryError}
     </InlineBanner>
   )}
 
   {error && (
-    <InlineBanner kind="error" title="Unable to process request" class="mb-6">
+    <InlineBanner kind="error" title={t(locale, 'common.error')} class="mb-6">
       {error}
     </InlineBanner>
   )}
@@ -116,8 +116,9 @@ const motives = [
   <!-- Locked State or Application Form -->
   {!isActive ? (
     <InlineBanner kind="warning" title={t(locale, 'room_change.locked_title')} icon="lock" class="mb-8">
-      Your account status is <strong class="uppercase">{student?.status ?? 'pending'}</strong>.
-      Room transfer requests can only be filed by approved residents who currently occupy an allocated dormitory room.
+      {locale === 'fr'
+        ? `Le statut de votre dossier est ${student?.status ?? 'en attente'}. Les demandes de mutation de chambre ne peuvent être déposées que par des résidents admis occupant déjà une chambre universitaire.`
+        : `Your account status is ${student?.status ?? 'pending'}. Room transfer requests can only be filed by approved residents who currently occupy an allocated dormitory room.`}
     </InlineBanner>
   ) : (
     <div class="flex flex-col gap-6 mb-8">
@@ -148,26 +149,26 @@ const motives = [
 
       <!-- Submission Card or Pending Review Notice -->
       {hasPendingRequest ? (
-        <InlineBanner kind="info" title="Transfer petition under review" icon="clock">
-          You currently have an active room relocation petition undergoing administrative review. Additional transfer requests cannot be submitted until your pending request is reviewed.
+        <InlineBanner kind="info" title={t(locale, 'room_change.petition_under_review_title')} icon="clock">
+          {t(locale, 'room_change.petition_under_review_desc')}
         </InlineBanner>
       ) : (
         <section class="card p-4 sm:p-6">
           <header class="border-b border-line pb-4 mb-6">
-            <h2 class="card-title">File a relocation request</h2>
-            <p class="text-small font-normal text-muted mt-1">All requests are reviewed based on space availability and administrative eligibility.</p>
+            <h2 class="card-title">{t(locale, 'room_change.file_relocation_title')}</h2>
+            <p class="text-small font-normal text-muted mt-1">{t(locale, 'room_change.file_relocation_desc')}</p>
           </header>
 
           <form method="POST" action="/api/room-change" class="flex flex-col gap-6">
             <!-- Motive Quick Selector Buttons (Zero emojis, authored icons) -->
             <div class="flex flex-col gap-2">
-              <span class="label">Select primary motive</span>
+              <span class="label">{t(locale, 'room_change.select_motive_label')}</span>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="motivePills">
                 {motives.map((m) => (
                   <button
                     type="button"
                     data-motive={m.text}
-                    class="motive-pill text-left p-3.5 rounded-card border border-line bg-subtle hover:bg-canvas transition cursor-pointer flex flex-col gap-1 min-h-[88px]"
+                    class="motive-pill text-start p-3.5 rounded-card border border-line bg-subtle hover:bg-canvas transition cursor-pointer flex flex-col gap-1 min-h-[88px]"
                   >
                     <div class="flex items-center gap-2">
                       <Icon name={m.icon} size={16} class="text-teal-600 shrink-0" />
@@ -181,20 +182,20 @@ const motives = [
 
             <!-- Stated Reason Textarea -->
             <div class="flex flex-col gap-2">
-              <label for="reason" class="label">Detailed justification <span class="text-danger" aria-hidden="true">*</span></label>
+              <label for="reason" class="label">{t(locale, 'room_change.justification_label')} <span class="text-danger" aria-hidden="true">*</span></label>
               <textarea
                 name="reason"
                 id="reason"
                 required
                 rows="3"
-                placeholder="Provide a comprehensive explanation for your transfer request (e.g. Preparing Master thesis requiring quiet wing, medical documentation on file, etc.)..."
+                placeholder={t(locale, 'room_change.justification_placeholder')}
                 class="input min-h-[96px]"
               ></textarea>
             </div>
 
             <!-- Preferred Room Selector -->
             <div class="flex flex-col gap-2">
-              <label for="preferred_room_id" class="label">Preferred room (optional)</label>
+              <label for="preferred_room_id" class="label">{t(locale, 'room_change.preferred_room_label')}</label>
               <select
                 name="preferred_room_id"
                 id="preferred_room_id"
@@ -203,7 +204,7 @@ const motives = [
                 <option value="">{t(locale, 'room_change.no_preference_option')}</option>
                 {(rooms ?? []).map((r) => (
                   <option value={r.id}>
-                    Block {r.block} — Room {r.number} (Floor {r.floor}, Capacity: {r.capacity} beds)
+                    {t(locale, 'room_change.room_option_format', { block: r.block, number: r.number, floor: r.floor, capacity: r.capacity })}
                   </option>
                 ))}
               </select>
@@ -229,7 +230,11 @@ const motives = [
   <div class="flex flex-col gap-4">
     <div class="flex items-center justify-between border-b border-line pb-4">
       <h2 class="font-display text-h2 text-ink">{t(locale, 'room_change.history_heading')}</h2>
-      <p class="text-small text-muted">{requests?.length ?? 0} total request{requests?.length === 1 ? '' : 's'}</p>
+      <p class="text-small text-muted">
+        {requests?.length === 1
+          ? t(locale, 'room_change.total_requests', { count: requests.length })
+          : t(locale, 'room_change.total_requests_plural', { count: requests?.length ?? 0 })}
+      </p>
     </div>
 
     {(!requests || requests.length === 0) ? (
@@ -252,15 +257,17 @@ const motives = [
                   </span>
                   <div>
                     <div class="flex items-center gap-2">
-                      <h3 class="font-display text-h3 text-ink">Room transfer petition</h3>
-                      <span class="text-small font-normal text-muted tnum">#TR-{r.id.slice(0, 8)}</span>
+                      <h3 class="font-display text-h3 text-ink">{t(locale, 'room_change.petition_card_title')}</h3>
+                      <span class="text-small font-normal text-muted tnum" dir="ltr">#TR-{r.id.slice(0, 8)}</span>
                     </div>
                     {pref ? (
                       <p class="text-small font-medium text-teal-600 mt-0.5">
-                        Requested target: Block {pref.block} — Room {pref.number} (Floor {pref.floor})
+                        {t(locale, 'room_change.petition_target_format', { block: pref.block, number: pref.number, floor: pref.floor })}
                       </p>
                     ) : (
-                      <p class="text-small font-normal text-muted mt-0.5">No specific room requested (Open assignment)</p>
+                      <p class="text-small font-normal text-muted mt-0.5">
+                        {t(locale, 'room_change.petition_open_assignment')}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -285,7 +292,7 @@ const motives = [
               )}
 
               <div class="mt-4 pt-3 border-t border-line text-small font-normal text-muted">
-                Submitted on {new Date(r.created_at).toLocaleDateString()}
+                {t(locale, 'room_change.submitted_on', { date: formatDate(locale, r.created_at) })}
               </div>
             </article>
           );

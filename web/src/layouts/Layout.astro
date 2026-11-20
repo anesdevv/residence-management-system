@@ -3,7 +3,7 @@ import '../styles/global.css';
 import Icon from '../components/Icon.astro';
 import BrandMark from '../components/BrandMark.astro';
 import DashboardShell from '../components/DashboardShell.astro';
-import { localizePath, t, type SupportedLocale } from '../lib/i18n';
+import { localizePath, t, getDirection, type SupportedLocale } from '../lib/i18n';
 
 interface Props {
   title?: string;
@@ -61,7 +61,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
 ---
 
 <!doctype html>
-<html lang={locale}>
+<html lang={locale} dir={getDirection(locale)}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -88,16 +88,16 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
       <>
         <!-- Minimal auth chrome -->
         <header class="border-b border-line bg-surface">
-          <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-            <a href={localizePath(locale, '/')} class="flex items-center gap-3">
+          <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+            <a href={localizePath(locale, '/')} class="flex min-w-0 items-center gap-2.5 sm:gap-3">
               <BrandMark variant="mark" size={36} />
-              <span class="flex flex-col">
-                <span class="font-display text-h2 text-ink">RÉSIVO</span>
-                <span class="text-small font-normal text-muted">Cité Universitaire • {t(locale, 'nav.student_portal')}</span>
+              <span class="flex min-w-0 flex-col">
+                <span class="font-display text-h2 leading-none text-ink">RÉSIVO</span>
+                <span class="truncate text-xs font-normal text-muted max-w-[130px] sm:max-w-none">Cité Universitaire • {t(locale, 'nav.student_portal')}</span>
               </span>
             </a>
 
-            <div class="flex items-center gap-3">
+            <div class="ms-auto flex items-center gap-2 sm:gap-3 shrink-0">
               <span class="hidden items-center gap-2 text-small text-muted sm:flex">
                 <span class="live-dot live-dot--connected"></span>
                 <span>{t(locale, 'nav.student_portal')}</span>
@@ -161,12 +161,12 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
 
         <!-- Public header -->
         <header class="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-md">
-          <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-            <a href={user ? localizePath(locale, '/dashboard') : localizePath(locale, '/')} class="flex items-center gap-3">
-              <BrandMark variant="mark" size={40} />
-              <span class="flex flex-col">
-                <span class="font-display text-h2 text-ink">RÉSIVO</span>
-                <span class="text-small font-normal text-muted">Cité Universitaire • {t(locale, 'nav.student_portal')}</span>
+          <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+            <a href={user ? localizePath(locale, '/dashboard') : localizePath(locale, '/')} class="flex min-w-0 shrink items-center gap-2.5 sm:gap-3">
+              <BrandMark variant="mark" size={38} />
+              <span class="flex min-w-0 flex-col">
+                <span class="font-display text-h2 leading-none text-ink">RÉSIVO</span>
+                <span class="truncate text-xs font-normal text-muted max-w-[120px] sm:max-w-none">Cité Universitaire • {t(locale, 'nav.student_portal')}</span>
               </span>
             </a>
 
@@ -213,7 +213,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
               )}
 
               <!-- Language switcher -->
-              <div class="ml-2 flex items-center rounded-pill border border-line bg-subtle p-0.5 text-xs font-semibold" role="group" aria-label={t(locale, 'nav.language')}>
+              <div class="ms-2 flex items-center rounded-pill border border-line bg-subtle p-0.5 text-xs font-semibold" role="group" aria-label={t(locale, 'nav.language')}>
                 <a
                   href={targetFrPath}
                   data-locale-switch="fr"
@@ -240,7 +240,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
             <!-- Mobile quick controls -->
             <div class="flex items-center gap-2 md:hidden">
               <!-- Mobile language switcher -->
-              <div class="flex items-center rounded-pill border border-line bg-subtle p-0.5 text-xs font-semibold" role="group" aria-label={t(locale, 'nav.language')}>
+              <div class="flex items-center rounded-pill border border-line bg-subtle p-0.5 text-xs font-semibold shrink-0" role="group" aria-label={t(locale, 'nav.language')}>
                 <a
                   href={targetFrPath}
                   data-locale-switch="fr"
@@ -263,28 +263,138 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
                 </a>
               </div>
 
+              <!-- Accessible Mobile Menu Button -->
+              <button
+                type="button"
+                id="mobile-drawer-toggle"
+                class="touch-target-44 rounded-input border border-line bg-surface text-ink hover:bg-subtle transition-colors focus-visible:outline-teal-600"
+                aria-label={locale === 'fr' ? 'Ouvrir le menu de navigation' : 'Open navigation menu'}
+                aria-expanded="false"
+                aria-controls="mobile-drawer"
+              >
+                <Icon name="menu" size={20} />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <!-- Mobile Navigation Drawer Backdrop & Panel -->
+        <div id="mobile-drawer-backdrop" class="fixed inset-0 z-50 bg-navy-900/60 backdrop-blur-xs opacity-0 pointer-events-none transition-opacity duration-300 md:hidden" aria-hidden="true"></div>
+
+        <aside
+          id="mobile-drawer"
+          class="fixed inset-y-0 end-0 z-50 flex w-[85vw] max-w-xs flex-col justify-between border-s border-line bg-surface p-5 shadow-e2 transition-transform duration-300 translate-x-full rtl:-translate-x-full md:hidden"
+          aria-label={t(locale, 'nav.student_portal')}
+          aria-hidden="true"
+        >
+          <div class="flex flex-col gap-6">
+            <!-- Drawer top: Brand & Close button -->
+            <div class="flex items-center justify-between border-b border-line pb-4">
+              <a href={user ? localizePath(locale, '/dashboard') : localizePath(locale, '/')} class="flex items-center gap-2.5">
+                <BrandMark variant="mark" size={32} />
+                <span class="font-display text-h2 font-bold text-ink">RÉSIVO</span>
+              </a>
+              <button
+                type="button"
+                id="mobile-drawer-close"
+                class="touch-target-44 rounded-input text-muted hover:text-ink hover:bg-subtle transition-colors"
+                aria-label={locale === 'fr' ? 'Fermer le menu' : 'Close menu'}
+              >
+                <Icon name="x" size={22} />
+              </button>
+            </div>
+
+            <!-- Drawer Links -->
+            <nav class="flex flex-col gap-1.5" aria-label="Mobile Navigation">
               {user ? (
                 <>
-                  <a href={localizePath(locale, '/dashboard')} class="btn btn-secondary">
+                  <a
+                    href={localizePath(locale, '/dashboard')}
+                    class={`flex min-h-[44px] items-center gap-3 rounded-input px-3.5 py-2.5 text-body font-semibold transition-colors ${
+                      currentNav === 'dashboard' ? 'bg-teal-600/10 text-teal-600' : 'text-ink-2 hover:bg-subtle hover:text-ink'
+                    }`}
+                  >
+                    <Icon name="dashboard" size={20} />
                     <span>{t(locale, 'nav.dashboard')}</span>
                   </a>
-                  <a href="/logout" class="btn btn-ghost btn-icon" aria-label={t(locale, 'nav.sign_out')} title={t(locale, 'nav.sign_out')}>
-                    <Icon name="log-out" size={18} />
+                  <a
+                    href={localizePath(locale, '/dashboard/maintenance')}
+                    class={`flex min-h-[44px] items-center gap-3 rounded-input px-3.5 py-2.5 text-body font-semibold transition-colors ${
+                      currentNav === 'maintenance' ? 'bg-teal-600/10 text-teal-600' : 'text-ink-2 hover:bg-subtle hover:text-ink'
+                    }`}
+                  >
+                    <Icon name="wrench" size={20} />
+                    <span>{t(locale, 'nav.maintenance')}</span>
+                  </a>
+                  <a
+                    href={localizePath(locale, '/dashboard/room-change')}
+                    class={`flex min-h-[44px] items-center gap-3 rounded-input px-3.5 py-2.5 text-body font-semibold transition-colors ${
+                      currentNav === 'room-change' ? 'bg-teal-600/10 text-teal-600' : 'text-ink-2 hover:bg-subtle hover:text-ink'
+                    }`}
+                  >
+                    <Icon name="arrow-left-right" size={20} />
+                    <span>{t(locale, 'terms.room_change_request')}</span>
+                  </a>
+                  <a
+                    href={localizePath(locale, '/dashboard/profile')}
+                    class={`flex min-h-[44px] items-center gap-3 rounded-input px-3.5 py-2.5 text-body font-semibold transition-colors ${
+                      currentNav === 'profile' ? 'bg-teal-600/10 text-teal-600' : 'text-ink-2 hover:bg-subtle hover:text-ink'
+                    }`}
+                  >
+                    <Icon name="user" size={20} />
+                    <span>{t(locale, 'nav.profile')}</span>
+                  </a>
+                  <div class="my-2 border-t border-line"></div>
+                  <a
+                    href="/logout"
+                    class="flex min-h-[44px] items-center gap-3 rounded-input px-3.5 py-2.5 text-body font-semibold text-danger hover:bg-danger-bg transition-colors"
+                  >
+                    <Icon name="log-out" size={20} />
+                    <span>{t(locale, 'nav.sign_out')}</span>
                   </a>
                 </>
               ) : (
                 <>
-                  <a href={localizePath(locale, '/login')} class="btn btn-secondary">
+                  <a
+                    href={localizePath(locale, '/')}
+                    class={`flex min-h-[44px] items-center gap-3 rounded-input px-3.5 py-2.5 text-body font-semibold transition-colors ${
+                      isHome ? 'bg-teal-600/10 text-teal-600' : 'text-ink-2 hover:bg-subtle hover:text-ink'
+                    }`}
+                  >
+                    <Icon name="home" size={20} />
+                    <span>{t(locale, 'nav.home')}</span>
+                  </a>
+                  <a
+                    href={localizePath(locale, '/login')}
+                    class={`flex min-h-[44px] items-center gap-3 rounded-input px-3.5 py-2.5 text-body font-semibold transition-colors ${
+                      isLogin ? 'bg-teal-600/10 text-teal-600' : 'text-ink-2 hover:bg-subtle hover:text-ink'
+                    }`}
+                  >
+                    <Icon name="log-in" size={20} />
                     <span>{t(locale, 'nav.sign_in')}</span>
                   </a>
-                  <a href={localizePath(locale, '/register')} class="btn btn-primary">
-                    <span>{t(locale, 'common.add')}</span>
+                  <a
+                    href={localizePath(locale, '/register')}
+                    class="btn btn-primary mt-2 w-full justify-start gap-3"
+                  >
+                    <Icon name="user" size={18} />
+                    <span>{t(locale, 'nav.register_resident')}</span>
                   </a>
                 </>
               )}
-            </div>
+            </nav>
           </div>
-        </header>
+
+          <!-- Drawer bottom info -->
+          <div class="border-t border-line pt-4 text-xs text-muted flex flex-col gap-2">
+            <div class="flex items-center gap-2 text-ink-2 font-medium">
+              <Icon name="phone" size={14} class="text-teal-600 shrink-0 rtl-mirror" />
+              <a href="tel:+21343210000" class="hover:underline tracking-wide tnum" dir="ltr">+213 (0) 43 21 00 00</a>
+            </div>
+            <p>Direction des Œuvres Universitaires (DOU)</p>
+            <p class="text-[11px] text-muted">Cité Universitaire · Tlemcen</p>
+          </div>
+        </aside>
 
         <!-- Public content slot -->
         <main class="w-full flex-1">
@@ -440,6 +550,53 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
         }
         window._resivoLastPageLoad = Date.now();
       });
+
+      /* Mobile navigation drawer open/close controller */
+      (function() {
+        var toggle = document.getElementById('mobile-drawer-toggle');
+        var drawer = document.getElementById('mobile-drawer');
+        var backdrop = document.getElementById('mobile-drawer-backdrop');
+        var closeBtn = document.getElementById('mobile-drawer-close');
+        if (!drawer || !backdrop) return;
+
+        function openDrawer() {
+          drawer.classList.remove('translate-x-full', 'rtl:-translate-x-full');
+          drawer.setAttribute('aria-hidden', 'false');
+          backdrop.classList.remove('opacity-0', 'pointer-events-none');
+          backdrop.classList.add('opacity-100');
+          if (toggle) toggle.setAttribute('aria-expanded', 'true');
+          document.body.style.overflow = 'hidden';
+        }
+
+        function closeDrawer() {
+          drawer.classList.add('translate-x-full', 'rtl:-translate-x-full');
+          drawer.setAttribute('aria-hidden', 'true');
+          backdrop.classList.remove('opacity-100');
+          backdrop.classList.add('opacity-0', 'pointer-events-none');
+          if (toggle) toggle.setAttribute('aria-expanded', 'false');
+          document.body.style.overflow = '';
+        }
+
+        if (toggle) {
+          toggle.addEventListener('click', function() {
+            var isOpen = toggle.getAttribute('aria-expanded') === 'true';
+            if (isOpen) closeDrawer(); else openDrawer();
+          });
+        }
+
+        if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+        backdrop.addEventListener('click', closeDrawer);
+
+        drawer.querySelectorAll('a').forEach(function(link) {
+          link.addEventListener('click', closeDrawer);
+        });
+
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && drawer.getAttribute('aria-hidden') === 'false') {
+            closeDrawer();
+          }
+        });
+      })();
     </script>
   </body>
 </html>

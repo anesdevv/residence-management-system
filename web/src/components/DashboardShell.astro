@@ -34,10 +34,34 @@ const targetEnPath = targetEnBase + (targetEnBase.includes('?') ? '&lang=en' : '
 const targetFrPath = targetFrBase + (targetFrBase.includes('?') ? '&lang=fr' : '?lang=fr');
 
 const navItems = [
-  { key: 'dashboard', href: localizePath(locale, '/dashboard'), label: t(locale, 'nav.overview'), short: t(locale, 'nav.overview'), icon: 'dashboard' },
-  { key: 'maintenance', href: localizePath(locale, '/dashboard/maintenance'), label: t(locale, 'nav.maintenance'), short: t(locale, 'nav.maintenance'), icon: 'wrench' },
-  { key: 'room-change', href: localizePath(locale, '/dashboard/room-change'), label: t(locale, 'terms.room_change_request'), short: t(locale, 'nav.room_changes'), icon: 'arrow-left-right' },
-  { key: 'profile', href: localizePath(locale, '/dashboard/profile'), label: t(locale, 'nav.profile'), short: t(locale, 'nav.profile'), icon: 'user' },
+  {
+    key: 'dashboard',
+    href: localizePath(locale, '/dashboard'),
+    label: t(locale, 'nav.overview'),
+    short: locale === 'fr' ? 'Accueil' : 'Overview',
+    icon: 'dashboard',
+  },
+  {
+    key: 'maintenance',
+    href: localizePath(locale, '/dashboard/maintenance'),
+    label: t(locale, 'nav.maintenance'),
+    short: locale === 'fr' ? 'Travaux' : 'Fixes',
+    icon: 'wrench',
+  },
+  {
+    key: 'room-change',
+    href: localizePath(locale, '/dashboard/room-change'),
+    label: t(locale, 'terms.room_change_request'),
+    short: locale === 'fr' ? 'Chambre' : 'Rooms',
+    icon: 'arrow-left-right',
+  },
+  {
+    key: 'profile',
+    href: localizePath(locale, '/dashboard/profile'),
+    label: t(locale, 'nav.profile'),
+    short: locale === 'fr' ? 'Profil' : 'Profile',
+    icon: 'user',
+  },
 ] as const;
 ---
 
@@ -45,17 +69,17 @@ const navItems = [
   <!-- 3px brand-gradient strip at the shell top edge. -->
   <div class="gradient-top-line"></div>
 
-  <header class="sticky top-0 z-40 border-b border-line bg-surface">
-    <div class="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
-      <a href={localizePath(locale, '/dashboard')} class="flex min-w-0 shrink-0 items-center gap-3" aria-label="RÉSIVO dashboard">
-        <BrandMark variant="mark" size={36} />
+  <header class="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur-md">
+    <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+      <a href={localizePath(locale, '/dashboard')} class="flex min-w-0 shrink items-center gap-2.5 sm:gap-3" aria-label="RÉSIVO dashboard">
+        <BrandMark variant="mark" size={34} />
         <span class="flex min-w-0 flex-col">
-          <span class="font-display text-h2 text-ink">RÉSIVO</span>
-          <span class="truncate text-small font-normal text-muted">{title}</span>
+          <span class="font-display text-h2 leading-none text-ink">RÉSIVO</span>
+          <span class="truncate text-xs font-normal text-muted max-w-[120px] sm:max-w-[200px] lg:max-w-none">{title}</span>
         </span>
       </a>
 
-      <nav aria-label="Dashboard" class="ml-auto hidden items-center gap-1 lg:flex">
+      <nav aria-label="Dashboard" class="ms-auto hidden items-center gap-1 lg:flex">
         {
           navItems.map((item) => (
             <a
@@ -75,13 +99,13 @@ const navItems = [
         }
       </nav>
 
-      <div class="ml-auto flex min-w-0 items-center gap-2 sm:gap-3 lg:ml-3">
+      <div class="ms-auto flex min-w-0 items-center gap-2 sm:gap-3 lg:ms-3">
         <!-- Language switcher -->
-        <nav aria-label={t(locale, 'nav.language')} class="flex items-center rounded-input border border-line bg-subtle p-0.5 text-xs font-semibold">
+        <nav aria-label={t(locale, 'nav.language')} class="flex items-center rounded-input border border-line bg-subtle p-0.5 text-xs font-semibold shrink-0">
           <a
             href={targetFrPath}
             data-locale-switch="fr"
-            class={`rounded-input px-2.5 py-1 transition-colors ${
+            class={`rounded-input px-2 py-1 transition-colors ${
               locale === 'fr' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
             }`}
             aria-current={locale === 'fr' ? 'true' : undefined}
@@ -91,7 +115,7 @@ const navItems = [
           <a
             href={targetEnPath}
             data-locale-switch="en"
-            class={`rounded-input px-2.5 py-1 transition-colors ${
+            class={`rounded-input px-2 py-1 transition-colors ${
               locale === 'en' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
             }`}
             aria-current={locale === 'en' ? 'true' : undefined}
@@ -107,14 +131,14 @@ const navItems = [
         <span class="hidden max-w-[12rem] truncate text-small font-normal text-muted 2xl:block">{displayIdentity}</span>
         <a
           href={localizePath(locale, '/dashboard/profile')}
-          class="shrink-0 rounded-input p-0.5"
+          class="shrink-0 rounded-input p-0.5 touch-target-44"
           aria-label={`Signed in as ${displayIdentity || 'resident'} — open profile`}
         >
-          <Avatar name={displayIdentity || 'Resident'} size={40} />
+          <Avatar name={displayIdentity || 'Resident'} size={36} />
         </a>
-        <a href="/logout" class="btn btn-secondary shrink-0" aria-label={t(locale, 'nav.sign_out')}>
+        <a href="/logout" class="btn btn-secondary shrink-0 hidden sm:inline-flex" aria-label={t(locale, 'nav.sign_out')}>
           <Icon name="log-out" size={16} />
-          <span class="hidden sm:inline">{t(locale, 'nav.sign_out')}</span>
+          <span>{t(locale, 'nav.sign_out')}</span>
         </a>
       </div>
     </div>
@@ -128,7 +152,7 @@ const navItems = [
 
   <nav
     aria-label="Dashboard"
-    class="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface pb-safe lg:hidden"
+    class="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 backdrop-blur-md pb-safe lg:hidden"
   >
     <div class="mx-auto grid h-16 max-w-lg grid-cols-4 px-1">
       {
@@ -136,12 +160,12 @@ const navItems = [
           <a
             href={item.href}
             aria-current={activeNav === item.key ? 'page' : undefined}
-            class={`flex min-h-11 flex-col items-center justify-center gap-1 py-2 text-small transition-colors ${
-              activeNav === item.key ? 'font-semibold text-teal-600' : 'text-muted'
+            class={`flex min-h-[44px] flex-col items-center justify-center gap-1 py-1.5 text-xs transition-colors ${
+              activeNav === item.key ? 'font-semibold text-teal-600' : 'text-muted hover:text-ink'
             }`}
           >
-            <Icon name={item.icon} size={22} />
-            <span>{item.short}</span>
+            <Icon name={item.icon} size={20} class={activeNav === item.key ? 'text-teal-600' : 'text-muted'} />
+            <span class="truncate max-w-[72px] text-center text-[11px] leading-tight">{item.short}</span>
           </a>
         ))
       }

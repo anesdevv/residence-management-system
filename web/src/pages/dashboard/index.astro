@@ -95,11 +95,11 @@ const fullName = student ? `${student.first_name || 'Resident'}${student.last_na
 
 /* --- presentation-only helpers (no data, no metrics) ---------------------- */
 const statusPill = isActive
-  ? { kind: 'ok', label: 'Active resident' }
+  ? { kind: 'ok', label: t(locale, 'status.active') }
   : isRejected
-    ? { kind: 'danger', label: 'Application rejected' }
+    ? { kind: 'danger', label: t(locale, 'status.rejected') }
     : isPending
-      ? { kind: 'pending', label: 'Pending verification' }
+      ? { kind: 'pending', label: t(locale, 'status.pending') }
       : null;
 
 const subtitle = [student?.faculty, student?.university || 'Université de Tlemcen'].filter(Boolean).join(' · ');
@@ -108,7 +108,7 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
 <Layout title={locale === 'fr' ? 'Tableau de bord — RÉSIVO' : 'Dashboard — RÉSIVO'} activeNav="dashboard">
   {
     queryError && (
-      <InlineBanner kind="error" title="Connection error" class="mb-6">
+      <InlineBanner kind="error" title={t(locale, 'errors.connection_error')} class="mb-6">
         {queryError}
       </InlineBanner>
     )
@@ -135,28 +135,35 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
   {/* Pending — amber tokens + the 3-step review tracker */}
   {
     isPending && (
-      <section class="hero-card border border-pending-line bg-pending-bg p-5 sm:p-7 shadow-e1">
+      <section class="hero-card border border-pending-line bg-pending-bg p-4 sm:p-7 shadow-e1">
         <div class="flex flex-col gap-5 sm:flex-row sm:items-start">
           <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-pending-line bg-surface text-pending shadow-sm">
             <Icon name="clock" size={24} />
           </span>
-          <div class="flex min-w-0 flex-1 flex-col gap-6">
+          <div class="flex min-w-0 flex-1 flex-col gap-5 sm:gap-6">
             <div>
               <p class="overline text-pending font-semibold">{t(locale, 'dashboard.status_pending_title')}</p>
-              <h2 class="font-display text-h1 sm:text-display text-ink tracking-tight">Verification in progress</h2>
+              <h2 class="font-display text-h1 sm:text-display text-ink tracking-tight">{t(locale, 'dashboard.verification_in_progress')}</h2>
               <p class="measure mt-1.5 text-body text-ink-2 leading-relaxed">
                 {t(locale, 'dashboard.status_pending_desc')}
               </p>
             </div>
 
             <div class="rounded-input border border-pending-line/80 bg-surface/90 p-4 sm:p-5 shadow-sm">
-              <Stepper steps={['Form submitted', 'Roster matching', 'Room handover']} current={1} />
+              <Stepper
+                steps={[
+                  t(locale, 'dashboard.stepper_submitted'),
+                  t(locale, 'dashboard.stepper_matching'),
+                  t(locale, 'dashboard.stepper_handover'),
+                ]}
+                current={1}
+              />
             </div>
 
             <div class="flex items-start gap-3 rounded-input border border-pending-line bg-surface p-3.5 sm:px-4">
               <Icon name="lock" size={16} class="mt-0.5 shrink-0 text-pending" />
               <p class="text-small font-normal text-ink-2 leading-relaxed">
-                Service requests (maintenance and room transfer) unlock automatically upon room assignment.
+                {t(locale, 'dashboard.service_requests_locked')}
               </p>
             </div>
           </div>
@@ -168,7 +175,7 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
   {/* Rejected — danger tokens + the reason in a quoted block */}
   {
     isRejected && (
-      <section class="hero-card border border-danger-line bg-danger-bg p-5 sm:p-7 shadow-e1">
+      <section class="hero-card border border-danger-line bg-danger-bg p-4 sm:p-7 shadow-e1">
         <div class="flex flex-col gap-5 sm:flex-row sm:items-start">
           <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-danger-line bg-surface text-danger shadow-sm">
             <Icon name="x-circle" size={24} />
@@ -176,7 +183,7 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
           <div class="flex min-w-0 flex-1 flex-col gap-5">
             <div>
               <p class="overline text-danger font-semibold">{t(locale, 'dashboard.status_rejected_title')}</p>
-              <h2 class="font-display text-h1 sm:text-display text-ink tracking-tight">Registration could not be approved</h2>
+              <h2 class="font-display text-h1 sm:text-display text-ink tracking-tight">{t(locale, 'dashboard.rejection_header')}</h2>
               <p class="measure mt-1.5 text-body text-ink-2 leading-relaxed">
                 {t(locale, 'dashboard.status_rejected_desc')}
               </p>
@@ -185,15 +192,14 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
             <blockquote class="rounded-input border border-danger-line bg-surface p-4 sm:p-5 shadow-sm">
               <p class="text-xs font-semibold uppercase tracking-wider text-danger mb-1.5">{t(locale, 'dashboard.rejection_reason_label')}</p>
               <p class="break-words text-body font-medium text-danger">
-                “{student?.rejection_reason || 'Official records could not be verified on the current year admissions roster.'}”
+                “{student?.rejection_reason || t(locale, 'dashboard.rejection_default')}”
               </p>
             </blockquote>
 
             <div class="flex items-start gap-3 rounded-input border border-danger-line bg-surface p-3.5 sm:p-4">
               <Icon name="building" size={18} class="mt-0.5 shrink-0 text-danger" />
               <p class="measure text-small font-normal text-ink-2 leading-relaxed">
-                If you believe this is an administrative discrepancy, please visit the Housing Bureau
-                (Administration Bloc A) with your official student certificate.
+                {t(locale, 'dashboard.rejection_bureau_notice')}
               </p>
             </div>
           </div>
@@ -205,9 +211,9 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
   {/* Active with a room — the assigned-quarters summary */}
   {
     isActive && room && (
-      <section class="hero-card border border-ok-line bg-ok-bg p-5 sm:p-7 shadow-e1">
-        <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div class="flex min-w-0 items-start gap-4 sm:gap-5">
+      <section class="hero-card border border-ok-line bg-ok-bg p-4 sm:p-7 shadow-e1">
+        <div class="flex flex-col gap-5 sm:gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex min-w-0 items-start gap-3.5 sm:gap-5">
             <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-ok-line bg-surface text-ok shadow-sm">
               <Icon name="building" size={24} />
             </span>
@@ -217,18 +223,18 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
                 {t(locale, 'dashboard.block_room', { block: room.block, room: room.number })}
               </h2>
               <p class="tnum mt-1 flex items-center gap-2 text-small font-normal text-ink-2">
-                <Icon name="map-pin" size={14} class="text-ok shrink-0" />
+                <Icon name="map-pin" size={14} class="text-ok shrink-0 rtl-mirror" />
                 <span>{t(locale, 'dashboard.floor_residence', { floor: room.floor })}</span>
               </p>
             </div>
           </div>
 
-          <dl class="grid shrink-0 grid-cols-2 divide-x divide-ok-line/50 rounded-input border border-ok-line bg-surface p-3.5 sm:px-5 shadow-sm">
-            <div class="min-w-0 px-3 first:pl-0 last:pr-0">
+          <dl class="grid shrink-0 grid-cols-2 divide-x divide-ok-line/50 rounded-input border border-ok-line bg-surface p-3 sm:px-5 shadow-sm">
+            <div class="min-w-0 px-3 first:ps-0 last:pe-0">
               <dt class="overline text-muted">{t(locale, 'fields.card_id')}</dt>
-              <dd class="tnum font-mono text-h2 font-semibold text-ink tracking-wider">{student?.card_id}</dd>
+              <dd class="tnum font-mono text-h2 font-semibold text-ink tracking-wider" dir="ltr">{student?.card_id}</dd>
             </div>
-            <div class="min-w-0 px-3 first:pl-0 last:pr-0">
+            <div class="min-w-0 px-3 first:ps-0 last:pe-0">
               <dt class="overline text-muted">{t(locale, 'fields.study_level')}</dt>
               <dd class="font-display text-h2 font-semibold text-ink">{student?.study_level || 'L1'}</dd>
             </div>
@@ -317,9 +323,9 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
                 {t(locale, 'dashboard.service_maintenance_desc')}
               </p>
             </div>
-            <span class="flex items-center gap-1.5 text-small font-semibold text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5">
+            <span class="flex items-center gap-1.5 text-small font-semibold text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5">
               <span>{t(locale, 'dashboard.service_maintenance_cta')}</span>
-              <Icon name="chevron-right" size={16} />
+              <Icon name="chevron-right" size={16} class="rtl-mirror" />
             </span>
           </a>
         ) : (
@@ -362,9 +368,9 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
                 {t(locale, 'dashboard.service_transfer_desc')}
               </p>
             </div>
-            <span class="flex items-center gap-1.5 text-small font-semibold text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5">
+            <span class="flex items-center gap-1.5 text-small font-semibold text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5">
               <span>{t(locale, 'dashboard.service_transfer_cta')}</span>
-              <Icon name="chevron-right" size={16} />
+              <Icon name="chevron-right" size={16} class="rtl-mirror" />
             </span>
           </a>
         ) : (
@@ -405,9 +411,9 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
             {t(locale, 'dashboard.service_profile_desc')}
           </p>
         </div>
-        <span class="flex items-center gap-1.5 text-small font-semibold text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5">
+        <span class="flex items-center gap-1.5 text-small font-semibold text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5">
           <span>{t(locale, 'dashboard.service_profile_cta')}</span>
-          <Icon name="chevron-right" size={16} />
+          <Icon name="chevron-right" size={16} class="rtl-mirror" />
         </span>
       </a>
     </div>
@@ -431,7 +437,7 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
             class="inline-flex min-h-11 items-center gap-1.5 text-small font-semibold text-teal-600 hover:underline"
           >
             <span>{t(locale, 'dashboard.timeline_view_all')}</span>
-            <Icon name="chevron-right" size={16} />
+            <Icon name="chevron-right" size={16} class="rtl-mirror" />
           </a>
         )
       }

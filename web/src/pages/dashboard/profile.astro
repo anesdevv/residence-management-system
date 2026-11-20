@@ -27,7 +27,7 @@ try {
     .single();
   s = data;
 } catch (err: any) {
-  queryError = err?.message || 'The server is taking too long to respond. Check your connection and try again.';
+  queryError = err?.message || t(locale, 'errors.timeout');
 }
 
 const error = Astro.url.searchParams.get('error');
@@ -44,7 +44,7 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
   >
     <Fragment slot="actions">
       <a href={localizePath(locale, '/dashboard')} class="btn btn-secondary">
-        <Icon name="arrow-left" size={16} />
+        <Icon name="arrow-left" size={16} class="rtl-mirror" />
         <span>{t(locale, 'room_change.back_to_dashboard')}</span>
       </a>
     </Fragment>
@@ -58,7 +58,7 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
   )}
 
   {queryError && (
-    <InlineBanner kind="error" title="Connection error" class="mb-6">
+    <InlineBanner kind="error" title={t(locale, 'common.connection_error')} class="mb-6">
       {queryError}
     </InlineBanner>
   )}
@@ -83,7 +83,10 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
             </div>
           </div>
 
-          <StatusPill kind={statusKind} />
+          <StatusPill
+            kind={statusKind}
+            label={s?.status === 'active' ? t(locale, 'status.active') : s?.status === 'rejected' ? t(locale, 'status.rejected') : t(locale, 'status.pending')}
+          />
         </div>
 
         <!-- Student Data Grid -->
@@ -134,6 +137,7 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
               id="phone"
               required
               autocomplete="tel"
+              dir="ltr"
               value={s?.phone ?? ''}
               placeholder="e.g. 0555123456"
             />
@@ -153,6 +157,7 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
               autocomplete="email"
               inputmode="email"
               maxlength="254"
+              dir="ltr"
               value={s?.email ?? ''}
               placeholder="student@univ-tlemcen.dz"
             />
@@ -172,6 +177,7 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
               autocomplete="email"
               inputmode="email"
               maxlength="254"
+              dir="ltr"
               value={s?.email ?? ''}
               placeholder="student@univ-tlemcen.dz"
             />
@@ -195,7 +201,7 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
             <Icon name="lock" size={20} />
           </span>
           <div class="flex flex-col gap-1">
-            <h2 class="card-title">Account security</h2>
+            <h2 class="card-title">{t(locale, 'profile.security_title')}</h2>
             <p class="text-small font-normal text-muted">
               {t(locale, 'profile.security_desc')}
             </p>

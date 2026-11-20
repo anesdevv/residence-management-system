@@ -475,4 +475,50 @@ describe('Simple-email source contracts, deleted flows & i18n parity', () => {
     expect(registerAstro).toContain('inputmode="email"');
     expect(registerAstro).not.toContain('onpaste');
   });
+
+  it('API /api/login blocks requests when Turnstile verification fails in strict mode', async () => {
+    process.env.TURNSTILE_STRICT = 'true';
+    try {
+      const res = await loginPost(
+        makeFormContext({
+          card_id: '20240001',
+          password: 'Password123!',
+          'cf-turnstile-response': '',
+        }),
+      );
+      expect(res.status).toBe(302);
+      expect(res.headers.get('Location')).toContain('error=');
+      expect(mockSignInWithPassword).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.TURNSTILE_STRICT;
+    }
+  });
+
+  it('API /api/register blocks requests when Turnstile verification fails in strict mode', async () => {
+    process.env.TURNSTILE_STRICT = 'true';
+    try {
+      const res = await registerPost(
+        makeFormContext({
+          card_id: '20240001',
+          first_name: 'Karim',
+          last_name: 'Benali',
+          birth_date: '2003-04-12',
+          phone: '0555123456',
+          email: 'karim@univ-tlemcen.dz',
+          confirm_email: 'karim@univ-tlemcen.dz',
+          university: 'Université de Tlemcen',
+          faculty: 'Sciences',
+          study_level: 'L2',
+          wilaya: 'Tlemcen',
+          password: 'Password123!',
+          'cf-turnstile-response': '',
+        }),
+      );
+      expect(res.status).toBe(302);
+      expect(res.headers.get('Location')).toContain('error=');
+      expect(mockSignUp).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.TURNSTILE_STRICT;
+    }
+  });
 });

@@ -1,0 +1,39 @@
+---
+/**
+ * RÉSIVO — Cloudflare Turnstile bot protection component.
+ * Embeds Cloudflare Turnstile widget with automatic locale and theme matching.
+ */
+import { getTurnstileSiteKey } from '../lib/turnstile';
+import type { SupportedLocale } from '../lib/i18n';
+
+interface Props {
+  siteKey?: string;
+  action?: string;
+  theme?: 'light' | 'dark' | 'auto';
+  size?: 'normal' | 'compact' | 'flexible';
+  class?: string;
+}
+
+const {
+  siteKey = getTurnstileSiteKey(),
+  action,
+  theme = 'light',
+  size = 'normal',
+  class: className = '',
+} = Astro.props;
+
+const locale: SupportedLocale = Astro.locals.locale || 'en';
+---
+
+<div class={`cf-turnstile-wrapper ${className}`}>
+  <div
+    class="cf-turnstile"
+    data-sitekey={siteKey}
+    data-theme={theme}
+    data-size={size}
+    data-language={locale}
+    {...(action ? { 'data-action': action } : {})}
+  ></div>
+</div>
+
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>

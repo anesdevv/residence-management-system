@@ -24,6 +24,15 @@ export function normalizeLocale(locale?: string | null): SupportedLocale {
   return 'en';
 }
 
+export function getDirection(locale?: string | null): 'ltr' | 'rtl' {
+  if (!locale) return 'ltr';
+  const lower = locale.toLowerCase().trim();
+  if (lower.startsWith('ar') || lower.startsWith('fa') || lower.startsWith('ur') || lower.startsWith('he')) {
+    return 'rtl';
+  }
+  return 'ltr';
+}
+
 export function resolveRequestLocale(
   localsLocale?: string | null,
   refererHeader?: string | null,

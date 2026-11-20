@@ -5,6 +5,7 @@ import { validateRegistration, normalizeEmail, mapEmailErrorCode } from '../../l
 import { checkRegistrationGate, getResidencePublic } from '../../lib/residence';
 import { isContactEmailTaken } from '../../lib/contact-email';
 import { localizePath, resolveRequestLocale, t } from '../../lib/i18n';
+import { verifyTurnstileToken } from '../../lib/turnstile';
 import { TIMEOUT_MESSAGES } from '../../lib/timeouts';
 
 export const POST: APIRoute = async (context) => {
@@ -32,6 +33,14 @@ export const POST: APIRoute = async (context) => {
   const errors = validateRegistration(data);
   if (errors.length) {
     return context.redirect(`${registerPath}?error=${encodeURIComponent(errors[0])}`);
+  }
+
+  const turnstileToken = String(form.get('cf-turnstile-response') ?? '');
+  const clientIp = context.request.headers.get('cf-connecting-ip') ?? context.request.headers.get('x-forwarded-for')?.split(',')[0];
+  const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIp);
+  if (!turnstileResult.success) {
+    const turnstileErrMsg = t(locale, 'errors.turnstile_failed');
+    return context.redirect(`${registerPath}?error=${encodeURIComponent(turnstileErrMsg)}`);
   }
 
   const cleanEmail = normalizeEmail(data.email);

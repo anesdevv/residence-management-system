@@ -68,7 +68,7 @@ const services = [
 >
   <!-- Hero — quiet institutional navy surface with structured asymmetric split -->
   <section
-    class="relative overflow-hidden rounded-hero border border-navy-700/70 bg-navy-900 px-6 py-10 shadow-e2 sm:px-10 sm:py-14 lg:py-16"
+    class="relative overflow-hidden rounded-hero border border-navy-700/70 bg-navy-900 px-5 py-8 sm:px-10 sm:py-14 lg:py-16 shadow-e2"
     style="background-image: var(--grad-brand);"
   >
     <!-- Deep legibility plate ensuring rock-solid AA contrast on dark gradient -->
@@ -144,12 +144,12 @@ const services = [
 
       <!-- Right Column: Institutional Verification & Live Session Card -->
       <div class="lg:col-span-5">
-        <div class="relative overflow-hidden rounded-card border border-white/15 bg-navy-800/95 p-6 text-on-dark shadow-e2 backdrop-blur-sm">
+        <div class="relative overflow-hidden rounded-card border border-white/15 bg-navy-800/95 p-4 sm:p-6 text-on-dark shadow-e2 backdrop-blur-sm">
           <!-- Top accent line -->
           <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-teal-500 via-teal-400 to-green-500" aria-hidden="true"></div>
 
           <!-- Academic Session Header -->
-          <div class="flex items-center justify-between border-b border-navy-700 pb-3.5">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-navy-700 pb-3.5">
             <span class="flex items-center gap-2 text-small font-medium text-teal-400">
               <span class="live-dot live-dot--connected"></span>
               <span class="tnum tracking-wide">{locale === 'fr' ? 'Session Universitaire 2026–2027' : 'Academic Session 2026–2027'}</span>
@@ -161,7 +161,7 @@ const services = [
 
           <!-- Dossier Verification Matrix -->
           <div class="mt-5 flex flex-col gap-4">
-            <div class="flex items-start justify-between gap-3">
+            <div class="flex flex-wrap items-start justify-between gap-2 sm:gap-3">
               <div>
                 <p class="overline text-on-dark-2">{locale === 'fr' ? 'Dossier d’hébergement' : 'Housing application'}</p>
                 <p class="font-display text-h3 text-surface font-semibold">{locale === 'fr' ? 'Vérification du dossier' : 'Intake verification'}</p>
@@ -193,7 +193,7 @@ const services = [
             <!-- Micro-dispatch status note -->
             <div class="flex items-center justify-between border-t border-navy-700/80 pt-3 text-[11px] font-mono text-on-dark-2">
               <span>DISPATCH DESK</span>
-              <span class="tnum text-gold-300 font-semibold">{t(locale, 'landing.hotline')}</span>
+              <span class="tnum text-gold-300 font-semibold" dir="ltr">{t(locale, 'landing.hotline')}</span>
             </div>
           </div>
         </div>
@@ -284,14 +284,14 @@ const services = [
         </p>
       </div>
 
-      <div class="mt-2 flex flex-wrap items-center justify-between gap-4 border-t border-navy-700/80 pt-5 text-small text-on-dark-2">
+      <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-navy-700/80 pt-5 text-small text-on-dark-2">
         <p class="flex items-center gap-2">
           <Icon name="map-pin" size={16} class="text-gold-300 shrink-0" />
           <span>Direction des Œuvres Universitaires · Cité Universitaire · Tlemcen</span>
         </p>
         <p class="tnum flex items-center gap-2 font-mono text-xs text-on-dark font-medium">
           <Icon name="phone" size={14} class="text-teal-400 shrink-0" />
-          <span>{t(locale, 'landing.hotline')}</span>
+          <span dir="ltr">{t(locale, 'landing.hotline')}</span>
         </p>
       </div>
     </div>

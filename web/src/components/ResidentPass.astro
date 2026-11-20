@@ -63,13 +63,13 @@ const stateLabel = locale === 'fr'
     aria-hidden="true"
   >
     <!-- Corner registration marks -->
-    <span class="absolute top-1 left-1.5 font-mono text-[9px] text-gold-300/40 select-none">+</span>
-    <span class="absolute top-1 right-1.5 font-mono text-[9px] text-gold-300/40 select-none">+</span>
-    <span class="absolute bottom-1 left-1.5 font-mono text-[9px] text-gold-300/40 select-none">+</span>
-    <span class="absolute bottom-1 right-1.5 font-mono text-[9px] text-gold-300/40 select-none">+</span>
+    <span class="absolute top-1 start-1.5 font-mono text-[9px] text-gold-300/40 select-none">+</span>
+    <span class="absolute top-1 end-1.5 font-mono text-[9px] text-gold-300/40 select-none">+</span>
+    <span class="absolute bottom-1 start-1.5 font-mono text-[9px] text-gold-300/40 select-none">+</span>
+    <span class="absolute bottom-1 end-1.5 font-mono text-[9px] text-gold-300/40 select-none">+</span>
   </div>
 
-  <div class="relative flex flex-col gap-5 p-5 sm:p-7">
+  <div class="relative flex flex-col gap-5 p-4 sm:p-7">
     <!-- Institutional Top Authority Header -->
     <div class="flex flex-col gap-2 border-b border-white/15 pb-4">
       <div class="flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono uppercase tracking-widest text-on-dark-2">
@@ -115,20 +115,20 @@ const stateLabel = locale === 'fr'
     </div>
 
     <!-- Quarters Allocation Matrix (Block / Floor / Room) -->
-    <dl class="grid grid-cols-3 divide-x divide-white/15 rounded-input border border-white/20 bg-white/[0.04] p-3.5 sm:p-4 text-center sm:text-left backdrop-blur-[2px]">
-      <div class="min-w-0 px-2 sm:px-3 first:pl-0 last:pr-0">
+    <dl class="grid grid-cols-3 divide-x divide-white/15 rtl:divide-x-reverse rounded-input border border-white/20 bg-white/[0.04] p-3 sm:p-4 text-center sm:text-start backdrop-blur-[2px]">
+      <div class="min-w-0 px-2 sm:px-3 first:ps-0 last:pe-0">
         <dt class="overline text-on-dark-2">{t(locale, 'fields.block')}</dt>
         <dd class="tnum font-display text-h1 sm:text-display font-semibold text-surface tracking-tight">
           {block}
         </dd>
       </div>
-      <div class="min-w-0 px-2 sm:px-3 first:pl-0 last:pr-0">
+      <div class="min-w-0 px-2 sm:px-3 first:ps-0 last:pe-0">
         <dt class="overline text-on-dark-2">{t(locale, 'fields.floor')}</dt>
         <dd class="tnum font-display text-h1 sm:text-display font-semibold text-surface tracking-tight">
           {floor}
         </dd>
       </div>
-      <div class="min-w-0 px-2 sm:px-3 first:pl-0 last:pr-0">
+      <div class="min-w-0 px-2 sm:px-3 first:ps-0 last:pe-0">
         <dt class="overline text-on-dark-2">{t(locale, 'fields.room')}</dt>
         <dd class="tnum font-display text-h1 sm:text-display font-semibold text-surface tracking-tight">
           {room}
@@ -140,13 +140,13 @@ const stateLabel = locale === 'fr'
     <div class="flex flex-col gap-4 border-t border-white/15 pt-4 sm:flex-row sm:items-end sm:justify-between">
       <div class="min-w-0">
         <dt class="overline text-on-dark-2">{t(locale, 'fields.card_id')}</dt>
-        <dd class="tnum font-mono text-h2 font-semibold tracking-wider text-surface">
+        <dd class="tnum font-mono text-h2 font-semibold tracking-wider text-surface" dir="ltr">
           {cardId}
         </dd>
         {issuedAt && (
           <p class="tnum mt-1 flex items-center gap-1.5 text-xs text-on-dark-2">
             <Icon name="calendar" size={13} class="text-gold-300" />
-            <span>Issued {issuedAt}</span>
+            <span>{t(locale, 'dashboard.pass_issued', { date: issuedAt })}</span>
           </p>
         )}
       </div>

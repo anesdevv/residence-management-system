@@ -10,6 +10,7 @@ import Icon from '../components/Icon.astro';
 import BrandMark from '../components/BrandMark.astro';
 import InlineBanner from '../components/InlineBanner.astro';
 import PageHeader from '../components/PageHeader.astro';
+import Turnstile from '../components/Turnstile.astro';
 import { createSupabaseServerClient } from '../lib/supabase';
 import { getResidencePublic, isRegistrationOpen, residenceHeaderLabel } from '../lib/residence';
 
@@ -29,23 +30,23 @@ const residenceTypeHeader = residenceHeaderLabel(locale, residence);
 const panelItems = [
   {
     icon: 'shield-check',
-    title: 'Roster cross-verification',
-    copy: 'Automated validation against official university enrollment lists.',
+    title: t(locale, 'auth.panel_roster_title'),
+    copy: t(locale, 'auth.panel_roster_desc'),
   },
   {
     icon: 'wrench',
-    title: 'Maintenance triage with photos',
-    copy: 'Submit repair reports with photo attachments once assigned.',
+    title: t(locale, 'auth.panel_maintenance_title'),
+    copy: t(locale, 'auth.panel_maintenance_desc'),
   },
   {
     icon: 'arrow-left-right',
-    title: 'Room relocation portal',
-    copy: 'Request room swaps and floor preference adjustments online.',
+    title: t(locale, 'auth.panel_transfer_title'),
+    copy: t(locale, 'auth.panel_transfer_desc'),
   },
   {
     icon: 'building',
-    title: 'Cité Universitaire · Tlemcen',
-    copy: 'Direction des Œuvres Universitaires (DOU).',
+    title: t(locale, 'auth.panel_institution_title'),
+    copy: t(locale, 'auth.panel_institution_desc'),
   },
 ];
 ---
@@ -68,7 +69,7 @@ const panelItems = [
 
     {
       error && (
-        <InlineBanner kind="error" title="Application error">
+        <InlineBanner kind="error" title={t(locale, 'common.error')}>
           {error}
         </InlineBanner>
       )
@@ -84,16 +85,16 @@ const panelItems = [
               <Icon name="file-spreadsheet" size={20} />
             </span>
             <div class="min-w-0">
-              <h2 class="card-title">Academic enrollment details</h2>
+              <h2 class="card-title">{t(locale, 'auth.academic_details_title')}</h2>
               <p class="mt-0.5 text-small font-normal text-muted">
-                University registration records as listed on your student card
+                {t(locale, 'auth.academic_details_desc')}
               </p>
             </div>
           </header>
 
-          <div class="grid grid-cols-1 gap-6 pt-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-5 pt-4 sm:grid-cols-2">
             <div class="flex flex-col gap-2 sm:col-span-2">
-              <label class="label" for="card_id">Student card ID (Carte d'étudiant) <span class="text-danger" aria-hidden="true">*</span></label>
+              <label class="label" for="card_id">{t(locale, 'auth.card_id_label')} <span class="text-danger" aria-hidden="true">*</span></label>
               <input
                 class="input tnum"
                 type="text"
@@ -101,39 +102,40 @@ const panelItems = [
                 id="card_id"
                 required
                 autocomplete="username"
-                placeholder="e.g. 202338012345"
+                dir="ltr"
+                placeholder={t(locale, 'auth.login_card_id_placeholder')}
               />
               <p class="field-hint">
-                Must match the exact matriculation ID on your physical university student card.
+                {t(locale, 'auth.card_id_hint')}
               </p>
             </div>
 
             <div class="flex flex-col gap-2">
-              <label class="label" for="university">University <span class="text-danger" aria-hidden="true">*</span></label>
+              <label class="label" for="university">{t(locale, 'fields.university')} <span class="text-danger" aria-hidden="true">*</span></label>
               <input
                 class="input"
                 type="text"
                 name="university"
                 id="university"
                 required
-                placeholder="e.g. Université Abou Bekr Belkaïd"
+                placeholder={t(locale, 'auth.university_placeholder')}
               />
             </div>
 
             <div class="flex flex-col gap-2">
-              <label class="label" for="faculty">Faculty / Department <span class="text-danger" aria-hidden="true">*</span></label>
+              <label class="label" for="faculty">{t(locale, 'fields.faculty')} <span class="text-danger" aria-hidden="true">*</span></label>
               <input
                 class="input"
                 type="text"
                 name="faculty"
                 id="faculty"
                 required
-                placeholder="e.g. Faculté des Sciences"
+                placeholder={t(locale, 'auth.faculty_placeholder')}
               />
             </div>
 
             <div class="flex flex-col gap-2 sm:col-span-2">
-              <label class="label" for="study_level">Study level (Niveau d'études) <span class="text-danger" aria-hidden="true">*</span></label>
+              <label class="label" for="study_level">{t(locale, 'auth.study_level_label')} <span class="text-danger" aria-hidden="true">*</span></label>
               <select class="select" name="study_level" id="study_level" required>
                 {levels.map((l) => <option value={l}>{l}</option>)}
               </select>
@@ -148,16 +150,16 @@ const panelItems = [
               <Icon name="user" size={20} />
             </span>
             <div class="min-w-0">
-              <h2 class="card-title">Personal identity &amp; civil status</h2>
+              <h2 class="card-title">{t(locale, 'auth.personal_identity_title')}</h2>
               <p class="mt-0.5 text-small font-normal text-muted">
                 {t(locale, 'auth.register_identity_hint')}
               </p>
             </div>
           </header>
 
-          <div class="grid grid-cols-1 gap-6 pt-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-5 pt-4 sm:grid-cols-2">
             <div class="flex flex-col gap-2">
-              <label class="label" for="first_name">First name (Prénom) <span class="text-danger" aria-hidden="true">*</span></label>
+              <label class="label" for="first_name">{t(locale, 'auth.first_name_label')} <span class="text-danger" aria-hidden="true">*</span></label>
               <input
                 class="input"
                 type="text"
@@ -165,12 +167,12 @@ const panelItems = [
                 id="first_name"
                 required
                 autocomplete="given-name"
-                placeholder="e.g. Mohamed"
+                placeholder={t(locale, 'auth.first_name_placeholder')}
               />
             </div>
 
             <div class="flex flex-col gap-2">
-              <label class="label" for="last_name">Last name (Nom) <span class="text-danger" aria-hidden="true">*</span></label>
+              <label class="label" for="last_name">{t(locale, 'auth.last_name_label')} <span class="text-danger" aria-hidden="true">*</span></label>
               <input
                 class="input"
                 type="text"
@@ -178,24 +180,24 @@ const panelItems = [
                 id="last_name"
                 required
                 autocomplete="family-name"
-                placeholder="e.g. Benali"
+                placeholder={t(locale, 'auth.last_name_placeholder')}
               />
             </div>
 
             <div class="flex flex-col gap-2">
-              <label class="label" for="birth_date">Date of birth <span class="text-danger" aria-hidden="true">*</span></label>
-              <input class="input tnum" type="date" name="birth_date" id="birth_date" required />
+              <label class="label" for="birth_date">{t(locale, 'fields.birth_date')} <span class="text-danger" aria-hidden="true">*</span></label>
+              <input class="input tnum" type="date" name="birth_date" id="birth_date" dir="ltr" required />
             </div>
 
             <div class="flex flex-col gap-2">
-              <label class="label" for="wilaya">Wilaya of origin <span class="text-danger" aria-hidden="true">*</span></label>
+              <label class="label" for="wilaya">{t(locale, 'auth.wilaya_label')} <span class="text-danger" aria-hidden="true">*</span></label>
               <input
                 class="input"
                 type="text"
                 name="wilaya"
                 id="wilaya"
                 required
-                placeholder="e.g. Oran, Sidi Bel Abbès, Mostaganem..."
+                placeholder={t(locale, 'auth.wilaya_placeholder')}
               />
             </div>
           </div>
@@ -208,14 +210,14 @@ const panelItems = [
               <Icon name="phone" size={20} />
             </span>
             <div class="min-w-0">
-              <h2 class="card-title">Contact</h2>
-              <p class="mt-0.5 text-small font-normal text-muted">Used for urgent facility and security notices.</p>
+              <h2 class="card-title">{t(locale, 'auth.contact_section_title')}</h2>
+              <p class="mt-0.5 text-small font-normal text-muted">{t(locale, 'auth.contact_section_desc')}</p>
             </div>
           </header>
 
-          <div class="grid grid-cols-1 gap-6 pt-4">
+          <div class="grid grid-cols-1 gap-5 pt-4">
             <div class="flex flex-col gap-2">
-              <label class="label" for="phone">Mobile phone <span class="text-danger" aria-hidden="true">*</span></label>
+              <label class="label" for="phone">{t(locale, 'auth.phone_label')} <span class="text-danger" aria-hidden="true">*</span></label>
               <input
                 class="input tnum"
                 type="tel"
@@ -223,9 +225,10 @@ const panelItems = [
                 id="phone"
                 required
                 autocomplete="tel"
+                dir="ltr"
                 placeholder="05 / 06 / 07..."
               />
-              <p class="field-hint">Must be an active mobile line in Algeria.</p>
+              <p class="field-hint">{t(locale, 'auth.phone_hint')}</p>
             </div>
           </div>
         </section>
@@ -242,7 +245,7 @@ const panelItems = [
             </div>
           </header>
 
-          <div class="grid grid-cols-1 gap-6 pt-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-5 pt-4 sm:grid-cols-2">
             <div class="flex flex-col gap-2">
               <label class="label" for="email">{t(locale, 'fields.contact_email')} <span class="text-danger" aria-hidden="true">*</span></label>
               <input
@@ -254,6 +257,7 @@ const panelItems = [
                 autocomplete="email"
                 inputmode="email"
                 maxlength="254"
+                dir="ltr"
                 placeholder="student@univ-tlemcen.dz"
               />
               <p class="field-hint">{t(locale, 'auth.email_hint')}</p>
@@ -270,6 +274,7 @@ const panelItems = [
                 autocomplete="email"
                 inputmode="email"
                 maxlength="254"
+                dir="ltr"
                 placeholder="student@univ-tlemcen.dz"
               />
             </div>
@@ -277,7 +282,7 @@ const panelItems = [
             <p id="email-match-error" class="field-error hidden sm:col-span-2" role="alert"></p>
 
             <div class="flex flex-col gap-2 sm:col-span-2">
-              <label class="label" for="password">Portal password <span class="text-danger" aria-hidden="true">*</span></label>
+              <label class="label" for="password">{t(locale, 'auth.portal_password_label')} <span class="text-danger" aria-hidden="true">*</span></label>
               <input
                 class="input"
                 type="password"
@@ -286,15 +291,27 @@ const panelItems = [
                 required
                 autocomplete="new-password"
                 minlength="8"
+                dir="ltr"
                 placeholder="Minimum 8 characters"
               />
-              <p class="field-hint">Must be at least 8 characters long. Keep this password safe.</p>
+              <p class="field-hint">{t(locale, 'auth.portal_password_hint')}</p>
             </div>
 
             <div class="flex flex-col gap-2 sm:col-span-2" role="group" aria-labelledby="pw-meter-caption">
               <div class="flex items-center justify-between gap-3">
-                <span class="field-hint" id="pw-meter-caption">Password strength</span>
-                <span class="text-small font-semibold text-ink-2" id="pw-meter-label" aria-live="polite">Not set</span>
+                <span class="field-hint" id="pw-meter-caption">{t(locale, 'auth.password_strength')}</span>
+                <span
+                  class="text-small font-semibold text-ink-2"
+                  id="pw-meter-label"
+                  aria-live="polite"
+                  data-pw-not-set={t(locale, 'auth.pw_not_set')}
+                  data-pw-weak={t(locale, 'auth.pw_weak')}
+                  data-pw-fair={t(locale, 'auth.pw_fair')}
+                  data-pw-good={t(locale, 'auth.pw_good')}
+                  data-pw-strong={t(locale, 'auth.pw_strong')}
+                >
+                  {t(locale, 'auth.pw_not_set')}
+                </span>
               </div>
               <div class="flex gap-1" aria-hidden="true">
                 <span class="h-1 flex-1 rounded-pill bg-subtle" data-pw-segment></span>
@@ -303,25 +320,30 @@ const panelItems = [
                 <span class="h-1 flex-1 rounded-pill bg-subtle" data-pw-segment></span>
               </div>
               <p class="visually-hidden">
-                Strength is reported as weak, fair, good or strong. It updates as you type.
+                {t(locale, 'auth.password_strength_hint')}
               </p>
             </div>
           </div>
         </section>
 
         <!-- Submit -->
-        <div class="card flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-          <a class="link text-small font-semibold" href={localizePath(locale, '/login')}>{t(locale, 'auth.register_have_account')} {t(locale, 'auth.sign_in')} →</a>
-          <button class="btn btn-primary w-full sm:w-auto" type="submit" disabled={registrationClosed}>
-            <Icon name="check-circle" size={18} />
-            <span>{t(locale, 'auth.register_submit_btn')}</span>
-          </button>
+        <div class="card flex flex-col gap-4 p-4 sm:p-6">
+          <div class="flex justify-center sm:justify-start">
+            <Turnstile action="register" />
+          </div>
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-line pt-4">
+            <a class="link text-small font-semibold" href={localizePath(locale, '/login')}>{t(locale, 'auth.register_have_account')} {t(locale, 'auth.sign_in')} →</a>
+            <button class="btn btn-primary w-full sm:w-auto min-h-[44px]" type="submit" disabled={registrationClosed}>
+              <Icon name="check-circle" size={18} />
+              <span>{t(locale, 'auth.register_submit_btn')}</span>
+            </button>
+          </div>
         </div>
         </fieldset>
       </form>
 
       <!-- Institutional side panel -->
-      <aside class="rounded-hero bg-navy-900 p-6 text-on-dark lg:sticky lg:top-8 lg:col-span-4">
+      <aside class="rounded-hero bg-navy-900 p-5 sm:p-6 text-on-dark lg:sticky lg:top-8 lg:col-span-4">
         <div class="flex items-center gap-3">
           <BrandMark variant="mark" tone="white" size={36} />
           <div>
@@ -331,9 +353,9 @@ const panelItems = [
         </div>
 
         <div class="mt-6 flex flex-col gap-2">
-          <h2 class="font-display text-h2 text-surface">Official university housing dossier</h2>
+          <h2 class="font-display text-h2 text-surface">{t(locale, 'auth.panel_dossier_title')}</h2>
           <p class="text-small font-normal text-on-dark-2">
-            Your official registration application for accommodation at Cité Universitaire Tlemcen.
+            {t(locale, 'auth.panel_dossier_desc')}
           </p>
         </div>
 
@@ -371,12 +393,18 @@ const panelItems = [
       var segments = document.querySelectorAll('[data-pw-segment]');
       if (!input || !label || !segments.length) return;
 
+      var textNotSet = label.getAttribute('data-pw-not-set') || 'Not set';
+      var textWeak = label.getAttribute('data-pw-weak') || 'Weak';
+      var textFair = label.getAttribute('data-pw-fair') || 'Fair';
+      var textGood = label.getAttribute('data-pw-good') || 'Good';
+      var textStrong = label.getAttribute('data-pw-strong') || 'Strong';
+
       /* Token names only — the colours are resolved from :root once, at load. */
       var LEVELS = [
-        { text: 'Weak', token: '--status-danger' },
-        { text: 'Fair', token: '--status-pending' },
-        { text: 'Good', token: '--status-progress' },
-        { text: 'Strong', token: '--status-ok' },
+        { text: textWeak, token: '--status-danger' },
+        { text: textFair, token: '--status-pending' },
+        { text: textGood, token: '--status-progress' },
+        { text: textStrong, token: '--status-ok' },
       ];
       var rootStyle = getComputedStyle(document.documentElement);
       var TONES = LEVELS.map(function (level) {
@@ -399,7 +427,7 @@ const panelItems = [
         for (var i = 0; i < segments.length; i += 1) {
           segments[i].style.backgroundColor = level && i < points ? level.color : '';
         }
-        label.textContent = level ? level.text : 'Not set';
+        label.textContent = level ? level.text : textNotSet;
         label.style.color = level ? level.color : '';
       }
 

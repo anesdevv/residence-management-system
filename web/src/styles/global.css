@@ -412,6 +412,15 @@
       background-color var(--dur) var(--ease);
   }
 
+  @media (max-width: 640px) {
+    .input,
+    .textarea,
+    .select {
+      font-size: 16px; /* Prevents iOS Safari auto-zoom on focus while preserving touch target */
+      line-height: 1.5;
+    }
+  }
+
   .textarea {
     min-height: 96px;
     resize: vertical;
@@ -802,6 +811,21 @@
   .link:hover {
     text-decoration: underline;
     text-underline-offset: 2px;
+  }
+
+  /* RTL directional mirroring for directional chevrons & arrows */
+  [dir="rtl"] .rtl-mirror,
+  [dir="rtl"] [data-rtl-mirror] {
+    transform: scaleX(-1);
+  }
+
+  /* Safe touch target utility */
+  .touch-target-44 {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
