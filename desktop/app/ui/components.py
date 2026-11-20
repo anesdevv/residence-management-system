@@ -845,37 +845,78 @@ class DetailPanel(QFrame):
         return self
 
 
+class KeyValueRow(QWidget):
+    """Consistent key-value row for inspectors and profile dialogs.
+
+    - Fixed label column (130px, aligned top/left).
+    - Value with identical font family, size (14px fs-body), weight, color, baseline/top alignment.
+    - Selectable text with word wrapping.
+    - Consistent empty-state style (muted italic).
+    """
+
+    def __init__(
+        self,
+        label: str,
+        value: Any,
+        *,
+        is_empty: bool = False,
+        mono: bool = False,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(parent)
+        line = QHBoxLayout(self)
+        line.setContentsMargins(0, 0, 0, 0)
+        line.setSpacing(S("space-3"))
+
+        self.name_label = _muted(str(label))
+        self.name_label.setFixedWidth(130)
+        self.name_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+
+        self.val_label = QLabel()
+        self.val_label.setWordWrap(True)
+        self.val_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.val_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+
+        self.set_value(value, is_empty=is_empty, mono=mono)
+
+        line.addWidget(self.name_label, 0)
+        line.addWidget(self.val_label, 1)
+
+    def set_value(self, value: Any, *, is_empty: bool = False, mono: bool = False) -> None:
+        val_str = str(value) if value is not None else ""
+        self.val_label.setText(val_str)
+        empty = is_empty or val_str in ("—", "", "None")
+        if empty:
+            theme.apply_role(self.val_label, "muted")
+            f = self.val_label.font()
+            f.setItalic(True)
+            self.val_label.setFont(f)
+            self.val_label.setStyleSheet(f"color: {C('text-muted')}; font-style: italic;")
+        else:
+            self.val_label.setStyleSheet("")
+            theme.apply_role(self.val_label, "body")
+            if mono:
+                self.val_label.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
+            else:
+                theme.enable_tabular(self.val_label)
+
+
 class KeyValueList(QWidget):
     """Label/value list; values use tabular figures (``mono=True`` = fixed font).
 
-    ``add_row(label, value, mono=False)`` / ``clear()`` / ``set_rows(list[tuple[str, str]])``.
+    ``add_row(label, value, mono=False, is_empty=False)`` / ``clear()`` / ``set_rows(...)``.
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._rows: list[QWidget] = []
+        self._rows: list[KeyValueRow] = []
         self._column = QVBoxLayout(self)
         self._column.setContentsMargins(0, 0, 0, 0)
         self._column.setSpacing(S("space-2"))
 
-    def add_row(self, label, value, mono=False):
-        """Append one row (returns the row widget)."""
-        row = QWidget(self)
-        line = QHBoxLayout(row)
-        line.setContentsMargins(0, 0, 0, 0)
-        line.setSpacing(S("space-3"))
-        name = _muted(str(label))
-        name.setMinimumWidth(120)
-        name.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-        val = QLabel(str(value))
-        theme.apply_role(val, "body")
-        val.setWordWrap(True)
-        if mono:
-            val.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
-        else:
-            theme.enable_tabular(val)
-        line.addWidget(name, 0)
-        line.addWidget(val, 1)
+    def add_row(self, label, value, mono=False, is_empty=False):
+        """Append one row (returns the KeyValueRow widget)."""
+        row = KeyValueRow(label, value, is_empty=is_empty, mono=mono, parent=self)
         self._column.addWidget(row)
         self._rows.append(row)
         return row
@@ -889,10 +930,15 @@ class KeyValueList(QWidget):
         return self
 
     def set_rows(self, rows):
-        """Replace all rows with ``[(label, value), ...]``."""
+        """Replace all rows with ``[(label, value), ...]`` or ``[(label, value, is_empty), ...]``."""
         self.clear()
-        for label, value in rows:
-            self.add_row(label, value)
+        for item in rows:
+            if len(item) == 3:
+                label, value, is_empty = item
+                self.add_row(label, value, is_empty=is_empty)
+            else:
+                label, value = item
+                self.add_row(label, value)
         return self
 
 

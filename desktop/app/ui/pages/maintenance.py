@@ -35,7 +35,7 @@ the tests can patch them; ``detail_text`` is a direct child of the 360/520
 from __future__ import annotations
 
 from PySide6.QtCore import QEvent, QSize, Qt
-from PySide6.QtGui import QBrush, QColor, QPixmap
+from PySide6.QtGui import QBrush, QColor, QGuiApplication, QPixmap
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -54,11 +54,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...client import official_lookup
+from ...client import get_ticket_detail, invalidate_detail_cache, official_lookup
 try:
-    from i18n import current_language, t, tn
+    from i18n import current_language, format_date, format_datetime, format_time, t, tn
 except ImportError:
-    from desktop.i18n import current_language, t, tn
+    from desktop.i18n import current_language, format_date, format_datetime, format_time, t, tn
 
 from ...timeouts import execute_network_call
 from .. import theme
@@ -72,6 +72,7 @@ from ..components import (
     IconButton,
     InlineBanner,
     KeyValueList,
+    KeyValueRow,
     PageHeader,
     SearchField,
     SegmentedControl,
@@ -79,6 +80,7 @@ from ..components import (
     StatusPill,
     Stepper,
     configure_table,
+    show_toast,
 )
 from ..icons import get_icon, get_pixmap
 from ..infocard import StudentInfoCardDialog
@@ -214,27 +216,54 @@ def _fmt_date(value) -> str:
     return text[:10] if text else "—"
 
 
-def _fmt_stamp(value) -> str:
-    """Readable timestamp for the record block (raw value, never invented)."""
-    text = str(value or "").strip()
-    if not text:
+def _format_dt(value) -> str:
+    """Readable date/time for inspectors (user's locale, never raw ISO with +00:00)."""
+    if not value:
         return "—"
-    return text.replace("T", " ").replace("Z", "").strip()
+    try:
+        d = format_date(value, "medium")
+        tm = format_time(value)
+        if d and tm:
+            return f"{d}, {tm}"
+        return d or tm or str(value)[:16]
+    except Exception:
+        text = str(value or "").replace("T", " ").replace("Z", "").strip()
+        if "." in text:
+            text = text.split(".")[0]
+        if "+" in text:
+            text = text.split("+")[0]
+        return text or "—"
 
 
-def _room_text(row: dict, student: dict) -> str:
-    """Best-effort room label from whatever room data the payload carries."""
+def _fmt_stamp(value) -> str:
+    """Readable timestamp for the record block (local formatted, never raw ISO)."""
+    return _format_dt(value)
+
+
+def _room_label(row: dict, student: dict) -> tuple[str, bool]:
+    """Return (room_text, is_empty)."""
     room = row.get("rooms") or row.get("room")
     if room is None and isinstance(student, dict):
         room = student.get("rooms") or student.get("room")
     if isinstance(room, list) and room:
         room = room[0]
     if isinstance(room, dict) and (room.get("number") or room.get("block")):
+        block = str(room.get("block") or "—")
         floor = room.get("floor")
-        floor_text = f" (Floor {floor})" if floor is not None and str(floor) != "" else ""
-        return f"Block {room.get('block', '—')} — Room {room.get('number', '—')}{floor_text}"
+        number = str(room.get("number") or "—")
+        if floor is not None and str(floor) != "":
+            return (t("maintenance.room_format", block=block, floor=floor, number=number), False)
+        return (f"Block {block} · Room {number}", False)
+
     room_id = row.get("room_id") or (student.get("room_id") if isinstance(student, dict) else None)
-    return str(room_id)[:8] if room_id else "—"
+    if not room_id:
+        return (t("maintenance.no_room_assigned"), True)
+    return (t("maintenance.loading_detail"), True)
+
+
+def _room_text(row: dict, student: dict) -> str:
+    """Best-effort room label from whatever room data the payload carries."""
+    return _room_label(row, student)[0]
 
 
 def _stage_index(status) -> int:
@@ -298,6 +327,7 @@ class _QuotedBlock(QFrame):
         self.body = QLabel("")
         theme.apply_role(self.body, "body")
         self.body.setWordWrap(True)
+        self.body.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         column.addWidget(self.overline)
         column.addWidget(self.body)
         self.setStyleSheet(
@@ -305,9 +335,15 @@ class _QuotedBlock(QFrame):
             f" border: 1px solid {C('border')}; border-radius: {C('radius-input')}; }}"
         )
 
-    def set_text(self, text: str) -> None:
+    def set_text(self, text: str, *, is_empty: bool = False) -> None:
         """Set the quoted body text."""
         self.body.setText(str(text))
+        if is_empty:
+            theme.apply_role(self.body, "muted")
+            self.body.setStyleSheet(f"color: {C('text-muted')}; font-style: italic;")
+        else:
+            self.body.setStyleSheet("")
+            theme.apply_role(self.body, "body")
 
 
 class MaintenancePage(QWidget):
@@ -324,6 +360,7 @@ class MaintenancePage(QWidget):
         self._current_pixmap: QPixmap | None = None
         self._photo_fetch_failed: bool = False
         self._photo_loading: bool = False
+        self._detail_req_id: int = 0
 
         # Background action plumbing. Every network call started by a status
         # change, a delete, a refresh or the roster lookup runs through this
@@ -445,10 +482,19 @@ class MaintenancePage(QWidget):
         inspector.setContentsMargins(0, 0, 0, 0)
         inspector.setSpacing(S("space-3"))
 
-        self.stepper = Stepper(_STAGE_LABELS)
-        inspector.addWidget(self.stepper)
+        # 0. Detail error banner (with retry)
+        self.detail_error_banner = InlineBanner(
+            "error",
+            title=t("maintenance.error_detail_title"),
+            message="",
+        )
+        self.detail_retry_btn = Button(t("maintenance.retry_detail"), "ghost", icon="refresh")
+        self.detail_retry_btn.clicked.connect(self._retry_detail_fetch)
+        self.detail_error_banner.add_action(self.detail_retry_btn)
+        self.detail_error_banner.setVisible(False)
+        inspector.addWidget(self.detail_error_banner)
 
-        # Category + status header.
+        # 1. Category + status header.
         self.category_row = QWidget()
         category_layout = QHBoxLayout(self.category_row)
         category_layout.setContentsMargins(0, 0, 0, 0)
@@ -467,7 +513,7 @@ class MaintenancePage(QWidget):
         category_layout.addWidget(self.status_pill, 0, Qt.AlignmentFlag.AlignVCenter)
         inspector.addWidget(self.category_row)
 
-        # Resident identity.
+        # 2. Resident identity.
         self.identity = QWidget()
         identity = QHBoxLayout(self.identity)
         identity.setContentsMargins(0, 0, 0, 0)
@@ -486,13 +532,21 @@ class MaintenancePage(QWidget):
         identity_column.addWidget(self.name_label)
         identity_column.addWidget(self.card_label)
         identity.addLayout(identity_column, 1)
+        self.view_profile_btn = Button(t("maintenance.view_profile"), "ghost", icon="user")
+        self.view_profile_btn.setToolTip(t("maintenance.view_profile"))
+        self.view_profile_btn.clicked.connect(self._open_student_card)
+        identity.addWidget(self.view_profile_btn, 0, Qt.AlignmentFlag.AlignVCenter)
         inspector.addWidget(self.identity)
 
-        # Key facts.
+        # 3. Ticket description.
+        self.desc_block = _QuotedBlock(t("maintenance.ticket_description"))
+        inspector.addWidget(self.desc_block)
+
+        # 4. Key facts.
         self.facts = KeyValueList()
         inspector.addWidget(self.facts)
 
-        # ------------------------------------------------------ photo card
+        # 5. Fault photo card.
         self.photo_section = QWidget()
         photo_layout = QVBoxLayout(self.photo_section)
         photo_layout.setContentsMargins(0, 0, 0, 0)
@@ -551,11 +605,14 @@ class MaintenancePage(QWidget):
         photo_layout.addWidget(self.photo_retry_btn)
         inspector.addWidget(self.photo_section)
 
-        # Staff / dispatch note (read-only display; set_status records it).
+        # 6. Staff / dispatch note (read-only display; set_status records it).
         self.note_block = _QuotedBlock(t("maintenance.staff_dispatch_note"))
         inspector.addWidget(self.note_block)
 
-        # ------------------------------------------------------- actions
+        # 7. Stage stepper and status actions.
+        self.stepper = Stepper(_STAGE_LABELS)
+        inspector.addWidget(self.stepper)
+
         self.actions_row = QWidget()
         actions = QVBoxLayout(self.actions_row)
         actions.setContentsMargins(0, 0, 0, 0)
@@ -572,6 +629,11 @@ class MaintenancePage(QWidget):
         actions.addWidget(self.delete_btn)
         inspector.addWidget(self.actions_row)
 
+        # 8. Copy summary button.
+        self.copy_summary_btn = Button(t("maintenance.copy_summary"), "secondary", icon="copy")
+        self.copy_summary_btn.clicked.connect(self.on_copy_summary)
+        inspector.addWidget(self.copy_summary_btn)
+
         inspector.addStretch(1)
         self.inspector_scroll.setWidget(inspector_body)
         self.panel.body.addWidget(self.inspector_scroll, 1)
@@ -581,11 +643,12 @@ class MaintenancePage(QWidget):
         self.detail_text.setMinimumHeight(S("space-12"))
         self.detail_text.setMaximumHeight(S("space-12") * 2 + S("space-6"))
         self.detail_text.setPlaceholderText(t("maintenance.record_placeholder"))
+        self.detail_text.setVisible(False)
         theme.enable_tabular(self.detail_text)
         self.panel.body.addWidget(self.detail_text, 0)
 
         # Widgets revealed only while a ticket is selected.
-        self._selection_widgets = [self.inspector_scroll, self.detail_text]
+        self._selection_widgets = [self.inspector_scroll]
 
         self.splitter.addWidget(self.panel)
         self.splitter.setStretchFactor(0, 3)
@@ -794,6 +857,18 @@ class MaintenancePage(QWidget):
         if not force and old_keys == new_keys and len(rows) == len(self.rows):
             return
 
+        # Invalidate detail cache for modified tickets
+        old_map = {r.get("id"): r for r in self.rows}
+        for new_r in rows:
+            nid = new_r.get("id")
+            if nid in old_map:
+                if (
+                    new_r.get("status") != old_map[nid].get("status")
+                    or new_r.get("updated_at") != old_map[nid].get("updated_at")
+                    or new_r.get("staff_note") != old_map[nid].get("staff_note")
+                ):
+                    invalidate_detail_cache("ticket", str(nid), client=self.client)
+
         selected_id = self.selected().get("id") if self.selected() else None
         self.rows = rows
         self.table.setUpdatesEnabled(False)
@@ -832,6 +907,7 @@ class MaintenancePage(QWidget):
 
         if restore_row >= 0:
             self.table.selectRow(restore_row)
+            self.show_detail()
         else:
             self._clear_selection_state()
 
@@ -847,6 +923,9 @@ class MaintenancePage(QWidget):
         self.photo_skeleton.setVisible(False)
         self.photo_retry_btn.setVisible(False)
         self.zoom_cue.setVisible(False)
+        self.detail_error_banner.setVisible(False)
+        self.desc_block.set_text("")
+        self.facts.clear()
         self.detail_text.clear()
         self.photo_label.clear()
         self.photo_label.setText(t("maintenance.empty_panel_title"))
@@ -858,6 +937,7 @@ class MaintenancePage(QWidget):
         self.in_progress_btn.setToolTip(t("maintenance.tooltip_select_to_dispatch"))
         self.resolved_btn.setEnabled(False)
         self.resolved_btn.setToolTip(t("maintenance.tooltip_select_to_resolve"))
+        self.copy_summary_btn.setEnabled(False)
         self._show_selection(False)
 
     def _fetch_rows(self) -> list[dict]:
@@ -934,23 +1014,7 @@ class MaintenancePage(QWidget):
 
 
     # -------------------------------------------------------------- inspector
-    def show_detail(self):
-        self._cleanup_thumb_worker()
-        self._photo_req_id += 1
-        current_req = self._photo_req_id
-        self._current_pixmap = None
-        self._current_photo_url = None
-        self._photo_fetch_failed = False
-        self._photo_loading = False
-        self.photo_skeleton.setVisible(False)
-        self.photo_retry_btn.setVisible(False)
-        self.zoom_cue.setVisible(False)
-
-        r = self.selected()
-        if not r:
-            self._clear_selection_state()
-            return
-
+    def _apply_row_display(self, r: dict):
         status = str(r.get("status", "pending"))
         status_kind, status_text = _status_meta(status)
         stage = _stage_index(status)
@@ -972,32 +1036,178 @@ class MaintenancePage(QWidget):
         self.name_label.setText(name)
         self.card_label.setText(f"Card ID {st.get('card_id') or '—'}")
 
-        # Key facts (raw data only).
+        # Ticket description.
+        desc = str(r.get("description") or "").strip()
+        self.desc_block.set_text(desc if desc else t("maintenance.no_description"), is_empty=not bool(desc))
+
+        # Key facts.
+        room_label, room_empty = _room_label(r, st)
+        sub_str = _format_dt(r.get("created_at"))
+        upd_str = _format_dt(r.get("updated_at"))
+        res_str, res_empty = (
+            (_format_dt(r.get("resolved_at") or r.get("updated_at")), False)
+            if status == "resolved"
+            else (t("maintenance.not_resolved_yet"), True)
+        )
         self.facts.set_rows([
-            (t("maintenance.fact_room"), _room_text(r, st)),
-            (t("maintenance.fact_submitted"), _fmt_date(r.get("created_at"))),
-            (t("maintenance.fact_resolved"), _fmt_date(r.get("updated_at")) if status == "resolved" else "—"),
+            (t("maintenance.fact_room"), room_label, room_empty),
+            (t("maintenance.fact_submitted"), sub_str, False),
+            (t("maintenance.fact_last_update"), upd_str, False),
+            (t("maintenance.fact_resolved"), res_str, res_empty),
         ])
 
         # Status actions: disabled with the reason in the tooltip.
         self._apply_action_buttons(r)
+        self.copy_summary_btn.setEnabled(True)
 
         # Staff / dispatch note.
         note = str(r.get("staff_note") or "").strip()
-        self.note_block.set_text(f"“{note}”" if note else t("maintenance.no_staff_notes"))
+        self.note_block.set_text(f"“{note}”" if note else t("maintenance.no_staff_notes"), is_empty=not bool(note))
 
-        # Plain-text record block (the desk reference for inquiries).
+        # Plain-text record block (kept for tests and inquiry backwards compatibility).
         self.detail_text.setPlainText(
             f"CATEGORY: {category.upper()}\n"
             f"Resident: {name} (Card ID: {st.get('card_id', '—')})\n"
             f"Status: {status_text.upper()}\n"
-            f"Submitted: {_fmt_stamp(r.get('created_at'))}\n"
-            f"Last update: {_fmt_stamp(r.get('updated_at'))}\n"
+            f"Submitted: {sub_str}\n"
+            f"Last update: {upd_str}\n"
             f"\n"
             f"DESCRIPTION:\n{r.get('description', '')}\n"
             f"\n"
             f"STAFF / DISPATCH NOTE:\n{r.get('staff_note') or 'No technician notes recorded.'}"
         )
+
+    def _build_copy_summary(self, r: dict) -> str:
+        st = _normalise_student(r)
+        name = f"{st.get('first_name', '')} {st.get('last_name', '')}".strip() or t("maintenance.unnamed_resident")
+        card_id = st.get("card_id") or "—"
+        cat = _category_label(r.get("category"))
+        status_kind, status_text = _status_meta(r.get("status", "pending"))
+        room, _ = _room_label(r, st)
+        sub = _format_dt(r.get("created_at"))
+        upd = _format_dt(r.get("updated_at"))
+        res = (
+            _format_dt(r.get("resolved_at") or r.get("updated_at"))
+            if r.get("status") == "resolved"
+            else t("maintenance.not_resolved_yet")
+        )
+        desc = r.get("description") or t("maintenance.no_description")
+        note = r.get("staff_note") or t("maintenance.no_staff_notes")
+
+        return (
+            f"CATEGORY: {cat}\n"
+            f"Resident: {name} (Card ID: {card_id})\n"
+            f"Status: {status_text}\n"
+            f"Room: {room}\n"
+            f"Submitted: {sub}\n"
+            f"Last update: {upd}\n"
+            f"Resolved: {res}\n\n"
+            f"DESCRIPTION:\n{desc}\n\n"
+            f"STAFF NOTE:\n{note}"
+        )
+
+    def on_copy_summary(self):
+        r = self.selected()
+        if not r:
+            return
+        summary_text = self._build_copy_summary(r)
+        clipboard = QGuiApplication.clipboard()
+        if clipboard:
+            clipboard.setText(summary_text)
+        show_toast(self, t("maintenance.summary_copied"), "success", icon="check")
+
+    def _retry_detail_fetch(self):
+        r = self.selected()
+        if not r or not r.get("id"):
+            return
+        ticket_id = r.get("id")
+        self.detail_error_banner.setVisible(False)
+        self._detail_req_id += 1
+        current_detail_req = self._detail_req_id
+
+        def fetch_detail():
+            return get_ticket_detail(self.client, ticket_id, force=True)
+
+        def on_detail_success(detail):
+            if self._closing or self._detail_req_id != current_detail_req:
+                return
+            current_sel = self.selected()
+            if not current_sel or current_sel.get("id") != ticket_id:
+                return
+            if isinstance(detail, dict):
+                current_sel.update(detail)
+                self._apply_row_display(current_sel)
+
+        def on_detail_failed(err_msg):
+            if self._closing or self._detail_req_id != current_detail_req:
+                return
+            self.detail_error_banner.set_title(t("maintenance.error_detail_title"))
+            self.detail_error_banner.set_message(t("maintenance.error_load_msg_detail", detail=err_msg))
+            self.detail_error_banner.setVisible(True)
+
+        self.tasks.run(
+            f"ticket-detail-retry-{ticket_id}",
+            fetch_detail,
+            on_success=on_detail_success,
+            on_failed=on_detail_failed,
+        )
+
+    def show_detail(self):
+        self._cleanup_thumb_worker()
+        self._photo_req_id += 1
+        current_req = self._photo_req_id
+        self._detail_req_id += 1
+        current_detail_req = self._detail_req_id
+
+        self._current_pixmap = None
+        self._current_photo_url = None
+        self._photo_fetch_failed = False
+        self._photo_loading = False
+        self.photo_skeleton.setVisible(False)
+        self.photo_retry_btn.setVisible(False)
+        self.zoom_cue.setVisible(False)
+        self.detail_error_banner.setVisible(False)
+
+        r = self.selected()
+        if not r:
+            self._clear_selection_state()
+            return
+
+        self._apply_row_display(r)
+        self._show_selection(True)
+
+        # Off-thread detail fetch to enrich room and full ticket details
+        ticket_id = r.get("id")
+        if ticket_id:
+            def fetch_detail():
+                return get_ticket_detail(self.client, ticket_id)
+
+            def on_detail_success(detail):
+                if self._closing or self._detail_req_id != current_detail_req:
+                    return
+                current_sel = self.selected()
+                if not current_sel or current_sel.get("id") != ticket_id:
+                    return
+                if isinstance(detail, dict):
+                    current_sel.update(detail)
+                    self._apply_row_display(current_sel)
+
+            def on_detail_failed(err_msg):
+                if self._closing or self._detail_req_id != current_detail_req:
+                    return
+                current_sel = self.selected()
+                if not current_sel or current_sel.get("id") != ticket_id:
+                    return
+                self.detail_error_banner.set_title(t("maintenance.error_detail_title"))
+                self.detail_error_banner.set_message(t("maintenance.error_load_msg_detail", detail=err_msg))
+                self.detail_error_banner.setVisible(True)
+
+            self.tasks.run(
+                f"ticket-detail-{ticket_id}",
+                fetch_detail,
+                on_success=on_detail_success,
+                on_failed=on_detail_failed,
+            )
 
         self._show_selection(True)
 
@@ -1184,6 +1394,9 @@ class MaintenancePage(QWidget):
             self._thumb_worker = None
 
     def on_row_double_clicked(self, row: int, col: int):
+        self._open_student_card()
+
+    def _open_student_card(self):
         r = self.selected()
         if not r or not r.get("students"):
             return

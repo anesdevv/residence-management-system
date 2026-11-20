@@ -302,8 +302,8 @@ def _parse_date_input(dt: date | datetime | str) -> date:
         return dt
     if isinstance(dt, str):
         # Try ISO format
-        clean = dt.replace("Z", "").split("+")[0].split(".")[0]
-        if "T" in clean:
+        clean = dt.strip().replace("Z", "").split("+")[0].split(".")[0]
+        if "T" in clean or " " in clean:
             return datetime.fromisoformat(clean).date()
         return date.fromisoformat(clean)
     raise ValueError(f"Cannot parse date from {dt!r}")
@@ -319,6 +319,8 @@ def _parse_time_input(t_val: dtime | datetime | str) -> dtime:
         clean = t_val.strip()
         if "T" in clean:
             clean = clean.split("T", 1)[1]
+        elif " " in clean:
+            clean = clean.split(" ", 1)[1]
         clean = clean.replace("Z", "").split("+")[0].split(".")[0]
         parts = clean.split(":")
         hour = int(parts[0])

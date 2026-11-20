@@ -773,6 +773,34 @@ def warm_connection(
 # Detail Fetchers (One Source of Truth Per Detail View)
 # ---------------------------------------------------------------------------
 
+_DETAIL_CACHE: dict[tuple[int, str, str], tuple[float, dict]] = {}
+_DETAIL_CACHE_LOCK = threading.RLock()
+_DETAIL_CACHE_TTL = 30.0  # seconds
+
+
+def invalidate_detail_cache(
+    entity_type: str | None = None,
+    entity_id: str | Any = None,
+    client: Client | None = None,
+) -> None:
+    """Invalidate cached ticket, room change, or student profile records."""
+    with _DETAIL_CACHE_LOCK:
+        if entity_type is None and entity_id is None and client is None:
+            _DETAIL_CACHE.clear()
+            return
+        keys_to_remove = []
+        for (c_id, e_type, e_id) in _DETAIL_CACHE:
+            if client is not None and id(client) != c_id:
+                continue
+            if entity_type is not None and e_type != entity_type:
+                continue
+            if entity_id is not None and str(e_id) != str(entity_id):
+                continue
+            keys_to_remove.append((c_id, e_type, e_id))
+        for k in keys_to_remove:
+            _DETAIL_CACHE.pop(k, None)
+
+
 TICKET_DETAIL_PROJECTION = (
     "id, student_id, category, description, photo_path, status, "
     "staff_note, handled_by, created_at, updated_at, "
@@ -807,6 +835,14 @@ def get_ticket_detail(client: Client, ticket_id: str | Any, *, force: bool = Fal
     if not ticket_id:
         return None
     tid = str(ticket_id).strip()
+    cid = id(client)
+    now = time.monotonic()
+    if not force:
+        with _DETAIL_CACHE_LOCK:
+            entry = _DETAIL_CACHE.get((cid, "ticket", tid))
+            if entry and (now - entry[0]) < _DETAIL_CACHE_TTL:
+                return dict(entry[1])
+
     with CLIENT_LOCK:
         resp = execute_network_call(
             lambda: (
@@ -862,6 +898,9 @@ def get_ticket_detail(client: Client, ticket_id: str | Any, *, force: bool = Fal
         staff_obj = None
     ticket["staff"] = staff_obj
 
+    with _DETAIL_CACHE_LOCK:
+        _DETAIL_CACHE[(cid, "ticket", tid)] = (now, dict(ticket))
+
     return ticket
 
 
@@ -873,6 +912,14 @@ def get_room_change_detail(client: Client, request_id: str | Any, *, force: bool
     if not request_id:
         return None
     rid = str(request_id).strip()
+    cid = id(client)
+    now = time.monotonic()
+    if not force:
+        with _DETAIL_CACHE_LOCK:
+            entry = _DETAIL_CACHE.get((cid, "room_change", rid))
+            if entry and (now - entry[0]) < _DETAIL_CACHE_TTL:
+                return dict(entry[1])
+
     with CLIENT_LOCK:
         resp = execute_network_call(
             lambda: (
@@ -948,6 +995,9 @@ def get_room_change_detail(client: Client, request_id: str | Any, *, force: bool
             pass
     req["preferred_room"] = p_room
 
+    with _DETAIL_CACHE_LOCK:
+        _DETAIL_CACHE[(cid, "room_change", rid)] = (now, dict(req))
+
     return req
 
 
@@ -959,6 +1009,14 @@ def get_student_profile(client: Client, student_id: str | Any, *, force: bool = 
     if not student_id:
         return None
     sid = str(student_id).strip()
+    cid = id(client)
+    now = time.monotonic()
+    if not force:
+        with _DETAIL_CACHE_LOCK:
+            entry = _DETAIL_CACHE.get((cid, "student", sid))
+            if entry and (now - entry[0]) < _DETAIL_CACHE_TTL:
+                return dict(entry[1])
+
     is_uuid = bool(re.match(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", sid))
     col = "id" if is_uuid else "card_id"
 
@@ -1044,6 +1102,13 @@ def get_student_profile(client: Client, student_id: str | Any, *, force: bool = 
     student["roster_match"] = roster_match
     student["official_roster"] = official_row
     student["roster_differing_fields"] = differing_fields
+
+    with _DETAIL_CACHE_LOCK:
+        _DETAIL_CACHE[(cid, "student", sid)] = (now, dict(student))
+        if student.get("card_id"):
+            _DETAIL_CACHE[(cid, "student", str(student["card_id"]))] = (now, dict(student))
+        if student.get("id"):
+            _DETAIL_CACHE[(cid, "student", str(student["id"]))] = (now, dict(student))
 
     return student
 
