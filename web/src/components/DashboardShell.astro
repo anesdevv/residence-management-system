@@ -51,8 +51,8 @@ const navItems = [
   {
     key: 'room-change',
     href: localizePath(locale, '/dashboard/room-change'),
-    label: t(locale, 'terms.room_change_request'),
-    short: locale === 'fr' ? 'Chambre' : 'Rooms',
+    label: locale === 'fr' ? 'Changement de chambre' : 'Room Transfer',
+    short: locale === 'fr' ? 'Transfert' : 'Transfer',
     icon: 'arrow-left-right',
   },
   {
@@ -66,46 +66,42 @@ const navItems = [
 ---
 
 <div class="min-h-screen bg-canvas">
-  <!-- 3px brand-gradient strip at the shell top edge. -->
-  <div class="gradient-top-line"></div>
-
-  <header class="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur-md">
-    <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-      <a href={localizePath(locale, '/dashboard')} class="flex min-w-0 shrink items-center gap-2.5 sm:gap-3" aria-label="RÉSIVO dashboard">
-        <BrandMark variant="mark" size={34} />
-        <span class="flex min-w-0 flex-col">
-          <span class="font-display text-h2 leading-none text-ink">RÉSIVO</span>
-          <span class="truncate text-xs font-normal text-muted max-w-[120px] sm:max-w-[200px] lg:max-w-none">{title}</span>
-        </span>
+  <header class="sticky top-0 z-40 h-16 border-b border-line bg-surface/95 backdrop-blur-md">
+    <div class="mx-auto flex h-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+      <!-- Clean Brand Logo without truncating page subtitle -->
+      <a href={localizePath(locale, '/dashboard')} class="flex shrink-0 items-center gap-2.5" aria-label="RÉSIVO">
+        <BrandMark variant="mark" size={32} />
+        <span class="font-display text-h2 font-bold tracking-tight text-ink">RÉSIVO</span>
       </a>
 
-      <nav aria-label="Dashboard" class="ms-auto hidden items-center gap-1 lg:flex">
+      <!-- Desktop Navigation Links (single row, no wrapping) -->
+      <nav aria-label="Dashboard" class="hidden md:flex items-center gap-1 mx-2 lg:mx-6 overflow-hidden">
         {
           navItems.map((item) => (
             <a
               href={item.href}
               aria-current={activeNav === item.key ? 'page' : undefined}
-              class={`relative inline-flex min-h-11 items-center gap-2 rounded-input px-3 text-body font-semibold transition-colors ${
-                activeNav === item.key ? 'text-teal-600' : 'text-ink-2 hover:bg-subtle hover:text-ink'
+              class={`whitespace-nowrap inline-flex min-h-[38px] items-center gap-2 rounded-lg px-3 py-1.5 text-small font-medium transition-colors ${
+                activeNav === item.key
+                  ? 'bg-subtle text-ink font-semibold'
+                  : 'text-muted hover:text-ink hover:bg-subtle/60'
               }`}
             >
-              <Icon name={item.icon} size={18} />
+              <Icon name={item.icon} size={16} class={activeNav === item.key ? 'text-teal-600' : 'text-muted'} />
               <span>{item.label}</span>
-              {activeNav === item.key && (
-                <span class="absolute inset-x-2 bottom-0 h-0.5 rounded-input bg-teal-600" aria-hidden="true" />
-              )}
             </a>
           ))
         }
       </nav>
 
-      <div class="ms-auto flex min-w-0 items-center gap-2 sm:gap-3 lg:ms-3">
+      <!-- Right Controls: Language toggle + User Avatar + Sign out -->
+      <div class="ms-auto flex items-center gap-2 sm:gap-3">
         <!-- Language switcher -->
-        <nav aria-label={t(locale, 'nav.language')} class="flex items-center rounded-input border border-line bg-subtle p-0.5 text-xs font-semibold shrink-0">
+        <nav aria-label={t(locale, 'nav.language')} class="flex items-center rounded-lg border border-line bg-subtle p-0.5 text-xs font-semibold shrink-0">
           <a
             href={targetFrPath}
             data-locale-switch="fr"
-            class={`rounded-input px-2 py-1 transition-colors ${
+            class={`rounded-md px-2.5 py-1 transition-colors ${
               locale === 'fr' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
             }`}
             aria-current={locale === 'fr' ? 'true' : undefined}
@@ -115,7 +111,7 @@ const navItems = [
           <a
             href={targetEnPath}
             data-locale-switch="en"
-            class={`rounded-input px-2 py-1 transition-colors ${
+            class={`rounded-md px-2.5 py-1 transition-colors ${
               locale === 'en' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
             }`}
             aria-current={locale === 'en' ? 'true' : undefined}
@@ -124,27 +120,29 @@ const navItems = [
           </a>
         </nav>
 
-        <span class="hidden flex-col items-end xl:flex">
-          <span class="text-small font-semibold text-ink-2">Cité Universitaire Tlemcen</span>
-          <span class="text-small font-normal text-muted">Direction des Œuvres Universitaires (DOU)</span>
-        </span>
-        <span class="hidden max-w-[12rem] truncate text-small font-normal text-muted 2xl:block">{displayIdentity}</span>
         <a
           href={localizePath(locale, '/dashboard/profile')}
-          class="shrink-0 rounded-input p-0.5 touch-target-44"
+          class="flex items-center gap-2 rounded-lg p-1 hover:bg-subtle transition-colors shrink-0 touch-target-44"
           aria-label={`Signed in as ${displayIdentity || 'resident'} — open profile`}
+          title={displayIdentity}
         >
-          <Avatar name={displayIdentity || 'Resident'} size={36} />
+          <Avatar name={displayIdentity || 'Resident Student'} size={32} />
+          <span class="hidden xl:inline-block max-w-[120px] truncate text-small font-medium text-ink">{displayIdentity}</span>
         </a>
-        <a href="/logout" class="btn btn-secondary shrink-0 hidden sm:inline-flex" aria-label={t(locale, 'nav.sign_out')}>
-          <Icon name="log-out" size={16} />
-          <span>{t(locale, 'nav.sign_out')}</span>
+
+        <a
+          href="/logout"
+          class="btn btn-secondary !min-h-[36px] !px-3 shrink-0 hidden sm:inline-flex"
+          aria-label={t(locale, 'nav.sign_out')}
+        >
+          <Icon name="log-out" size={15} />
+          <span class="text-small">{t(locale, 'nav.sign_out')}</span>
         </a>
       </div>
     </div>
   </header>
 
-  <main class="pb-24 lg:pb-12">
+  <main class="pb-24 md:pb-12">
     <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:py-8">
       <slot />
     </div>
@@ -152,7 +150,7 @@ const navItems = [
 
   <nav
     aria-label="Dashboard"
-    class="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 backdrop-blur-md pb-safe lg:hidden"
+    class="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 backdrop-blur-md pb-safe md:hidden"
   >
     <div class="mx-auto grid h-16 max-w-lg grid-cols-4 px-1">
       {

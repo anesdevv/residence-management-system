@@ -281,3 +281,44 @@ export function localizePath(locale: string, path: string): string {
     return `${cleanPath}${suffix}`;
   }
 }
+
+/**
+ * Gracefully formats floor number in both English and French:
+ * - Floor 0 -> 'Ground Floor' / 'RDC (Rez-de-chaussée)' (or 'Ground' / 'RDC' if short)
+ * - Floor N -> 'Floor N' / 'Étage N' (or 'N' if short)
+ */
+export function formatFloor(
+  floor: string | number | null | undefined,
+  locale?: string | null,
+  short: boolean = false
+): string {
+  const norm = normalizeLocale(locale || 'en');
+  if (floor === null || floor === undefined || floor === '') return '—';
+  const str = String(floor).trim();
+  if (str === '0' || str.toLowerCase() === 'rdc') {
+    if (short) {
+      return norm === 'fr' ? 'RDC' : 'Ground';
+    }
+    return norm === 'fr' ? 'RDC (Rez-de-chaussée)' : 'Ground Floor';
+  }
+  if (short) {
+    return str;
+  }
+  return norm === 'fr' ? `Étage ${str}` : `Floor ${str}`;
+}
+
+/**
+ * Formats resident name with consistent title capitalization.
+ */
+export function formatResidentName(first?: string | null, last?: string | null): string {
+  const cleanFirst = (first || '').trim();
+  const cleanLast = (last || '').trim();
+  if (!cleanFirst && !cleanLast) return 'Resident';
+
+  const toTitle = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '';
+  const f = cleanFirst.split(/\s+/).map(toTitle).join(' ');
+  const l = cleanLast.split(/\s+/).map(toTitle).join(' ');
+  return [f, l].filter(Boolean).join(' ');
+}
+
+

@@ -6,7 +6,6 @@ import StatusPill from '../../components/StatusPill.astro';
 import Stepper from '../../components/Stepper.astro';
 import InlineBanner from '../../components/InlineBanner.astro';
 import EmptyState from '../../components/EmptyState.astro';
-import StatCard from '../../components/StatCard.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 import { MAINTENANCE_STAGES, getStageIndex, MAINTENANCE_CATEGORIES, getCategoryMeta, batchResolveSignedUrls } from '../../lib/maintenance';
 import { localizePath, t, tn, formatDateTime, type SupportedLocale } from '../../lib/i18n';
@@ -84,32 +83,27 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
     title={t(locale, 'maintenance.title')}
     overline="Cité Universitaire Tlemcen"
     subtitle={t(locale, 'maintenance.subtitle')}
-  >
-    <Fragment slot="actions">
-      <a href={localizePath(locale, '/dashboard')} class="btn btn-secondary">
-        <Icon name="arrow-left" size={16} class="rtl-mirror" />
-        <span>{t(locale, 'common.back')}</span>
-      </a>
-    </Fragment>
-  </PageHeader>
-
-  <!-- Emergency Assistance Banner -->
-  <InlineBanner kind="warning" title={t(locale, 'maintenance.emergency_title')} icon="alert-triangle" class="mb-6">
-    {t(locale, 'maintenance.emergency_desc')}
-    <div slot="actions">
-      <a href="tel:+21343210000" class="btn btn-sm btn-secondary" dir="ltr">
-        <Icon name="phone" size={14} class="rtl-mirror" />
-        <span>{t(locale, 'maintenance.emergency_hotline')}</span>
-      </a>
-    </div>
-  </InlineBanner>
+  />
 
   <!-- Metric Strip -->
-  <div class="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4 mb-6">
-    <StatCard label={t(locale, 'maintenance.stat_total')} value={totalCount} icon="wrench" accent="navy" />
-    <StatCard label={t(locale, 'maintenance.stat_pending')} value={pendingCount} icon="clock" accent="navy" />
-    <StatCard label={t(locale, 'maintenance.stat_in_progress')} value={inProgressCount} icon="hammer" accent="navy" />
-    <StatCard label={t(locale, 'maintenance.stat_resolved')} value={resolvedCount} icon="check-circle" accent="teal" />
+  <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 sm:px-5 rounded-card border border-line bg-surface mb-6">
+    <div class="flex items-center gap-2 text-small font-medium text-ink">
+      <span class="flex h-7 w-7 items-center justify-center rounded-input bg-teal-600/10 text-teal-600">
+        <Icon name="wrench" size={15} />
+      </span>
+      <span>{locale === 'fr' ? 'Dossier technique de la chambre' : 'Dormitory Technical Records'}</span>
+    </div>
+    <div class="flex items-center gap-3 sm:gap-5 text-small tnum">
+      <span class="text-muted">
+        {locale === 'fr' ? 'Total :' : 'Total:'} <strong class="text-ink font-semibold">{totalCount}</strong>
+      </span>
+      <span class="text-pending font-medium">
+        {t(locale, 'maintenance.stat_pending')} : <strong class="font-semibold">{pendingCount}</strong>
+      </span>
+      <span class="text-teal-600 font-medium">
+        {t(locale, 'maintenance.stat_resolved')} : <strong class="font-semibold">{resolvedCount}</strong>
+      </span>
+    </div>
   </div>
 
   <!-- Feedback Alerts -->
@@ -145,91 +139,150 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
 
   <!-- Locked State or Submission Form -->
   {!isActive ? (
-    <InlineBanner kind="warning" title={t(locale, 'maintenance.reporting_locked_title')} icon="lock" class="mb-8">
-      {locale === 'fr'
-        ? `Le statut de votre dossier est ${student?.status ?? 'en attente'}. Les déclarations d'intervention technique sont strictement réservées aux étudiants affectés à une chambre. Dès que votre dossier sera validé, vous pourrez déclarer des pannes ici.`
-        : `Your account status is ${student?.status ?? 'pending'}. Maintenance requests are strictly tied to an officially assigned dormitory room. Once your housing registration is verified and approved, you will be able to file repair tickets here.`}
-    </InlineBanner>
+    <div class="flex flex-col gap-6 mb-8">
+      <InlineBanner kind="warning" title={t(locale, 'maintenance.reporting_locked_title')} icon="lock">
+        {locale === 'fr'
+          ? `Le statut de votre dossier est ${student?.status ?? 'en attente'}. Les déclarations d'intervention technique sont strictement réservées aux étudiants affectés à une chambre. Dès que votre dossier sera validé, vous pourrez déclarer des pannes ici.`
+          : `Your account status is ${student?.status ?? 'pending'}. Maintenance requests are strictly tied to an officially assigned dormitory room. Once your housing registration is verified and approved, you will be able to file repair tickets here.`}
+      </InlineBanner>
+
+      <!-- Emergency Hotline (Always accessible) -->
+      <div class="rounded-card border border-pending-line bg-pending-bg p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-start gap-3">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input bg-surface text-pending shadow-sm">
+            <Icon name="alert-triangle" size={20} />
+          </span>
+          <div>
+            <h3 class="text-small font-semibold uppercase tracking-wider text-pending">{t(locale, 'maintenance.emergency_title')}</h3>
+            <p class="text-small text-ink-2 mt-0.5">{t(locale, 'maintenance.emergency_desc')}</p>
+          </div>
+        </div>
+        <a href="tel:+21343210000" class="btn btn-sm btn-secondary shrink-0 min-h-[40px]" dir="ltr">
+          <Icon name="phone" size={14} class="rtl-mirror" />
+          <span>{t(locale, 'maintenance.emergency_hotline')} : +213 (0) 43 21 00 00</span>
+        </a>
+      </div>
+    </div>
   ) : (
-    <section class="card p-4 sm:p-6 mb-8">
-      <header class="border-b border-line pb-4 mb-6">
-        <h2 class="card-title">{t(locale, 'maintenance.new_ticket_header')}</h2>
-        <p class="text-small font-normal text-muted mt-1">{t(locale, 'maintenance.new_ticket_subtitle')}</p>
-      </header>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start mb-8">
+      <!-- Left: Ticket Submission Form -->
+      <section class="card p-4 sm:p-6 lg:col-span-8">
+        <header class="border-b border-line pb-4 mb-6">
+          <h2 class="card-title">{t(locale, 'maintenance.new_ticket_header')}</h2>
+          <p class="text-small font-normal text-muted mt-1">{t(locale, 'maintenance.new_ticket_subtitle')}</p>
+        </header>
 
-      <form method="POST" action="/api/maintenance" enctype="multipart/form-data" class="flex flex-col gap-6">
-        <!-- Category Radio Picker -->
-        <fieldset class="flex flex-col gap-2 border-0 p-0 m-0">
-          <legend class="label">{t(locale, 'maintenance.fault_category_legend')} <span class="text-danger" aria-hidden="true">*</span></legend>
-          <div class="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-5">
-            {categories.map((c, i) => (
-              <label class={`cursor-pointer ${i === 4 ? 'col-span-2 sm:col-span-1' : ''}`}>
-                <input
-                  type="radio"
-                  name="category"
-                  value={c.id}
-                  required
-                  checked={i === 0}
-                  class="peer sr-only"
-                />
-                <div class="flex flex-col items-center justify-center p-3 text-center rounded-card border border-line bg-subtle hover:bg-canvas peer-checked:border-teal-600 peer-checked:bg-teal-600/5 peer-checked:text-teal-600 transition min-h-[88px] sm:min-h-[96px]">
-                  <Icon name={c.icon} size={22} class="text-muted peer-checked:text-teal-600" />
-                  <span class="mt-2 text-small font-semibold text-ink">{t(locale, 'category.' + c.id)}</span>
-                  <span class="mt-0.5 text-small text-muted hidden sm:block">{c.desc}</span>
-                </div>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <!-- Description -->
-        <div class="flex flex-col gap-2">
-          <label for="description" class="label">{t(locale, 'maintenance.description_label_detailed')} <span class="text-danger" aria-hidden="true">*</span></label>
-          <textarea
-            name="description"
-            id="description"
-            required
-            minlength="5"
-            rows="3"
-            placeholder={t(locale, 'maintenance.description_placeholder_detailed')}
-            class="input min-h-[96px]"
-          ></textarea>
-        </div>
-
-        <!-- Photo Upload Box with Preview -->
-        <div class="flex flex-col gap-2">
-          <label for="photo" class="label">{t(locale, 'maintenance.photo_optional_label')}</label>
-          <div class="rounded-card border border-dashed border-line bg-subtle p-4 sm:p-5 flex flex-col items-center justify-center gap-2">
-            <Icon name="image" size={24} class="text-muted" />
-            <input
-              type="file"
-              name="photo"
-              id="photo"
-              accept="image/*"
-              class="block w-full text-small text-muted file:me-4 file:py-2 file:px-4 file:rounded-input file:border-0 file:text-small file:font-semibold file:bg-navy-800 file:text-surface hover:file:bg-navy-700 cursor-pointer min-h-[44px]"
-            />
-            <p class="field-hint text-center">{t(locale, 'maintenance.photo_hint_detailed')}</p>
-            <div id="photoStatus" class="hidden flex items-center gap-2 text-small text-teal-600 font-medium py-1">
-              <span class="inline-block animate-spin font-bold">&#8635;</span>
-              <span>{t(locale, 'maintenance.photo_optimizing')}</span>
+        <form method="POST" action="/api/maintenance" enctype="multipart/form-data" class="flex flex-col gap-6">
+          <!-- Category Radio Picker (4 equal-height categories) -->
+          <fieldset class="flex flex-col gap-2 border-0 p-0 m-0">
+            <legend class="label">{t(locale, 'maintenance.fault_category_legend')} <span class="text-danger" aria-hidden="true">*</span></legend>
+            <div class="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-4">
+              {categories.map((c, i) => (
+                <label class="cursor-pointer h-full">
+                  <input
+                    type="radio"
+                    name="category"
+                    value={c.id}
+                    required
+                    checked={i === 0}
+                    class="peer sr-only"
+                  />
+                  <div class="flex h-full flex-col items-center justify-center p-3 text-center rounded-card border border-line bg-subtle hover:bg-canvas peer-checked:border-teal-600 peer-checked:bg-teal-600/5 peer-checked:text-teal-600 transition min-h-[96px]">
+                    <Icon name={c.icon} size={22} class="text-muted peer-checked:text-teal-600" />
+                    <span class="mt-2 text-small font-semibold text-ink">{t(locale, 'category.' + c.id)}</span>
+                    <span class="mt-0.5 text-xs text-muted hidden sm:block">{c.desc}</span>
+                  </div>
+                </label>
+              ))}
             </div>
-            <div id="photoError" class="hidden text-small text-danger font-medium py-1"></div>
-            <div id="photoPreview" class="hidden mt-2 flex flex-col items-center gap-1.5">
-              <img id="previewImg" src="" alt="Photo preview" class="max-h-48 rounded-card border border-line object-cover" />
-              <span id="photoSizeBadge" class="text-caption text-muted bg-canvas border border-line px-2.5 py-0.5 rounded-full font-mono"></span>
+          </fieldset>
+
+          <!-- Description -->
+          <div class="flex flex-col gap-2">
+            <label for="description" class="label">{t(locale, 'maintenance.description_label_detailed')} <span class="text-danger" aria-hidden="true">*</span></label>
+            <textarea
+              name="description"
+              id="description"
+              required
+              minlength="5"
+              rows="3"
+              placeholder={t(locale, 'maintenance.description_placeholder_detailed')}
+              class="input min-h-[96px]"
+            ></textarea>
+          </div>
+
+          <!-- Photo Upload Box with Preview -->
+          <div class="flex flex-col gap-2">
+            <label for="photo" class="label">{t(locale, 'maintenance.photo_optional_label')}</label>
+            <div class="rounded-card border border-dashed border-line bg-subtle p-4 sm:p-5 flex flex-col items-center justify-center gap-2">
+              <Icon name="image" size={24} class="text-muted" />
+              <input
+                type="file"
+                name="photo"
+                id="photo"
+                accept="image/*"
+                class="block w-full text-small text-muted file:me-4 file:py-2 file:px-4 file:rounded-input file:border-0 file:text-small file:font-semibold file:bg-navy-800 file:text-surface hover:file:bg-navy-700 cursor-pointer min-h-[44px]"
+              />
+              <p class="field-hint text-center">{t(locale, 'maintenance.photo_hint_detailed')}</p>
+              <div id="photoStatus" class="hidden flex items-center gap-2 text-small text-teal-600 font-medium py-1">
+                <span class="inline-block animate-spin font-bold">&#8635;</span>
+                <span>{t(locale, 'maintenance.photo_optimizing')}</span>
+              </div>
+              <div id="photoError" class="hidden text-small text-danger font-medium py-1"></div>
+              <div id="photoPreview" class="hidden mt-2 flex flex-col items-center gap-1.5">
+                <img id="previewImg" src="" alt="Photo preview" class="max-h-48 rounded-card border border-line object-cover" />
+                <span id="photoSizeBadge" class="text-caption text-muted bg-canvas border border-line px-2.5 py-0.5 rounded-full font-mono"></span>
+              </div>
             </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div>
+            <button type="submit" class="btn btn-primary min-h-[44px]">
+              <Icon name="check-circle" size={18} />
+              <span>{t(locale, 'maintenance.submit_btn')}</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Right Sidebar: Emergency Hotline & Guidelines -->
+      <aside class="flex flex-col gap-5 lg:col-span-4">
+        <!-- Emergency Hotline Callout Card -->
+        <div class="rounded-card border border-pending-line bg-pending-bg p-5 flex flex-col gap-3">
+          <div class="flex items-center gap-2.5 text-pending font-semibold">
+            <Icon name="alert-triangle" size={18} />
+            <h3 class="text-small uppercase tracking-wider">{t(locale, 'maintenance.emergency_title')}</h3>
+          </div>
+          <p class="text-small text-ink-2 leading-relaxed">
+            {t(locale, 'maintenance.emergency_desc')}
+          </p>
+          <div class="pt-1">
+            <a
+              href="tel:+21343210000"
+              class="btn btn-sm btn-secondary w-full justify-center min-h-[40px]"
+              dir="ltr"
+            >
+              <Icon name="phone" size={14} class="rtl-mirror" />
+              <span class="font-mono font-medium">{t(locale, 'maintenance.emergency_hotline')} : +213 (0) 43 21 00 00</span>
+            </a>
           </div>
         </div>
 
-        <!-- Submit Button -->
-        <div>
-          <button type="submit" class="btn btn-primary min-h-[44px]">
-            <Icon name="check-circle" size={18} />
-            <span>{t(locale, 'maintenance.submit_btn')}</span>
-          </button>
+        <!-- Intervention Notice Card -->
+        <div class="card p-5 flex flex-col gap-2.5 text-small text-muted">
+          <div class="flex items-center gap-2 text-ink font-semibold">
+            <Icon name="info" size={16} class="text-teal-600" />
+            <span>{locale === 'fr' ? 'Accès des techniciens' : 'Technician Access'}</span>
+          </div>
+          <p class="leading-relaxed">
+            {locale === 'fr'
+              ? 'Les interventions ont lieu durant les heures de bureau (08h30 – 16h00). Assurez-vous de libérer l’accès à la zone d’intervention dans votre chambre.'
+              : 'Technical teams inspect and repair during standard service hours (08:30 – 16:00). Please ensure clear access to the affected fixture.'}
+          </p>
         </div>
-      </form>
-    </section>
+      </aside>
+    </div>
   )}
 
   <!-- History Section with Filter Controls -->

@@ -7,7 +7,7 @@
  */
 import BrandMark from './BrandMark.astro';
 import Icon from './Icon.astro';
-import { t, type SupportedLocale } from '../lib/i18n';
+import { t, formatFloor, type SupportedLocale } from '../lib/i18n';
 
 interface Props {
   fullName: string;
@@ -33,7 +33,7 @@ const stateLabel = locale === 'fr'
 ---
 
 <article
-  class={`relative overflow-hidden rounded-hero border border-white/20 shadow-e2 ${className}`}
+  class={`relative overflow-hidden rounded-hero border border-white/20 shadow-e2 max-w-xl w-full ${className}`}
   style="background-image: var(--grad-brand);"
   aria-label="Resident pass"
 >
@@ -125,7 +125,7 @@ const stateLabel = locale === 'fr'
       <div class="min-w-0 px-2 sm:px-3 first:ps-0 last:pe-0">
         <dt class="overline text-on-dark-2">{t(locale, 'fields.floor')}</dt>
         <dd class="tnum font-display text-h1 sm:text-display font-semibold text-surface tracking-tight">
-          {floor}
+          {formatFloor(floor, locale, true)}
         </dd>
       </div>
       <div class="min-w-0 px-2 sm:px-3 first:ps-0 last:pe-0">

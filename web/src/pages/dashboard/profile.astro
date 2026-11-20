@@ -41,14 +41,7 @@ const statusKind = s?.status === 'active' ? 'ok' : s?.status === 'rejected' ? 'd
     title={t(locale, 'profile.title')}
     overline={t(locale, 'profile.overline')}
     subtitle={t(locale, 'profile.subtitle')}
-  >
-    <Fragment slot="actions">
-      <a href={localizePath(locale, '/dashboard')} class="btn btn-secondary">
-        <Icon name="arrow-left" size={16} class="rtl-mirror" />
-        <span>{t(locale, 'room_change.back_to_dashboard')}</span>
-      </a>
-    </Fragment>
-  </PageHeader>
+  />
 
   <!-- Feedback Alerts -->
   {updated && (

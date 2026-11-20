@@ -7,7 +7,7 @@ import InlineBanner from '../../components/InlineBanner.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
-import { localizePath, t, formatDate, type SupportedLocale } from '../../lib/i18n';
+import { localizePath, t, formatDate, formatFloor, type SupportedLocale } from '../../lib/i18n';
 
 export const prerender = false;
 const locale: SupportedLocale = Astro.locals.locale || 'en';
@@ -85,14 +85,7 @@ const motives = [
     title={t(locale, 'room_change.portal_title')}
     overline="Cité Universitaire Tlemcen"
     subtitle={t(locale, 'room_change.portal_subtitle')}
-  >
-    <Fragment slot="actions">
-      <a href={localizePath(locale, '/dashboard')} class="btn btn-secondary">
-        <Icon name="arrow-left" size={16} class="rtl-mirror" />
-        <span>{t(locale, 'room_change.back_to_dashboard')}</span>
-      </a>
-    </Fragment>
-  </PageHeader>
+  />
 
   <!-- Feedback Alerts -->
   {created && (
@@ -121,30 +114,22 @@ const motives = [
         : `Your account status is ${student?.status ?? 'pending'}. Room transfer requests can only be filed by approved residents who currently occupy an allocated dormitory room.`}
     </InlineBanner>
   ) : (
-    <div class="flex flex-col gap-6 mb-8">
-      <!-- Current Room Info Bar -->
+    <div class="flex flex-col gap-6 mb-8 max-w-3xl">
+      <!-- Current Room Inline Summary Strip -->
       {currentRoom && (
-        <section class="card p-4 sm:p-6">
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div class="flex items-center gap-3.5">
-              <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input bg-subtle text-teal-600">
-                <Icon name="building" size={24} />
-              </span>
-              <div>
-                <span class="overline">{t(locale, 'room_change.current_room_overline')}</span>
-                <p class="font-display text-h2 text-ink mt-0.5">
-                  {t(locale, 'dashboard.block_room', { block: currentRoom.block, room: currentRoom.number })}
-                </p>
-                <p class="text-small font-normal text-muted">
-                  {t(locale, 'room_change.current_room_details', { floor: currentRoom.floor })}
-                </p>
-              </div>
-            </div>
-            <div>
-              <StatusPill kind="ok" label={t(locale, 'room_change.current_occupant_pill')} />
-            </div>
+        <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 sm:px-5 rounded-card border border-line bg-surface">
+          <div class="flex items-center gap-2.5 text-small">
+            <span class="flex h-7 w-7 items-center justify-center rounded-input bg-teal-600/10 text-teal-600">
+              <Icon name="building" size={15} />
+            </span>
+            <span class="text-muted">{t(locale, 'room_change.current_room_overline')} :</span>
+            <strong class="font-semibold text-ink tnum">
+              {t(locale, 'dashboard.block_room', { block: currentRoom.block, room: currentRoom.number })}
+            </strong>
+            <span class="text-muted">({formatFloor(currentRoom.floor, locale)})</span>
           </div>
-        </section>
+          <StatusPill kind="ok" label={t(locale, 'room_change.current_occupant_pill')} size="sm" />
+        </div>
       )}
 
       <!-- Submission Card or Pending Review Notice -->
@@ -160,7 +145,7 @@ const motives = [
           </header>
 
           <form method="POST" action="/api/room-change" class="flex flex-col gap-6">
-            <!-- Motive Quick Selector Buttons (Zero emojis, authored icons) -->
+            <!-- Motive Quick Selector Buttons (Zero emojis, authored icons, equal-height) -->
             <div class="flex flex-col gap-2">
               <span class="label">{t(locale, 'room_change.select_motive_label')}</span>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="motivePills">
@@ -168,13 +153,15 @@ const motives = [
                   <button
                     type="button"
                     data-motive={m.text}
-                    class="motive-pill text-start p-3.5 rounded-card border border-line bg-subtle hover:bg-canvas transition cursor-pointer flex flex-col gap-1 min-h-[88px]"
+                    class="motive-pill text-start p-3.5 rounded-card border border-line bg-subtle hover:bg-canvas transition cursor-pointer flex flex-col justify-between gap-2 min-h-[96px] h-full"
                   >
-                    <div class="flex items-center gap-2">
-                      <Icon name={m.icon} size={16} class="text-teal-600 shrink-0" />
-                      <span class="font-display text-small font-semibold text-ink">{m.title}</span>
+                    <div class="flex flex-col gap-1">
+                      <div class="flex items-center gap-2">
+                        <Icon name={m.icon} size={16} class="text-teal-600 shrink-0" />
+                        <span class="font-display text-small font-semibold text-ink">{m.title}</span>
+                      </div>
+                      <span class="text-xs text-muted leading-relaxed">{m.desc}</span>
                     </div>
-                    <span class="text-small text-muted">{m.desc}</span>
                   </button>
                 ))}
               </div>
@@ -204,13 +191,10 @@ const motives = [
                 <option value="">{t(locale, 'room_change.no_preference_option')}</option>
                 {(rooms ?? []).map((r) => (
                   <option value={r.id}>
-                    {t(locale, 'room_change.room_option_format', { block: r.block, number: r.number, floor: r.floor, capacity: r.capacity })}
+                    {t(locale, 'room_change.room_option_format', { block: r.block, number: r.number, floor: formatFloor(r.floor, locale), capacity: r.capacity })}
                   </option>
                 ))}
               </select>
-              <p class="field-hint">
-                {t(locale, 'room_change.available_rooms_hint')}
-              </p>
             </div>
 
             <!-- Submit Button -->
@@ -262,7 +246,7 @@ const motives = [
                     </div>
                     {pref ? (
                       <p class="text-small font-medium text-teal-600 mt-0.5">
-                        {t(locale, 'room_change.petition_target_format', { block: pref.block, number: pref.number, floor: pref.floor })}
+                        {t(locale, 'room_change.petition_target_format', { block: pref.block, number: pref.number, floor: formatFloor(pref.floor, locale) })}
                       </p>
                     ) : (
                       <p class="text-small font-normal text-muted mt-0.5">
@@ -309,6 +293,10 @@ const motives = [
     if (reasonTextarea) {
       motivePills.forEach((pill) => {
         pill.addEventListener('click', () => {
+          motivePills.forEach((p) => {
+            p.classList.remove('border-teal-600', 'bg-teal-600/5', 'ring-1', 'ring-teal-600');
+          });
+          pill.classList.add('border-teal-600', 'bg-teal-600/5', 'ring-1', 'ring-teal-600');
           const motiveText = pill.getAttribute('data-motive');
           if (motiveText) {
             reasonTextarea.value = motiveText;
