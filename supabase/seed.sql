@@ -173,10 +173,33 @@ begin
   update public.students
   set status = 'active', room_id = '11111111-0000-0000-0000-000000000003', email = null
   where id = s4_id;
+
+  -- S5: Test Student 7 (Sparse, self-registered without admissions roster match, active but unallocated)
+  declare
+    s5_id uuid := 'c0000000-0000-0000-0000-000000000007';
+  begin
+    insert into auth.users (
+      id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+      raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+    ) values (
+      s5_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+      'test.student7@residence.local', pw_hash, now() - interval '9 days 4 hours 18 minutes 32 seconds',
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{"card_id":"90000007","first_name":"Test","last_name":"Student 7"}'::jsonb,
+      now() - interval '9 days 4 hours 18 minutes 32 seconds',
+      now() - interval '8 days 1 hour 45 minutes 12 seconds'
+    ) on conflict (id) do update set email = excluded.email;
+
+    update public.students
+    set status = 'active', room_id = null,
+        created_at = now() - interval '9 days 4 hours 18 minutes 32 seconds',
+        updated_at = now() - interval '8 days 1 hour 45 minutes 12 seconds'
+    where id = s5_id;
+  end;
 end $$;
 
 -- 6. Sample Maintenance Reports
-insert into public.maintenance_reports (id, student_id, category, description, status, created_at)
+insert into public.maintenance_reports (id, student_id, category, description, status, photo_path, staff_note, handled_by, created_at, updated_at, resolved_at)
 values
   (
     'd0000000-0000-0000-0000-000000000001',
@@ -184,7 +207,12 @@ values
     'plumbing',
     'Bathroom faucet leak: continuous water dripping in bathroom sink basin.',
     'pending',
-    now() - interval '2 days'
+    null,
+    null,
+    null,
+    now() - interval '2 days 3 hours 14 minutes 22 seconds',
+    now() - interval '2 days 3 hours 14 minutes 22 seconds',
+    null
   ),
   (
     'd0000000-0000-0000-0000-000000000002',
@@ -192,6 +220,70 @@ values
     'electrical',
     'Desk socket outlet unpowered: main study desk electrical socket has no current.',
     'in_progress',
-    now() - interval '5 days'
+    'maintenance/desk_socket_fault.jpg',
+    'Dispatched electrician to check breaker panel on 1st floor.',
+    'a0000000-0000-0000-0000-000000000002',
+    now() - interval '5 days 6 hours 21 minutes 05 seconds',
+    now() - interval '3 days 1 hour 12 minutes 40 seconds',
+    null
+  ),
+  (
+    'd0000000-0000-0000-0000-000000000003',
+    'c0000000-0000-0000-0000-000000000007',
+    'others',
+    'Window latch mechanism jammed; unable to close tightly during rainfall.',
+    'pending',
+    null,
+    null,
+    null,
+    now() - interval '8 days 2 hours 11 minutes 45 seconds',
+    now() - interval '7 days 5 hours 09 minutes 18 seconds',
+    null
+  )
+on conflict (id) do nothing;
+
+-- 7. Sample Room Change Requests
+insert into public.room_change_requests (
+  id, student_id, current_room_id, preferred_room_id, reason, status, decision_note, decided_by, decided_at, created_at, updated_at
+)
+values
+  (
+    'e0000000-0000-0000-0000-000000000001',
+    'c0000000-0000-0000-0000-000000000001',
+    '11111111-0000-0000-0000-000000000001',
+    '22222222-0000-0000-0000-000000000001',
+    'Requesting transfer to Block B to share dorm room with study partner in same faculty.',
+    'pending',
+    null,
+    null,
+    null,
+    now() - interval '4 days 2 hours 18 minutes 10 seconds',
+    now() - interval '4 days 2 hours 18 minutes 10 seconds'
+  ),
+  (
+    'e0000000-0000-0000-0000-000000000002',
+    'c0000000-0000-0000-0000-000000000003',
+    '11111111-0000-0000-0000-000000000002',
+    '11111111-0000-0000-0000-000000000003',
+    'Ground floor accommodation requested for medical mobility accessibility.',
+    'approved',
+    'Approved per physician recommendation submitted to housing service.',
+    'a0000000-0000-0000-0000-000000000001',
+    now() - interval '6 days 3 hours 20 minutes 00 seconds',
+    now() - interval '10 days 7 hours 45 minutes 22 seconds',
+    now() - interval '6 days 3 hours 20 minutes 00 seconds'
+  ),
+  (
+    'e0000000-0000-0000-0000-000000000003',
+    'c0000000-0000-0000-0000-000000000004',
+    '11111111-0000-0000-0000-000000000003',
+    '22222222-0000-0000-0000-000000000003',
+    'Prefer single room or quieter corner room.',
+    'rejected',
+    'Target block currently at maximum allocated capacity for this cohort.',
+    'a0000000-0000-0000-0000-000000000002',
+    now() - interval '1 day 4 hours 10 minutes 00 seconds',
+    now() - interval '3 days 9 hours 30 minutes 15 seconds',
+    now() - interval '1 day 4 hours 10 minutes 00 seconds'
   )
 on conflict (id) do nothing;

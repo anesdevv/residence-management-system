@@ -293,3 +293,47 @@ Execute with the rebuilt standalone executable (`dist\RESIVO\RESIVO.exe`):
   1. With a verified installer ready, click **Update and restart** and confirm.
   2. **Pass criteria**: RÉSIVO closes without a second close prompt, Setup runs silently, the new version relaunches with `--updated`, and a *RÉSIVO was updated to version <version>* toast appears. Signed-in session, language, settings and user data are preserved.
   3. Repeat while a download is running and close the window: the close confirmation still works and the old install stays usable.
+
+---
+
+## Inspectors & Student Profile Data Checks
+
+- [ ] **25. Ticket Inspector (Maintenance)**:
+  1. Open **Maintenance**. Select any repair ticket (e.g., Test Student 7).
+  2. **Pass criteria**:
+     - Header displays category icon and status pill.
+     - Resident block displays avatar, full student name, Card ID, and a clickable **View profile** button.
+     - Student description is prominently visible in full (wrapped, mouse selectable).
+     - Key facts display Room (e.g., `Block A · Floor 1 · Room 101` or `No room assigned`), Submitted date, Last update date, and Resolved date formatted in user's locale (never raw timestamps or `+00:00`). For pending tickets, Resolved displays `Not resolved yet`.
+     - Fault photo section displays photo or clean placeholder.
+     - Staff note and status stage stepper (Pending -> In progress -> Resolved) are visible and functional.
+     - Plain-text raw dump block is removed; clicking **Copy summary** copies clean formatted text to clipboard.
+
+- [ ] **26. Transfer Inspector (Room Changes)**:
+  1. Open **Room changes**. Select a transfer request.
+  2. **Pass criteria**:
+     - Resident identity block displays name, Card ID, status pill, and **View profile** button.
+     - Move section displays Current room card -> Requested room card with occupancy indicator (never raw UUIDs like `d1000000`).
+     - Student reason is shown in a word-wrapped block.
+     - Key facts display Submitted date, Last update date, Decision note, Decided by/at (when decided) formatted in local time.
+     - For rejected requests, Rejection card displays reason, decider name, and date.
+     - Clicking **Copy summary** copies clean formatted text to clipboard.
+
+- [ ] **27. Student Profile Dialog (Complete Record)**:
+  1. Double-click an active student (e.g., Karim Benali) from Maintenance, Room Changes, Applications, or Residents, or click **View profile**.
+  2. **Pass criteria**:
+     - Dialog opens immediately with preliminary data, enriches off-thread via `get_student_profile`.
+     - Academic & identity facts display Student card ID, Full name, Status, Date of birth, University, Faculty, Study level, Wilaya, Contact phone, Contact email, Registered on, and Review status.
+     - In single-gender mode, the Gender row is hidden; when co-ed, it is shown.
+     - Housing & verification displays Assigned room (e.g., `Block A · Floor 1 · Room 101`) and green verified roster banner.
+     - All values are mouse-selectable.
+
+- [ ] **28. Student Profile Dialog (Sparse Record & Active-No-Room Warning)**:
+  1. Double-click an active resident who has no room assigned yet (e.g., Test Student 7).
+  2. **Pass criteria**:
+     - No bare dashes `—` appear anywhere. Empty optional fields cleanly display `Not provided` (FR: `Non renseigné`) in muted italics.
+     - Assigned room displays `No room assigned yet`.
+     - An amber warning pill appears in the identity block: `Active resident with no room assigned: check the allocation`.
+     - Housing card displays an amber warning banner: `Active resident with no room assigned: check the allocation`.
+     - Admissions roster banner displays a quiet neutral note: `Approved without a roster match` (or red audit banner if pending).
+
