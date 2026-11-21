@@ -135,6 +135,7 @@
         "could_not_load": "Impossible de charger",
         "registered_on": "Inscrit le",
         "reviewed_by_on": "Examiné par {name} le {date}",
+        "reviewed_label": "Examen",
         "assigned_room": "Chambre attribuée",
         "active_no_room_warn": "Actif sans chambre attribuée : vérifier l allocation",
         "approved_without_roster": "Approuvé sans correspondance dans le registre",

@@ -135,6 +135,7 @@
         "could_not_load": "Could not load",
         "registered_on": "Registered on",
         "reviewed_by_on": "Reviewed by {name} on {date}",
+        "reviewed_label": "Review",
         "assigned_room": "Assigned room",
         "active_no_room_warn": "Active but no room assigned: check the allocation",
         "approved_without_roster": "Approved without a roster match",

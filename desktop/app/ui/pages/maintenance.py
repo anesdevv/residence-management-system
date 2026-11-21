@@ -1404,6 +1404,8 @@ class MaintenancePage(QWidget):
             return
 
         st = dict(_normalise_student(r))
+        if "id" not in st and r.get("student_id"):
+            st["id"] = r["student_id"]
         self._info_busy = True
         started = self.tasks.run(
             _INFO_KEY,

@@ -28,8 +28,10 @@ from typing import Any
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
+    QScrollArea,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -37,14 +39,27 @@ from PySide6.QtWidgets import (
 )
 
 try:
-    from i18n import t, tn
+    from i18n import format_date, format_datetime, t, tn
 except ImportError:
-    from desktop.i18n import t, tn
+    from desktop.i18n import format_date, format_datetime, t, tn
 
 try:
-    from ..client import get_cached_residence_settings, has_gender_mismatch
+    from ..client import (
+        get_cached_residence_settings,
+        get_student_profile,
+        has_gender_mismatch,
+    )
 except ImportError:
-    from desktop.app.client import get_cached_residence_settings, has_gender_mismatch
+    from desktop.app.client import (
+        get_cached_residence_settings,
+        get_student_profile,
+        has_gender_mismatch,
+    )
+
+try:
+    from ..tasks import TaskRunner, human_error
+except ImportError:
+    from desktop.app.ui.tasks import TaskRunner, human_error
 
 try:
     from . import theme
@@ -122,6 +137,43 @@ def kpi_block(label: str, value, accent: str = "teal", icon: str = "bed", parent
     return card
 
 
+def _safe_date(val: Any) -> tuple[str, bool]:
+    """Return (formatted_date_string, is_empty)."""
+    if not val:
+        return t("infocard.not_provided"), True
+    try:
+        return format_date(val), False
+    except Exception:
+        s = str(val).strip()
+        if not s or s.lower() == "none" or s == "—":
+            return t("infocard.not_provided"), True
+        return s, False
+
+
+def _safe_datetime(val: Any) -> tuple[str, bool]:
+    """Return (formatted_datetime_string, is_empty)."""
+    if not val:
+        return t("infocard.not_provided"), True
+    try:
+        return format_datetime(val), False
+    except Exception:
+        s = str(val).strip()
+        if not s or s.lower() == "none" or s == "—":
+            return t("infocard.not_provided"), True
+        return s, False
+
+
+def _safe_str(val: Any, empty_msg: str | None = None) -> tuple[str, bool]:
+    """Return (string_value, is_empty)."""
+    fallback = empty_msg or t("infocard.not_provided")
+    if val is None:
+        return fallback, True
+    s = str(val).strip()
+    if not s or s.lower() == "none" or s == "—":
+        return fallback, True
+    return s, False
+
+
 def _row(*widgets: QWidget) -> QWidget:
     """Plain horizontal row of widgets (no margins, spacing ``space-2``)."""
     holder = QWidget()
@@ -137,9 +189,8 @@ def _row(*widgets: QWidget) -> QWidget:
 class StudentInfoCardDialog(QDialog):
     """Read-only resident profile: identity, academic data and roster match.
 
-    ``StudentInfoCardDialog(parent, student_data, official_roster_data)`` — the
-    dialog only renders the dicts it is given; the roster banner is green when
-    ``official_roster_data`` is a non-empty row, amber-free red otherwise.
+    Enriches student profile from `get_student_profile` off-thread while
+    displaying preliminary data immediately.
     """
 
     def __init__(
@@ -148,11 +199,25 @@ class StudentInfoCardDialog(QDialog):
         student_data: dict[str, Any] | None = None,
         official_roster_data: dict[str, Any] | None = None,
         residence_gender: str | None = None,
+        *,
+        client: Any | None = None,
+        student_id: str | None = None,
     ):
         super().__init__(parent)
-        self.student_data = student_data or {}
+        self._closing = False
+        self._fetch_req_id = 0
+        self.student_data = dict(student_data or {})
         self.official_roster_data = official_roster_data
-        parent_client = getattr(parent, "client", None) if parent is not None else None
+
+        # Client resolution
+        self.client = client or (getattr(parent, "client", None) if parent is not None else None)
+
+        # Student ID resolution
+        sid = student_id or self.student_data.get("id") or self.student_data.get("card_id")
+        self.student_id = str(sid).strip() if sid else None
+
+        # Residence gender resolution
+        parent_client = self.client or (getattr(parent, "client", None) if parent is not None else None)
         cached_res = get_cached_residence_settings(parent_client) if parent_client else None
         self.residence_gender = (
             residence_gender
@@ -160,67 +225,158 @@ class StudentInfoCardDialog(QDialog):
             or (cached_res or {}).get("residence_gender")
         )
 
+        self.tasks = TaskRunner(self)
+
         # ------------------------------------------------------- window setup
         first_name = str(self.student_data.get("first_name", "")).strip()
         last_name = str(self.student_data.get("last_name", "")).strip()
         full_name = f"{first_name} {last_name}".strip() or t("infocard.default_student_name")
-        card_id = str(self.student_data.get("card_id", "—")).strip() or "—"
         self.setWindowTitle(t("infocard.student_title", name=full_name))
         self.setModal(True)
-        self.setMinimumWidth(580)
+        self.setMinimumWidth(620)
+        self.setMinimumHeight(480)
         apply_app_stylesheet(self)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(S("space-6"), S("space-6"), S("space-6"), S("space-6"))
         root.setSpacing(S("space-4"))
 
-        is_verified = bool(self.official_roster_data)
+        # Error banner (shown if asynchronous enrichment fails)
+        self.error_banner = InlineBanner(
+            "error",
+            title=t("infocard.error_profile_title"),
+            message="",
+            icon="alert-circle",
+        )
+        self.retry_btn = Button.secondary(t("infocard.retry_btn"))
+        self.retry_btn.clicked.connect(self._fetch_profile)
+        self.error_banner.add_action(self.retry_btn)
+        self.error_banner.setVisible(False)
+        root.addWidget(self.error_banner)
+
+        # Scroll area for dialog content
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout(scroll_content)
+        scroll_layout.setContentsMargins(0, 0, 0, 0)
+        scroll_layout.setSpacing(S("space-4"))
+        scroll.setWidget(scroll_content)
+        root.addWidget(scroll, 1)
 
         # ------------------------------------------------------ profile card
-        profile_card = Card(
+        self.profile_card = Card(
             t("infocard.student_card_title"),
             t("infocard.student_card_desc"),
             icon="id-card",
         )
-        root.addWidget(profile_card)
+        scroll_layout.addWidget(self.profile_card)
 
         identity = QWidget()
         identity_row = QHBoxLayout(identity)
         identity_row.setContentsMargins(0, 0, 0, 0)
         identity_row.setSpacing(S("space-3"))
-        identity_row.addWidget(Avatar(full_name, size=S("space-12")), 0, Qt.AlignmentFlag.AlignTop)
+        self.avatar = Avatar(full_name, size=S("space-12"))
+        identity_row.addWidget(self.avatar, 0, Qt.AlignmentFlag.AlignTop)
 
         identity_column = QVBoxLayout()
         identity_column.setSpacing(2)
-        name_label = QLabel(full_name)
-        theme.apply_role(name_label, "h2")
-        name_label.setWordWrap(True)
-        identity_column.addWidget(name_label)
+        self.name_label = QLabel(full_name)
+        theme.apply_role(self.name_label, "h2")
+        self.name_label.setWordWrap(True)
+        identity_column.addWidget(self.name_label)
 
-        meta_parts = [t("infocard.card_id_prefix", card_id=card_id)]
+        self.meta_label = QLabel()
+        theme.apply_role(self.meta_label, "small")
+        theme.enable_tabular(self.meta_label)
+        self.meta_label.setWordWrap(True)
+        identity_column.addWidget(self.meta_label)
+        identity_row.addLayout(identity_column, 1)
+        self.profile_card.add_widget(identity)
+
+        # Badges & pills row
+        self.status_pill = StatusPill("neutral", "")
+        self.roster_badge = RosterMatchBadge(False)
+        self.roster_badge.setToolTip(t("infocard.roster_tooltip"))
+        self.gender_warning_badge = StatusPill("warning", t("residence.gender_differs_badge"))
+        self.gender_warning_badge.setToolTip(t("residence.gender_differs_tooltip"))
+        self.active_no_room_pill = StatusPill("warning", t("infocard.active_no_room_warn"))
+        self.pills_holder = _row(
+            self.status_pill,
+            self.roster_badge,
+            self.gender_warning_badge,
+            self.active_no_room_pill,
+        )
+        self.profile_card.add_widget(self.pills_holder)
+
+        self.profile_card.add_widget(section_header(t("infocard.section_academic")))
+        self.facts = KeyValueList()
+        self.profile_card.add_widget(self.facts)
+
+        # ------------------------------------------------------ housing card
+        self.housing_card = Card(
+            t("infocard.housing_card_title"),
+            t("infocard.housing_card_desc"),
+            icon="building",
+        )
+        scroll_layout.addWidget(self.housing_card)
+
+        self.housing_facts = KeyValueList()
+        self.housing_card.add_widget(self.housing_facts)
+
+        self.no_room_banner = InlineBanner("info", title="", message="")
+        self.housing_card.add_widget(self.no_room_banner)
+
+        self.roster_banner = InlineBanner("info", title="", message="")
+        self.housing_card.add_widget(self.roster_banner)
+
+        # ------------------------------------------------------------ footer
+        footer = QHBoxLayout()
+        footer.setSpacing(S("space-2"))
+        footer.addStretch(1)
+        close_btn = Button.secondary(t("common.close"))
+        close_btn.clicked.connect(self.accept)
+        footer.addWidget(close_btn)
+        root.addLayout(footer)
+
+        apply_elevation(self, 2)
+
+        # Render preliminary UI immediately
+        self._update_ui()
+
+        # Initiate off-thread background enrichment if client and id are available
+        self._fetch_profile()
+
+    def _update_ui(self) -> None:
+        first_name = str(self.student_data.get("first_name", "")).strip()
+        last_name = str(self.student_data.get("last_name", "")).strip()
+        full_name = f"{first_name} {last_name}".strip() or t("infocard.default_student_name")
+        card_id = str(self.student_data.get("card_id", "")).strip()
+        card_id_display = card_id or t("infocard.not_provided")
+
+        self.setWindowTitle(t("infocard.student_title", name=full_name))
+        self.avatar.set_name(full_name)
+        self.name_label.setText(full_name)
+
+        meta_parts = [t("infocard.card_id_prefix", card_id=card_id_display)]
         wilaya = self.student_data.get("wilaya")
         if wilaya:
             meta_parts.append(t("infocard.wilaya_prefix", wilaya=wilaya))
         study_level = self.student_data.get("study_level")
         if study_level:
             meta_parts.append(str(study_level))
-        meta_label = QLabel(" · ".join(meta_parts))
-        theme.apply_role(meta_label, "small")
-        theme.enable_tabular(meta_label)
-        meta_label.setWordWrap(True)
-        identity_column.addWidget(meta_label)
-        identity_row.addLayout(identity_column, 1)
-        profile_card.add_widget(identity)
+        self.meta_label.setText(" · ".join(meta_parts))
 
         status_raw = str(self.student_data.get("status", "active")).lower().strip()
         status_kind, status_label = _get_status_pill(
             status_raw, str(self.student_data.get("status", "Unknown"))
         )
-        self.status_pill = StatusPill(status_kind, status_label)
-        self.roster_badge = RosterMatchBadge(True if is_verified else False)
-        self.roster_badge.setToolTip(t("infocard.roster_tooltip"))
-        self.gender_warning_badge = StatusPill("warning", t("residence.gender_differs_badge"))
-        self.gender_warning_badge.setToolTip(t("residence.gender_differs_tooltip"))
+        self.status_pill.set_kind(status_kind, status_label)
+
+        is_verified = bool(self.official_roster_data)
+        self.roster_badge.set_matched(True if is_verified else False)
+
         roster_gender = (
             self.official_roster_data.get("gender")
             if isinstance(self.official_roster_data, dict)
@@ -233,38 +389,8 @@ class StudentInfoCardDialog(QDialog):
                 roster_gender=roster_gender,
             )
         )
-        profile_card.add_widget(_row(self.status_pill, self.roster_badge, self.gender_warning_badge))
 
-        profile_card.add_widget(section_header(t("infocard.section_academic")))
-        gender_str = str(self.student_data.get("gender", "—")).strip().capitalize()
-        univ_str = str(self.student_data.get("university", "—")).strip()
-        fac_str = str(self.student_data.get("faculty", "—")).strip()
-        dob_val = "—"
-        if isinstance(self.official_roster_data, dict) and self.official_roster_data.get("birth_date"):
-            dob_val = str(self.official_roster_data["birth_date"])
-        elif self.student_data.get("birth_date"):
-            dob_val = str(self.student_data["birth_date"])
-        phone_val = str(self.student_data.get("phone", "")).strip() or "—"
-
-        self.facts = KeyValueList()
-        self.facts.set_rows([
-            (t("infocard.student_card_id"), card_id),
-            (t("fields.gender"), gender_str),
-            (t("fields.university"), univ_str),
-            (t("fields.faculty"), fac_str),
-            (t("infocard.birth_date"), dob_val),
-            (t("infocard.contact_phone"), phone_val),
-        ])
-        profile_card.add_widget(self.facts)
-
-        # ------------------------------------------------------ housing card
-        housing_card = Card(
-            t("infocard.housing_card_title"),
-            t("infocard.housing_card_desc"),
-            icon="building",
-        )
-        root.addWidget(housing_card)
-
+        # Room allocation
         room = self.student_data.get("rooms") or self.student_data.get("room") or {}
         if isinstance(room, list) and room:
             room = room[0]
@@ -286,43 +412,180 @@ class StudentInfoCardDialog(QDialog):
         else:
             assigned_room_str = t("infocard.no_room_assigned")
 
-        housing_facts = KeyValueList()
-        housing_facts.add_row(t("infocard.assigned_room_label"), assigned_room_str)
-        housing_card.add_widget(housing_facts)
-        if not has_room:
-            housing_card.add_widget(
-                InlineBanner(
-                    "info",
-                    title=t("infocard.no_room_title"),
-                    message=t("infocard.no_room_desc"),
-                )
-            )
+        is_active = status_raw in ("active", "approved", "resident")
+        self.active_no_room_pill.setVisible(is_active and not has_room)
 
-        if is_verified:
-            roster_banner = InlineBanner(
-                "success",
-                title=t("infocard.roster_match_title"),
-                message=t("infocard.roster_match_desc"),
-                icon="shield-check",
-            )
+        # Build academic & identity facts rows
+        cid_val, cid_empty = _safe_str(self.student_data.get("card_id"))
+        fn_val, fn_empty = _safe_str(full_name)
+        facts_rows = [
+            (t("infocard.student_card_id"), cid_val, cid_empty),
+            (t("infocard.full_name"), fn_val, fn_empty),
+            (t("infocard.status_label"), status_label, False),
+        ]
+
+        if not self.residence_gender:
+            g_raw = self.student_data.get("gender")
+            if g_raw and str(g_raw).lower() in ("male", "female"):
+                g_str = t(f"gender.{str(g_raw).lower()}")
+                g_empty = False
+            else:
+                g_str, g_empty = _safe_str(g_raw)
+            facts_rows.append((t("fields.gender"), g_str, g_empty))
+
+        dob_val = self.student_data.get("birth_date")
+        if not dob_val and isinstance(self.official_roster_data, dict):
+            dob_val = self.official_roster_data.get("birth_date")
+        dob_str, dob_empty = _safe_date(dob_val)
+        facts_rows.append((t("infocard.birth_date"), dob_str, dob_empty))
+
+        univ_str, univ_empty = _safe_str(self.student_data.get("university"))
+        facts_rows.append((t("fields.university"), univ_str, univ_empty))
+
+        fac_str, fac_empty = _safe_str(self.student_data.get("faculty"))
+        facts_rows.append((t("fields.faculty"), fac_str, fac_empty))
+
+        lvl_str, lvl_empty = _safe_str(self.student_data.get("study_level"))
+        facts_rows.append((t("infocard.study_level"), lvl_str, lvl_empty))
+
+        wil_str, wil_empty = _safe_str(self.student_data.get("wilaya"))
+        facts_rows.append((t("infocard.wilaya"), wil_str, wil_empty))
+
+        ph_str, ph_empty = _safe_str(self.student_data.get("phone"))
+        facts_rows.append((t("infocard.contact_phone"), ph_str, ph_empty))
+
+        em_str, em_empty = _safe_str(self.student_data.get("email"))
+        facts_rows.append((t("infocard.contact_email"), em_str, em_empty))
+
+        reg_str, reg_empty = _safe_datetime(self.student_data.get("created_at"))
+        facts_rows.append((t("infocard.registered_on"), reg_str, reg_empty))
+
+        # Reviewer info
+        reviewed_at = self.student_data.get("reviewed_at")
+        reviewer = self.student_data.get("staff")
+        reviewer_name = None
+        if isinstance(reviewer, dict):
+            reviewer_name = reviewer.get("full_name")
+        elif not reviewer_name and self.student_data.get("reviewed_by"):
+            reviewer_name = str(self.student_data["reviewed_by"])
+
+        if reviewed_at or reviewer_name:
+            name_str = reviewer_name or "Staff"
+            if reviewed_at:
+                dt_str, _ = _safe_datetime(reviewed_at)
+                rev_display = t("infocard.reviewed_by_on", name=name_str, date=dt_str)
+            else:
+                rev_display = name_str
+            rev_empty = False
         else:
-            roster_banner = InlineBanner(
-                "error",
-                title=t("infocard.roster_mismatch_title"),
-                message=t("infocard.roster_mismatch_desc"),
-            )
-        housing_card.add_widget(roster_banner)
+            rev_display = t("infocard.not_reviewed_yet")
+            rev_empty = True
+        facts_rows.append((t("infocard.reviewed_label"), rev_display, rev_empty))
 
-        # ------------------------------------------------------------ footer
-        footer = QHBoxLayout()
-        footer.setSpacing(S("space-2"))
-        footer.addStretch(1)
-        close_btn = Button.secondary(t("common.close"))
-        close_btn.clicked.connect(self.accept)
-        footer.addWidget(close_btn)
-        root.addLayout(footer)
+        if status_raw == "rejected" and self.student_data.get("rejection_reason"):
+            rej_str, rej_empty = _safe_str(self.student_data.get("rejection_reason"))
+            facts_rows.append((t("fields.rejection_reason"), rej_str, rej_empty))
 
-        apply_elevation(self, 2)
+        self.facts.set_rows(facts_rows)
+
+        # Housing facts
+        self.housing_facts.set_rows([
+            (t("infocard.assigned_room_label"), assigned_room_str, not has_room)
+        ])
+
+        # No room banner
+        if has_room:
+            self.no_room_banner.setVisible(False)
+        else:
+            self.no_room_banner.setVisible(True)
+            if is_active:
+                self.no_room_banner.set_kind("warning")
+                self.no_room_banner.set_title(t("infocard.no_room_title"))
+                self.no_room_banner.set_message(t("infocard.active_no_room_warn"))
+            else:
+                self.no_room_banner.set_kind("info")
+                self.no_room_banner.set_title(t("infocard.no_room_title"))
+                self.no_room_banner.set_message(t("infocard.no_room_desc"))
+
+        # Roster banner
+        if is_verified:
+            differing_fields = self.student_data.get("roster_differing_fields")
+            if differing_fields is None and isinstance(self.official_roster_data, dict):
+                differing_fields = []
+                for field in ("first_name", "last_name", "birth_date", "gender", "university", "faculty"):
+                    s_v = str(self.student_data.get(field) or "").strip().lower()
+                    o_v = str(self.official_roster_data.get(field) or "").strip().lower()
+                    if s_v and o_v and s_v != o_v:
+                        differing_fields.append(field)
+            if differing_fields:
+                field_labels = {
+                    "first_name": t("infocard.full_name"),
+                    "last_name": t("infocard.full_name"),
+                    "birth_date": t("infocard.birth_date"),
+                    "gender": t("fields.gender"),
+                    "university": t("fields.university"),
+                    "faculty": t("fields.faculty"),
+                }
+                diff_str = ", ".join(field_labels.get(f, f) for f in differing_fields)
+                self.roster_banner.set_kind("warning")
+                self.roster_banner.set_title(t("infocard.roster_match_title"))
+                self.roster_banner.set_message(t("infocard.roster_differing_fields", fields=diff_str))
+            else:
+                self.roster_banner.set_kind("success")
+                self.roster_banner.set_title(t("infocard.roster_match_title"))
+                self.roster_banner.set_message(t("infocard.roster_match_desc"))
+        else:
+            if status_raw in ("pending", "pending_verification"):
+                self.roster_banner.set_kind("error")
+                self.roster_banner.set_title(t("infocard.roster_mismatch_title"))
+                self.roster_banner.set_message(t("infocard.roster_mismatch_desc"))
+            else:
+                self.roster_banner.set_kind("info")
+                self.roster_banner.set_title(t("infocard.approved_without_roster"))
+                self.roster_banner.set_message(t("infocard.roster_mismatch_desc"))
+
+    def _fetch_profile(self) -> None:
+        if not self.client or not self.student_id or self._closing:
+            return
+        if not hasattr(self.client, "table"):
+            return
+        self._fetch_req_id += 1
+        req_id = self._fetch_req_id
+        self.error_banner.setVisible(False)
+        key = f"profile_{self.student_id}_{req_id}"
+        self.tasks.run(
+            key,
+            lambda: get_student_profile(self.client, self.student_id),
+            on_success=lambda res: self._on_profile_loaded(res, req_id),
+            on_failed=lambda err: self._on_profile_failed(err, req_id),
+        )
+
+    def _on_profile_loaded(self, res: dict | None, req_id: int) -> None:
+        if self._closing or req_id != self._fetch_req_id:
+            return
+        if res:
+            self.student_data.update(res)
+            if res.get("official_roster"):
+                self.official_roster_data = res["official_roster"]
+            self._update_ui()
+
+    def _on_profile_failed(self, err_msg: str, req_id: int) -> None:
+        if self._closing or req_id != self._fetch_req_id:
+            return
+        self.error_banner.set_message(err_msg or t("infocard.could_not_load"))
+        self.error_banner.setVisible(True)
+
+    def closeEvent(self, event) -> None:
+        self._closing = True
+        super().closeEvent(event)
+
+    def reject(self) -> None:
+        self._closing = True
+        super().reject()
+
+    def accept(self) -> None:
+        self._closing = True
+        super().accept()
 
 
 class RoomInfoCardDialog(QDialog):
