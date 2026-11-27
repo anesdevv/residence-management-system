@@ -35,6 +35,7 @@ from ...client import room_occupancy, stored_user_display_name
 from .. import theme
 from ..components import (
     Avatar,
+    Button,
     Card,
     EmptyState,
     IconButton,
@@ -204,30 +205,17 @@ class OverviewPage(QWidget):
             title=t("overview.error_title"),
             message=t("overview.error_desc"),
         )
+        self.retry_btn = Button(t("common.retry"), "ghost", icon="refresh")
+        self.retry_btn.clicked.connect(self.reload)
+        self.error_banner.add_action(self.retry_btn)
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
 
-        # --- greeting line ------------------------------------------------
-        greeting_row = QHBoxLayout()
-        greeting_row.setSpacing(S("space-3"))
-        staff_name = _staff_display_name(client)
-        self.avatar = Avatar(staff_name or t("overview.default_staff"), size=S("size-control"))
-        greeting_row.addWidget(self.avatar, 0, Qt.AlignmentFlag.AlignVCenter)
-        greeting_column = QVBoxLayout()
-        greeting_column.setSpacing(2)
-        greeting_text = (
-            t("overview.greeting_with_name", greeting=_greeting_word(), name=staff_name)
-            if staff_name
-            else _greeting_word()
-        )
-        self.greeting_label = QLabel(greeting_text)
-        theme.apply_role(self.greeting_label, "h2")
-        greeting_column.addWidget(self.greeting_label)
+        # --- live-sync status line (no duplicate avatar/greeting) ---------
         self.tick_label = QLabel(t("overview.tick_waiting"))
         theme.apply_role(self.tick_label, "small")
-        greeting_column.addWidget(self.tick_label)
-        greeting_row.addLayout(greeting_column, 1)
-        layout.addLayout(greeting_row)
+        self.tick_label.setStyleSheet(f"color: {C('text-muted')};")
+        layout.addWidget(self.tick_label)
 
         # --- loading skeleton (shown while reload() is in flight) ---------
         self.skeleton = Skeleton(rows=6)
@@ -246,7 +234,7 @@ class OverviewPage(QWidget):
         self.pending_card.set_hint(t("overview.kpi_pending_hint"))
         self.reports_card = StatCard(t("overview.kpi_reports_title"), "wrench", accent="teal")
         self.reports_card.set_hint(t("overview.kpi_reports_hint"))
-        self.requests_card = StatCard(t("overview.kpi_requests_title"), "arrow-left-right", accent="review")
+        self.requests_card = StatCard(t("overview.kpi_requests_title"), "arrow-left-right", accent="navy")
         self.requests_card.set_hint(t("overview.kpi_requests_hint"))
         self.occupancy_card = StatCard(t("overview.kpi_occupancy_title"), "bed", accent="green")
         self.occupancy_card.set_hint(t("overview.kpi_occupancy_hint"))

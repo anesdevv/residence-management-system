@@ -248,7 +248,8 @@ def _nav_qss() -> str:
         f"QPushButton#navRow:hover {{ background-color: {C('sidebar-hover')}; }}"
         f"QPushButton#navRow:focus {{ border-color: {C('teal-500')}; }}"
         "QPushButton#navRow:checked {"
-        f" background-color: {C('navy-800')}; border-left: 2px solid {C('gold-500')};"
+        f" background-color: {C('navy-800')}; border-left: 3px solid {C('gold-500')};"
+        " border-top-left-radius: 0px; border-bottom-left-radius: 0px;"
         " }"
         f"QPushButton#navRow:checked:hover {{ background-color: {C('navy-800')}; }}"
     )
@@ -272,7 +273,10 @@ def _ghost_on_navy_qss(obj_name: str = "signOutButton", centered: bool = False) 
         f" border-color: {C('sidebar-hover')};"
         " }"
         f"QPushButton#{obj_name}:pressed {{ background-color: {C('navy-800')}; }}"
-        f"QPushButton#{obj_name}:checked {{ background-color: {C('navy-800')}; border-left: 2px solid {C('gold-500')}; }}"
+        f"QPushButton#{obj_name}:checked {{"
+        f" background-color: {C('navy-800')}; border-left: 3px solid {C('gold-500')};"
+        " border-top-left-radius: 0px; border-bottom-left-radius: 0px;"
+        " }"
         f"QPushButton#{obj_name}:focus {{ border: 2px solid {C('teal-500')}; padding: {focus_pad}; }}"
     )
 
@@ -724,7 +728,7 @@ class MainWindow(QMainWindow):
         self.user_row_layout.setContentsMargins(0, 0, 0, 0)
         self.user_row_layout.setSpacing(S("space-3"))
         self.user_avatar = Avatar(display_name, size=S("size-control"))
-        self.user_avatar.setToolTip(f"{display_name} • {_role_label(self.role)}")
+        self.user_avatar.setToolTip(f"{display_name} ({_role_label(self.role)})")
 
         self.user_texts = QWidget()
         name_column = QVBoxLayout(self.user_texts)
@@ -901,7 +905,9 @@ class MainWindow(QMainWindow):
         )
         self.residence_settings_btn = Button.secondary(t("residence.open_settings_btn"))
         self.residence_settings_btn.setObjectName("openResidenceSettingsButton")
-        self.residence_settings_btn.clicked.connect(self.on_settings_clicked)
+        self.residence_settings_btn.clicked.connect(
+            lambda _checked=False: self.on_settings_clicked(expand_section="residence")
+        )
         self.residence_unset_banner.add_action(self.residence_settings_btn)
         self.residence_settings_btn.setVisible(self.role == "admin")
         self.residence_unset_banner.setVisible(False)
@@ -916,7 +922,7 @@ class MainWindow(QMainWindow):
         """Apply the effective role to the footer, banner and role-gated pages."""
         label = _role_label(self.role)
         self.role_pill.setText(label)
-        self.user_avatar.setToolTip(f"{self.user_name.text()} • {label}")
+        self.user_avatar.setToolTip(f"{self.user_name.text()} ({label})")
 
         if self.role:
             self.role_banner.setVisible(False)
@@ -1314,7 +1320,9 @@ class MainWindow(QMainWindow):
         self._set_custom_page("settings", value)
 
     def _animate_stack_page(self, index: int) -> None:
-        """Fade the incoming page (150 ms) — table rows are never animated."""
+        """Fade the incoming page (150 ms) unless reduced motion is active."""
+        if theme.prefers_reduced_motion():
+            return
         widget = self.stack.widget(index)
         if widget is None or not self.isVisible() or widget.graphicsEffect() is not None:
             return
@@ -1743,7 +1751,7 @@ class MainWindow(QMainWindow):
         else:
             self.stack.setCurrentIndex(index)
 
-    def on_settings_clicked(self) -> None:
+    def on_settings_clicked(self, _checked: bool = False, *, expand_section: str | None = None) -> None:
         self.nav.clear_selection()
         if hasattr(self, "settings_btn"):
             self.settings_btn.setChecked(True)
@@ -1753,6 +1761,8 @@ class MainWindow(QMainWindow):
             page.on_shown()
         if hasattr(page, "reload_residence"):
             page.reload_residence()
+        if expand_section and hasattr(page, "open_section"):
+            page.open_section(expand_section)
 
     @staticmethod
     def _sign_out_session(client):

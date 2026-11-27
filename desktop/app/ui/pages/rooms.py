@@ -326,6 +326,7 @@ class ManageBlocksDialog(QDialog):
         card.add_widget(self.error_banner)
 
         self.table = QTableWidget(0, 5)
+        self.table.setProperty("borderless", True)
         cols = [
             t("rooms.col_block"),
             t("nav.rooms"),
@@ -360,6 +361,8 @@ class ManageBlocksDialog(QDialog):
         self.error_banner.set_kind(kind)
         self.error_banner.set_title(title)
         self.error_banner.set_message(message)
+        if hasattr(self, "retry_btn"):
+            self.retry_btn.setVisible(kind == "error")
         self.error_banner.setVisible(True)
 
     def _set_busy(self, busy: bool, message: str = "Please wait…") -> None:
@@ -658,7 +661,8 @@ class RoomSetupDialog(QDialog):
         num_container.addWidget(self.num_edit)
 
         self.num_error_label = QLabel("")
-        self.num_error_label.setStyleSheet(f"color: {C('status-danger-ink')}; font-size: 12px; padding-left: 2px;")
+        theme.apply_role(self.num_error_label, "error")
+        self.num_error_label.setStyleSheet(f"padding-left: {C('space-1')};")
         self.num_error_label.setVisible(False)
         num_container.addWidget(self.num_error_label)
 
@@ -767,7 +771,16 @@ class RoomSetupDialog(QDialog):
         if not has_block:
             is_valid = False
 
-        self.save_btn.setEnabled(is_valid and not self._busy)
+        can_save = is_valid and not self._busy
+        self.save_btn.setEnabled(can_save)
+        if self._busy:
+            self.save_btn.setToolTip(t("common.working"))
+        elif not has_block:
+            self.save_btn.setToolTip(t("rooms.save_disabled_missing_block_tooltip"))
+        elif not num:
+            self.save_btn.setToolTip(t("rooms.save_disabled_missing_number_tooltip"))
+        else:
+            self.save_btn.setToolTip("")
         return is_valid
 
     def _populate_block_combo(self, initial_block: str | None = None):
@@ -922,6 +935,9 @@ class RoomsPage(QWidget):
             title=t("rooms.error_title"),
             message=t("rooms.error_msg"),
         )
+        self.retry_btn = Button(t("common.retry"), "ghost", icon="refresh")
+        self.retry_btn.clicked.connect(self.reload)
+        self.error_banner.add_action(self.retry_btn)
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
 
@@ -929,10 +945,11 @@ class RoomsPage(QWidget):
         table_card = QFrame()
         table_card.setObjectName("cardFrame")
         card_layout = QVBoxLayout(table_card)
-        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setContentsMargins(1, 1, 1, 1)
 
         self.stack = QStackedWidget()
         self.table = QTableWidget(0, len(_COLUMNS))
+        self.table.setProperty("borderless", True)
         configure_table(self.table, _COLUMNS)
         self.table.setItemDelegateForColumn(4, RoomOccupancyDelegate(self.table))
         _fit_columns(
@@ -949,7 +966,7 @@ class RoomsPage(QWidget):
         self.table.setColumnWidth(0, 110)
         self.table.setColumnWidth(1, 90)
         self.table.setColumnWidth(2, 110)
-        self.table.setColumnWidth(3, 90)
+        self.table.setColumnWidth(3, 115)
         self.table.setColumnWidth(4, 160)
 
         # Backward compatibility for tests querying cellWidget(row, 4)
@@ -975,11 +992,17 @@ class RoomsPage(QWidget):
             t("rooms.empty_no_data_title"),
             t("rooms.empty_no_data_desc"),
         )
+        empty_add_btn = Button.secondary(t("rooms.add_room_btn"), icon="plus")
+        empty_add_btn.clicked.connect(self.on_add)
+        self.empty_no_data.actions.addWidget(empty_add_btn)
         self.empty_no_match = EmptyState(
             "search",
             t("rooms.empty_no_match_title"),
             t("rooms.empty_no_match_desc"),
         )
+        clear_search_btn = Button.secondary(t("common.clear_search"), icon="x")
+        clear_search_btn.clicked.connect(self.search_input.clear)
+        self.empty_no_match.actions.addWidget(clear_search_btn)
         self.stack.addWidget(self.empty_no_data)
         self.stack.addWidget(self.empty_no_match)
 
@@ -1002,6 +1025,8 @@ class RoomsPage(QWidget):
         self.error_banner.set_kind(kind)
         self.error_banner.set_title(title)
         self.error_banner.set_message(message)
+        if hasattr(self, "retry_btn"):
+            self.retry_btn.setVisible(kind == "error")
         self.error_banner.setVisible(True)
 
     def _set_actions_busy(self, busy: bool, active_button: Button | None = None) -> None:

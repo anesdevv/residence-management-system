@@ -47,7 +47,9 @@ inputs, "connected"/"reconnecting"/"offline" on the live dot),
 
 from __future__ import annotations
 
+import ctypes
 import logging
+import os
 import re
 import sys
 from pathlib import Path
@@ -83,6 +85,7 @@ TOKENS: dict[str, str | int] = {
     "surface-subtle": "#EDF2F7",
     "border": "#DCE4EE",
     "border-strong": "#C5D0DE",
+    "border-input": "#7A8BA3",  # 3.47:1 on surface / 3.26:1 on canvas (WCAG 1.4.11 field edges)
     "text-primary": "#0B1B33",
     "text-secondary": "#44546A",
     "text-muted": "#5B6B82",
@@ -139,10 +142,15 @@ TOKENS: dict[str, str | int] = {
     # Qt renders a border-radius larger than the widget as a square: the 10px
     # live dot needs a concrete half-size radius, not radius-pill.
     "radius-dot": "5px",
-    # Same limit for the 8px-tall progress / occupancy bar.
+    # Same limit for the 8px-tall progress / occupancy bar and 18px checkbox indicator.
     "radius-bar": "4px",
+    "radius-indicator": "4px",
+    "radius-stepper": "6px",
+    "radius-circle": "9px",
+    "radius-track": "2px",
     "pill-pad-x": "10px",
     "pill-pad-y": "4px",
+    "pad-zero": "0px",
     "size-control": "36px",
     "size-row": "44px",
     "size-icon": "20px",
@@ -163,6 +171,7 @@ TOKENS: dict[str, str | int] = {
     "icon-chevron-down": get_asset_path("icons/chevron-down.svg").as_posix(),
     "icon-chevron-down-disabled": get_asset_path("icons/chevron-down-disabled.svg").as_posix(),
     "icon-chevron-up": get_asset_path("icons/chevron-up.svg").as_posix(),
+    "icon-check-white": get_asset_path("icons/check-white.svg").as_posix(),
 }
 
 _PX_RE = re.compile(r"^(-?\d+(?:\.\d+)?)px$")
@@ -287,9 +296,34 @@ _ROLE_SPECS: dict[str, tuple[str, str, str, str]] = {
     "muted": ("font-body", "fs-body", "fw-body", "tracking-body"),
     "small": ("font-body", "fs-small", "fw-small", "tracking-small"),
     "overline": ("font-body", "fs-overline", "fw-overline", "tracking-overline"),
-    # QSS-only roles are usable through apply_role too (sidebar counter badge).
+    # QSS-only roles are usable through apply_role too (sidebar counter badge & error hint).
     "nav-badge": ("font-body", "fs-overline", "fw-semibold", "tracking-overline"),
+    "error": ("font-body", "fs-small", "fw-medium", "tracking-small"),
 }
+
+
+def prefers_reduced_motion() -> bool:
+    """Return True when the user or OS requests reduced motion."""
+    override = os.environ.get("RESIVO_REDUCED_MOTION", "").strip().lower()
+    if override in {"1", "true", "yes", "on"}:
+        return True
+    if override in {"0", "false", "no", "off"}:
+        return False
+    if sys.platform == "win32":
+        try:
+            enabled = ctypes.c_int(1)
+            # SPI_GETCLIENTAREAANIMATION = 0x1042
+            ok = ctypes.windll.user32.SystemParametersInfoW(0x1042, 0, ctypes.byref(enabled), 0)
+            if ok and enabled.value == 0:
+                return True
+        except Exception:  # pragma: no cover - platform API guard
+            pass
+    return False
+
+
+def effective_duration(ms: int) -> int:
+    """Return *ms* normally, or 0 when reduced motion is active."""
+    return 0 if prefers_reduced_motion() else max(0, int(ms))
 
 
 _FONT_CACHE: dict[tuple[str, int], QFont] = {}
@@ -380,14 +414,14 @@ _TEAL_FILLED = {
     "fill": "teal-600", "ink": "surface", "border": "teal-600",
     "hover_fill": "teal-500", "hover_border": "teal-500",
     "pressed_fill": "teal-700", "pressed_border": "teal-700",
-    "ring": "surface",
+    "ring": "navy-900",
 }
 _BUTTON_SPECS: dict[str, dict[str, str | bool]] = {
     "primary": {
         "fill": "navy-800", "ink": "surface", "border": "navy-800",
         "hover_fill": "navy-700", "hover_border": "navy-700",
         "pressed_fill": "navy-900", "pressed_border": "navy-900",
-        "ring": "surface",
+        "ring": "teal-500",
     },
     "accent": dict(_TEAL_FILLED),
     "success": dict(_TEAL_FILLED),
@@ -396,24 +430,24 @@ _BUTTON_SPECS: dict[str, dict[str, str | bool]] = {
         "fill": "status-danger-ink", "ink": "surface", "border": "status-danger-ink",
         "hover_fill": "danger-600", "hover_border": "danger-600",
         "pressed_fill": "danger-700", "pressed_border": "danger-700",
-        "ring": "surface",
+        "ring": "navy-900",
     },
     "secondary": {
-        "fill": "surface", "ink": "text-secondary", "border": "border-strong",
-        "hover_fill": "surface-subtle", "hover_ink": "text-primary", "hover_border": "border-strong",
-        "pressed_fill": "surface-subtle", "pressed_ink": "text-primary", "pressed_border": "border-strong",
+        "fill": "surface", "ink": "text-secondary", "border": "border-input",
+        "hover_fill": "surface-subtle", "hover_ink": "text-primary", "hover_border": "navy-700",
+        "pressed_fill": "surface-subtle", "pressed_ink": "text-primary", "pressed_border": "navy-800",
         "ring": "teal-600",
     },
     "filter": {
-        "fill": "surface", "ink": "text-secondary", "border": "border-strong", "checked": True,
-        "hover_fill": "surface-subtle", "hover_ink": "text-primary", "hover_border": "border-strong",
-        "pressed_fill": "surface-subtle", "pressed_ink": "text-primary", "pressed_border": "border-strong",
+        "fill": "surface", "ink": "text-secondary", "border": "border-input", "checked": True,
+        "hover_fill": "surface-subtle", "hover_ink": "text-primary", "hover_border": "navy-700",
+        "pressed_fill": "surface-subtle", "pressed_ink": "text-primary", "pressed_border": "navy-800",
         "ring": "teal-600",
     },
     "ghost": {
         "fill": "transparent", "ink": "text-secondary", "border": "transparent",
-        "hover_fill": "surface-subtle", "hover_ink": "text-primary", "hover_border": "surface-subtle",
-        "pressed_fill": "surface-subtle", "pressed_ink": "text-primary", "pressed_border": "surface-subtle",
+        "hover_fill": "surface-subtle", "hover_ink": "text-primary", "hover_border": "border",
+        "pressed_fill": "surface-subtle", "pressed_ink": "text-primary", "pressed_border": "border-input",
         "ring": "teal-600",
     },
 }
@@ -464,14 +498,24 @@ def _button_qss(spec: dict[str, str | bool], selector: str) -> str:
         f"    font-size: {C('fs-small')};",
         "    min-height: 14px;",
         "}",
+        f"{selector}[size=\"sm\"]:focus {{",
+        f"    border: 2px solid {_t(str(spec['ring']))};",
+        "    padding: 4px 11px;",
+        "}",
+        f"{selector}[size=\"sm\"]:disabled {{",
+        "    padding: 5px 12px;",
+        "}",
     ]
     if spec.get("checked"):
         lines += [
             f"{selector}:checked {{",
             f"    background-color: {C('surface-subtle')};",
             f"    color: {C('navy-900')};",
-            f"    border: 1.5px solid {C('teal-600')};",
+            f"    border: 2px solid {C('teal-600')};",
             "    padding: 7px 15px;",
+            "}",
+            f"{selector}[size=\"sm\"]:checked {{",
+            "    padding: 4px 11px;",
             "}",
             f"{selector}:checked:hover {{",
             f"    background-color: {C('selection-tint')};",
@@ -588,7 +632,8 @@ def apply_elevation(widget: QWidget, level: int = 1) -> QWidget:
 # The one global style sheet. Authored with @token placeholders; @name is
 # substituted from TOKENS at import time (see _substitute()).
 # ---------------------------------------------------------------------------
-_SHEET = """
+_SHEET = """/* hallmark: checked 2026-11-26 | scope: app-screens (PySide6 QSS)
+   locked: docs/DESIGN.md tokens (overline uppercase label and table headers per section 3/6) */
 /* ===========================================================================
    1. Base — canvas surfaces and typography
    =========================================================================== */
@@ -649,20 +694,26 @@ QLabel[role="error"] { color: @status-danger-ink; font-size: @fs-small; font-wei
 QPushButton {
     background-color: @surface;
     color: @text-secondary;
-    border: 1px solid @border-strong;
+    border: 1px solid @border-input;
     border-radius: @radius-input;
     padding: 8px 16px;
     min-height: 18px;
     font-size: @fs-body;
     font-weight: @fw-semibold;
 }
-QPushButton:hover { background-color: @surface-subtle; color: @text-primary; }
-QPushButton:pressed { background-color: @surface-subtle; color: @text-primary; }
+QPushButton:hover { background-color: @surface-subtle; color: @text-primary; border-color: @navy-700; }
+QPushButton:pressed { background-color: @surface-subtle; color: @text-primary; border-color: @navy-800; }
 QPushButton:focus { border: 2px solid @teal-600; padding: 7px 15px; }
 QPushButton:disabled {
-    background-color: @surface-subtle; color: @text-muted; border: 1px solid @border;
+    background-color: @surface-subtle; color: @text-muted; border: 1px solid @border; padding: 8px 16px;
 }
+QPushButton[size="sm"] {
+    padding: 5px 12px; font-size: @fs-small; min-height: 14px;
+}
+QPushButton[size="sm"]:focus { border: 2px solid @teal-600; padding: 4px 11px; }
+QPushButton[size="sm"]:disabled { padding: 5px 12px; }
 QPushButton#signOutButton { text-align: left; padding: 8px 12px; }
+QPushButton#signOutButton:focus { padding: 7px 11px; }
 
 /* ===========================================================================
    3. Inputs and form controls (36px tall, 8px radius, teal focus ring)
@@ -672,7 +723,7 @@ QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QSpinBox, QDoubleSpinBox,
 QDateEdit, QTimeEdit, QDateTimeEdit {
     background-color: @surface;
     color: @text-primary;
-    border: 1px solid @border;
+    border: 1px solid @border-input;
     border-radius: @radius-input;
     padding: 5px 12px;
     min-height: 24px;
@@ -683,7 +734,7 @@ QDateEdit, QTimeEdit, QDateTimeEdit {
 QLineEdit:hover, QTextEdit:hover, QPlainTextEdit:hover, QComboBox:hover,
 QSpinBox:hover, QDoubleSpinBox:hover, QDateEdit:hover, QTimeEdit:hover,
 QDateTimeEdit:hover {
-    border-color: @border-strong;
+    border-color: @navy-700;
 }
 QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus,
 QSpinBox:focus, QDoubleSpinBox:focus, QDateEdit:focus, QTimeEdit:focus,
@@ -704,6 +755,9 @@ QDateTimeEdit:disabled {
 QLineEdit:read-only { background-color: @surface-subtle; color: @text-secondary; }
 QComboBox, QDateEdit, QTimeEdit, QDateTimeEdit {
     padding-right: 32px;
+}
+QComboBox:focus, QDateEdit:focus, QTimeEdit:focus, QDateTimeEdit:focus {
+    padding: 4px 31px 4px 11px;
 }
 QComboBox::drop-down, QDateEdit::drop-down, QTimeEdit::drop-down, QDateTimeEdit::drop-down {
     subcontrol-origin: padding;
@@ -755,16 +809,18 @@ QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
 }
 NumberStepper {
     background-color: @surface;
-    border: 1px solid @border;
+    border: 1px solid @border-input;
     border-radius: @radius-input;
+    padding: 1px;
     min-height: 40px;
     max-height: 40px;
 }
 NumberStepper:hover {
-    border-color: @border-strong;
+    border-color: @navy-700;
 }
 NumberStepper[focused="true"] {
     border: 2px solid @teal-600;
+    padding: @pad-zero;
 }
 NumberStepper:disabled {
     background-color: @surface-subtle;
@@ -795,6 +851,10 @@ QTableWidget, QTableView {
     font-size: @fs-body;
     selection-background-color: @selection-tint;
     selection-color: @navy-900;
+}
+QTableWidget[borderless="true"], QTableView[borderless="true"] {
+    border: none;
+    border-radius: @pad-zero;
 }
 QTableWidget::item, QTableView::item {
     height: @size-row;
@@ -865,6 +925,7 @@ QListWidget#sidebarNav::item {
     padding-left: @space-3;
     padding-right: @space-3;
     margin-bottom: @space-1;
+    border-left: 2px solid transparent;
     border-radius: @radius-input;
     font-weight: @fw-medium;
 }
@@ -933,21 +994,25 @@ QTabWidget::pane { background-color: @surface; border: 1px solid @border; border
 QTabBar::tab {
     background-color: @surface;
     color: @text-secondary;
-    border: 1px solid @border-strong;
+    border: 1px solid @border-input;
     border-radius: @radius-input;
     padding: 7px 14px;
     margin-right: @space-1;
     font-size: @fs-body;
     font-weight: @fw-semibold;
 }
-QTabBar::tab:hover { background-color: @surface-subtle; color: @text-primary; }
+QTabBar::tab:hover { background-color: @surface-subtle; color: @text-primary; border-color: @navy-700; }
 QTabBar::tab:selected {
     background-color: @surface-subtle;
     color: @navy-900;
-    border: 1.5px solid @teal-600;
-    padding: 6.5px 13.5px;
+    border: 2px solid @teal-600;
+    padding: 6px 13px;
 }
-QTabBar::tab:disabled { color: @text-muted; background-color: @surface-subtle; }
+QTabBar::tab:focus {
+    border: 2px solid @teal-600;
+    padding: 6px 13px;
+}
+QTabBar::tab:disabled { color: @text-muted; background-color: @surface-subtle; border-color: @border; }
 
 QStatusBar {
     background-color: @surface;
@@ -969,32 +1034,43 @@ QProgressBar {
 }
 QProgressBar::chunk { background-color: @teal-500; border-radius: @radius-bar; }
 
-QCheckBox, QRadioButton { color: @text-primary; font-size: @fs-body; spacing: @space-2; }
+QCheckBox, QRadioButton { color: @text-primary; font-size: @fs-body; spacing: @space-2; outline: none; border: none; }
 QCheckBox::indicator, QRadioButton::indicator {
     width: 18px; height: 18px;
-    border: 1px solid @border-strong;
+    border: 1px solid @border-input;
     background-color: @surface;
 }
-QCheckBox::indicator { border-radius: 4px; }
-QRadioButton::indicator { border-radius: 9px; }
+QCheckBox::indicator { border-radius: @radius-indicator; }
+QRadioButton::indicator { border-radius: @radius-circle; }
 QCheckBox::indicator:hover, QRadioButton::indicator:hover { border-color: @teal-600; }
+QCheckBox::indicator:focus, QRadioButton::indicator:focus { border: 2px solid @teal-600; }
 QCheckBox::indicator:checked, QRadioButton::indicator:checked {
     background-color: @teal-600; border-color: @teal-600;
+}
+QCheckBox::indicator:checked {
+    image: url(@icon-check-white);
+}
+QCheckBox::indicator:checked:hover {
+    background-color: @teal-500; border-color: @teal-500;
 }
 QCheckBox::indicator:disabled, QRadioButton::indicator:disabled {
     background-color: @surface-subtle; border-color: @border;
 }
+QCheckBox::indicator:checked:disabled {
+    background-color: @border-strong; border-color: @border-strong;
+    image: url(@icon-check-white);
+}
 
-QSlider::groove:horizontal { background-color: @surface-subtle; height: 4px; border-radius: 2px; }
-QSlider::sub-page:horizontal { background-color: @teal-500; border-radius: 2px; }
+QSlider::groove:horizontal { background-color: @surface-subtle; height: 4px; border-radius: @radius-track; }
+QSlider::sub-page:horizontal { background-color: @teal-500; border-radius: @radius-track; }
 QSlider::handle:horizontal {
     background-color: @surface; border: 2px solid @teal-600; width: 14px; height: 14px;
-    margin: -6px 0; border-radius: 8px;
+    margin: -6px 0; border-radius: @radius-input;
 }
-QSlider::groove:vertical { background-color: @surface-subtle; width: 4px; border-radius: 2px; }
+QSlider::groove:vertical { background-color: @surface-subtle; width: 4px; border-radius: @radius-track; }
 QSlider::handle:vertical {
     background-color: @surface; border: 2px solid @teal-600; width: 14px; height: 14px;
-    margin: 0 -6px; border-radius: 8px;
+    margin: 0 -6px; border-radius: @radius-input;
 }
 
 /* ===========================================================================
@@ -1005,6 +1081,9 @@ QFrame#cardFrame, QFrame[cardFrame="true"] {
     background-color: @surface;
     border: 1px solid @border;
     border-radius: @radius-card;
+}
+QFrame#cardFrame QStackedWidget, QFrame[cardFrame="true"] QStackedWidget {
+    background-color: transparent;
 }
 QFrame[role="hero"] {
     background-color: @surface;
@@ -1067,10 +1146,14 @@ QToolButton {
     padding: 5px 8px;
     font-size: @fs-body;
 }
-QToolButton:hover { background-color: @surface-subtle; color: @text-primary; }
-QToolButton:pressed { background-color: @surface-subtle; }
+QToolButton:hover { background-color: @surface-subtle; color: @text-primary; border-color: @border; }
+QToolButton:pressed { background-color: @surface-subtle; border-color: @border-input; }
+QToolButton:focus {
+    border: 2px solid @teal-600; padding: 4px 7px;
+}
 QToolButton:checked {
-    background-color: @surface-subtle; color: @navy-900; border: 1.5px solid @teal-600;
+    background-color: @surface-subtle; color: @navy-900; border: 2px solid @teal-600;
+    padding: 4px 7px;
 }
 QToolButton:disabled { color: @text-muted; }
 """

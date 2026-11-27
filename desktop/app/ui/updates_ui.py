@@ -33,7 +33,7 @@ except ImportError:
 from ...updater import prefs
 from ...updater.state import UpdateState
 from . import theme
-from .components import Button, Card, ConfirmDialog, InlineBanner
+from .components import Button, Card, CollapsibleCard, ConfirmDialog, InlineBanner
 from .theme import C, S
 
 __all__ = ["UpdatesSection", "markdown_to_plain"]
@@ -89,9 +89,18 @@ class UpdatesSection(QWidget):
     install_requested = Signal(object)  # Path to the verified installer
     availability_changed = Signal(bool)
 
-    def __init__(self, service, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        service,
+        parent: QWidget | None = None,
+        *,
+        collapsible: bool = False,
+        expanded: bool = True,
+    ) -> None:
         super().__init__(parent)
         self.service = service
+        self._collapsible = bool(collapsible)
+        self._initial_expanded = bool(expanded)
         self._busy_checker: Callable[[], bool] = lambda: False
         self._last_action = "check"
         self._last_kind = ""
@@ -107,11 +116,19 @@ class UpdatesSection(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(S("space-2"))
 
-        self.card = Card(
-            t("updates.title"),
-            t("updates.subtitle"),
-            icon="download",
-        )
+        if self._collapsible:
+            self.card = CollapsibleCard(
+                t("updates.title"),
+                summary=t("settings.summary_version", version=__version__),
+                icon="download",
+                expanded=self._initial_expanded,
+            )
+        else:
+            self.card = Card(
+                t("updates.title"),
+                t("updates.subtitle"),
+                icon="download",
+            )
         self.card.setObjectName("updatesSection")
 
         row = QHBoxLayout()
@@ -301,7 +318,7 @@ class UpdatesSection(QWidget):
         elif available and release is not None:
             status = t("updates.available_title", version=release.version_str)
             if release.published_dt is not None:
-                status += " · " + t(
+                status += ", " + t(
                     "updates.published_on",
                     date=format_date(release.published_dt.date()),
                 )
@@ -310,7 +327,7 @@ class UpdatesSection(QWidget):
         elif verifying:
             status = t("updates.verifying")
         elif ready:
-            status = f"{t('updates.ready_title')} — {t('updates.ready_message')}"
+            status = f"{t('updates.ready_title')}: {t('updates.ready_message')}"
         elif state is UpdateState.ERROR:
             status = self.status_label.text()
         elif state is UpdateState.INSTALLING:
@@ -325,6 +342,20 @@ class UpdatesSection(QWidget):
             if self.service.is_skipped(release.version_str):
                 self.update_button.setVisible(False)
                 self.skip_button.setVisible(False)
+
+        if isinstance(self.card, CollapsibleCard):
+            if available and release is not None and not self.service.is_skipped(release.version_str):
+                self.card.set_badge("info", t("updates.available_badge"))
+                self.card.set_summary(t("settings.summary_version", version=release.version_str))
+            elif ready and release is not None:
+                self.card.set_badge("ok", t("updates.ready_title"))
+                self.card.set_summary(t("settings.summary_version", version=release.version_str))
+            elif downloading or verifying:
+                self.card.set_badge("progress", status)
+                self.card.set_summary(t("settings.summary_version", version=__version__))
+            else:
+                self.card.clear_badge()
+                self.card.set_summary(t("settings.summary_version", version=__version__))
 
     def _on_state_changed(self, value: str, _release) -> None:
         try:
@@ -375,6 +406,8 @@ class UpdatesSection(QWidget):
         self.error_banner.set_message(message)
         self.error_banner.setVisible(True)
         self.error_banner.set_kind("error")
+        if isinstance(self.card, CollapsibleCard):
+            self.card.set_expanded(True)
 
     def _error_text(self, code: str, fallback: str) -> str:
         mapping = {

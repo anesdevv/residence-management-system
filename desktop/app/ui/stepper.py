@@ -80,8 +80,8 @@ class NumberStepper(QWidget):
             f"QToolButton {{ "
             f"background-color: transparent; "
             f"border: none; "
-            f"border-radius: 6px; "
-            f"padding: 0px; "
+            f"border-radius: {C('radius-stepper')}; "
+            f"padding: {C('pad-zero')}; "
             f"}} "
             f"QToolButton:hover {{ "
             f"background-color: {C('surface-subtle')}; "
@@ -140,7 +140,8 @@ class NumberStepper(QWidget):
                 f"#numberStepper {{ "
                 f"background-color: {C('surface-subtle')}; "
                 f"border: 1px solid {C('border')}; "
-                f"border-radius: 8px; "
+                f"border-radius: {C('radius-input')}; "
+                f"padding: 1px; "
                 f"}}"
             )
         elif focused:
@@ -148,18 +149,20 @@ class NumberStepper(QWidget):
                 f"#numberStepper {{ "
                 f"background-color: {C('surface')}; "
                 f"border: 2px solid {C('teal-600')}; "
-                f"border-radius: 8px; "
+                f"border-radius: {C('radius-input')}; "
+                f"padding: {C('pad-zero')}; "
                 f"}}"
             )
         else:
             self.setStyleSheet(
                 f"#numberStepper {{ "
                 f"background-color: {C('surface')}; "
-                f"border: 1px solid {C('border')}; "
-                f"border-radius: 8px; "
+                f"border: 1px solid {C('border-input')}; "
+                f"border-radius: {C('radius-input')}; "
+                f"padding: 1px; "
                 f"}} "
                 f"#numberStepper:hover {{ "
-                f"border-color: {C('border-strong')}; "
+                f"border-color: {C('navy-700')}; "
                 f"}}"
             )
 

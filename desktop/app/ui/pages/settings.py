@@ -23,6 +23,7 @@ from PySide6.QtCore import QProcess, Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QFontDatabase, QGuiApplication, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
+    QBoxLayout,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -70,13 +71,25 @@ from ..close_policy import (
     get_minimize_to_tray_setting,
     set_minimize_to_tray_setting,
 )
-from ..components import Button, Card, ConfirmDialog, InlineBanner, PageHeader, StatusPill
+from ..components import (
+    Button,
+    CollapsibleCard,
+    ConfirmDialog,
+    InlineBanner,
+    PageHeader,
+    StatusPill,
+)
 from ..notifications import NotificationManager
 from ..residence_dialogs import ResidenceGenderChangeDialog, residence_gender_label
 from ..resource import get_asset_path
 from ..tasks import TaskRunner, human_error
 from ..theme import C, S
 from ..updates_ui import UpdatesSection
+
+try:
+    from desktop.version import __version__
+except ImportError:
+    __version__ = ""
 
 try:
     from desktop.platform import autostart
@@ -95,6 +108,7 @@ _RESIDENCE_IMPACT_KEY = "settings-residence-impact"
 _RESIDENCE_SAVE_KEY = "settings-residence-save"
 _RESIDENCE_NAME_KEY = "settings-residence-name"
 _WORKING_TEXT = "Working..."
+_TWO_COLUMN_BREAKPOINT_PX = 1040
 
 
 def _writes_tooltip() -> str:
@@ -148,29 +162,21 @@ def _flat_box_qss(object_name: str) -> str:
     )
 
 
-def _checkbox_qss() -> str:
-    """Token-only checkbox styling (the page also reads well outside the shell)."""
-    size = S("size-icon")
-    return (
-        f"QCheckBox {{ color: {C('text-primary')}; font-size: {C('fs-body')};"
-        f" font-weight: {C('fw-medium')}; spacing: {C('space-2')}; }}"
-        f"QCheckBox::indicator {{ width: {size}px; height: {size}px;"
-        f" border: 1px solid {C('border-strong')}; border-radius: {C('radius-input')};"
-        f" background-color: {C('surface')}; }}"
-        f"QCheckBox::indicator:hover {{ border-color: {C('teal-600')}; }}"
-        f"QCheckBox::indicator:checked {{ background-color: {C('teal-600')};"
-        f" border-color: {C('teal-600')}; }}"
-        f"QCheckBox:disabled {{ color: {C('text-muted')}; }}"
-        f"QCheckBox::indicator:disabled {{ background-color: {C('surface-subtle')};"
-        f" border-color: {C('border')}; }}"
-    )
-
-
 def _apply_small(label: QLabel, word_wrap: bool = True) -> QLabel:
     """Hint typography (role ``small``) with optional wrapping."""
     theme.apply_role(label, "small")
     label.setWordWrap(word_wrap)
     return label
+
+
+def _group_heading(text: str) -> QLabel:
+    """Quiet sentence-case group label above a stack of folded setting rows."""
+    lbl = QLabel(text)
+    theme.apply_role(lbl, "small")
+    lbl.setStyleSheet(
+        f"color: {C('text-muted')}; font-weight: {C('fw-semibold')}; padding-left: 2px;"
+    )
+    return lbl
 
 
 def build_mcp_url(raw: str) -> str:
@@ -323,21 +329,44 @@ class SettingsPage(QWidget):
 
         scroll_content = QWidget()
         scroll_content.setObjectName("settingsScrollContent")
-        layout = QVBoxLayout(scroll_content)
-        layout.setContentsMargins(S("space-8"), S("space-8"), S("space-8"), S("space-8"))
-        layout.setSpacing(S("space-6"))
+        outer_layout = QVBoxLayout(scroll_content)
+        outer_layout.setContentsMargins(S("space-8"), S("space-8"), S("space-8"), S("space-8"))
+        outer_layout.setSpacing(S("space-6"))
 
         self.header = PageHeader(
             t("settings.title"),
             t("settings.subtitle"),
         )
-        layout.addWidget(self.header)
+        outer_layout.addWidget(self.header)
 
-        # Residence settings card (admin only)
-        self.residence_card = Card(
+        self._two_column_mode: bool | None = None
+        self._columns_host = QWidget()
+        self._columns_host.setObjectName("settingsColumnsHost")
+        self._columns_layout = QBoxLayout(QBoxLayout.Direction.TopToBottom, self._columns_host)
+        self._columns_layout.setContentsMargins(0, 0, 0, 0)
+        self._columns_layout.setSpacing(S("space-6"))
+
+        self._left_col = QWidget(self._columns_host)
+        self._left_col.setObjectName("settingsLeftColumn")
+        left_layout = QVBoxLayout(self._left_col)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(S("space-3"))
+
+        self._right_col = QWidget(self._columns_host)
+        self._right_col.setObjectName("settingsRightColumn")
+        right_layout = QVBoxLayout(self._right_col)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(S("space-3"))
+
+        # --- Group 1: Residence (admin only) ---
+        self.residence_group_label = _group_heading(t("settings.group_residence"))
+        left_layout.addWidget(self.residence_group_label)
+
+        self.residence_card = CollapsibleCard(
             t("settings.residence_title"),
-            t("settings.residence_subtitle"),
+            summary=DEFAULT_RESIDENCE_NAME,
             icon="building",
+            expanded=False,
         )
 
         res_name_row = QHBoxLayout()
@@ -392,13 +421,20 @@ class SettingsPage(QWidget):
         self.residence_banner.setVisible(False)
         self.residence_card.add_widget(self.residence_banner)
 
-        layout.addWidget(self.residence_card)
+        left_layout.addWidget(self.residence_card)
+        self._residence_spacer = QWidget()
+        self._residence_spacer.setFixedHeight(S("space-3"))
+        left_layout.addWidget(self._residence_spacer)
 
-        # General settings card
-        self.general_card = Card(
+        # --- Group 2: Preferences (General & Notifications) ---
+        self.preferences_group_label = _group_heading(t("settings.group_preferences"))
+        left_layout.addWidget(self.preferences_group_label)
+
+        self.general_card = CollapsibleCard(
             t("settings.general_title"),
-            t("settings.general_subtitle"),
+            summary="",
             icon="settings",
+            expanded=False,
         )
 
         # Language preference setting
@@ -406,6 +442,7 @@ class SettingsPage(QWidget):
         lang_row.setSpacing(S("space-3"))
         self.lang_label = QLabel(t("settings.language_label"))
         theme.apply_role(self.lang_label, "h3")
+        self.lang_label.setMinimumWidth(140)
         lang_row.addWidget(self.lang_label)
 
         self.lang_combo = QComboBox()
@@ -417,10 +454,6 @@ class SettingsPage(QWidget):
         lang_row.addWidget(self.lang_combo)
         lang_row.addStretch(1)
         self.general_card.add_layout(lang_row)
-
-        self.lang_note = QLabel(t("settings.language_note"))
-        _apply_small(self.lang_note)
-        self.general_card.add_widget(self.lang_note)
 
         # Language restart notification banner
         self.lang_restart_banner = InlineBanner(
@@ -438,35 +471,24 @@ class SettingsPage(QWidget):
         self.general_card.add_widget(self.lang_restart_banner)
 
         self.confirm_close_checkbox = QCheckBox(t("settings.confirm_close_label"))
-        self.confirm_close_checkbox.setStyleSheet(_checkbox_qss())
         self.confirm_close_checkbox.setChecked(get_confirm_close_setting())
         self.confirm_close_checkbox.setToolTip(t("settings.confirm_close_tooltip"))
         self.confirm_close_checkbox.toggled.connect(self._on_confirm_close_toggled)
         self.general_card.add_widget(self.confirm_close_checkbox)
 
-        self.confirm_close_note = QLabel(t("settings.confirm_close_note"))
-        _apply_small(self.confirm_close_note)
-        self.general_card.add_widget(self.confirm_close_note)
-
         self.minimize_tray_checkbox = QCheckBox(t("settings.minimize_tray_label"))
-        self.minimize_tray_checkbox.setStyleSheet(_checkbox_qss())
         self.minimize_tray_checkbox.setChecked(get_minimize_to_tray_setting())
         self.minimize_tray_checkbox.setToolTip(t("settings.minimize_tray_tooltip"))
         self.minimize_tray_checkbox.toggled.connect(self._on_minimize_tray_toggled)
         self.general_card.add_widget(self.minimize_tray_checkbox)
 
-        self.minimize_tray_note = QLabel(t("settings.minimize_tray_note"))
-        _apply_small(self.minimize_tray_note)
-        self.general_card.add_widget(self.minimize_tray_note)
-
         # Autostart settings (Windows only)
         self.autostart_container = QWidget()
         autostart_layout = QVBoxLayout(self.autostart_container)
-        autostart_layout.setContentsMargins(0, S("space-3"), 0, 0)
+        autostart_layout.setContentsMargins(0, S("space-2"), 0, 0)
         autostart_layout.setSpacing(S("space-2"))
 
         self.autostart_checkbox = QCheckBox(t("settings.autostart_label"))
-        self.autostart_checkbox.setStyleSheet(_checkbox_qss())
         self.autostart_checkbox.setToolTip(t("settings.autostart_tooltip"))
         self.autostart_checkbox.toggled.connect(self._on_autostart_toggled)
         autostart_layout.addWidget(self.autostart_checkbox)
@@ -490,7 +512,6 @@ class SettingsPage(QWidget):
         sm_layout.setSpacing(S("space-2"))
 
         self.start_minimized_checkbox = QCheckBox(t("settings.start_minimized_label"))
-        self.start_minimized_checkbox.setStyleSheet(_checkbox_qss())
         self.start_minimized_checkbox.setToolTip(t("settings.start_minimized_tooltip"))
         self.start_minimized_checkbox.setChecked(autostart.get_start_minimized_setting())
         self.start_minimized_checkbox.toggled.connect(self._on_start_minimized_toggled)
@@ -501,25 +522,133 @@ class SettingsPage(QWidget):
         self.autostart_error_banner.setVisible(False)
         autostart_layout.addWidget(self.autostart_error_banner)
 
-        self.autostart_note = QLabel(t("settings.autostart_note"))
-        _apply_small(self.autostart_note)
-        autostart_layout.addWidget(self.autostart_note)
-
         self.general_card.add_widget(self.autostart_container)
         self._update_autostart_ui()
+        self._refresh_general_summary()
 
-        layout.addWidget(self.general_card)
+        left_layout.addWidget(self.general_card)
+
+        # Notifications settings card
+        self.notif_card = CollapsibleCard(
+            t("settings.notifications_title"),
+            summary="",
+            icon="bell",
+            expanded=False,
+        )
+
+        self.notif_manager = NotificationManager(self)
+        ns = self.notif_manager.settings
+
+        self.notif_master_cb = QCheckBox(t("settings.notifications_enable"))
+        self.notif_master_cb.setChecked(ns.enabled)
+        self.notif_master_cb.toggled.connect(self._on_notif_master_toggled)
+        self.notif_card.add_widget(self.notif_master_cb)
+
+        self.notif_options_container = QWidget()
+        noc_layout = QVBoxLayout(self.notif_options_container)
+        noc_layout.setContentsMargins(S("space-4"), 0, 0, 0)
+        noc_layout.setSpacing(S("space-2"))
+
+        # Event toggles
+        self.notif_maint_cb = QCheckBox(t("settings.notif_maintenance"))
+        self.notif_maint_cb.setChecked(ns.notify_maintenance)
+        self.notif_maint_cb.toggled.connect(lambda v: setattr(ns, "notify_maintenance", v))
+        noc_layout.addWidget(self.notif_maint_cb)
+
+        self.notif_rooms_cb = QCheckBox(t("settings.notif_room_changes"))
+        self.notif_rooms_cb.setChecked(ns.notify_room_changes)
+        self.notif_rooms_cb.toggled.connect(lambda v: setattr(ns, "notify_room_changes", v))
+        noc_layout.addWidget(self.notif_rooms_cb)
+
+        self.notif_regs_cb = QCheckBox(t("settings.notif_registrations"))
+        self.notif_regs_cb.setChecked(ns.notify_registrations)
+        self.notif_regs_cb.toggled.connect(lambda v: setattr(ns, "notify_registrations", v))
+        noc_layout.addWidget(self.notif_regs_cb)
+
+        noc_layout.addSpacing(S("space-2"))
+
+        # Delivery & Privacy
+        self.notif_names_cb = QCheckBox(t("settings.notif_show_names"))
+        self.notif_names_cb.setChecked(ns.show_student_names)
+        self.notif_names_cb.toggled.connect(lambda v: setattr(ns, "show_student_names", v))
+        noc_layout.addWidget(self.notif_names_cb)
+
+        self.notif_unfocused_cb = QCheckBox(t("settings.notif_only_unfocused"))
+        self.notif_unfocused_cb.setChecked(ns.only_unfocused)
+        self.notif_unfocused_cb.toggled.connect(lambda v: setattr(ns, "only_unfocused", v))
+        noc_layout.addWidget(self.notif_unfocused_cb)
+
+        self.notif_sound_cb = QCheckBox(t("settings.notif_play_sound"))
+        self.notif_sound_cb.setChecked(ns.play_sound)
+        self.notif_sound_cb.toggled.connect(lambda v: setattr(ns, "play_sound", v))
+        noc_layout.addWidget(self.notif_sound_cb)
+
+        # Quiet hours
+        self.notif_quiet_cb = QCheckBox(t("settings.notif_quiet_hours"))
+        self.notif_quiet_cb.setChecked(ns.quiet_hours_enabled)
+        self.notif_quiet_cb.toggled.connect(self._on_quiet_hours_toggled)
+        noc_layout.addWidget(self.notif_quiet_cb)
+
+        quiet_row = QHBoxLayout()
+        quiet_row.setSpacing(S("space-2"))
+        lbl_start = QLabel(t("settings.quiet_hours_from"))
+        _apply_small(lbl_start)
+        quiet_row.addWidget(lbl_start)
+
+        self.quiet_start_edit = QLineEdit(ns.quiet_hours_start)
+        self.quiet_start_edit.setFixedWidth(70)
+        self.quiet_start_edit.setFixedHeight(32)
+        self.quiet_start_edit.setPlaceholderText("22:00")
+        self.quiet_start_edit.textChanged.connect(self._on_quiet_hours_edited)
+        quiet_row.addWidget(self.quiet_start_edit)
+
+        lbl_end = QLabel(t("settings.quiet_hours_to"))
+        _apply_small(lbl_end)
+        quiet_row.addWidget(lbl_end)
+
+        self.quiet_end_edit = QLineEdit(ns.quiet_hours_end)
+        self.quiet_end_edit.setFixedWidth(70)
+        self.quiet_end_edit.setFixedHeight(32)
+        self.quiet_end_edit.setPlaceholderText("07:00")
+        self.quiet_end_edit.textChanged.connect(self._on_quiet_hours_edited)
+        quiet_row.addWidget(self.quiet_end_edit)
+        quiet_row.addStretch(1)
+
+        self.quiet_row_widget = QWidget()
+        self.quiet_row_widget.setLayout(quiet_row)
+        self.quiet_row_widget.setVisible(ns.quiet_hours_enabled)
+        noc_layout.addWidget(self.quiet_row_widget)
+
+        noc_layout.addSpacing(S("space-1"))
+
+        # Send test notification button
+        btn_row = QHBoxLayout()
+        self.test_notif_btn = Button.secondary(t("settings.test_notif_button"), icon="bell")
+        self.test_notif_btn.setFixedHeight(36)
+        self.test_notif_btn.clicked.connect(self._on_send_test_notif)
+        btn_row.addWidget(self.test_notif_btn)
+        btn_row.addStretch(1)
+        noc_layout.addLayout(btn_row)
+
+        self.notif_card.add_widget(self.notif_options_container)
+        self.notif_options_container.setVisible(ns.enabled)
+        self._refresh_notif_summary()
+        left_layout.addWidget(self.notif_card)
+
+        # --- Group 3: Account & System ---
+        self.account_group_label = _group_heading(t("settings.group_account_system"))
+        right_layout.addWidget(self.account_group_label)
 
         # Security & Sign-in settings card
-        self.security_card = Card(
+        self.security_card = CollapsibleCard(
             t("settings.security_title"),
-            t("settings.security_subtitle"),
+            summary="",
             icon="shield",
+            expanded=False,
         )
 
         self.remember_session_checkbox = QCheckBox(t("settings.remember_session_label"))
         self.remember_session_checkbox.setObjectName("rememberSessionCheckbox")
-        self.remember_session_checkbox.setStyleSheet(_checkbox_qss())
         self.remember_session_checkbox.setChecked(get_remember_session_setting())
         self.remember_session_checkbox.toggled.connect(self._on_remember_session_toggled)
         self.security_card.add_widget(self.remember_session_checkbox)
@@ -530,7 +659,7 @@ class SettingsPage(QWidget):
 
         # Account info and Sign out row
         account_row = QHBoxLayout()
-        account_row.setContentsMargins(0, S("space-3"), 0, 0)
+        account_row.setContentsMargins(0, S("space-2"), 0, 0)
         account_row.setSpacing(S("space-4"))
 
         self.signed_in_label = QLabel()
@@ -549,136 +678,32 @@ class SettingsPage(QWidget):
 
         self.security_card.add_layout(account_row)
 
-        layout.addWidget(self.security_card)
+        right_layout.addWidget(self.security_card)
 
         # Updates — shared service owned by the main window so the sidebar
         # badge and this card always show the same release.
         self.updates_section = None
         if self.update_service is not None:
-            self.updates_section = UpdatesSection(self.update_service, self)
+            self.updates_section = UpdatesSection(
+                self.update_service,
+                self,
+                collapsible=True,
+                expanded=False,
+            )
             self.updates_section.install_requested.connect(
                 self.update_install_requested.emit
             )
-            layout.addWidget(self.updates_section)
-
-        # Notifications settings card
-        self.notif_card = Card(
-            t("settings.notifications_title"),
-            t("settings.notifications_subtitle"),
-            icon="bell",
-        )
-
-        self.notif_manager = NotificationManager(self)
-        ns = self.notif_manager.settings
-
-        self.notif_master_cb = QCheckBox(t("settings.notifications_enable"))
-        self.notif_master_cb.setStyleSheet(_checkbox_qss())
-        self.notif_master_cb.setChecked(ns.enabled)
-        self.notif_master_cb.toggled.connect(self._on_notif_master_toggled)
-        self.notif_card.add_widget(self.notif_master_cb)
-
-        self.notif_options_container = QWidget()
-        noc_layout = QVBoxLayout(self.notif_options_container)
-        noc_layout.setContentsMargins(S("space-4"), 0, 0, 0)
-        noc_layout.setSpacing(S("space-3"))
-
-        # Event toggles
-        self.notif_maint_cb = QCheckBox(t("settings.notif_maintenance"))
-        self.notif_maint_cb.setStyleSheet(_checkbox_qss())
-        self.notif_maint_cb.setChecked(ns.notify_maintenance)
-        self.notif_maint_cb.toggled.connect(lambda v: setattr(ns, "notify_maintenance", v))
-        noc_layout.addWidget(self.notif_maint_cb)
-
-        self.notif_rooms_cb = QCheckBox(t("settings.notif_room_changes"))
-        self.notif_rooms_cb.setStyleSheet(_checkbox_qss())
-        self.notif_rooms_cb.setChecked(ns.notify_room_changes)
-        self.notif_rooms_cb.toggled.connect(lambda v: setattr(ns, "notify_room_changes", v))
-        noc_layout.addWidget(self.notif_rooms_cb)
-
-        self.notif_regs_cb = QCheckBox(t("settings.notif_registrations"))
-        self.notif_regs_cb.setStyleSheet(_checkbox_qss())
-        self.notif_regs_cb.setChecked(ns.notify_registrations)
-        self.notif_regs_cb.toggled.connect(lambda v: setattr(ns, "notify_registrations", v))
-        noc_layout.addWidget(self.notif_regs_cb)
-
-        # Delivery & Privacy
-        self.notif_names_cb = QCheckBox(t("settings.notif_show_names"))
-        self.notif_names_cb.setStyleSheet(_checkbox_qss())
-        self.notif_names_cb.setChecked(ns.show_student_names)
-        self.notif_names_cb.toggled.connect(lambda v: setattr(ns, "show_student_names", v))
-        noc_layout.addWidget(self.notif_names_cb)
-
-        self.notif_unfocused_cb = QCheckBox(t("settings.notif_only_unfocused"))
-        self.notif_unfocused_cb.setStyleSheet(_checkbox_qss())
-        self.notif_unfocused_cb.setChecked(ns.only_unfocused)
-        self.notif_unfocused_cb.toggled.connect(lambda v: setattr(ns, "only_unfocused", v))
-        noc_layout.addWidget(self.notif_unfocused_cb)
-
-        self.notif_sound_cb = QCheckBox(t("settings.notif_play_sound"))
-        self.notif_sound_cb.setStyleSheet(_checkbox_qss())
-        self.notif_sound_cb.setChecked(ns.play_sound)
-        self.notif_sound_cb.toggled.connect(lambda v: setattr(ns, "play_sound", v))
-        noc_layout.addWidget(self.notif_sound_cb)
-
-        # Quiet hours
-        self.notif_quiet_cb = QCheckBox(t("settings.notif_quiet_hours"))
-        self.notif_quiet_cb.setStyleSheet(_checkbox_qss())
-        self.notif_quiet_cb.setChecked(ns.quiet_hours_enabled)
-        self.notif_quiet_cb.toggled.connect(self._on_quiet_hours_toggled)
-        noc_layout.addWidget(self.notif_quiet_cb)
-
-        quiet_row = QHBoxLayout()
-        quiet_row.setSpacing(S("space-2"))
-        lbl_start = QLabel(t("settings.quiet_hours_from"))
-        _apply_small(lbl_start)
-        quiet_row.addWidget(lbl_start)
-
-        self.quiet_start_edit = QLineEdit(ns.quiet_hours_start)
-        self.quiet_start_edit.setFixedWidth(70)
-        self.quiet_start_edit.setFixedHeight(32)
-        self.quiet_start_edit.setPlaceholderText("22:00")
-        self.quiet_start_edit.textChanged.connect(lambda v: setattr(ns, "quiet_hours_start", v))
-        quiet_row.addWidget(self.quiet_start_edit)
-
-        lbl_end = QLabel(t("settings.quiet_hours_to"))
-        _apply_small(lbl_end)
-        quiet_row.addWidget(lbl_end)
-
-        self.quiet_end_edit = QLineEdit(ns.quiet_hours_end)
-        self.quiet_end_edit.setFixedWidth(70)
-        self.quiet_end_edit.setFixedHeight(32)
-        self.quiet_end_edit.setPlaceholderText("07:00")
-        self.quiet_end_edit.textChanged.connect(lambda v: setattr(ns, "quiet_hours_end", v))
-        quiet_row.addWidget(self.quiet_end_edit)
-        quiet_row.addStretch(1)
-
-        self.quiet_row_widget = QWidget()
-        self.quiet_row_widget.setLayout(quiet_row)
-        self.quiet_row_widget.setVisible(ns.quiet_hours_enabled)
-        noc_layout.addWidget(self.quiet_row_widget)
-
-        # Send test notification button
-        btn_row = QHBoxLayout()
-        self.test_notif_btn = Button.secondary(t("settings.test_notif_button"), icon="bell")
-        self.test_notif_btn.setFixedHeight(36)
-        self.test_notif_btn.clicked.connect(self._on_send_test_notif)
-        btn_row.addWidget(self.test_notif_btn)
-        btn_row.addStretch(1)
-        noc_layout.addLayout(btn_row)
-
-        self.notif_card.add_widget(self.notif_options_container)
-        self.notif_options_container.setVisible(ns.enabled)
-        layout.addWidget(self.notif_card)
+            right_layout.addWidget(self.updates_section)
 
         # Advanced settings (developer mode) card
-        self.dev_card = Card(
+        self.dev_card = CollapsibleCard(
             t("settings.advanced_title"),
-            t("settings.advanced_subtitle"),
-            icon="settings",
+            summary="",
+            icon="key",
+            expanded=False,
         )
 
         self.dev_checkbox = QCheckBox(t("settings.dev_mode_label"))
-        self.dev_checkbox.setStyleSheet(_checkbox_qss())
         self.dev_checkbox.setToolTip(t("settings.dev_mode_tooltip"))
         self.dev_checkbox.toggled.connect(self._on_dev_mode_toggled)
         self.dev_card.add_widget(self.dev_checkbox)
@@ -693,7 +718,6 @@ class SettingsPage(QWidget):
 
         # ChatGPT write off-switch — admin only, outside the developer-mode gate
         self.writes_checkbox = QCheckBox(t("settings.writes_label"))
-        self.writes_checkbox.setStyleSheet(_checkbox_qss())
         self.writes_checkbox.setToolTip(_writes_tooltip())
         self.writes_checkbox.toggled.connect(self._on_writes_toggled)
         self.dev_card.add_widget(self.writes_checkbox)
@@ -713,13 +737,19 @@ class SettingsPage(QWidget):
         self.content = self._build_content()
         self.dev_card.add_widget(self.content)
 
-        layout.addWidget(self.dev_card)
+        right_layout.addWidget(self.dev_card)
 
         # About — built outside the developer-mode gate on purpose: the credit is
         # visible for every role without toggling Developer mode.
         self.about_widget = self._build_about()
-        layout.addWidget(self.about_widget)
-        layout.addStretch(1)
+        right_layout.addWidget(self.about_widget)
+
+        self._columns_layout.addWidget(self._left_col)
+        self._columns_layout.addWidget(self._right_col)
+        self._update_responsive_columns()
+
+        outer_layout.addWidget(self._columns_host)
+        outer_layout.addStretch(1)
 
         self.scroll_area.setWidget(scroll_content)
         root_layout.addWidget(self.scroll_area)
@@ -740,13 +770,111 @@ class SettingsPage(QWidget):
 
     def on_shown(self) -> None:
         """Called every time the page becomes visible."""
+        self._update_responsive_columns()
         if self.updates_section is not None:
             self.updates_section.on_shown()
+
+    def showEvent(self, event) -> None:  # noqa: N802 - Qt API
+        super().showEvent(event)
+        self._update_responsive_columns()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 - Qt API
+        super().resizeEvent(event)
+        self._update_responsive_columns()
+
+    def _update_responsive_columns(self) -> None:
+        """Use two balanced columns when wide/full-screen, one full-width column when narrow."""
+        if not hasattr(self, "_columns_layout"):
+            return
+        viewport_w = self.scroll_area.viewport().width() if hasattr(self, "scroll_area") else 0
+        width = viewport_w if viewport_w > 0 else self.width()
+        two_cols = width >= _TWO_COLUMN_BREAKPOINT_PX
+        if two_cols == self._two_column_mode:
+            return
+        self._two_column_mode = two_cols
+        if two_cols:
+            self._columns_layout.setDirection(QBoxLayout.Direction.LeftToRight)
+            self._columns_layout.setStretchFactor(self._left_col, 1)
+            self._columns_layout.setStretchFactor(self._right_col, 1)
+            self._columns_layout.setAlignment(self._left_col, Qt.AlignmentFlag.AlignTop)
+            self._columns_layout.setAlignment(self._right_col, Qt.AlignmentFlag.AlignTop)
+        else:
+            self._columns_layout.setDirection(QBoxLayout.Direction.TopToBottom)
+            self._columns_layout.setStretchFactor(self._left_col, 0)
+            self._columns_layout.setStretchFactor(self._right_col, 0)
+            self._columns_layout.setAlignment(self._left_col, Qt.AlignmentFlag(0))
+            self._columns_layout.setAlignment(self._right_col, Qt.AlignmentFlag(0))
+
+    def open_section(self, key: str) -> None:
+        """Unfold a settings section programmatically (e.g. from a banner CTA)."""
+        section_map = {
+            "residence": getattr(self, "residence_card", None),
+            "general": getattr(self, "general_card", None),
+            "notifications": getattr(self, "notif_card", None),
+            "security": getattr(self, "security_card", None),
+            "updates": getattr(getattr(self, "updates_section", None), "card", None),
+            "advanced": getattr(self, "dev_card", None),
+            "about": getattr(self, "about_widget", None),
+        }
+        target = section_map.get(key)
+        if isinstance(target, CollapsibleCard):
+            target.set_expanded(True)
+            QTimer.singleShot(0, lambda: self.scroll_area.ensureWidgetVisible(target))
+
+    def _refresh_general_summary(self) -> None:
+        if not hasattr(self, "general_card"):
+            return
+        lang_text = self.lang_combo.currentText() if hasattr(self, "lang_combo") else ""
+        parts = [lang_text] if lang_text else []
+        if getattr(self, "autostart_checkbox", None) is not None and self.autostart_checkbox.isChecked():
+            parts.append(t("settings.autostart_label"))
+        self.general_card.set_summary(", ".join(parts))
+
+    def _refresh_notif_summary(self) -> None:
+        if not hasattr(self, "notif_card"):
+            return
+        ns = self.notif_manager.settings
+        if not ns.enabled:
+            self.notif_card.set_summary(t("settings.summary_off"))
+            return
+        parts = [t("settings.summary_on")]
+        if ns.quiet_hours_enabled:
+            parts.append(
+                t(
+                    "settings.summary_quiet_hours",
+                    start=ns.quiet_hours_start or "22:00",
+                    end=ns.quiet_hours_end or "07:00",
+                )
+            )
+        self.notif_card.set_summary(", ".join(parts))
+
+    def _refresh_dev_summary(self) -> None:
+        if not hasattr(self, "dev_card"):
+            return
+        if self.role != "admin":
+            self.dev_card.set_summary(t("roles.admin"))
+        elif self.dev_checkbox.isChecked():
+            self.dev_card.set_summary(t("settings.summary_developer"))
+        elif self._writes_available and self.writes_checkbox.isChecked():
+            self.dev_card.set_summary(t("settings.summary_on"))
+        else:
+            self.dev_card.set_summary(t("settings.summary_off"))
+
+    def _refresh_residence_summary(self) -> None:
+        if not hasattr(self, "residence_card"):
+            return
+        name = self._current_residence_name or DEFAULT_RESIDENCE_NAME
+        if self._current_residence_gender in ("male", "female"):
+            gender_text = residence_gender_label(self._current_residence_gender)
+            self.residence_card.set_summary(f"{name}, {gender_text}")
+        else:
+            self.residence_card.set_summary(f"{name}, {t('residence.not_set')}")
 
     def _on_language_changed(self, index: int) -> None:
         lang_code = self.lang_combo.itemData(index)
         if not lang_code:
             return
+        self._refresh_general_summary()
         current = get_saved_language() or current_language()
         if lang_code != current:
             set_saved_language(lang_code)
@@ -755,6 +883,7 @@ class SettingsPage(QWidget):
             else:
                 self.lang_restart_banner.set_message(t("settings.restart_banner_message_need_login"))
             self.lang_restart_banner.setVisible(True)
+            self.general_card.set_expanded(True)
 
     def _restart_app(self) -> None:
         """Trigger safe restart of RÉSIVO, releasing single-instance lock."""
@@ -782,6 +911,10 @@ class SettingsPage(QWidget):
         self._role_unverified = normalized is None
         is_admin = normalized == "admin"
 
+        if hasattr(self, "residence_group_label"):
+            self.residence_group_label.setVisible(is_admin)
+        if hasattr(self, "_residence_spacer"):
+            self._residence_spacer.setVisible(is_admin)
         if hasattr(self, "residence_card"):
             self.residence_card.setVisible(is_admin)
 
@@ -817,12 +950,18 @@ class SettingsPage(QWidget):
                 self._health_started = False
 
         self._update_signed_in_label()
+        self._refresh_dev_summary()
 
     def _update_signed_in_label(self) -> None:
         if hasattr(self, "signed_in_label"):
-            email = stored_user_email(self.client) or "—"
+            email = stored_user_email(self.client) or ""
             role_text = _role_label(self.role)
-            self.signed_in_label.setText(t("settings.signed_in_as", email=email, role=role_text))
+            self.signed_in_label.setText(
+                t("settings.signed_in_as", email=email or "—", role=role_text)
+            )
+            if hasattr(self, "security_card"):
+                summary = f"{email}, {role_text}" if email else role_text
+                self.security_card.set_summary(summary)
 
     def _on_remember_session_toggled(self, checked: bool) -> None:
         set_remember_session_setting(checked)
@@ -865,6 +1004,7 @@ class SettingsPage(QWidget):
         self.start_minimized_checkbox.setEnabled(is_active)
         self.start_minimized_checkbox.setChecked(autostart.get_start_minimized_setting())
         self.autostart_win_note.setVisible(state == "disabled_by_windows")
+        self._refresh_general_summary()
 
     def _on_autostart_toggled(self, checked: bool) -> None:
         self.autostart_error_banner.setVisible(False)
@@ -873,6 +1013,7 @@ class SettingsPage(QWidget):
             if not success:
                 self.autostart_error_banner.set_message(err or "Failed to enable autostart")
                 self.autostart_error_banner.setVisible(True)
+                self.general_card.set_expanded(True)
                 self.autostart_checkbox.blockSignals(True)
                 self.autostart_checkbox.setChecked(False)
                 self.autostart_checkbox.blockSignals(False)
@@ -883,6 +1024,7 @@ class SettingsPage(QWidget):
             if not success:
                 self.autostart_error_banner.set_message(err or "Failed to disable autostart")
                 self.autostart_error_banner.setVisible(True)
+                self.general_card.set_expanded(True)
                 self.autostart_checkbox.blockSignals(True)
                 self.autostart_checkbox.setChecked(True)
                 self.autostart_checkbox.blockSignals(False)
@@ -896,6 +1038,7 @@ class SettingsPage(QWidget):
         self.autostart_checkbox.blockSignals(False)
         self.start_minimized_checkbox.setEnabled(is_active)
         self.autostart_win_note.setVisible(state == "disabled_by_windows")
+        self._refresh_general_summary()
 
     def _on_start_minimized_toggled(self, checked: bool) -> None:
         autostart.set_start_minimized_setting(checked)
@@ -903,10 +1046,17 @@ class SettingsPage(QWidget):
     def _on_notif_master_toggled(self, checked: bool) -> None:
         self.notif_manager.settings.enabled = checked
         self.notif_options_container.setVisible(checked)
+        self._refresh_notif_summary()
 
     def _on_quiet_hours_toggled(self, checked: bool) -> None:
         self.notif_manager.settings.quiet_hours_enabled = checked
         self.quiet_row_widget.setVisible(checked)
+        self._refresh_notif_summary()
+
+    def _on_quiet_hours_edited(self, _text: str) -> None:
+        self.notif_manager.settings.quiet_hours_start = self.quiet_start_edit.text()
+        self.notif_manager.settings.quiet_hours_end = self.quiet_end_edit.text()
+        self._refresh_notif_summary()
 
     def _on_send_test_notif(self) -> None:
         parent_mw = self.window()
@@ -930,19 +1080,19 @@ class SettingsPage(QWidget):
 
         hoc.addWidget(self._section_title(t("settings.hosted_server_title")))
         hoc.addWidget(self._hint(
-            "Runs on Cloudflare at a permanent public URL. Connect ChatGPT once — the connection "
+            "Runs on Cloudflare at a permanent public URL. Connect ChatGPT once so the connection "
             "keeps working even when this PC is off."
         ))
-        hoc.addWidget(self._step_title("Step 1 · Connect ChatGPT (one time)"))
+        hoc.addWidget(self._step_title("Step 1: Connect ChatGPT (one time)"))
         hoc.addLayout(self._numbered_line(
             "1.",
             "Open chatgpt.com/plugins, click “+”, then “Add custom MCP server”. Custom MCP servers "
             "need a ChatGPT plan that supports them (Plus/Pro).",
         ))
-        hoc.addLayout(self._numbered_line("2.", "Give it a name and description — anything you like, for example “RÉSIVO Admin”."))
-        hoc.addLayout(self._numbered_line("3.", "Connection — paste the server URL below (it already ends in /mcp)."))
+        hoc.addLayout(self._numbered_line("2.", "Give it a name and description, for example “RÉSIVO Admin”."))
+        hoc.addLayout(self._numbered_line("3.", "Connection: paste the server URL below (it already ends in /mcp)."))
         hoc.addLayout(self._static_url_row(MCP_HOSTED_URL))
-        hoc.addLayout(self._numbered_line("4.", "A login page opens once — paste the token below, then click Allow."))
+        hoc.addLayout(self._numbered_line("4.", "A login page opens once; paste the token below, then click Allow."))
         hoc.addLayout(self._token_row())
         hoc.addWidget(self._hint(
             "The token is pasted once into that login page; ChatGPT stores its own tokens afterwards. "
@@ -951,12 +1101,10 @@ class SettingsPage(QWidget):
         hoc.addLayout(self._numbered_line("5.", "Click “I understand and want to continue”, then “Create as a plugin”. Done."))
         outer.addWidget(hosted)
 
-        outer.addWidget(self._divider())
-
         # Local server (developer/testing only)
         local = QWidget()
         loc = QVBoxLayout(local)
-        loc.setContentsMargins(0, 0, 0, 0)
+        loc.setContentsMargins(0, S("space-3"), 0, 0)
         loc.setSpacing(S("space-2"))
 
         loc.addWidget(self._section_title(t("settings.local_server_title")))
@@ -981,8 +1129,6 @@ class SettingsPage(QWidget):
         status_row.addStretch(1)
         loc.addLayout(status_row)
 
-        loc.addWidget(self._divider())
-
         # Step 1 — Start the MCP server
         step1 = QWidget()
         s1 = QVBoxLayout(step1)
@@ -1002,7 +1148,7 @@ class SettingsPage(QWidget):
         s2.addWidget(self._step_title(t("settings.local_step2_title")))
         s2.addWidget(self._command_box("wrangler tunnel quick-start http://localhost:8000"))
         hint2 = self._hint(
-            'A public https://… URL is printed in that terminal — leave it open while testing. Alternatives: '
+            'A public https://… URL is printed in that terminal; leave it open while testing. Alternatives: '
             '<span style="font-family: %s;">cloudflared tunnel --url http://localhost:8000</span> or '
             '<span style="font-family: %s;">ngrok http 8000</span>.' % (_mono_family() or "monospace", _mono_family() or "monospace")
         )
@@ -1020,15 +1166,14 @@ class SettingsPage(QWidget):
         s3.addWidget(self._command_box("npx @modelcontextprotocol/inspector"))
         s3.addWidget(self._hint(
             "Choose transport Streamable HTTP and URL http://localhost:8000/mcp, then add the custom "
-            "header Authorization: Bearer <token> — copy the token from the row above."
+            "header Authorization: Bearer <token> (copy the token from the row above)."
         ))
         loc.addWidget(step3)
 
         outer.addWidget(local)
 
-        outer.addWidget(self._divider())
         footer = QLabel(
-            "Admin-only. ChatGPT can read data, and — when you allow it here — make changes: it asks "
+            "Admin-only. ChatGPT can read data, and when enabled above can make changes: it asks "
             "you to confirm every change first, and every action is logged. Full guides: "
             "mcp-worker/README.md (hosted) and mcp/README.md (local)."
         )
@@ -1039,7 +1184,13 @@ class SettingsPage(QWidget):
 
     def _build_about(self) -> QWidget:
         """About card — brand, creator credit, and links. Always visible, never role-gated."""
-        about = Card(t("settings.about_title"), t("settings.about_subtitle"), icon="info")
+        version_summary = f"v{__version__}, SEBAI ANES" if __version__ else "SEBAI ANES"
+        about = CollapsibleCard(
+            t("settings.about_title"),
+            summary=version_summary,
+            icon="info",
+            expanded=False,
+        )
         about.setObjectName("aboutSection")
         about_layout = about.body
 
@@ -1051,7 +1202,7 @@ class SettingsPage(QWidget):
         logo_path = get_asset_path("brand/resivo_logo.png")
         about_logo_px = QPixmap(str(logo_path))
         about_logo.setPixmap(about_logo_px.scaled(
-            S("space-12") * 2, S("space-12") * 2,
+            S("space-12"), S("space-12"),
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         ))
@@ -1251,12 +1402,12 @@ class SettingsPage(QWidget):
             self.writes_note.setText(_writes_note())
             self.writes_checkbox.setToolTip(_writes_tooltip())
         else:
-            self.writes_note.setText("Could not load this setting — check the connection.")
+            self.writes_note.setText("Could not load this setting; check the connection.")
             self.writes_checkbox.setToolTip("Disabled until the setting can be loaded")
 
     def _on_settings_failed(self, message: str) -> None:
         self._writes_available = False
-        self.writes_note.setText("Could not load this setting — check the connection.")
+        self.writes_note.setText("Could not load this setting; check the connection.")
         self.writes_banner.set_message(
             f"The ChatGPT writes switch stays disabled until this setting can be read again ({message}). "
             "Check the connection, then reopen Settings to retry."
@@ -1277,7 +1428,7 @@ class SettingsPage(QWidget):
             self.writes_note.setText(_writes_note())
             self.writes_banner.setVisible(False)
         else:
-            self.writes_note.setText("Could not load this setting — check the connection.")
+            self.writes_note.setText("Could not load this setting; check the connection.")
             self.writes_banner.set_message(
                 "The ChatGPT writes switch stays disabled until this setting can be read again. "
                 "Check the connection, then reopen Settings to retry."
@@ -1319,6 +1470,7 @@ class SettingsPage(QWidget):
 
     def _on_writes_saved(self) -> None:
         self.writes_banner.setVisible(False)
+        self._refresh_dev_summary()
 
     def _on_writes_failed(self, checked: bool, message: str) -> None:
         # DB is the source of truth — revert the UI and tell the admin.
@@ -1332,6 +1484,7 @@ class SettingsPage(QWidget):
         self.writes_note.setText(_writes_note())
         self.writes_banner.set_message(f"The switch was reverted: {message}")
         self.writes_banner.setVisible(True)
+        self._refresh_dev_summary()
         QMessageBox.warning(self, "Settings", f"Could not save the setting: {message}")
 
     def _on_writes_finished(self) -> None:
@@ -1344,12 +1497,14 @@ class SettingsPage(QWidget):
         )
         if self._writes_available:
             self.writes_note.setText(_writes_note())
+        self._refresh_dev_summary()
 
     def _on_dev_mode_toggled(self, checked: bool):
         if self.role != "admin":
             return
         self.enable_note.setVisible(not checked)
         self.content.setVisible(checked)
+        self._refresh_dev_summary()
 
     def _on_health_changed(self, up: bool):
         if up:
@@ -1377,7 +1532,7 @@ class SettingsPage(QWidget):
         self.token_copy_btn.setVisible(has_token)
         if not has_token:
             self.token_label.setStyleSheet(_hint_qss())
-            self.token_label.setText("Token not found — check mcp/.env.")
+            self.token_label.setText("Token not found; check mcp/.env.")
             return
         self.token_label.setStyleSheet(_token_qss())
         self._update_token_display()
@@ -1463,6 +1618,7 @@ class SettingsPage(QWidget):
         self._current_residence_gender = gender if gender in ("male", "female") else None
         self.residence_name_edit.setText(name)
         self._set_combo_residence_gender(self._current_residence_gender)
+        self._refresh_residence_summary()
 
         changed_at = res.get("last_changed_at")
         if changed_at:
@@ -1521,6 +1677,7 @@ class SettingsPage(QWidget):
         self.residence_banner.set_title(t("settings.residence_title"))
         self.residence_banner.set_message(t("settings.residence_name_saved"))
         self.residence_banner.setVisible(True)
+        self._refresh_residence_summary()
         self.residence_settings_changed.emit()
 
     def _on_residence_name_failed(self, message: str) -> None:
@@ -1529,6 +1686,7 @@ class SettingsPage(QWidget):
         self.residence_banner.set_title(t("settings.residence_error_title"))
         self.residence_banner.set_message(message)
         self.residence_banner.setVisible(True)
+        self.residence_card.set_expanded(True)
 
     def _on_residence_name_finished(self) -> None:
         if not self.tasks.is_busy(_RESIDENCE_SAVE_KEY):
@@ -1637,6 +1795,7 @@ class SettingsPage(QWidget):
             t("settings.residence_changed_success", value=residence_gender_label(target_gender))
         )
         self.residence_banner.setVisible(True)
+        self._refresh_residence_summary()
         self.residence_settings_changed.emit()
 
     def _on_residence_gender_failed(self, message: str) -> None:
@@ -1645,6 +1804,7 @@ class SettingsPage(QWidget):
         self.residence_banner.set_title(t("settings.residence_error_title"))
         self.residence_banner.set_message(message)
         self.residence_banner.setVisible(True)
+        self.residence_card.set_expanded(True)
 
     def _on_residence_save_finished(self) -> None:
         self._set_residence_busy(False)

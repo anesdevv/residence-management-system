@@ -129,6 +129,9 @@ class StaffAccountsPage(QWidget):
             title=t("staff_accounts.error_load_title"),
             message=t("staff_accounts.error_load_msg"),
         )
+        self.retry_btn = Button(t("common.retry"), "ghost", icon="refresh")
+        self.retry_btn.clicked.connect(self.reload)
+        self.error_banner.add_action(self.retry_btn)
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
 
@@ -140,11 +143,12 @@ class StaffAccountsPage(QWidget):
         table_card.setObjectName("cardFrame")
         table_card.setMinimumWidth(420)
         tc_layout = QVBoxLayout(table_card)
-        tc_layout.setContentsMargins(0, 0, 0, 0)
+        tc_layout.setContentsMargins(1, 1, 1, 1)
         tc_layout.setSpacing(0)
 
         self.stack = QStackedWidget()
         self.table = QTableWidget(0, len(_COLUMNS))
+        self.table.setProperty("borderless", True)
         configure_table(self.table, _COLUMNS)
         self.table.setTextElideMode(Qt.TextElideMode.ElideMiddle)
         _fit_columns(
@@ -164,6 +168,9 @@ class StaffAccountsPage(QWidget):
             t("staff_accounts.empty_title"),
             t("staff_accounts.empty_desc"),
         )
+        staff_refresh_btn = Button.secondary(t("common.refresh"), icon="refresh")
+        staff_refresh_btn.clicked.connect(self.reload)
+        self.empty_state.actions.addWidget(staff_refresh_btn)
         self.stack.addWidget(self.empty_state)
 
         self.skeleton = Skeleton(rows=5)
@@ -184,10 +191,20 @@ class StaffAccountsPage(QWidget):
         btn_row.setContentsMargins(S("space-3"), 0, S("space-3"), S("space-3"))
         btn_row.addStretch(1)
 
-        self.delete_btn = Button.danger(t("staff_accounts.delete_selected_btn"), icon="trash")
+        self.delete_btn = Button.ghost(t("staff_accounts.delete_selected_btn"), icon="trash")
+        self.delete_btn.setStyleSheet(
+            f"QPushButton {{ background-color: transparent; color: {C('status-danger-ink')};"
+            f" border: 1px solid {C('status-danger-border')}; border-radius: {C('radius-input')};"
+            f" padding: 8px 14px; font-size: {C('fs-body')}; font-weight: {C('fw-semibold')}; }}"
+            f"QPushButton:hover {{ background-color: {C('status-danger-bg')}; border-color: {C('status-danger-ink')}; }}"
+            f"QPushButton:pressed {{ background-color: {C('status-danger-bg')}; }}"
+            f"QPushButton:focus {{ border: 2px solid {C('status-danger-ink')}; padding: 7px 13px; }}"
+            f"QPushButton:disabled {{ background-color: {C('surface-subtle')}; color: {C('text-muted')};"
+            f" border: 1px solid {C('border')}; padding: 8px 14px; }}"
+        )
         self.delete_btn.setFixedHeight(S("size-control"))
         self.delete_btn.setEnabled(False)
-        self.delete_btn.setToolTip("")
+        self.delete_btn.setToolTip(t("staff_accounts.select_to_delete_tooltip"))
         self.delete_btn.clicked.connect(self.on_delete)
         btn_row.addWidget(self.delete_btn)
         tc_layout.addLayout(btn_row)
@@ -280,7 +297,7 @@ class StaffAccountsPage(QWidget):
         staff = self.selected()
         if not staff:
             self.delete_btn.setEnabled(False)
-            self.delete_btn.setToolTip("")
+            self.delete_btn.setToolTip(t("staff_accounts.select_to_delete_tooltip"))
             self.self_delete_banner.setVisible(False)
             return
 

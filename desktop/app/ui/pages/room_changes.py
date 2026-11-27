@@ -87,6 +87,7 @@ from ..components import (
     RoomOccupancyBar,
     SearchField,
     SegmentedControl,
+    Skeleton,
     StatusPill,
     configure_table,
     show_toast,
@@ -384,7 +385,7 @@ class _QuotedBlock(QFrame):
         column.addWidget(self.body)
         self.setStyleSheet(
             f"QFrame#quotedBlock {{ background-color: {C('surface-subtle')};"
-            f" border: 1px solid {C('border')}; border-radius: {C('radius-input')}; }}"
+            f" border: none; border-radius: {C('radius-input')}; }}"
         )
 
     def set_text(self, text: str, *, is_empty: bool = False) -> None:
@@ -460,6 +461,9 @@ class RoomChangesPage(QWidget):
             title="Transfer requests could not be loaded",
             message="The table is showing the last data received. Use Refresh to try again.",
         )
+        self.retry_btn = Button(t("common.retry"), "ghost", icon="refresh")
+        self.retry_btn.clicked.connect(self.reload)
+        self.error_banner.add_action(self.retry_btn)
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
 
@@ -478,12 +482,13 @@ class RoomChangesPage(QWidget):
 
         table_card = QFrame()
         table_card.setObjectName("cardFrame")
-        table_card.setMinimumWidth(400)
+        table_card.setMinimumWidth(420)
         card_layout = QVBoxLayout(table_card)
-        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setContentsMargins(1, 1, 1, 1)
 
         self.stack = QStackedWidget()
         self.table = QTableWidget(0, len(_COLUMNS))
+        self.table.setProperty("borderless", True)
         configure_table(self.table, _COLUMNS)
         self.table.setItemDelegateForColumn(1, StatusPillDelegate(self.table))
         _fit_columns(
@@ -517,7 +522,15 @@ class RoomChangesPage(QWidget):
             (label for label in empty_labels if label.text() == _EMPTY_COPY["pending"][1]),
             None,
         )
+        self.empty_reset_btn = Button.secondary(t("common.reset_filters"), icon="x")
+        self.empty_reset_btn.clicked.connect(self._reset_filters)
+        self.empty_refresh_btn = Button.secondary(t("common.refresh"), icon="refresh")
+        self.empty_refresh_btn.clicked.connect(self.reload)
+        self.empty_state.actions.addWidget(self.empty_reset_btn)
+        self.empty_state.actions.addWidget(self.empty_refresh_btn)
         self.stack.addWidget(self.empty_state)
+        self.skeleton = Skeleton(rows=6)
+        self.stack.addWidget(self.skeleton)
         card_layout.addWidget(self.stack)
         self.splitter.addWidget(table_card)
 
@@ -710,7 +723,7 @@ class RoomChangesPage(QWidget):
         frame.setObjectName("roomCard")
         frame.setStyleSheet(
             f"QFrame#roomCard {{ background-color: {C('surface-subtle')};"
-            f" border: 1px solid {C('border')}; border-radius: {C('radius-input')}; }}"
+            f" border: none; border-radius: {C('radius-input')}; }}"
         )
         column = QVBoxLayout(frame)
         column.setContentsMargins(S("space-2"), S("space-2"), S("space-2"), S("space-2"))
@@ -777,6 +790,7 @@ class RoomChangesPage(QWidget):
             self.delete_btn.setToolTip("Select a request to delete it.")
         if hasattr(self, "copy_summary_btn"):
             self.copy_summary_btn.setEnabled(False)
+            self.copy_summary_btn.setToolTip(t("room_changes.copy_summary_disabled_tooltip"))
         self._show_selection(False)
 
     # ------------------------------------------------------------------ data
@@ -831,10 +845,17 @@ class RoomChangesPage(QWidget):
             if index < self.table.rowCount() and not self.table.isRowHidden(index)
         ]
 
+    def _reset_filters(self):
+        self.search.clear()
+        self.set_filter("all")
+
     def _update_view_state(self):
         """Table/empty-state swap + per-view copy and counts (never rebuilds)."""
         visible = sum(1 for r in range(self.table.rowCount()) if not self.table.isRowHidden(r))
         self.stack.setCurrentIndex(0 if visible else 1)
+        if hasattr(self, "empty_reset_btn"):
+            filtered = bool(self.search.text().strip() or self.filter_mode != "all")
+            self.empty_reset_btn.setVisible(filtered)
         title, message = _EMPTY_COPY.get(self.filter_mode, _EMPTY_COPY["pending"])
         if self.empty_title_label is not None:
             self.empty_title_label.setText(title)
@@ -1000,6 +1021,10 @@ class RoomChangesPage(QWidget):
         if self._working:
             return
         self._begin_working(t("room_changes.refreshing"))
+        show_skeleton = not self.all_rows
+        if show_skeleton and hasattr(self, "skeleton"):
+            self.stack.setCurrentWidget(self.skeleton)
+            self.skeleton.raise_()
         started = self.tasks.run(
             "reload",
             self._fetch_requests,
@@ -1009,6 +1034,8 @@ class RoomChangesPage(QWidget):
         )
         if not started:
             self._end_working()
+            if show_skeleton:
+                self._update_view_state()
 
     def _on_reload_success(self, rows):
         self._apply_snapshot(rows)
@@ -1019,6 +1046,7 @@ class RoomChangesPage(QWidget):
             t("room_changes.refresh_failed_msg", message=message)
         )
         self.error_banner.setVisible(True)
+        self._update_view_state()
 
     # ---------------------------------------------------------- busy state
     def _begin_working(self, message: str):
@@ -1036,6 +1064,8 @@ class RoomChangesPage(QWidget):
         self._working = False
         self.busy_banner.setVisible(False)
         self._set_action_controls_enabled(True)
+        if hasattr(self, "skeleton") and self.stack.currentWidget() is self.skeleton:
+            self._update_view_state()
 
     def _set_action_controls_enabled(self, enabled: bool):
         if enabled:
@@ -1045,9 +1075,13 @@ class RoomChangesPage(QWidget):
             else:
                 self._clear_selection_state()
         else:
+            busy_tip = t("room_changes.working")
             self.approve_btn.setEnabled(False)
+            self.approve_btn.setToolTip(busy_tip)
             self.reject_btn.setEnabled(False)
+            self.reject_btn.setToolTip(busy_tip)
             self.delete_btn.setEnabled(False)
+            self.delete_btn.setToolTip(busy_tip)
             self.refresh_btn.setEnabled(False)
 
     def _show_action_success(self, message: str):
@@ -1301,12 +1335,12 @@ class RoomChangesPage(QWidget):
                 meta_parts.append(decided_at)
             if raw_stamp and raw_stamp != "—" and raw_stamp not in meta_parts:
                 meta_parts.append(raw_stamp)
-            self.rejection_meta.setText(" · ".join(meta_parts))
+            self.rejection_meta.setText(" — ".join(meta_parts))
             self.rejection_student_label.setText(
                 f"Student: {name} — Card ID {st.get('card_id') or '—'}"
             )
             self.rejection_rooms_label.setText(
-                f"Current room: {current_info} → Requested room: {pref_info}"
+                f"Current room: {current_info} | Requested room: {pref_info}"
             )
             self.rejection_motive_label.setText(
                 f"Student's original motive: “{reason or t('room_changes.no_reason')}”"
@@ -1351,6 +1385,7 @@ class RoomChangesPage(QWidget):
         self.delete_btn.setEnabled(True)
         self.delete_btn.setToolTip("")
         self.copy_summary_btn.setEnabled(True)
+        self.copy_summary_btn.setToolTip("")
 
         if status != "pending":
             self.approve_btn.setEnabled(False)

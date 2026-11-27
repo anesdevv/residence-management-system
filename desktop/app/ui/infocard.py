@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QFrame,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QScrollArea,
     QTableWidget,
@@ -130,10 +131,25 @@ def section_header(text: str) -> QLabel:
     return label
 
 
-def kpi_block(label: str, value, accent: str = "teal", icon: str = "bed", parent=None) -> StatCard:
-    """KPI block helper (kept importable): a ``StatCard`` with its value set."""
+def kpi_block(
+    label: str,
+    value,
+    accent: str = "teal",
+    icon: str = "bed",
+    parent=None,
+    *,
+    flat: bool = False,
+) -> StatCard:
+    """KPI block helper (kept importable): a ``StatCard`` (or flat borderless well inside cards)."""
     card = StatCard(label, icon, accent, parent)
     card.set_value(value)
+    if flat:
+        card.setProperty("cardFrame", False)
+        card.setObjectName("statWell")
+        card.setStyleSheet(
+            f"QFrame#statWell {{ background-color: {theme.C('surface-subtle')};"
+            f" border: none; border-radius: {theme.C('radius-input')}; }}"
+        )
     return card
 
 
@@ -366,7 +382,7 @@ class StudentInfoCardDialog(QDialog):
         study_level = self.student_data.get("study_level")
         if study_level:
             meta_parts.append(str(study_level))
-        self.meta_label.setText(" · ".join(meta_parts))
+        self.meta_label.setText(", ".join(meta_parts))
 
         status_raw = str(self.student_data.get("status", "active")).lower().strip()
         status_kind, status_label = _get_status_pill(
@@ -684,14 +700,15 @@ class RoomInfoCardDialog(QDialog):
 
         stats = QHBoxLayout()
         stats.setSpacing(S("space-3"))
-        stats.addWidget(kpi_block(t("infocard.total_capacity"), capacity, "navy"), 1)
-        stats.addWidget(kpi_block(t("infocard.occupied_beds"), occupied, "teal", icon="user-check"), 1)
+        stats.addWidget(kpi_block(t("infocard.total_capacity"), capacity, "navy", flat=True), 1)
+        stats.addWidget(kpi_block(t("infocard.occupied_beds"), occupied, "teal", icon="user-check", flat=True), 1)
         stats.addWidget(
             kpi_block(
                 t("infocard.available_beds"),
                 available,
                 "green" if available > 0 else "danger",
                 icon="bed",
+                flat=True,
             ),
             1,
         )
@@ -710,6 +727,7 @@ class RoomInfoCardDialog(QDialog):
 
         if occupants:
             table = QTableWidget(len(occupants), 3)
+            table.setProperty("borderless", True)
             configure_table(
                 table,
                 [
@@ -718,6 +736,10 @@ class RoomInfoCardDialog(QDialog):
                     t("infocard.table_col_faculty"),
                 ],
             )
+            header = table.horizontalHeader()
+            header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+            header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+            header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
             for index, occupant in enumerate(occupants):
                 occupant_name = (
                     f"{str(occupant.get('first_name', '')).strip()} {str(occupant.get('last_name', '')).strip()}".strip()

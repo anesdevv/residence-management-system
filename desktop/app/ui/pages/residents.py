@@ -38,12 +38,14 @@ from ...client import CLIENT_LOCK, get_cached_residence_settings, official_looku
 from .. import theme
 from ..components import (
     StatusPillDelegate,
+    Button,
     EmptyState,
     IconButton,
     InlineBanner,
     PageHeader,
     RosterMatchBadge,
     SearchField,
+    Skeleton,
     StatusPill,
     configure_table,
 )
@@ -159,16 +161,20 @@ class ResidentsPage(QWidget):
             title=t("residents.error_title"),
             message=t("residents.error_msg"),
         )
+        self.retry_btn = Button(t("common.retry"), "ghost", icon="refresh")
+        self.retry_btn.clicked.connect(self.reload)
+        self.error_banner.add_action(self.retry_btn)
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
 
         table_card = QFrame()
         table_card.setObjectName("cardFrame")
         card_layout = QVBoxLayout(table_card)
-        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setContentsMargins(1, 1, 1, 1)
 
         self.stack = QStackedWidget()
         self.table = QTableWidget(0, len(_COLUMNS))
+        self.table.setProperty("borderless", True)
         configure_table(self.table, _COLUMNS)
         self.table.setItemDelegateForColumn(5, StatusPillDelegate(self.table))
         self.table.setItemDelegateForColumn(6, StatusPillDelegate(self.table))
@@ -197,13 +203,23 @@ class ResidentsPage(QWidget):
             t("residents.empty_no_data_title"),
             t("residents.empty_no_data_desc"),
         )
+        res_refresh_btn = Button.secondary(t("common.refresh"), icon="refresh")
+        res_refresh_btn.clicked.connect(self.reload)
+        self.empty_no_data.actions.addWidget(res_refresh_btn)
+
         self.empty_no_match = EmptyState(
             "search",
             t("residents.empty_no_match_title"),
             t("residents.empty_no_match_desc"),
         )
+        res_clear_btn = Button.secondary(t("common.clear_search"), icon="x")
+        res_clear_btn.clicked.connect(self.search.clear)
+        self.empty_no_match.actions.addWidget(res_clear_btn)
+
         self.stack.addWidget(self.empty_no_data)
         self.stack.addWidget(self.empty_no_match)
+        self.skeleton = Skeleton(rows=6)
+        self.stack.addWidget(self.skeleton)
         card_layout.addWidget(self.stack)
         layout.addWidget(table_card, 1)
 
@@ -218,12 +234,20 @@ class ResidentsPage(QWidget):
         if self.tasks.is_busy("residents-reload"):
             return
         self.refresh_btn.setEnabled(False)
-        self.tasks.run(
+        show_skeleton = not self.rows
+        if show_skeleton:
+            self.stack.setCurrentWidget(self.skeleton)
+            self.skeleton.raise_()
+        started = self.tasks.run(
             "residents-reload",
             self._fetch_residents,
             on_success=self._on_reload_success,
             on_failed=self._on_reload_failed,
         )
+        if not started:
+            self.refresh_btn.setEnabled(True)
+            if show_skeleton:
+                self._update_empty_state()
 
     def set_residence_gender(self, gender: str | None) -> None:
         self.residence_gender = gender

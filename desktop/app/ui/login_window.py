@@ -215,7 +215,10 @@ class PasswordField(QLineEdit):
         super().__init__(parent)
         self.setPlaceholderText(t("login.password_placeholder"))
         self.setMinimumHeight(S("size-control"))
-        self.setStyleSheet("QLineEdit { padding-right: 34px; }")
+        self.setStyleSheet(
+            "QLineEdit { padding-right: 34px; }"
+            "QLineEdit:focus { padding: 4px 33px 4px 11px; }"
+        )
 
         self.toggle_btn = QToolButton(self)
         self.toggle_btn.setObjectName("togglePasswordButton")
@@ -223,9 +226,9 @@ class PasswordField(QLineEdit):
         self.toggle_btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.toggle_btn.setFixedSize(26, 26)
         self.toggle_btn.setStyleSheet(
-            "QToolButton { background: transparent; border: none; padding: 2px; margin: 0; border-radius: 4px; }"
+            f"QToolButton {{ background: transparent; border: 1px solid transparent; padding: 1px; margin: 0; border-radius: {C('radius-indicator')}; }}"
             f"QToolButton:hover {{ background-color: {C('surface-subtle')}; }}"
-            f"QToolButton:focus {{ border: 2px solid {C('teal-600')}; }}"
+            f"QToolButton:focus {{ border: 2px solid {C('teal-600')}; padding: {C('pad-zero')}; }}"
         )
         self.toggle_btn.clicked.connect(self.toggle_visibility)
         self.set_visible(False)
@@ -366,11 +369,11 @@ class LoginWindow(QWidget):
         col.setContentsMargins(0, 0, 0, 0)
         col.setSpacing(S("space-3"))
 
-        title = QLabel("RÉSIVO")
-        apply_role(title, "h1")
+        self.form_title = QLabel(t("login.sign_in"))
+        apply_role(self.form_title, "h1")
         self.subtitle_label = QLabel(t("login.subtitle"))
         apply_role(self.subtitle_label, "muted")
-        col.addWidget(title)
+        col.addWidget(self.form_title)
         col.addWidget(self.subtitle_label)
         col.addSpacing(S("space-4"))
 
@@ -395,9 +398,6 @@ class LoginWindow(QWidget):
         self.remember_checkbox.setObjectName("rememberSessionCheckbox")
         self.remember_checkbox.setChecked(get_remember_session_setting())
         self.remember_checkbox.toggled.connect(set_remember_session_setting)
-        self.remember_checkbox.setStyleSheet(
-            f"QCheckBox {{ color: {C('text-primary')}; font-size: {C('fs-small')}; margin-top: 4px; margin-bottom: 4px; }}"
-        )
         col.addWidget(self.remember_checkbox)
 
         # Failure banner — hidden until needed; ``self.status`` is its message
@@ -434,9 +434,10 @@ class LoginWindow(QWidget):
         self.lang_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.lang_btn.setFlat(True)
         self.lang_btn.setStyleSheet(
-            f"QPushButton {{ background: transparent; border: none; color: {C('text-muted')}; "
-            f"font-size: {C('fs-small')}; font-weight: {C('fw-medium')}; padding: 4px 8px; border-radius: 4px; }} "
-            f"QPushButton:hover {{ color: {C('teal-600')}; background-color: {C('surface-subtle')}; }}"
+            f"QPushButton {{ background: transparent; border: 1px solid transparent; color: {C('text-muted')}; "
+            f"font-size: {C('fs-small')}; font-weight: {C('fw-medium')}; padding: 4px 8px; border-radius: {C('radius-indicator')}; }} "
+            f"QPushButton:hover {{ color: {C('teal-600')}; background-color: {C('surface-subtle')}; }} "
+            f"QPushButton:focus {{ border: 2px solid {C('teal-600')}; padding: 3px 7px; color: {C('teal-600')}; }}"
         )
         self.lang_btn.setToolTip(t("terms.language"))
         self.lang_btn.clicked.connect(self._toggle_language)
@@ -460,6 +461,8 @@ class LoginWindow(QWidget):
             self.hero_value_line.setText(t("login.hero_desc"))
         if hasattr(self, "hero_caption"):
             self.hero_caption.setText(t("login.hero_caption"))
+        if hasattr(self, "form_title"):
+            self.form_title.setText(t("login.sign_in"))
         if hasattr(self, "subtitle_label"):
             self.subtitle_label.setText(t("login.subtitle"))
         if hasattr(self, "email_label"):

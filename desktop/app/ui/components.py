@@ -60,6 +60,7 @@ import sys
 
 from PySide6.QtCore import (
     QEasingCurve,
+    QEvent,
     QPoint,
     QPointF,
     QPropertyAnimation,
@@ -204,6 +205,24 @@ class Button(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.set_variant(variant, icon)
 
+    def changeEvent(self, event):  # noqa: N802 - Qt API
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.EnabledChange:
+            shape = Qt.CursorShape.PointingHandCursor if self.isEnabled() else Qt.CursorShape.ForbiddenCursor
+            self.setCursor(shape)
+
+    def paintEvent(self, event):  # noqa: N802 - Qt API
+        super().paintEvent(event)
+        if self.hasFocus() and self.isEnabled() and self._variant in _FILLED_VARIANTS:
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.setPen(QPen(QColor(C("surface")), 1.25))
+            rect = QRectF(self.rect()).adjusted(2.5, 2.5, -2.5, -2.5)
+            radius = max(1.0, float(S("radius-input")) - 2.0)
+            painter.drawRoundedRect(rect, radius, radius)
+            painter.end()
+
     def set_variant(self, variant, icon=None):
         """Switch variant (and optionally the icon) without recreating the widget."""
         self._variant = variant if variant in theme.BUTTON_STYLES else "secondary"
@@ -258,6 +277,7 @@ class IconButton(QPushButton):
 
     def __init__(self, icon_name, tooltip, variant="ghost", size=32, color=None, parent=None):
         super().__init__(parent)
+        self._variant = variant
         icon_px = max(12, int(size * 0.55))
         if color is None:
             color = C("surface") if variant in ("primary", "accent", "danger") else C("text-secondary")
@@ -269,6 +289,24 @@ class IconButton(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setProperty("variant", variant)
         self.setStyleSheet(self._icon_qss(variant))
+
+    def changeEvent(self, event):  # noqa: N802 - Qt API
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.EnabledChange:
+            shape = Qt.CursorShape.PointingHandCursor if self.isEnabled() else Qt.CursorShape.ForbiddenCursor
+            self.setCursor(shape)
+
+    def paintEvent(self, event):  # noqa: N802 - Qt API
+        super().paintEvent(event)
+        if self.hasFocus() and self.isEnabled() and self._variant in ("primary", "accent", "danger"):
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.setPen(QPen(QColor(C("surface")), 1.25))
+            rect = QRectF(self.rect()).adjusted(2.5, 2.5, -2.5, -2.5)
+            radius = max(1.0, float(S("radius-input")) - 2.0)
+            painter.drawRoundedRect(rect, radius, radius)
+            painter.end()
 
     @staticmethod
     def _icon_qss(variant: str) -> str:
@@ -285,13 +323,15 @@ class IconButton(QPushButton):
             )
         )
         ink = C("surface") if fill else C("text-secondary")
+        rest_border = C(fill) if fill else (C("border-input") if variant == "secondary" else "transparent")
+        focus_ring = C("teal-500") if fill == "navy-800" else (C("navy-900") if fill else C("teal-600"))
         return (
             f"QPushButton {{ background-color: {background}; color: {ink};"
-            f" border: 1px solid transparent; border-radius: {C('radius-input')}; padding: 0px; }}"
+            f" border: 1px solid {rest_border}; border-radius: {C('radius-input')}; padding: 1px; }}"
             f"QPushButton:hover {{ background-color: {hover}; }}"
             f"QPushButton:pressed {{ background-color: {pressed}; }}"
-            f"QPushButton:focus {{ border: 2px solid {C('teal-600')}; }}"
-            f"QPushButton:disabled {{ background-color: {C('surface-subtle')}; border: 1px solid {C('border')}; }}"
+            f"QPushButton:focus {{ border: 2px solid {focus_ring}; padding: {C('pad-zero')}; }}"
+            f"QPushButton:disabled {{ background-color: {C('surface-subtle')}; border: 1px solid {C('border')}; padding: 1px; }}"
         )
 
 
@@ -520,6 +560,193 @@ class Card(QFrame):
             self.footer.setSpacing(S("space-2"))
             self.footer.addStretch(1)
             self._root.addWidget(footer_frame)
+        self.footer.addWidget(widget)
+        return self.footer
+
+
+class CollapsibleCard(QFrame):
+    """Foldable section card: clickable header row + collapsible body.
+
+    Starts folded (``expanded=False``) by default so long settings lists remain
+    scannable and quiet until the user opens the section they need.
+    """
+
+    toggled = Signal(bool)
+
+    def __init__(
+        self,
+        title: str = "",
+        summary: str = "",
+        icon: str | None = None,
+        *,
+        expanded: bool = False,
+        parent=None,
+    ):
+        super().__init__(parent)
+        self.setObjectName("cardFrame")
+        self.setProperty("cardFrame", True)
+        self.footer = None
+        self._expanded = bool(expanded)
+        self._icon_name = icon
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        self.header_btn = QPushButton(self)
+        self.header_btn.setObjectName("collapsibleHeader")
+        self.header_btn.setCheckable(True)
+        self.header_btn.setChecked(self._expanded)
+        self.header_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.header_btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.header_btn.setStyleSheet(
+            "QPushButton#collapsibleHeader {"
+            " background-color: transparent; border: 2px solid transparent;"
+            f" border-radius: {C('radius-card')}; padding: 0px; min-height: 48px; text-align: left;"
+            " }"
+            f"QPushButton#collapsibleHeader:hover {{ background-color: {C('surface-subtle')}; }}"
+            f"QPushButton#collapsibleHeader:pressed {{ background-color: {C('surface-subtle')}; }}"
+            f"QPushButton#collapsibleHeader:focus {{ border: 2px solid {C('teal-600')}; padding: 0px; }}"
+        )
+        self.header_btn.setFixedHeight(52)
+
+        header_row = QHBoxLayout(self.header_btn)
+        header_row.setContentsMargins(S("space-4"), S("space-3"), S("space-4"), S("space-3"))
+        header_row.setSpacing(S("space-3"))
+
+        self._icon_label = None
+        if icon:
+            self._icon_label = QLabel(self.header_btn)
+            self._icon_label.setFixedSize(18, 18)
+            self._icon_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+            header_row.addWidget(self._icon_label, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self._title_label = QLabel(title or "", self.header_btn)
+        theme.apply_role(self._title_label, "h3")
+        self._title_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        header_row.addWidget(self._title_label, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self._badge_pill = StatusPill("neutral", "", parent=self.header_btn)
+        self._badge_pill.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self._badge_pill.setVisible(False)
+        header_row.addWidget(self._badge_pill, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        header_row.addStretch(1)
+
+        self._summary_label = QLabel(summary or "", self.header_btn)
+        theme.apply_role(self._summary_label, "small")
+        self._summary_label.setStyleSheet(f"color: {C('text-muted')}; background: transparent;")
+        self._summary_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self._summary_label.setVisible(bool(summary))
+        header_row.addWidget(self._summary_label, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self._chevron_label = QLabel(self.header_btn)
+        self._chevron_label.setFixedSize(16, 16)
+        self._chevron_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        header_row.addWidget(self._chevron_label, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self.header_btn.clicked.connect(self._on_header_clicked)
+        root.addWidget(self.header_btn)
+
+        self._body_container = QWidget(self)
+        self._body_container.setObjectName("collapsibleBody")
+        body_outer = QVBoxLayout(self._body_container)
+        body_outer.setContentsMargins(S("space-4"), 0, S("space-4"), S("space-4"))
+        body_outer.setSpacing(S("space-3"))
+
+        self._separator = QFrame(self._body_container)
+        self._separator.setFixedHeight(1)
+        self._separator.setProperty("role", "separator")
+        self._separator.setStyleSheet(f"background-color: {C('border')}; border: none;")
+        body_outer.addWidget(self._separator)
+
+        self.body = QVBoxLayout()
+        self.body.setContentsMargins(0, S("space-1"), 0, 0)
+        self.body.setSpacing(S("space-3"))
+        body_outer.addLayout(self.body)
+        self._body_outer = body_outer
+
+        root.addWidget(self._body_container)
+        self._sync_visual_state()
+
+    def _sync_visual_state(self) -> None:
+        self._body_container.setVisible(self._expanded)
+        self.header_btn.blockSignals(True)
+        self.header_btn.setChecked(self._expanded)
+        self.header_btn.blockSignals(False)
+        chevron_name = "chevron-down" if self._expanded else "chevron-right"
+        self._chevron_label.setPixmap(get_pixmap(chevron_name, 16, C("text-muted")))
+        if self._icon_label is not None and self._icon_name:
+            ink = C("teal-600") if self._expanded else C("text-secondary")
+            self._icon_label.setPixmap(get_pixmap(self._icon_name, 18, ink))
+
+    def _on_header_clicked(self) -> None:
+        self.set_expanded(not self._expanded)
+
+    def is_expanded(self) -> bool:
+        return self._expanded
+
+    def set_expanded(self, expanded: bool) -> None:
+        state = bool(expanded)
+        if state == self._expanded:
+            return
+        self._expanded = state
+        self._sync_visual_state()
+        self.toggled.emit(self._expanded)
+
+    def expand(self) -> None:
+        self.set_expanded(True)
+
+    def collapse(self) -> None:
+        self.set_expanded(False)
+
+    def toggle(self) -> None:
+        self.set_expanded(not self._expanded)
+
+    def set_title(self, text: str) -> "CollapsibleCard":
+        self._title_label.setText(text or "")
+        return self
+
+    def set_summary(self, text: str) -> "CollapsibleCard":
+        clean = (text or "").strip()
+        self._summary_label.setText(clean)
+        self._summary_label.setVisible(bool(clean))
+        return self
+
+    def set_badge(self, kind: str, text: str) -> "CollapsibleCard":
+        if text:
+            self._badge_pill.set_kind(kind, text)
+            self._badge_pill.setVisible(True)
+        else:
+            self._badge_pill.setVisible(False)
+        return self
+
+    def clear_badge(self) -> "CollapsibleCard":
+        self._badge_pill.setVisible(False)
+        return self
+
+    def add_widget(self, widget):
+        self.body.addWidget(widget)
+        return widget
+
+    def add_layout(self, layout):
+        self.body.addLayout(layout)
+        return layout
+
+    def add_footer_widget(self, widget):
+        if self.footer is None:
+            footer_frame = QFrame(self._body_container)
+            footer_frame.setObjectName("cardFooter")
+            separator = QFrame(self._body_container)
+            separator.setFixedHeight(1)
+            separator.setProperty("role", "separator")
+            separator.setStyleSheet(f"background-color: {C('border')}; border: none;")
+            self._body_outer.addWidget(separator)
+            self.footer = QHBoxLayout(footer_frame)
+            self.footer.setContentsMargins(0, 0, 0, 0)
+            self.footer.setSpacing(S("space-2"))
+            self.footer.addStretch(1)
+            self._body_outer.addWidget(footer_frame)
         self.footer.addWidget(widget)
         return self.footer
 
@@ -1295,7 +1522,12 @@ class Skeleton(QWidget):
 
     def showEvent(self, event):  # noqa: N802 - Qt API
         super().showEvent(event)
-        self._animation.start()
+        if theme.prefers_reduced_motion():
+            self._animation.stop()
+            self._pulse = 0.72
+            self.update()
+        else:
+            self._animation.start()
 
     def hideEvent(self, event):  # noqa: N802 - Qt API
         self._animation.stop()
@@ -1325,12 +1557,14 @@ class Toast(QFrame):
     auto-dismisses the toast.
     """
 
-    def __init__(self, message, kind="info", icon="bell", parent=None):
+    def __init__(self, message, kind="info", icon="bell", parent=None, dismissible=None):
         super().__init__(parent)
         self.setObjectName("toast")
         self._kind = kind if kind in _BANNER_KINDS else "info"
         status = _BANNER_KINDS[self._kind]
         tokens = _kind_tokens(status)
+        self._dismiss_timer: QTimer | None = None
+        self._remaining_ms: int = 0
         self.setProperty("kind", self._kind)
         self.setStyleSheet(
             f"QFrame#toast {{ background-color: {C('surface')};"
@@ -1348,38 +1582,80 @@ class Toast(QFrame):
         text.setMaximumWidth(320)
         row.addWidget(icon_label, 0, Qt.AlignmentFlag.AlignTop)
         row.addWidget(text, 1)
+        show_close = (self._kind == "error") if dismissible is None else bool(dismissible)
+        if show_close:
+            close_btn = IconButton("x", "Dismiss notification", variant="ghost", size=24, parent=self)
+            close_btn.clicked.connect(self.dismiss)
+            row.addWidget(close_btn, 0, Qt.AlignmentFlag.AlignTop)
+            self.close_btn = close_btn
+        else:
+            self.close_btn = None
         apply_elevation(self, 2)
+
+    def start_auto_dismiss(self, duration_ms: int) -> None:
+        """Start (or restart) the auto-dismiss timer cleanly."""
+        self._remaining_ms = max(0, int(duration_ms))
+        if self._dismiss_timer is None:
+            self._dismiss_timer = QTimer(self)
+            self._dismiss_timer.setSingleShot(True)
+            self._dismiss_timer.timeout.connect(self.dismiss)
+        self._dismiss_timer.start(self._remaining_ms)
+
+    def dismiss(self) -> None:
+        if self._dismiss_timer is not None:
+            self._dismiss_timer.stop()
+        self.deleteLater()
+
+    def enterEvent(self, event):  # noqa: N802 - Qt API
+        if self._dismiss_timer is not None and self._dismiss_timer.isActive():
+            rem = self._dismiss_timer.remainingTime()
+            if rem > 0:
+                self._remaining_ms = rem
+            self._dismiss_timer.stop()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):  # noqa: N802 - Qt API
+        if self._dismiss_timer is not None and self._remaining_ms > 0:
+            self._dismiss_timer.start(self._remaining_ms)
+        super().leaveEvent(event)
 
 
 def show_toast(parent, message, kind="info", icon="bell", duration_ms=4000):
     """Show a Toast at the bottom-right of ``parent``; auto-dismiss after 4 s.
 
-    Slides in 150 ms, raises above its siblings and calls ``deleteLater`` on
-    timeout (the timer and animation are parented to the toast itself).
+    Stacks above existing visible toasts without overlap, pauses timer on hover,
+    respects OS/user reduced-motion preference, and cleans up via ``deleteLater``.
     """
     if parent is None:
         return None
     toast = Toast(message, kind, icon, parent)
     toast.adjustSize()
     margin = S("space-6")
+    gap = S("space-2")
+    bottom_offset = margin
+    for sibling in parent.findChildren(Toast):
+        if sibling is not toast and sibling.isVisible():
+            bottom_offset += sibling.height() + gap
     end = QPoint(
         max(0, parent.width() - toast.width() - margin),
-        max(0, parent.height() - toast.height() - margin),
+        max(margin, parent.height() - toast.height() - bottom_offset),
     )
-    start = QPoint(end.x() + 16, end.y())
-    toast.move(start)
-    toast.show()
-    toast.raise_()
-    slide = QPropertyAnimation(toast, b"pos", toast)
-    slide.setDuration(S("dur-fast"))
-    slide.setStartValue(start)
-    slide.setEndValue(end)
-    slide.setEasingCurve(QEasingCurve.Type.OutCubic)
-    slide.start()
-    timer = QTimer(toast)
-    timer.setSingleShot(True)
-    timer.timeout.connect(toast.deleteLater)
-    timer.start(int(duration_ms))
+    if theme.prefers_reduced_motion():
+        toast.move(end)
+        toast.show()
+        toast.raise_()
+    else:
+        start = QPoint(end.x() + 16, end.y())
+        toast.move(start)
+        toast.show()
+        toast.raise_()
+        slide = QPropertyAnimation(toast, b"pos", toast)
+        slide.setDuration(S("dur-fast"))
+        slide.setStartValue(start)
+        slide.setEndValue(end)
+        slide.setEasingCurve(QEasingCurve.Type.OutCubic)
+        slide.start()
+    toast.start_auto_dismiss(int(duration_ms))
     return toast
 
 
@@ -1506,18 +1782,6 @@ class GradientHero(QFrame):
         gradient.setColorAt(0.55, qcolor("teal-600"))
         gradient.setColorAt(1.0, qcolor("green-500"))
         painter.fillPath(shape, gradient)
-        painter.setClipPath(shape)
-        pattern = qcolor("surface")
-        pattern.setAlpha(15)  # ~6% white, per DESIGN.md §1
-        pen = QPen(pattern, 1.5)
-        painter.setPen(pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        for index in range(3):
-            ring = QPainterPath()
-            span = rect.height() * (0.85 + index * 0.42)
-            center = QPointF(rect.right() - rect.height() * 0.1, rect.bottom() + rect.height() * 0.3)
-            ring.addEllipse(center, span, span)
-            painter.drawPath(ring)
         painter.end()
 
 
@@ -1560,19 +1824,32 @@ class LiveDot(QLabel):
             f" border-radius: {C('radius-dot')};"
         )
         theme.repolish(self)
-        if self._state == "connected" and self.isVisible():
+        if self._state == "connected" and self.isVisible() and not theme.prefers_reduced_motion():
             self._animation.start()
         else:
             self._animation.stop()
+            self._effect.setOpacity(1.0)
         return self
 
     def showEvent(self, event):  # noqa: N802 - Qt API
         super().showEvent(event)
-        if getattr(self, "_state", None) == "connected":
-            anim = getattr(self, "_animation", None)
+        anim = getattr(self, "_animation", None)
+        effect = getattr(self, "_effect", None)
+        if getattr(self, "_state", None) == "connected" and not theme.prefers_reduced_motion():
             if anim is not None:
                 try:
                     anim.start()
+                except RuntimeError:
+                    pass
+        else:
+            if anim is not None:
+                try:
+                    anim.stop()
+                except RuntimeError:
+                    pass
+            if effect is not None:
+                try:
+                    effect.setOpacity(1.0)
                 except RuntimeError:
                     pass
 

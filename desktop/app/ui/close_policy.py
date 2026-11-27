@@ -120,7 +120,7 @@ class CloseConfirmDialog(QDialog):
 
             self.dont_ask_checkbox = QCheckBox(t("close_dialog.dont_ask"))
             self.dont_ask_checkbox.setStyleSheet(
-                f"QCheckBox {{ color: {C('text-secondary')}; font-size: {C('fs-small')}; margin-top: 8px; }}"
+                f"QCheckBox {{ color: {C('text-secondary')}; font-size: {C('fs-small')}; margin-top: {C('space-2')}; }}"
             )
             card.add_widget(self.dont_ask_checkbox)
 

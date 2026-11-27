@@ -109,6 +109,7 @@ class ResidenceSetupDialog(QDialog):
         self.later_btn.clicked.connect(self.reject)
         self.save_btn = Button.primary(t("residence.setup_save_btn"))
         self.save_btn.setEnabled(False)
+        self.save_btn.setToolTip(t("settings.residence_setup_select_hint"))
         self.save_btn.setDefault(True)
         self.save_btn.clicked.connect(self.on_save)
         buttons.addWidget(self.later_btn)
@@ -124,7 +125,14 @@ class ResidenceSetupDialog(QDialog):
         return None
 
     def _sync_save_state(self) -> None:
-        self.save_btn.setEnabled((not self._busy) and self.selected_gender() is not None)
+        can_save = (not self._busy) and self.selected_gender() is not None
+        self.save_btn.setEnabled(can_save)
+        if self._busy:
+            self.save_btn.setToolTip(t("common.working"))
+        elif not can_save:
+            self.save_btn.setToolTip(t("settings.residence_setup_select_hint"))
+        else:
+            self.save_btn.setToolTip("")
 
     def _set_busy(self, busy: bool) -> None:
         self._busy = busy
@@ -281,6 +289,7 @@ class ResidenceGenderChangeDialog(QDialog):
 
         self.confirm_btn = Button.danger(t("settings.residence_change_confirm_btn"))
         self.confirm_btn.setEnabled(False)
+        self.confirm_btn.setToolTip(t("settings.residence_change_confirm_hint"))
         self.confirm_btn.setDefault(False)
         self.confirm_btn.setAutoDefault(False)
         self.confirm_btn.clicked.connect(self._on_confirm)
@@ -291,7 +300,9 @@ class ResidenceGenderChangeDialog(QDialog):
         apply_elevation(self, 2)
 
     def _on_text_changed(self, text: str) -> None:
-        self.confirm_btn.setEnabled(text == "CHANGE")
+        ready = text == "CHANGE"
+        self.confirm_btn.setEnabled(ready)
+        self.confirm_btn.setToolTip("" if ready else t("settings.residence_change_confirm_hint"))
 
     def _on_confirm(self) -> None:
         if self.confirm_edit.text() != "CHANGE":

@@ -332,7 +332,7 @@ class _QuotedBlock(QFrame):
         column.addWidget(self.body)
         self.setStyleSheet(
             f"QFrame#quotedBlock {{ background-color: {C('surface-subtle')};"
-            f" border: 1px solid {C('border')}; border-radius: {C('radius-input')}; }}"
+            f" border: none; border-radius: {C('radius-input')}; }}"
         )
 
     def set_text(self, text: str, *, is_empty: bool = False) -> None:
@@ -423,6 +423,9 @@ class MaintenancePage(QWidget):
             title=t("maintenance.error_load_title"),
             message=t("maintenance.error_load_msg"),
         )
+        self.retry_btn = Button(t("common.retry"), "ghost", icon="refresh")
+        self.retry_btn.clicked.connect(self.reload)
+        self.error_banner.add_action(self.retry_btn)
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
 
@@ -432,12 +435,13 @@ class MaintenancePage(QWidget):
 
         table_card = QFrame()
         table_card.setObjectName("cardFrame")
-        table_card.setMinimumWidth(420)
+        table_card.setMinimumWidth(460)
         card_layout = QVBoxLayout(table_card)
-        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setContentsMargins(1, 1, 1, 1)
 
         self.stack = QStackedWidget()
         self.table = QTableWidget(0, len(_COLUMNS))
+        self.table.setProperty("borderless", True)
         configure_table(self.table, _COLUMNS)
         self.table.setItemDelegateForColumn(2, StatusPillDelegate(self.table))
         _fit_columns(
@@ -449,9 +453,9 @@ class MaintenancePage(QWidget):
                 QHeaderView.ResizeMode.Interactive,
             ],
         )
-        self.table.setColumnWidth(0, 140)
-        self.table.setColumnWidth(2, 130)
-        self.table.setColumnWidth(3, 110)
+        self.table.setColumnWidth(0, 120)
+        self.table.setColumnWidth(2, 145)
+        self.table.setColumnWidth(3, 100)
         self.table.itemSelectionChanged.connect(self.show_detail)
         self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
         self.stack.addWidget(self.table)
@@ -461,7 +465,15 @@ class MaintenancePage(QWidget):
             t("maintenance.empty_view_title"),
             t("maintenance.empty_view_desc"),
         )
+        self.empty_reset_btn = Button.secondary(t("common.reset_filters"), icon="x")
+        self.empty_reset_btn.clicked.connect(self._reset_filters)
+        self.empty_refresh_btn = Button.secondary(t("common.refresh"), icon="refresh")
+        self.empty_refresh_btn.clicked.connect(self.reload)
+        self.empty_state.actions.addWidget(self.empty_reset_btn)
+        self.empty_state.actions.addWidget(self.empty_refresh_btn)
         self.stack.addWidget(self.empty_state)
+        self.skeleton = Skeleton(rows=6)
+        self.stack.addWidget(self.skeleton)
         card_layout.addWidget(self.stack)
         self.splitter.addWidget(table_card)
 
@@ -562,7 +574,7 @@ class MaintenancePage(QWidget):
         self.photo_label.setFixedHeight(S("space-12") * 3)
         self.photo_label.setStyleSheet(
             f"QLabel#maintenancePhotoLabel {{ background-color: {C('surface-subtle')};"
-            f" border: 1px dashed {C('border-strong')}; border-radius: {C('radius-input')};"
+            f" border: 1px solid {C('border-strong')}; border-radius: {C('radius-input')};"
             f" color: {C('text-muted')}; font-size: {C('fs-small')}; }}"
             f"QLabel#maintenancePhotoLabel:hover {{ border-color: {C('teal-600')}; }}"
         )
@@ -653,6 +665,7 @@ class MaintenancePage(QWidget):
         self.splitter.addWidget(self.panel)
         self.splitter.setStretchFactor(0, 3)
         self.splitter.setStretchFactor(1, 2)
+        self.splitter.setSizes([640, 380])
         layout.addWidget(self.splitter, 1)
 
         self._clear_selection_state()
@@ -713,12 +726,27 @@ class MaintenancePage(QWidget):
         finally:
             self.table.setUpdatesEnabled(True)
         self.stack.setCurrentIndex(0 if visible else 1)
+        self._sync_empty_reset_btn()
         self._update_segment_counts()
+
+    def _reset_filters(self):
+        self.search.clear()
+        if hasattr(self, "category_filter"):
+            self.category_filter.setCurrentIndex(0)
+        self.set_filter("all")
+
+    def _sync_empty_reset_btn(self) -> None:
+        if not hasattr(self, "empty_reset_btn"):
+            return
+        selected_cat = self.category_filter.currentData() if hasattr(self, "category_filter") else "all"
+        filtered = bool(self.search.text().strip() or self.filter_mode != "all" or selected_cat not in (None, "all"))
+        self.empty_reset_btn.setVisible(filtered)
 
     def _update_view_state(self):
         """Table/empty-state swap + segment counts (never rebuilds the table)."""
         visible = sum(1 for r in range(self.table.rowCount()) if not self.table.isRowHidden(r))
         self.stack.setCurrentIndex(0 if visible else 1)
+        self._sync_empty_reset_btn()
         self._update_segment_counts()
 
     def _update_segment_counts(self):
@@ -746,6 +774,8 @@ class MaintenancePage(QWidget):
         self.error_banner.set_kind(kind)
         self.error_banner.set_title(title)
         self.error_banner.set_message(message)
+        if hasattr(self, "retry_btn"):
+            self.retry_btn.setVisible(kind == "error")
         self.error_banner.setVisible(True)
 
     def _hide_banner(self, mode: str | None = None) -> None:
@@ -761,6 +791,7 @@ class MaintenancePage(QWidget):
             for button in (self.in_progress_btn, self.resolved_btn, self.delete_btn):
                 self._action_texts.setdefault(button, button.text())
                 button.setEnabled(False)
+                button.setToolTip(t("maintenance.tooltip_action_in_progress"))
             self.refresh_btn.setEnabled(False)
             if active_button is not None:
                 active_button.setText(_WORKING_TEXT)
@@ -938,6 +969,7 @@ class MaintenancePage(QWidget):
         self.resolved_btn.setEnabled(False)
         self.resolved_btn.setToolTip(t("maintenance.tooltip_select_to_resolve"))
         self.copy_summary_btn.setEnabled(False)
+        self.copy_summary_btn.setToolTip(t("maintenance.copy_summary_disabled_tooltip"))
         self._show_selection(False)
 
     def _fetch_rows(self) -> list[dict]:
@@ -979,15 +1011,22 @@ class MaintenancePage(QWidget):
             t("maintenance.error_load_msg_detail", detail=message),
             mode="reload",
         )
+        self._update_view_state()
 
     def _on_reload_finished(self) -> None:
         if not self._actions_busy:
             self.refresh_btn.setEnabled(True)
+        if hasattr(self, "skeleton") and self.stack.currentWidget() is self.skeleton:
+            self._update_view_state()
 
     def _reload_async(self) -> None:
         if self.tasks.is_busy(_RELOAD_KEY) or self._actions_busy:
             return
         generation = self._data_generation
+        show_skeleton = not self.rows
+        if show_skeleton and hasattr(self, "skeleton"):
+            self.stack.setCurrentWidget(self.skeleton)
+            self.skeleton.raise_()
         started = self.tasks.run(
             _RELOAD_KEY,
             self._fetch_rows,
@@ -996,6 +1035,8 @@ class MaintenancePage(QWidget):
             on_finished=self._on_reload_finished,
         )
         if not started:
+            if show_skeleton:
+                self._update_view_state()
             return
         self.refresh_btn.setEnabled(False)
         self._show_banner("info", _WORKING_TEXT, t("maintenance.refreshing"), mode="reload")
@@ -1059,6 +1100,7 @@ class MaintenancePage(QWidget):
         # Status actions: disabled with the reason in the tooltip.
         self._apply_action_buttons(r)
         self.copy_summary_btn.setEnabled(True)
+        self.copy_summary_btn.setToolTip("")
 
         # Staff / dispatch note.
         note = str(r.get("staff_note") or "").strip()

@@ -90,6 +90,7 @@ from ..components import (
     RosterMatchBadge,
     SearchField,
     SegmentedControl,
+    Skeleton,
     StatusPill,
     configure_table,
 )
@@ -431,6 +432,9 @@ class PendingPage(QWidget):
             title=t("pending.error_title"),
             message=t("pending.error_msg"),
         )
+        self.retry_btn = Button(t("common.retry"), "ghost", icon="refresh")
+        self.retry_btn.clicked.connect(self.reload)
+        self.error_banner.add_action(self.retry_btn)
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
 
@@ -451,17 +455,18 @@ class PendingPage(QWidget):
 
         table_card = QFrame()
         table_card.setObjectName("cardFrame")
-        table_card.setMinimumWidth(420)
+        table_card.setMinimumWidth(520)
         card_layout = QVBoxLayout(table_card)
-        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setContentsMargins(1, 1, 1, 1)
 
         cols = _columns()
         self.stack = QStackedWidget()
         self.table = QTableWidget(0, len(cols))
+        self.table.setProperty("borderless", True)
         configure_table(self.table, cols)
         self.table.setItemDelegateForColumn(3, StatusPillDelegate(self.table))
         self.table.setItemDelegateForColumn(4, StatusPillDelegate(self.table))
-        _fit_columns(
+        header = _fit_columns(
             self.table,
             [
                 QHeaderView.ResizeMode.Interactive,
@@ -471,9 +476,10 @@ class PendingPage(QWidget):
                 QHeaderView.ResizeMode.Interactive,
             ],
         )
-        self.table.setColumnWidth(0, 130)
-        self.table.setColumnWidth(3, 130)
-        self.table.setColumnWidth(4, 140)
+        header.setMinimumSectionSize(92)
+        self.table.setColumnWidth(0, 96)
+        self.table.setColumnWidth(3, 114)
+        self.table.setColumnWidth(4, 138)
         self.table.itemSelectionChanged.connect(self.show_detail)
         self.table.cellDoubleClicked.connect(self.on_row_double_clicked)
         self.stack.addWidget(self.table)
@@ -483,7 +489,15 @@ class PendingPage(QWidget):
             t("pending.empty_title"),
             t("pending.empty_desc"),
         )
+        self.empty_reset_btn = Button.secondary(t("common.reset_filters"), icon="x")
+        self.empty_reset_btn.clicked.connect(self._reset_filters)
+        self.empty_refresh_btn = Button.secondary(t("common.refresh"), icon="refresh")
+        self.empty_refresh_btn.clicked.connect(self.reload)
+        self.empty_state.actions.addWidget(self.empty_reset_btn)
+        self.empty_state.actions.addWidget(self.empty_refresh_btn)
         self.stack.addWidget(self.empty_state)
+        self.skeleton = Skeleton(rows=6)
+        self.stack.addWidget(self.skeleton)
         card_layout.addWidget(self.stack)
         self.splitter.addWidget(table_card)
 
@@ -495,6 +509,14 @@ class PendingPage(QWidget):
             t("pending.empty_inspector_desc"),
         )
         self.panel.add_widget(self.empty_panel)
+
+        self.inspector_scroll = QScrollArea()
+        self.inspector_scroll.setWidgetResizable(True)
+        self.inspector_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        inspector_body = QWidget()
+        inspector = QVBoxLayout(inspector_body)
+        inspector.setContentsMargins(0, 0, S("space-1"), 0)
+        inspector.setSpacing(S("space-3"))
 
         self.identity = QWidget()
         identity = QHBoxLayout(self.identity)
@@ -520,10 +542,10 @@ class PendingPage(QWidget):
         self.gender_warning_badge.setVisible(False)
         identity_column.addWidget(self.gender_warning_badge, 0, Qt.AlignmentFlag.AlignLeft)
         identity.addLayout(identity_column, 1)
-        self.panel.add_widget(self.identity)
+        inspector.addWidget(self.identity)
 
         self.facts = KeyValueList()
-        self.panel.add_widget(self.facts)
+        inspector.addWidget(self.facts)
 
         self.actions_row = QWidget()
         actions = QVBoxLayout(self.actions_row)
@@ -543,7 +565,6 @@ class PendingPage(QWidget):
         reject_row.addWidget(self.reject_btn, 1)
         reject_row.addWidget(self.delete_btn, 0)
         actions.addLayout(reject_row)
-        self.panel.add_widget(self.actions_row)
 
         self.delete_hint = QWidget()
         hint_row = QHBoxLayout(self.delete_hint)
@@ -559,7 +580,6 @@ class PendingPage(QWidget):
         hint_row.addWidget(hint_icon, 0, Qt.AlignmentFlag.AlignTop)
         hint_row.addWidget(hint_text, 1)
         self.delete_hint.setVisible(False)
-        self.panel.add_widget(self.delete_hint)
 
         self.record_block = QFrame()
         self.record_block.setObjectName("recordBlock")
@@ -584,11 +604,17 @@ class PendingPage(QWidget):
         record.addLayout(record_head)
         record.addWidget(record_body)
         record.addWidget(self.record_meta)
-        self.panel.add_widget(self.record_block)
+        inspector.addWidget(self.record_block)
+        inspector.addStretch(1)
+        self.inspector_scroll.setWidget(inspector_body)
+        self.panel.body.addWidget(self.inspector_scroll, 1)
+        self.panel.add_widget(self.actions_row)
+        self.panel.add_widget(self.delete_hint)
 
         self.detail_text = QPlainTextEdit()
         self.detail_text.setReadOnly(True)
         self.detail_text.setMinimumHeight(S("space-8"))
+        self.detail_text.setMaximumHeight(S("space-12") + S("space-8"))
         self.detail_text.setPlaceholderText(t("pending.detail_placeholder"))
         theme.enable_tabular(self.detail_text)
         self.panel.add_widget(self.detail_text)
@@ -596,6 +622,7 @@ class PendingPage(QWidget):
         # Widgets revealed only while a student is selected (``delete_hint`` is
         # toggled by the status rules in show_detail, not by selection alone).
         self._selection_widgets = [
+            self.inspector_scroll,
             self.identity,
             self.roster_badge,
             self.facts,
@@ -605,8 +632,9 @@ class PendingPage(QWidget):
         ]
 
         self.splitter.addWidget(self.panel)
-        self.splitter.setStretchFactor(0, 3)
+        self.splitter.setStretchFactor(0, 5)
         self.splitter.setStretchFactor(1, 2)
+        self.splitter.setSizes([760, 340])
         layout.addWidget(self.splitter, 1)
 
         self._show_selection(False)
@@ -772,9 +800,16 @@ class PendingPage(QWidget):
             self.show_detail()
         self._update_view_state()
 
+    def _reset_filters(self):
+        self.search.clear()
+        self.set_filter("all")
+
     def _update_view_state(self):
         """Segment counts + table/empty-state swap (never rebuilds the table)."""
         self.stack.setCurrentIndex(1 if not self.rows else 0)
+        if hasattr(self, "empty_reset_btn"):
+            filtered = bool(self.search.text().strip() or self.filter_mode != "all")
+            self.empty_reset_btn.setVisible(filtered)
         self._update_segment_counts()
 
     def _update_segment_counts(self):
@@ -890,6 +925,10 @@ class PendingPage(QWidget):
         self._request_id += 1
         req_id = self._request_id
         self._begin_working(t("pending.refreshing_msg"))
+        show_skeleton = not getattr(self, "all_rows", None)
+        if show_skeleton and hasattr(self, "skeleton"):
+            self.stack.setCurrentWidget(self.skeleton)
+            self.skeleton.raise_()
         callables = {
             "students": self._fetch_students,
             "official": self._fetch_official,
@@ -903,6 +942,8 @@ class PendingPage(QWidget):
         )
         if not started:
             self._end_working()
+            if show_skeleton:
+                self._update_view_state()
 
     def _on_gather_success(self, result: GatherResult) -> None:
         if result.request_id != self._request_id or getattr(self, "_closing", False):
@@ -929,6 +970,7 @@ class PendingPage(QWidget):
             t("pending.refresh_failed_msg", message=message)
         )
         self.error_banner.setVisible(True)
+        self._update_view_state()
 
     # ---------------------------------------------------------- busy state
     def _begin_working(self, message: str):
@@ -948,6 +990,8 @@ class PendingPage(QWidget):
         self._working = False
         self.busy_banner.setVisible(False)
         self._set_action_controls_enabled(True)
+        if hasattr(self, "skeleton") and self.stack.currentWidget() is self.skeleton:
+            self._update_view_state()
 
     def _set_action_controls_enabled(self, enabled: bool):
         if enabled:
@@ -1268,7 +1312,8 @@ class PendingPage(QWidget):
         tokens = theme.status_tokens(status_kind)
         self.record_block.setStyleSheet(
             f"QFrame#recordBlock {{ background-color: {tokens['bg']};"
-            f" border: 1px solid {tokens['border']}; border-radius: {C('radius-input')}; }}"
+            f" border: none; border-left: 3px solid {tokens['ink']};"
+            f" border-radius: {C('radius-input')}; }}"
         )
 
     def _detail_notes(self, status: str, status_text: str, student: dict, official_row) -> str:

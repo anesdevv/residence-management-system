@@ -365,13 +365,16 @@ class ClearAllRosterDialog(QDialog):
 
         self.delete_button = Button.danger(t("official_list.delete_all_btn"))
         self.delete_button.setEnabled(False)
+        self.delete_button.setToolTip(t("official_list.clear_dialog_type_hint"))
         self.delete_button.clicked.connect(self._on_confirm)
         buttons.addWidget(self.delete_button)
 
         layout.addLayout(buttons)
 
     def _on_text_changed(self, text: str) -> None:
-        self.delete_button.setEnabled(text.strip() == "DELETE")
+        ready = text.strip() == "DELETE"
+        self.delete_button.setEnabled(ready)
+        self.delete_button.setToolTip("" if ready else t("official_list.clear_dialog_type_hint"))
 
     def _on_confirm(self) -> None:
         if self.confirm_input.text().strip() == "DELETE":
@@ -395,9 +398,9 @@ class _RosterDropZone(QFrame):
         self.setAcceptDrops(True)
         self._apply_style()
 
-        self.body = QVBoxLayout(self)
-        self.body.setContentsMargins(S("space-6"), S("space-6"), S("space-6"), S("space-6"))
-        self.body.setSpacing(S("space-2"))
+        self.body = QHBoxLayout(self)
+        self.body.setContentsMargins(S("space-4"), S("space-3"), S("space-4"), S("space-3"))
+        self.body.setSpacing(S("space-3"))
 
     # -- drag & drop --------------------------------------------------------
     def dragEnterEvent(self, event):  # noqa: N802 - Qt API
@@ -434,11 +437,13 @@ class _RosterDropZone(QFrame):
     # -- styling ------------------------------------------------------------
     def _style_qss(self) -> str:
         active = bool(self.property("dragActive"))
-        border = C("teal-600") if active else C("border-strong")
+        border = C("teal-600") if active else C("border-input")
+        width = "2px" if active else "1px"
+        pad = C("pad-zero") if active else "1px"
         background = C("selection-tint") if active else C("surface-subtle")
         return (
             f"QFrame#rosterDropZone {{ background-color: {background};"
-            f" border: 2px dashed {border}; border-radius: {C('radius-card')}; }}"
+            f" border: {width} dashed {border}; padding: {pad}; border-radius: {C('radius-card')}; }}"
         )
 
     def _apply_style(self) -> None:
@@ -488,26 +493,25 @@ class OfficialListPage(QWidget):
         # ------------------------------------------------- import drop zone
         self.drop_zone = _RosterDropZone(self.on_import)
         drop_body = self.drop_zone.body
-        drop_body.addStretch(1)
 
         upload_icon = QLabel()
+        upload_icon.setFixedSize(22, 22)
         upload_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        upload_icon.setPixmap(get_pixmap("upload", 28, C("teal-600")))
-        drop_body.addWidget(upload_icon, 0, Qt.AlignmentFlag.AlignHCenter)
+        upload_icon.setPixmap(get_pixmap("upload", 20, C("teal-600")))
+        drop_body.addWidget(upload_icon, 0, Qt.AlignmentFlag.AlignVCenter)
 
+        drop_texts = QVBoxLayout()
+        drop_texts.setSpacing(2)
         drop_title = QLabel(t("official_list.import_card_title"))
         theme.apply_role(drop_title, "h3")
-        drop_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        drop_body.addWidget(drop_title)
-
+        drop_texts.addWidget(drop_title)
         drop_hint = _small_label(t("official_list.import_card_hint"))
-        drop_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        drop_body.addWidget(drop_hint)
+        drop_texts.addWidget(drop_hint)
+        drop_body.addLayout(drop_texts, 1)
 
         self.import_btn = Button.primary(t("official_list.import_btn"), icon="upload")
         self.import_btn.clicked.connect(lambda _checked=False: self.on_import())
-        drop_body.addWidget(self.import_btn, 0, Qt.AlignmentFlag.AlignHCenter)
-        drop_body.addStretch(1)
+        drop_body.addWidget(self.import_btn, 0, Qt.AlignmentFlag.AlignVCenter)
         layout.addWidget(self.drop_zone)
 
         # -------------------------------------------------- result summary
@@ -524,6 +528,9 @@ class OfficialListPage(QWidget):
             title=t("official_list.error_banner_title", default="Roster could not be loaded"),
             message=t("official_list.error_banner_msg", default="Check the connection, then use Refresh to try again."),
         )
+        self.retry_btn = Button(t("common.retry"), "ghost", icon="refresh")
+        self.retry_btn.clicked.connect(self.reload)
+        self.error_banner.add_action(self.retry_btn)
         self.error_banner.setVisible(False)
         layout.addWidget(self.error_banner)
 
@@ -538,7 +545,7 @@ class OfficialListPage(QWidget):
         self.search_input = self.search_field.edit
         toolbar.addWidget(self.search_field, 1)
 
-        self.add_btn = Button.primary(t("official_list.add_btn"), icon="plus")
+        self.add_btn = Button.secondary(t("official_list.add_btn"), icon="plus")
         self.add_btn.clicked.connect(lambda _checked=False: self.on_add())
         toolbar.addWidget(self.add_btn)
 
@@ -546,7 +553,17 @@ class OfficialListPage(QWidget):
         self.edit_btn.clicked.connect(lambda _checked=False: self.on_edit())
         toolbar.addWidget(self.edit_btn)
 
-        self.delete_selected_btn = Button.danger(t("official_list.delete_selected_btn"), icon="trash")
+        self.delete_selected_btn = Button.ghost(t("official_list.delete_selected_btn"), icon="trash")
+        self.delete_selected_btn.setStyleSheet(
+            f"QPushButton {{ background-color: transparent; color: {C('status-danger-ink')};"
+            f" border: 1px solid {C('status-danger-border')}; border-radius: {C('radius-input')};"
+            f" padding: 8px 14px; font-size: {C('fs-body')}; font-weight: {C('fw-semibold')}; }}"
+            f"QPushButton:hover {{ background-color: {C('status-danger-bg')}; border-color: {C('status-danger-ink')}; }}"
+            f"QPushButton:pressed {{ background-color: {C('status-danger-bg')}; }}"
+            f"QPushButton:focus {{ border: 2px solid {C('status-danger-ink')}; padding: 7px 13px; }}"
+            f"QPushButton:disabled {{ background-color: {C('surface-subtle')}; color: {C('text-muted')};"
+            f" border: 1px solid {C('border')}; padding: 8px 14px; }}"
+        )
         self.delete_selected_btn.clicked.connect(lambda _checked=False: self.on_delete_selected())
         toolbar.addWidget(self.delete_selected_btn)
 
@@ -563,10 +580,11 @@ class OfficialListPage(QWidget):
         table_card = QFrame()
         table_card.setObjectName("cardFrame")
         card_layout = QVBoxLayout(table_card)
-        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setContentsMargins(1, 1, 1, 1)
 
         self.stack = QStackedWidget()
         self.table = QTableWidget(0, len(_COLUMNS))
+        self.table.setProperty("borderless", True)
         configure_table(self.table, _COLUMNS)
         self.table.setSelectionMode(QTableWidget.SelectionMode.ExtendedSelection)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -594,14 +612,21 @@ class OfficialListPage(QWidget):
 
         self.empty_no_data = EmptyState(
             "file-spreadsheet",
-            "No roster records yet",
-            "Import a CSV or Excel list or add entries to seed the admissions database.",
+            t("official_list.empty_no_data_title"),
+            t("official_list.empty_no_data_desc"),
         )
+        roster_refresh_btn = Button.secondary(t("common.refresh"), icon="refresh")
+        roster_refresh_btn.clicked.connect(self.reload)
+        self.empty_no_data.actions.addWidget(roster_refresh_btn)
+
         self.empty_no_match = EmptyState(
             "search",
-            "No roster record matches",
-            "Clear the search field to see the full official list again.",
+            t("official_list.empty_no_match_title"),
+            t("official_list.empty_no_match_desc"),
         )
+        roster_clear_btn = Button.secondary(t("common.clear_search"), icon="x")
+        roster_clear_btn.clicked.connect(self.search_field.clear)
+        self.empty_no_match.actions.addWidget(roster_clear_btn)
         self.stack.addWidget(self.empty_no_data)
         self.stack.addWidget(self.empty_no_match)
 
@@ -611,7 +636,7 @@ class OfficialListPage(QWidget):
         card_layout.addWidget(self.stack)
         layout.addWidget(table_card, 1)
 
-        tip = _small_label("Official admissions roster — select entries to edit or delete, or double-click to view profile.")
+        tip = _small_label(t("official_list.double_click_tip"))
         layout.addWidget(tip)
 
         self._apply_import_gate()
@@ -664,10 +689,10 @@ class OfficialListPage(QWidget):
             self.delete_selected_btn.setToolTip(_ADMIN_MODIFY_TOOLTIP)
             self.delete_all_btn.setToolTip(_ADMIN_MODIFY_TOOLTIP)
         else:
-            self.add_btn.setToolTip("Add a verified student record manually")
-            self.edit_btn.setToolTip("Edit selected admissions record" if len(sel) == 1 else "Select exactly one entry to edit")
-            self.delete_selected_btn.setToolTip("Delete selected admissions records" if len(sel) > 0 else "Select one or more entries to delete")
-            self.delete_all_btn.setToolTip("Clear all records from admissions roster" if len(self.rows) > 0 else "Roster is empty")
+            self.add_btn.setToolTip(t("official_list.add_entry_tooltip"))
+            self.edit_btn.setToolTip(t("official_list.edit_selected_tooltip") if len(sel) == 1 else t("official_list.edit_no_selection_tooltip"))
+            self.delete_selected_btn.setToolTip(t("official_list.delete_selected_tooltip") if len(sel) > 0 else t("official_list.delete_no_selection_tooltip"))
+            self.delete_all_btn.setToolTip(t("official_list.delete_all_tooltip") if len(self.rows) > 0 else t("official_list.roster_empty_tooltip"))
 
     def _count_matching_pending(self, card_ids: set[str]) -> int:
         """Count pending applications matching any of the given card IDs."""
@@ -835,8 +860,10 @@ class OfficialListPage(QWidget):
     def _show_import_result(self, ok: bool, imported: int, skipped: int, errors: int, detail: str = "") -> None:
         """Result summary banner with the real counts of the import that ran."""
         self.result_banner.set_kind("success" if ok else "error")
-        self.result_banner.set_title("Roster import completed" if ok else "Roster import failed")
-        message = f"Imported {imported} · Skipped {skipped} · Errors {errors}"
+        self.result_banner.set_title(
+            t("official_list.import_completed_title") if ok else t("official_list.import_failed_title")
+        )
+        message = t("official_list.import_summary_counts", imported=imported, skipped=skipped, errors=errors)
         if detail:
             message = f"{message} — {detail}"
         self.result_banner.set_message(message)
