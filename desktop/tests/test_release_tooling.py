@@ -29,8 +29,10 @@ def test_installer_keeps_its_identity_and_update_contract():
     assert "make_release.ps1" in text
     assert '#define MyAppVersion "' not in text
 
-    # Single-instance mutex must match desktop/main.py.
+    # Single-instance mutex must match desktop/main.py, and silent updates
+    # must wait briefly for the launching process to release it.
     assert "AppMutex=RESIVO.Desktop.SingleInstance" in text
+    assert "CheckForMutexes('RESIVO.Desktop.SingleInstance')" in text
     assert "CloseApplications=yes" in text
     assert "RestartApplications=no" in text
     assert "UsePreviousAppDir=yes" in text

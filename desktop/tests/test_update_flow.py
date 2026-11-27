@@ -147,7 +147,7 @@ def test_install_request_rejects_a_non_ready_state(qapp):
     assert service.failed
 
 
-def test_installer_launch_releases_the_lock_then_closes(qapp, monkeypatch):
+def test_installer_launch_releases_the_lock_and_mutex_then_closes(qapp, monkeypatch):
     installer = Path(r"C:\updates\Setup-RESIVO-1.2.3.exe")
     service = FakeService(installer=installer)
     window = DummyWindow(service, installer=installer)
@@ -161,11 +161,23 @@ def test_installer_launch_releases_the_lock_then_closes(qapp, monkeypatch):
             self.unlocked = True
 
     lock = FakeLock()
-    previous = getattr(qapp, "_instance_lock", None)
+    mutex_handle = object()
+    previous_lock = getattr(qapp, "_instance_lock", None)
+    previous_mutex = getattr(qapp, "_instance_mutex", None)
     qapp._instance_lock = lock
+    qapp._instance_mutex = mutex_handle
 
-    launched = []
-    monkeypatch.setattr(mw, "launch_installer", lambda path: launched.append(path))
+    events = []
+    monkeypatch.setattr(
+        mw.win32_compat,
+        "release_named_mutex",
+        lambda h: events.append(("release_mutex", h)),
+    )
+    monkeypatch.setattr(
+        mw,
+        "launch_installer",
+        lambda path: events.append(("launch", path)),
+    )
 
     class FakeTimer:
         @staticmethod
@@ -176,10 +188,11 @@ def test_installer_launch_releases_the_lock_then_closes(qapp, monkeypatch):
     try:
         mw.MainWindow._install_pending_update(window)
     finally:
-        qapp._instance_lock = previous
+        qapp._instance_lock = previous_lock
+        qapp._instance_mutex = previous_mutex
 
     assert lock.unlocked is True
-    assert launched == [installer]
+    assert events == [("release_mutex", mutex_handle), ("launch", installer)]
     assert window.closed is True
     assert window._pending_update_path is None
 
@@ -191,6 +204,20 @@ def test_installer_launch_failure_keeps_the_app_open(qapp, monkeypatch):
     window._pending_update_path = installer
     window._shutdown_confirmed = True
 
+    mutex_handle = object()
+    restored_handle = object()
+    previous_mutex = getattr(qapp, "_instance_mutex", None)
+    qapp._instance_mutex = mutex_handle
+
+    released = []
+    recreated = []
+    monkeypatch.setattr(mw.win32_compat, "release_named_mutex", released.append)
+    monkeypatch.setattr(
+        mw.win32_compat,
+        "create_named_mutex",
+        lambda name: recreated.append(name) or restored_handle,
+    )
+
     def _boom(path):
         raise UpdateError("bad_installer_path")
 
@@ -200,8 +227,14 @@ def test_installer_launch_failure_keeps_the_app_open(qapp, monkeypatch):
         mw.components, "show_toast", lambda *a, **k: toasts.append((a, k))
     )
 
-    mw.MainWindow._install_pending_update(window)
+    try:
+        mw.MainWindow._install_pending_update(window)
+        assert qapp._instance_mutex is restored_handle
+    finally:
+        qapp._instance_mutex = previous_mutex
 
+    assert released == [mutex_handle]
+    assert recreated == ["RESIVO.Desktop.SingleInstance"]
     assert window.closed is False
     assert window._shutdown_confirmed is False
     assert service.failed

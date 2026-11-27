@@ -61,6 +61,7 @@ except ImportError:
     from desktop.i18n import current_language, t, tn
 
 from desktop.auth.session_store import session_manager
+from desktop.platform import win32_compat
 from desktop.updater import prefs as update_prefs
 from desktop.updater.installer import launch_installer
 from desktop.updater.service import UpdateService
@@ -1427,8 +1428,8 @@ class MainWindow(QMainWindow):
         if getattr(self, "tray_icon", None) is not None:
             self.tray_icon.hide()
 
-        # The installer relaunches RÉSIVO; the single-instance lock must be
-        # free before that child starts.
+        # The installer checks AppMutex and relaunches RÉSIVO; both the
+        # single-instance lock and the named mutex must be free before it runs.
         app = QGuiApplication.instance()
         lock = getattr(app, "_instance_lock", None) if app is not None else None
         if lock is not None:
@@ -1437,11 +1438,20 @@ class MainWindow(QMainWindow):
             except Exception:  # noqa: BLE001 - best effort release
                 _log.warning("Could not release the single-instance lock")
             app._instance_lock = None
+        mutex = getattr(app, "_instance_mutex", None) if app is not None else None
+        if mutex is not None:
+            try:
+                win32_compat.release_named_mutex(mutex)
+            except Exception:  # noqa: BLE001 - best effort release
+                _log.warning("Could not release the single-instance mutex")
+            app._instance_mutex = None
 
         try:
             launch_installer(path)
         except Exception as exc:  # noqa: BLE001 - keep the old install usable
             _log.error("Could not launch the update installer: %s", exc.__class__.__name__)
+            if mutex is not None and app is not None and getattr(app, "_instance_mutex", None) is None:
+                app._instance_mutex = win32_compat.create_named_mutex("RESIVO.Desktop.SingleInstance")
             message = human_error(exc)
             try:
                 update_prefs.set_install_error(message)

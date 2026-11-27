@@ -89,12 +89,26 @@ begin
 end;
 
 function InitializeSetup(): Boolean;
+var
+  WaitAttempt: Integer;
 begin
   if not IsWin64 then
   begin
     MsgBox(CustomMessage('Require64BitWindows'), mbCriticalError, MB_OK);
     Result := False;
     Exit;
+  end;
+  if IsUpdateInstall then
+  begin
+    { Older builds (e.g. v0.1.4) spawn the silent updater before exiting and
+      releasing RESIVO.Desktop.SingleInstance; wait briefly so Inno Setup's
+      AppMutex check does not silently cancel under /SUPPRESSMSGBOXES. }
+    WaitAttempt := 0;
+    while CheckForMutexes('RESIVO.Desktop.SingleInstance') and (WaitAttempt < 150) do
+    begin
+      Sleep(100);
+      WaitAttempt := WaitAttempt + 1;
+    end;
   end;
   Result := True;
 end;
