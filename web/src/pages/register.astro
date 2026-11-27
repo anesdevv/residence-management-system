@@ -51,7 +51,7 @@ const panelItems = [
 ];
 ---
 
-<Layout title={locale === 'fr' ? 'Inscription Résident — RÉSIVO' : 'Resident Registration — RÉSIVO'} activeNav="register">
+<Layout title={locale === 'fr' ? 'Inscription Résident : RÉSIVO' : 'Resident Registration: RÉSIVO'} activeNav="register">
   <div class="flex flex-col gap-6">
     <PageHeader
       title={isRegistrationOpen(residence) ? residenceTypeHeader : t(locale, 'auth.register_title')}
@@ -226,7 +226,7 @@ const panelItems = [
                 required
                 autocomplete="tel"
                 dir="ltr"
-                placeholder="05 / 06 / 07..."
+                placeholder="05 / 06 / 07…"
               />
               <p class="field-hint">{t(locale, 'auth.phone_hint')}</p>
             </div>
@@ -332,8 +332,11 @@ const panelItems = [
             <Turnstile action="register" />
           </div>
           <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-line pt-4">
-            <a class="link text-small font-semibold" href={localizePath(locale, '/login')}>{t(locale, 'auth.register_have_account')} {t(locale, 'auth.sign_in')} →</a>
-            <button class="btn btn-primary w-full sm:w-auto min-h-[44px]" type="submit" disabled={registrationClosed}>
+            <p class="text-small text-ink-2">
+              {t(locale, 'auth.register_have_account')}{' '}
+              <a class="link font-semibold whitespace-nowrap" href={localizePath(locale, '/login')}>{t(locale, 'auth.sign_in')}</a>
+            </p>
+            <button class="btn btn-primary w-full sm:w-auto min-h-[44px] whitespace-nowrap" type="submit" disabled={registrationClosed}>
               <Icon name="check-circle" size={18} />
               <span>{t(locale, 'auth.register_submit_btn')}</span>
             </button>
@@ -348,7 +351,7 @@ const panelItems = [
           <BrandMark variant="mark" tone="white" size={36} />
           <div>
             <span class="block font-display text-h2 text-surface">RÉSIVO</span>
-            <span class="block text-small font-normal text-on-dark-2">Cité Universitaire · DOU Tlemcen</span>
+            <span class="block text-small font-normal text-on-dark-2">Cité Universitaire, DOU Tlemcen</span>
           </div>
         </div>
 

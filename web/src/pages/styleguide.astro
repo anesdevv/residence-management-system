@@ -43,7 +43,7 @@ const brandSwatches = [
   { token: 'teal-600', hex: '#0D7180', utility: 'teal-600', use: 'Links, focus ring, active accents (5.7:1 on white)' },
   { token: 'teal-500', hex: '#109D9A', utility: 'teal-500', use: 'Highlights, charts, occupancy bars' },
   { token: 'green-500', hex: '#0CA792', utility: 'green-500', use: 'Brand-gradient end, success glow' },
-  { token: 'gold-500', hex: '#E5A853', utility: 'gold-500', use: 'Premium accent only — never text on white' },
+  { token: 'gold-500', hex: '#E5A853', utility: 'gold-500', use: 'Premium accent only, never text on white' },
   { token: 'gold-300', hex: '#F1CE92', utility: 'gold-300', use: 'Gold text/icons on navy or the gradient only' },
 ];
 
@@ -55,33 +55,33 @@ const neutralSwatches = [
   { token: 'border-strong', hex: '#C5D0DE', utility: 'line-strong', use: 'Outlined controls, secondary buttons' },
   { token: 'text-primary', hex: '#0B1B33', utility: 'ink', use: 'Body ink' },
   { token: 'text-secondary', hex: '#44546A', utility: 'ink-2', use: 'Secondary ink, table values' },
-  { token: 'text-muted', hex: '#5B6B82', utility: 'muted', use: 'Labels, hints, overlines' },
+  { token: 'text-muted', hex: '#5B6B82', utility: 'muted', use: 'Labels, hints, descriptions' },
   { token: 'text-on-dark', hex: '#E6EDF6', utility: 'on-dark', use: 'Text on navy and dark surfaces' },
   { token: 'text-on-dark-muted', hex: '#9FB3CC', utility: 'on-dark-2', use: 'Secondary text on navy' },
-  { token: 'navy-hover', hex: '#10305A', utility: '—', use: 'Hover on navy surfaces' },
-  { token: 'selection-tint', hex: '#E6F2F4', utility: '—', use: 'Selected table row (with navy-800 ink)' },
+  { token: 'navy-hover', hex: '#10305A', utility: 'CSS variable', use: 'Hover on navy surfaces' },
+  { token: 'selection-tint', hex: '#E6F2F4', utility: 'CSS variable', use: 'Selected table row (with navy-800 ink)' },
 ];
 
 const statusSwatches = [
-  { kind: 'ok', label: 'Active · Approved · Resolved · Matched', ink: '#05603A', bg: '#E8F7EF', line: '#A9E2C4' },
+  { kind: 'ok', label: 'Active, Approved, Resolved, Matched', ink: '#05603A', bg: '#E8F7EF', line: '#A9E2C4' },
   { kind: 'pending', label: 'Pending', ink: '#8A4B08', bg: '#FFF6E5', line: '#F3D49B' },
   { kind: 'review', label: 'Under review', ink: '#4338CA', bg: '#EEF0FF', line: '#C7CBFA' },
   { kind: 'progress', label: 'In progress', ink: '#174EA6', bg: '#EAF1FD', line: '#B9D0F7' },
-  { kind: 'danger', label: 'Rejected · Urgent · Not in roster', ink: '#9B1C1C', bg: '#FDEDED', line: '#F5B9B9' },
+  { kind: 'danger', label: 'Rejected, Urgent, Not in roster', ink: '#9B1C1C', bg: '#FDEDED', line: '#F5B9B9' },
   { kind: 'neutral', label: 'Counts, informational', ink: '#44546A', bg: '#EDF2F7', line: '#DCE4EE' },
 ];
 
 const typeScale = [
-  { name: 'display', spec: 'Outfit 700 · 32/40 · -0.02em', class: 'font-display text-display text-ink' },
-  { name: 'h1', spec: 'Outfit 600 · 24/32', class: 'font-display text-h1 text-ink' },
-  { name: 'h2', spec: 'Outfit 600 · 18/26', class: 'font-display text-h2 text-ink' },
-  { name: 'h3', spec: 'Inter 600 · 15/22', class: 'text-h3 text-ink' },
-  { name: 'body', spec: 'Inter 400 · 14/22', class: 'text-body text-ink' },
-  { name: 'small', spec: 'Inter 500 · 12/18', class: 'text-small text-muted' },
-  { name: 'overline', spec: 'Inter 600 · 11/16 · uppercase +0.08em', class: 'overline' },
+  { name: 'display', spec: 'Outfit 700, 32/40, -0.02em', class: 'font-display text-display text-ink' },
+  { name: 'h1', spec: 'Outfit 600, 24/32', class: 'font-display text-h1 text-ink' },
+  { name: 'h2', spec: 'Outfit 600, 18/26', class: 'font-display text-h2 text-ink' },
+  { name: 'h3', spec: 'Inter 600, 15/22', class: 'text-h3 text-ink' },
+  { name: 'body', spec: 'Inter 400, 14/22', class: 'text-body text-ink' },
+  { name: 'small', spec: 'Inter 500, 12/18', class: 'text-small text-muted' },
+  { name: 'overline', spec: 'Inter 600, 12/18, sentence case', class: 'overline' },
 ];
 
-const sample = 'Cité Universitaire Tlemcen — 0123';
+const sample = 'Cité Universitaire Tlemcen: 0123';
 const legacyKinds = [
   'active',
   'approved',
@@ -104,20 +104,21 @@ const tableRows = [
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" class="overflow-x-clip">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0A2342" />
+    <meta name="description" content="RÉSIVO design system tokens, typography, and component reference." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Style guide — RÉSIVO</title>
+    <title>Style guide | RÉSIVO</title>
   </head>
-  <body class="bg-canvas text-ink">
+  <body class="overflow-x-clip bg-canvas text-ink">
     <main class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
       <PageHeader
         title="RÉSIVO style guide"
         overline="Dev only"
-        subtitle="Tokens, classes and components from docs/DESIGN.md §2–§6. Served by astro dev; production answers 404 and nothing links here."
+        subtitle="Tokens, classes and components from docs/DESIGN.md §2-§6. Served by astro dev; production answers 404 and nothing links here."
       >
         <Fragment slot="actions">
           <a class="btn btn-secondary" href="/">
@@ -149,15 +150,15 @@ const tableRows = [
           <div class="card p-3">
             <div class={swatchBox} style="background-image: var(--grad-brand)" />
             <p class="mt-3 text-h3 text-ink">grad-brand</p>
-            <p class={mono}>135deg · navy-800 → teal-600 → green-500</p>
+            <p class={mono}>135deg, navy-800 → teal-600 → green-500</p>
             <p class="text-small font-normal text-muted">
               Allowed only on: landing/login hero, the resident pass, the 3px shell top line and the landing hero
               primary CTA. Never on cards, tables or buttons.
             </p>
           </div>
           <div class="rounded-card bg-navy-900 p-4">
-            <p class="overline text-on-dark">Gold on navy — allowed</p>
-            <p class="mt-2 font-display text-h2 text-gold-300">RÉSIVO · gold-300</p>
+            <p class="text-small font-semibold text-on-dark">Gold on navy: allowed</p>
+            <p class="mt-2 font-display text-h2 text-gold-300">RÉSIVO, gold-300</p>
             <p class="mt-1 text-small font-normal text-on-dark-2">
               Gold is never text on white; on navy or the gradient gold-300 carries the premium accent.
             </p>
@@ -183,7 +184,7 @@ const tableRows = [
 
       <section class={section}>
         <h2 class={heading}>Semantic status</h2>
-        <p class={lede}>Always colour + icon + text label — never colour alone.</p>
+        <p class={lede}>Always colour + icon + text label, never colour alone.</p>
         <div class={grid}>
           {statusSwatches.map((s) => (
             <div class="card p-3">
@@ -193,7 +194,7 @@ const tableRows = [
                 {s.kind}
               </div>
               <p class="mt-3 text-h3 text-ink">badge-{s.kind}</p>
-              <p class={mono}>ink {s.ink} · bg {s.bg} · line {s.line}</p>
+              <p class={mono}>ink {s.ink}, bg {s.bg}, line {s.line}</p>
               <p class="mt-1 text-small font-normal text-muted">{s.label}</p>
             </div>
           ))}
@@ -218,7 +219,7 @@ const tableRows = [
           ))}
         </div>
         <p class="mt-3 text-small font-normal text-muted">
-          Tabular figures for IDs, room numbers, counts and dates: <span class="tnum">20230001 · A-3-14 · 12 / 20</span>
+          Tabular figures for IDs, room numbers, counts and dates: <span class="tnum">20230001 / A-3-14 / 12 of 20</span>
         </p>
       </section>
 
@@ -263,7 +264,7 @@ const tableRows = [
               animate table rows during a live-sync redraw.
             </p>
             <p class="mt-2 text-small font-normal text-teal-600 transition-colors hover:text-navy-800">
-              Hover me — colour only, no movement
+              Hover me: colour only, no movement
             </p>
           </div>
         </div>
@@ -308,18 +309,18 @@ const tableRows = [
               <Icon name="refresh" size={16} />
             </a>
             <span class="text-small font-normal text-muted">
-              Hover: navy-800 → navy-700 · teal-600 darkens · secondary/subtle. Icon-only controls need a label.
+              Hover: navy-800 → navy-700, teal-600 darkens, secondary/subtle. Icon-only controls need a label.
             </span>
           </div>
 
-          <div class="flex flex-wrap items-center gap-3 rounded-card bg-subtle p-4">
+          <div class="flex flex-wrap items-center gap-3 rounded-input bg-subtle p-4">
             <span title="Pending applications cannot be deleted">
               <button class="btn btn-danger" type="button" disabled aria-describedby="sg-disabled-1">
                 <Icon name="trash" size={16} />
                 <span>Delete application</span>
               </button>
             </span>
-            <span title="This account is your own — sign in as another admin to remove it">
+            <span title="This account is your own: sign in as another admin to remove it">
               <a class="btn btn-secondary" href="/" aria-disabled="true" aria-describedby="sg-disabled-2">
                 <Icon name="trash" size={16} />
                 <span>Delete account</span>
@@ -327,7 +328,7 @@ const tableRows = [
             </span>
           </div>
           <p class="field-hint" id="sg-disabled-1">
-            Disabled pattern: the wrapper carries the tooltip title, the control carries aria-describedby — the reason
+            Disabled pattern: the wrapper carries the tooltip title, the control carries aria-describedby; the reason
             is always visible in text too.
           </p>
           <p class="field-hint" id="sg-disabled-2">
@@ -339,7 +340,7 @@ const tableRows = [
               <Icon name="user" size={16} />
               <span>Register as Resident</span>
             </a>
-            <span class="text-small font-normal text-muted">btn-gradient — landing hero primary CTA only.</span>
+            <span class="text-small font-normal text-muted">btn-gradient: landing hero primary CTA only.</span>
           </div>
         </div>
       </section>
@@ -358,13 +359,13 @@ const tableRows = [
             <input class="input" id="sg-error" value="0550" aria-invalid="true" aria-describedby="sg-error-msg" />
             <p class="field-error" id="sg-error-msg">
               <Icon name="alert-circle" size={14} />
-              <span>Number is invalid — 10 digits required.</span>
+              <span>Number is invalid: 10 digits required.</span>
             </p>
           </div>
           <div class="flex flex-col gap-2">
             <label class="label" for="sg-disabled">Account status</label>
             <input class="input" id="sg-disabled" value="Active" disabled />
-            <p class="field-hint">Disabled — subtle background, muted text, not focusable.</p>
+            <p class="field-hint">Disabled: subtle background, muted text, not focusable.</p>
           </div>
           <div class="flex flex-col gap-2">
             <label class="label" for="sg-select">Maintenance category</label>
@@ -414,13 +415,13 @@ const tableRows = [
 
       <section class={section}>
         <h2 class={heading}>Banners</h2>
-        <p class={lede}>info / success / warning / error — token tints, always with an icon.</p>
+        <p class={lede}>info / success / warning / error: token tints, always with an icon.</p>
         <div class="mt-6 grid gap-4 lg:grid-cols-2">
           <InlineBanner kind="info" title="Roster check pending">
             Housing officers cross-reference your record with the official admission lists.
           </InlineBanner>
           <InlineBanner kind="success" title="Room assigned">
-            Your allocation is confirmed — collect your key at the housing bureau.
+            Your allocation is confirmed; collect your key at the housing bureau.
           </InlineBanner>
           <InlineBanner kind="warning" title="One place left">
             Block B, floor 2 is almost full. Allocations are first come, first served.
@@ -447,7 +448,7 @@ const tableRows = [
           <Toast kind="info" message="Ticket #142 was received and queued for triage." static />
           <Toast kind="success" message="Room change request approved." static />
           <Toast kind="warning" message="Your session expires in 5 minutes." static />
-          <Toast kind="error" message="Photo upload failed — try again in a moment." static />
+          <Toast kind="error" message="Photo upload failed; try again in a moment." static />
         </div>
       </section>
 
@@ -554,7 +555,7 @@ const tableRows = [
               <p class="text-small font-normal text-muted">Reviewer: housing bureau (Bloc A)</p>
             </Fragment>
           </Card>
-          <Card tone="flat" title="Flat card" subtitle="No elevation — dense panels, nested content">
+          <Card tone="flat" title="Flat card" subtitle="No elevation: dense panels, nested content">
             <p class="text-body text-ink-2">Cards carry a hairline border; shadow-e1 only on the default tone.</p>
           </Card>
         </div>
@@ -580,7 +581,7 @@ const tableRows = [
 
       <section class={section}>
         <h2 class={heading}>Occupancy bars</h2>
-        <p class={lede}>teal-500 normally, pending when one place is left, danger + the word "Full" when full.</p>
+        <p class={lede}>teal-500 normally, pending when one place is left, danger + the word “Full” when full.</p>
         <div class="card mt-6 grid gap-6 p-4 sm:p-6 lg:grid-cols-3">
           <OccupancyBar label="Block A · floor 2" occupied={8} capacity={20} />
           <OccupancyBar label="Block B · floor 1" occupied={19} capacity={20} />
@@ -647,7 +648,7 @@ const tableRows = [
             </span>
             <span class="flex items-center gap-2">
               <Avatar name="Nour Belkacem" />
-              <span class="text-small font-normal text-muted">default 40 · same name → same tint</span>
+              <span class="text-small font-normal text-muted">default 40, same name → same tint</span>
             </span>
           </div>
           <div class="flex flex-wrap items-center gap-3 border-t border-line pt-4">
@@ -678,7 +679,7 @@ const tableRows = [
             <KeyValue columns={1}>
               <div>
                 <dt class="overline">Assigned room</dt>
-                <dd class="mt-0.5 text-body text-ink tnum">Block A · Floor 2 · Room 14</dd>
+                <dd class="mt-0.5 text-body text-ink tnum">Block A, Floor 2, Room 14</dd>
               </div>
               <div>
                 <dt class="overline">Roster match</dt>
@@ -732,23 +733,23 @@ const tableRows = [
         <div class="card mt-6 flex flex-wrap items-end gap-6 p-4 sm:p-6">
           <span class="flex flex-col items-center gap-2">
             <BrandMark variant="mark" size={48} />
-            <span class="text-small font-normal text-muted">mark · brand</span>
+            <span class="text-small font-normal text-muted">mark (brand)</span>
           </span>
           <span class="flex flex-col items-center gap-2">
             <BrandMark variant="logo" size={96} />
-            <span class="text-small font-normal text-muted">logo · brand</span>
+            <span class="text-small font-normal text-muted">logo (brand)</span>
           </span>
-          <span class="flex flex-col items-center gap-2 rounded-card bg-navy-900 p-4">
+          <span class="flex flex-col items-center gap-2 rounded-input bg-navy-900 p-4">
             <BrandMark variant="mark" tone="white" size={48} />
-            <span class="text-small font-normal text-on-dark-2">mark · white on navy</span>
+            <span class="text-small font-normal text-on-dark-2">mark (white on navy)</span>
           </span>
         </div>
       </section>
 
       <footer class="mt-12 border-t border-line pt-6 text-small font-normal text-muted">
-        Live dots: <span class="live-dot live-dot--connected"></span> connected ·
-        <span class="live-dot live-dot--reconnecting"></span> reconnecting ·
-        <span class="live-dot live-dot--offline"></span> offline — each always paired with a text label.
+        Live dots: <span class="live-dot live-dot--connected"></span> connected,
+        <span class="live-dot live-dot--reconnecting"></span> reconnecting,
+        <span class="live-dot live-dot--offline"></span> offline: each always paired with a text label.
       </footer>
     </main>
   </body>

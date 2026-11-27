@@ -21,7 +21,7 @@ if (!user) {
 const error = Astro.url.searchParams.get('error');
 ---
 
-<Layout title={locale === 'fr' ? 'Ajouter un E-mail de Contact — RÉSIVO' : 'Add Contact Email — RÉSIVO'}>
+<Layout title={locale === 'fr' ? 'Ajouter un E-mail de Contact : RÉSIVO' : 'Add Contact Email: RÉSIVO'}>
   <div class="mx-auto flex w-full max-w-md flex-col gap-6 py-4 sm:py-8">
     <div class="card p-5 sm:p-8">
       <div class="mb-6 flex justify-center">
@@ -30,7 +30,6 @@ const error = Astro.url.searchParams.get('error');
 
       <PageHeader
         title={t(locale, 'auth.add_email_title')}
-        overline={t(locale, 'auth.add_email_overline')}
         subtitle={t(locale, 'auth.add_email_subtitle')}
       />
 
@@ -86,7 +85,7 @@ const error = Astro.url.searchParams.get('error');
 
         <p id="email-match-error" class="field-error hidden" role="alert"></p>
 
-        <button class="btn btn-primary w-full mt-2 min-h-[44px]" type="submit">
+        <button class="btn btn-primary w-full mt-2 min-h-[44px] whitespace-nowrap" type="submit">
           <Icon name="check-circle" size={18} />
           <span>{t(locale, 'auth.add_email_btn')}</span>
         </button>
@@ -100,7 +99,7 @@ const error = Astro.url.searchParams.get('error');
     </div>
 
     <p class="text-center text-small font-normal text-muted">
-      Direction des Œuvres Universitaires · Cité Universitaire Tlemcen
+      Direction des Œuvres Universitaires, Cité Universitaire Tlemcen
     </p>
   </div>
 

@@ -19,7 +19,7 @@ const error = Astro.url.searchParams.get('error');
 const registered = Astro.url.searchParams.get('registered');
 ---
 
-<Layout title={locale === 'fr' ? 'Connexion Résident — RÉSIVO' : 'Resident Sign In — RÉSIVO'} activeNav="login">
+<Layout title={locale === 'fr' ? 'Connexion Résident : RÉSIVO' : 'Resident Sign In: RÉSIVO'} activeNav="login">
   <div class="mx-auto flex w-full max-w-md flex-col gap-6 py-4 sm:py-8">
     <div class="card p-5 sm:p-8">
       <div class="mb-6 flex justify-center">
@@ -28,7 +28,6 @@ const registered = Astro.url.searchParams.get('registered');
 
       <PageHeader
         title={t(locale, 'auth.login_title')}
-        overline={t(locale, 'auth.login_overline')}
         subtitle={t(locale, 'auth.login_subtitle')}
       />
 
@@ -96,7 +95,7 @@ const registered = Astro.url.searchParams.get('registered');
           <Turnstile action="login" />
         </div>
 
-        <button class="btn btn-primary w-full mt-2 min-h-[44px]" type="submit">
+        <button class="btn btn-primary w-full mt-2 min-h-[44px] whitespace-nowrap" type="submit">
           <Icon name="log-in" size={18} />
           <span>{t(locale, 'auth.login_btn')}</span>
         </button>
@@ -114,7 +113,7 @@ const registered = Astro.url.searchParams.get('registered');
     </div>
 
     <p class="text-center text-small font-normal text-muted">
-      Direction des Œuvres Universitaires (DOU) · Cité Universitaire · Tlemcen
+      Direction des Œuvres Universitaires (DOU), Cité Universitaire de Tlemcen
     </p>
   </div>
 </Layout>
@@ -134,6 +133,7 @@ const registered = Astro.url.searchParams.get('registered');
       const nextLabel = isPassword ? labelHide : labelShow;
       toggleBtn.setAttribute('aria-label', nextLabel);
       toggleBtn.setAttribute('title', nextLabel);
+      toggleBtn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
       if (eyeIcon) {
         eyeIcon.style.opacity = isPassword ? '0.5' : '1';
       }

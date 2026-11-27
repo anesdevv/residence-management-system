@@ -54,6 +54,8 @@ export function attachEmailConfirmValidation({
 
     emailInput.setCustomValidity('');
     confirmInput.setCustomValidity('');
+    emailInput.removeAttribute('aria-invalid');
+    confirmInput.removeAttribute('aria-invalid');
 
     if (!check.valid) {
       const hasConfirm = Boolean(check.normalizedConfirm);
@@ -65,12 +67,15 @@ export function attachEmailConfirmValidation({
       if (pairOnlyMismatch) {
         if (hasConfirm || showConfirmError) {
           confirmInput.setCustomValidity(check.message);
+          confirmInput.setAttribute('aria-invalid', 'true');
         }
       } else if (showConfirmError) {
         if (!check.normalizedEmail || !validateContactEmailPair(check.normalizedEmail, undefined, locale).ok) {
           emailInput.setCustomValidity(check.message);
+          emailInput.setAttribute('aria-invalid', 'true');
         } else {
           confirmInput.setCustomValidity(check.message);
+          confirmInput.setAttribute('aria-invalid', 'true');
         }
       }
 

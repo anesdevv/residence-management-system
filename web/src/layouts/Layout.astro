@@ -12,8 +12,8 @@ interface Props {
 }
 
 const {
-  title = 'RÉSIVO — Cité Universitaire Tlemcen',
-  description = 'Official student housing portal of Cité Universitaire Tlemcen — Direction des Œuvres Universitaires (DOU).',
+  title = 'RÉSIVO: Cité Universitaire Tlemcen',
+  description = 'Official student housing portal of Cité Universitaire Tlemcen, Direction des Œuvres Universitaires (DOU).',
   activeNav,
 } = Astro.props;
 
@@ -61,7 +61,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
 ---
 
 <!doctype html>
-<html lang={locale} dir={getDirection(locale)}>
+<html lang={locale} dir={getDirection(locale)} class="overflow-x-clip">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -79,25 +79,28 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
     <link rel="preload" as="font" type="font/woff2" href="/fonts/outfit-600.woff2" crossorigin />
     <title>{title}</title>
   </head>
-  <body class="flex min-h-screen flex-col bg-canvas font-sans text-ink">
+  <body class="flex min-h-screen flex-col overflow-x-clip bg-canvas font-sans text-ink" data-timeout-msg={t(locale, 'errors.timeout')}>
     {dashNav ? (
       <DashboardShell title={sectionTitles[dashNav]} activeNav={dashNav}>
         <slot />
       </DashboardShell>
     ) : isAuth ? (
       <>
+        <a class="skip" href="#main-content">
+          {locale === 'fr' ? 'Aller au contenu principal' : 'Skip to main content'}
+        </a>
         <!-- Minimal auth chrome -->
         <header class="border-b border-line bg-surface">
           <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
             <div class="flex items-center gap-4">
-              <a href={localizePath(locale, '/')} class="flex items-center gap-2.5">
+              <a href={localizePath(locale, '/')} class="flex items-center gap-2.5 whitespace-nowrap">
                 <BrandMark variant="mark" size={32} />
                 <span class="font-display text-h2 font-bold tracking-tight text-ink">RÉSIVO</span>
               </a>
               <span class="h-4 w-px bg-line hidden sm:block" aria-hidden="true"></span>
               <a
                 href={localizePath(locale, '/')}
-                class="hidden sm:inline-flex items-center gap-1.5 text-small font-medium text-muted hover:text-ink transition-colors"
+                class="hidden sm:inline-flex items-center gap-1.5 text-small font-medium text-muted hover:text-ink transition-colors whitespace-nowrap"
               >
                 <Icon name="arrow-left" size={14} class="rtl-mirror" />
                 <span>{locale === 'fr' ? 'Retour à l’accueil' : 'Back to home'}</span>
@@ -107,7 +110,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
             <div class="ms-auto flex items-center gap-2 sm:gap-3 shrink-0">
               <a
                 href={localizePath(locale, '/')}
-                class="sm:hidden inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-ink transition-colors px-2 py-1"
+                class="sm:hidden inline-flex items-center gap-1 text-small font-medium text-muted hover:text-ink transition-colors px-2 py-1 whitespace-nowrap"
                 aria-label={locale === 'fr' ? 'Retour à l’accueil' : 'Back to home'}
               >
                 <Icon name="arrow-left" size={14} class="rtl-mirror" />
@@ -115,12 +118,12 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
               </a>
 
               <!-- Language switcher -->
-              <nav aria-label={t(locale, 'nav.language')} class="flex items-center rounded-lg border border-line bg-subtle p-0.5 text-xs font-semibold">
+              <nav aria-label={t(locale, 'nav.language')} class="flex items-center rounded-input border border-line bg-subtle p-0.5 text-small font-semibold">
                 <a
                   href={targetFrPath}
                   data-locale-switch="fr"
-                  class={`rounded-md px-2.5 py-1 transition-colors ${
-                    locale === 'fr' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+                  class={`rounded-input px-2.5 py-1 transition-colors whitespace-nowrap ${
+                    locale === 'fr' ? 'bg-surface text-ink shadow-e1' : 'text-muted hover:text-ink'
                   }`}
                   aria-current={locale === 'fr' ? 'true' : undefined}
                 >
@@ -129,8 +132,8 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
                 <a
                   href={targetEnPath}
                   data-locale-switch="en"
-                  class={`rounded-md px-2.5 py-1 transition-colors ${
-                    locale === 'en' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+                  class={`rounded-input px-2.5 py-1 transition-colors whitespace-nowrap ${
+                    locale === 'en' ? 'bg-surface text-ink shadow-e1' : 'text-muted hover:text-ink'
                   }`}
                   aria-current={locale === 'en' ? 'true' : undefined}
                 >
@@ -141,7 +144,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
           </div>
         </header>
 
-        <main class="w-full flex-1">
+        <main id="main-content" class="w-full flex-1">
           <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
             <slot />
           </div>
@@ -149,35 +152,38 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
 
         <footer class="border-t border-line bg-surface">
           <p class="mx-auto max-w-7xl px-4 py-4 text-center text-small font-normal text-muted sm:px-6">
-            Direction des Œuvres Universitaires (DOU) • Cité Universitaire Tlemcen
+            Direction des Œuvres Universitaires (DOU), Cité Universitaire Tlemcen
           </p>
         </footer>
       </>
     ) : (
       <>
+        <a class="skip" href="#main-content">
+          {locale === 'fr' ? 'Aller au contenu principal' : 'Skip to main content'}
+        </a>
         <!-- Institutional banner (desktop) -->
         <div class="hidden border-b border-navy-700 bg-navy-900 text-small text-on-dark-2 md:block">
           <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
             <div class="flex items-center gap-2">
-              <span class="live-dot live-dot--connected"></span>
-              <span>DOU Tlemcen • Direction des Œuvres Universitaires</span>
+              <Icon name="shield-check" size={14} class="text-teal-500 shrink-0" />
+              <span>DOU Tlemcen, Direction des Œuvres Universitaires</span>
             </div>
             <div class="flex items-center gap-4">
               <span>{t(locale, 'landing.desk_hours')}</span>
-              <span aria-hidden="true">•</span>
-              <span class="font-medium text-on-dark">{t(locale, 'landing.hotline')}</span>
+              <span class="h-3 w-px bg-navy-700" aria-hidden="true"></span>
+              <span class="font-medium text-on-dark tnum">{t(locale, 'landing.hotline')}</span>
             </div>
           </div>
         </div>
 
         <!-- Public header -->
-        <header class="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-md">
+        <header class="sticky top-0 z-40 border-b border-line bg-surface">
           <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-            <a href={user ? localizePath(locale, '/dashboard') : localizePath(locale, '/')} class="flex min-w-0 shrink items-center gap-2.5 sm:gap-3">
+            <a href={user ? localizePath(locale, '/dashboard') : localizePath(locale, '/')} class="flex min-w-0 shrink items-center gap-2.5 sm:gap-3" aria-label="RÉSIVO">
               <BrandMark variant="mark" size={38} />
               <span class="flex min-w-0 flex-col">
                 <span class="font-display text-h2 leading-none text-ink">RÉSIVO</span>
-                <span class="truncate text-xs font-normal text-muted max-w-[120px] sm:max-w-none">Cité Universitaire • {t(locale, 'nav.student_portal')}</span>
+                <span class="hidden sm:inline text-small font-normal text-muted">Cité Universitaire, {t(locale, 'nav.student_portal')}</span>
               </span>
             </a>
 
@@ -187,12 +193,12 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
                 <>
                   <a
                     href={localizePath(locale, '/dashboard')}
-                    class="inline-flex min-h-11 items-center gap-2 rounded-input px-3 text-body font-semibold text-ink-2 transition-colors hover:bg-subtle hover:text-ink"
+                    class="inline-flex min-h-11 items-center gap-2 rounded-input px-3 text-body font-semibold text-ink-2 transition-colors hover:bg-subtle hover:text-ink whitespace-nowrap"
                   >
                     <Icon name="dashboard" size={17} />
                     <span>{t(locale, 'nav.dashboard')}</span>
                   </a>
-                  <a href="/logout" class="btn btn-secondary">
+                  <a href="/logout" class="btn btn-secondary whitespace-nowrap">
                     <Icon name="log-out" size={16} />
                     <span>{t(locale, 'nav.sign_out')}</span>
                   </a>
@@ -201,7 +207,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
                 <>
                   <a
                     href={localizePath(locale, '/')}
-                    class={`inline-flex min-h-11 items-center rounded-input px-3 text-body transition-colors ${
+                    class={`inline-flex min-h-11 items-center rounded-input px-3 text-body transition-colors whitespace-nowrap ${
                       isHome ? 'font-semibold text-teal-600' : 'font-semibold text-ink-2 hover:bg-subtle hover:text-ink'
                     }`}
                   >
@@ -209,14 +215,14 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
                   </a>
                   <a
                     href={localizePath(locale, '/login')}
-                    class={`inline-flex min-h-11 items-center gap-2 rounded-input px-3 text-body transition-colors ${
+                    class={`inline-flex min-h-11 items-center gap-2 rounded-input px-3 text-body transition-colors whitespace-nowrap ${
                       isLogin ? 'font-semibold text-teal-600' : 'font-semibold text-ink-2 hover:bg-subtle hover:text-ink'
                     }`}
                   >
                     <Icon name="log-in" size={16} />
                     <span>{t(locale, 'nav.sign_in')}</span>
                   </a>
-                  <a href={localizePath(locale, '/register')} class="btn btn-primary">
+                  <a href={localizePath(locale, '/register')} class="btn btn-primary whitespace-nowrap">
                     <Icon name="user" size={16} />
                     <span>{t(locale, 'nav.register_resident')}</span>
                   </a>
@@ -224,12 +230,12 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
               )}
 
               <!-- Language switcher -->
-              <div class="ms-2 flex items-center rounded-pill border border-line bg-subtle p-0.5 text-xs font-semibold" role="group" aria-label={t(locale, 'nav.language')}>
+              <div class="ms-2 flex items-center rounded-input border border-line bg-subtle p-0.5 text-small font-semibold" role="group" aria-label={t(locale, 'nav.language')}>
                 <a
                   href={targetFrPath}
                   data-locale-switch="fr"
-                  class={`rounded-pill px-2.5 py-1 transition-colors ${
-                    locale === 'fr' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+                  class={`rounded-input px-2.5 py-1 transition-colors whitespace-nowrap ${
+                    locale === 'fr' ? 'bg-surface text-ink shadow-e1' : 'text-muted hover:text-ink'
                   }`}
                   aria-current={locale === 'fr' ? 'true' : undefined}
                 >
@@ -238,8 +244,8 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
                 <a
                   href={targetEnPath}
                   data-locale-switch="en"
-                  class={`rounded-pill px-2.5 py-1 transition-colors ${
-                    locale === 'en' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+                  class={`rounded-input px-2.5 py-1 transition-colors whitespace-nowrap ${
+                    locale === 'en' ? 'bg-surface text-ink shadow-e1' : 'text-muted hover:text-ink'
                   }`}
                   aria-current={locale === 'en' ? 'true' : undefined}
                 >
@@ -251,12 +257,12 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
             <!-- Mobile quick controls -->
             <div class="flex items-center gap-2 md:hidden">
               <!-- Mobile language switcher -->
-              <div class="flex items-center rounded-pill border border-line bg-subtle p-0.5 text-xs font-semibold shrink-0" role="group" aria-label={t(locale, 'nav.language')}>
+              <div class="flex items-center rounded-input border border-line bg-subtle p-0.5 text-small font-semibold shrink-0" role="group" aria-label={t(locale, 'nav.language')}>
                 <a
                   href={targetFrPath}
                   data-locale-switch="fr"
-                  class={`rounded-pill px-2 py-1 transition-colors ${
-                    locale === 'fr' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+                  class={`rounded-input px-2 py-1 transition-colors whitespace-nowrap ${
+                    locale === 'fr' ? 'bg-surface text-ink shadow-e1' : 'text-muted hover:text-ink'
                   }`}
                   aria-current={locale === 'fr' ? 'true' : undefined}
                 >
@@ -265,8 +271,8 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
                 <a
                   href={targetEnPath}
                   data-locale-switch="en"
-                  class={`rounded-pill px-2 py-1 transition-colors ${
-                    locale === 'en' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+                  class={`rounded-input px-2 py-1 transition-colors whitespace-nowrap ${
+                    locale === 'en' ? 'bg-surface text-ink shadow-e1' : 'text-muted hover:text-ink'
                   }`}
                   aria-current={locale === 'en' ? 'true' : undefined}
                 >
@@ -278,7 +284,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
               <button
                 type="button"
                 id="mobile-drawer-toggle"
-                class="touch-target-44 rounded-input border border-line bg-surface text-ink hover:bg-subtle transition-colors focus-visible:outline-teal-600"
+                class="touch-target-44 rounded-input border border-line bg-surface text-ink hover:bg-subtle transition-colors"
                 aria-label={locale === 'fr' ? 'Ouvrir le menu de navigation' : 'Open navigation menu'}
                 aria-expanded="false"
                 aria-controls="mobile-drawer"
@@ -290,7 +296,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
         </header>
 
         <!-- Mobile Navigation Drawer Backdrop & Panel -->
-        <div id="mobile-drawer-backdrop" class="fixed inset-0 z-50 bg-navy-900/60 backdrop-blur-xs opacity-0 pointer-events-none transition-opacity duration-300 md:hidden" aria-hidden="true"></div>
+        <div id="mobile-drawer-backdrop" class="fixed inset-0 z-50 bg-navy-900/60 opacity-0 pointer-events-none transition-opacity duration-300 md:hidden" aria-hidden="true"></div>
 
         <aside
           id="mobile-drawer"
@@ -386,7 +392,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
                   </a>
                   <a
                     href={localizePath(locale, '/register')}
-                    class="btn btn-primary mt-2 w-full justify-start gap-3"
+                    class="btn btn-primary mt-2 w-full justify-start gap-3 whitespace-nowrap"
                   >
                     <Icon name="user" size={18} />
                     <span>{t(locale, 'nav.register_resident')}</span>
@@ -397,18 +403,18 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
           </div>
 
           <!-- Drawer bottom info -->
-          <div class="border-t border-line pt-4 text-xs text-muted flex flex-col gap-2">
+          <div class="border-t border-line pt-4 text-small text-muted flex flex-col gap-2">
             <div class="flex items-center gap-2 text-ink-2 font-medium">
               <Icon name="phone" size={14} class="text-teal-600 shrink-0 rtl-mirror" />
               <a href="tel:+21343210000" class="hover:underline tracking-wide tnum" dir="ltr">+213 (0) 43 21 00 00</a>
             </div>
             <p>Direction des Œuvres Universitaires (DOU)</p>
-            <p class="text-[11px] text-muted">Cité Universitaire · Tlemcen</p>
+            <p class="text-small text-muted">Cité Universitaire, Tlemcen</p>
           </div>
         </aside>
 
         <!-- Public content slot -->
-        <main class="w-full flex-1">
+        <main id="main-content" class="w-full flex-1">
           <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
             <slot />
           </div>
@@ -419,14 +425,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
           <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6">
             <div class="grid grid-cols-1 gap-8 md:grid-cols-4">
               <div class="space-y-3 md:col-span-2">
-                <img
-                  src="/brand/resivo_logo.png"
-                  alt="RÉSIVO"
-                  width="92"
-                  height="80"
-                  loading="lazy"
-                  decoding="async"
-                />
+                <BrandMark variant="logo" size={80} alt="RÉSIVO" />
                 <p class="measure font-normal leading-relaxed">
                   {t(locale, 'landing.footer_desc')}
                 </p>
@@ -436,7 +435,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
               </div>
 
               <div>
-                <h2 class="overline mb-3 text-ink">{t(locale, 'landing.footer_services_title')}</h2>
+                <h2 class="text-small font-semibold mb-3 text-ink">{t(locale, 'landing.footer_services_title')}</h2>
                 <ul class="flex flex-col gap-1">
                   <li><a href={localizePath(locale, '/register')} class="link py-1 inline-block">{t(locale, 'landing.step_1_title')}</a></li>
                   <li><a href={localizePath(locale, '/login')} class="link py-1 inline-block">{t(locale, 'landing.service_status_title')}</a></li>
@@ -446,7 +445,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
               </div>
 
               <div>
-                <h2 class="overline mb-3 text-ink">{t(locale, 'landing.footer_contact_title')}</h2>
+                <h2 class="text-small font-semibold mb-3 text-ink">{t(locale, 'landing.footer_contact_title')}</h2>
                 <ul class="flex flex-col gap-2">
                   <li class="flex items-center gap-2">
                     <Icon name="building" size={14} class="shrink-0 text-muted" />
@@ -454,7 +453,7 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
                   </li>
                   <li class="flex items-center gap-2">
                     <Icon name="phone" size={14} class="shrink-0 text-muted" />
-                    <span>+213 (0) 43 21 00 00</span>
+                    <span class="tnum">+213 (0) 43 21 00 00</span>
                   </li>
                   <li class="flex items-center gap-2">
                     <Icon name="mail" size={14} class="shrink-0 text-muted" />
@@ -534,8 +533,9 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
           var existingBanner = form.querySelector('.timeout-banner');
           if (!existingBanner) {
             var banner = document.createElement('div');
-            banner.className = 'timeout-banner mt-3 p-3 rounded-md bg-red-50 border border-red-200 text-red-800 text-sm font-medium';
-            banner.textContent = 'The server is taking too long to respond. Check your connection and try again.';
+            banner.className = 'timeout-banner mt-3 p-3 rounded-input border border-danger-line bg-danger-bg text-danger text-small font-medium';
+            banner.setAttribute('role', 'alert');
+            banner.textContent = document.body.dataset.timeoutMsg || 'The server is taking too long to respond. Check your connection and try again.';
             form.prepend(banner);
           }
         }, timeoutMs + 1000);
@@ -609,5 +609,13 @@ const canonicalFr = new URL(targetFrBase, Astro.url).href;
         });
       })();
     </script>
+    <style>
+      h1,
+      h2 {
+        overflow-wrap: break-word;
+        min-width: 0;
+        text-wrap: balance;
+      }
+    </style>
   </body>
 </html>

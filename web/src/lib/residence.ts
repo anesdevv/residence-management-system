@@ -3,7 +3,7 @@
  */
 import { t, type SupportedLocale } from './i18n';
 
-export const DEFAULT_RESIDENCE_NAME = 'Cité Universitaire · Tlemcen';
+export const DEFAULT_RESIDENCE_NAME = 'Cité Universitaire, Tlemcen';
 
 export type ResidenceGender = 'male' | 'female';
 

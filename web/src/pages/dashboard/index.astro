@@ -17,7 +17,7 @@ import EmptyState from '../../components/EmptyState.astro';
 import InlineBanner from '../../components/InlineBanner.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 import { getCategoryMeta } from '../../lib/maintenance';
-import { localizePath, t, formatDate, formatFloor, formatResidentName, type SupportedLocale } from '../../lib/i18n';
+import { localizePath, t, formatDate, formatResidentName, type SupportedLocale } from '../../lib/i18n';
 
 export const prerender = false;
 const locale: SupportedLocale = Astro.locals.locale || 'en';
@@ -102,10 +102,10 @@ const statusPill = isActive
       ? { kind: 'pending', label: t(locale, 'status.pending') }
       : null;
 
-const subtitle = [student?.faculty, student?.university || 'Université de Tlemcen'].filter(Boolean).join(' · ');
+const subtitle = [student?.faculty, student?.university || 'Université de Tlemcen'].filter(Boolean).join(', ');
 ---
 
-<Layout title={locale === 'fr' ? 'Tableau de bord — RÉSIVO' : 'Dashboard — RÉSIVO'} activeNav="dashboard">
+<Layout title={locale === 'fr' ? 'Tableau de bord | RÉSIVO' : 'Dashboard | RÉSIVO'} activeNav="dashboard">
   {
     queryError && (
       <InlineBanner kind="error" title={t(locale, 'errors.connection_error')} class="mb-6">
@@ -116,8 +116,7 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
 
   <PageHeader
     title={t(locale, 'dashboard.title')}
-    overline="Cité Universitaire Tlemcen"
-    subtitle={[fullName, subtitle].filter(Boolean).join(' · ')}
+    subtitle={[fullName, subtitle].filter(Boolean).join(', ')}
   >
     {
       statusPill && (
@@ -137,19 +136,18 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
     isPending && (
       <section class="hero-card border border-pending-line bg-pending-bg p-4 sm:p-7 shadow-e1">
         <div class="flex flex-col gap-5 sm:flex-row sm:items-start">
-          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-pending-line bg-surface text-pending shadow-sm">
+          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-pending-line bg-surface text-pending">
             <Icon name="clock" size={24} />
           </span>
           <div class="flex min-w-0 flex-1 flex-col gap-5 sm:gap-6">
             <div>
-              <p class="overline text-pending font-semibold">{t(locale, 'dashboard.status_pending_title')}</p>
               <h2 class="font-display text-h1 sm:text-display text-ink tracking-tight">{t(locale, 'dashboard.verification_in_progress')}</h2>
               <p class="measure mt-1.5 text-body text-ink-2 leading-relaxed">
                 {t(locale, 'dashboard.status_pending_desc')}
               </p>
             </div>
 
-            <div class="rounded-input border border-pending-line/80 bg-surface/90 p-4 sm:p-5 shadow-sm">
+            <div class="rounded-input border border-pending-line/80 bg-surface p-4 sm:p-5">
               <Stepper
                 steps={[
                   t(locale, 'dashboard.stepper_submitted'),
@@ -177,20 +175,19 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
     isRejected && (
       <section class="hero-card border border-danger-line bg-danger-bg p-4 sm:p-7 shadow-e1">
         <div class="flex flex-col gap-5 sm:flex-row sm:items-start">
-          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-danger-line bg-surface text-danger shadow-sm">
+          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-danger-line bg-surface text-danger">
             <Icon name="x-circle" size={24} />
           </span>
           <div class="flex min-w-0 flex-1 flex-col gap-5">
             <div>
-              <p class="overline text-danger font-semibold">{t(locale, 'dashboard.status_rejected_title')}</p>
               <h2 class="font-display text-h1 sm:text-display text-ink tracking-tight">{t(locale, 'dashboard.rejection_header')}</h2>
               <p class="measure mt-1.5 text-body text-ink-2 leading-relaxed">
                 {t(locale, 'dashboard.status_rejected_desc')}
               </p>
             </div>
 
-            <blockquote class="rounded-input border border-danger-line bg-surface p-4 sm:p-5 shadow-sm">
-              <p class="text-xs font-semibold uppercase tracking-wider text-danger mb-1.5">{t(locale, 'dashboard.rejection_reason_label')}</p>
+            <blockquote class="rounded-input border border-danger-line bg-surface p-4 sm:p-5">
+              <p class="text-small font-semibold text-danger mb-1.5">{t(locale, 'dashboard.rejection_reason_label')}</p>
               <p class="break-words text-body font-medium text-danger">
                 “{student?.rejection_reason || t(locale, 'dashboard.rejection_default')}”
               </p>
@@ -217,7 +214,6 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
         <!-- Left / Primary: Digital Resident Pass -->
         <section class="lg:col-span-7 flex flex-col gap-3" aria-labelledby="pass-heading">
           <div>
-            <span class="overline text-muted">{t(locale, 'dashboard.pass_section_overline')}</span>
             <h2 id="pass-heading" class="font-display text-h1 sm:text-h2 text-ink tracking-tight">
               {t(locale, 'dashboard.pass_section_title')}
             </h2>
@@ -241,17 +237,14 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
         <div class="lg:col-span-5 flex flex-col gap-5">
           <!-- Quick Services Card -->
           <section class="card p-5 sm:p-6 flex flex-col gap-4">
-            <div>
-              <span class="overline text-muted">{t(locale, 'dashboard.services_section_overline')}</span>
-              <h3 class="font-display text-h3 font-semibold text-ink mt-0.5">
-                {locale === 'fr' ? 'Accès rapide aux services' : 'Quick Resident Services'}
-              </h3>
-            </div>
+            <h3 class="font-display text-h3 font-semibold text-ink">
+              {locale === 'fr' ? 'Accès rapide aux services' : 'Quick Resident Services'}
+            </h3>
 
             <div class="flex flex-col gap-3">
               <a
                 href={localizePath(locale, '/dashboard/maintenance')}
-                class="group flex items-center justify-between gap-3 p-3.5 rounded-card border border-line bg-subtle hover:bg-canvas hover:border-teal-600 transition min-h-[52px]"
+                class="group flex items-center justify-between gap-3 p-3.5 rounded-input border border-line bg-subtle hover:bg-canvas hover:border-teal-600 transition-colors min-h-[52px]"
               >
                 <div class="flex items-center gap-3">
                   <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input border border-teal-600/15 bg-teal-600/10 text-teal-600">
@@ -261,17 +254,17 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
                     <span class="block text-body font-semibold text-ink group-hover:text-teal-600 transition-colors">
                       {t(locale, 'dashboard.service_maintenance_title')}
                     </span>
-                    <span class="block text-xs text-muted">
+                    <span class="block text-small text-muted">
                       {locale === 'fr' ? 'Signaler une panne ou une dégradation' : 'Report repair issue or damage'}
                     </span>
                   </div>
                 </div>
-                <Icon name="chevron-right" size={16} class="text-muted group-hover:text-teal-600 rtl-mirror transition-transform group-hover:translate-x-0.5" />
+                <Icon name="chevron-right" size={16} class="text-muted group-hover:text-teal-600 rtl-mirror transition-colors shrink-0" />
               </a>
 
               <a
                 href={localizePath(locale, '/dashboard/room-change')}
-                class="group flex items-center justify-between gap-3 p-3.5 rounded-card border border-line bg-subtle hover:bg-canvas hover:border-teal-600 transition min-h-[52px]"
+                class="group flex items-center justify-between gap-3 p-3.5 rounded-input border border-line bg-subtle hover:bg-canvas hover:border-teal-600 transition-colors min-h-[52px]"
               >
                 <div class="flex items-center gap-3">
                   <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input border border-navy-800/15 bg-navy-800/10 text-navy-800">
@@ -281,38 +274,38 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
                     <span class="block text-body font-semibold text-ink group-hover:text-teal-600 transition-colors">
                       {t(locale, 'dashboard.service_transfer_title')}
                     </span>
-                    <span class="block text-xs text-muted">
+                    <span class="block text-small text-muted">
                       {locale === 'fr' ? 'Changement de chambre ou d’étage' : 'Request room or floor transfer'}
                     </span>
                   </div>
                 </div>
-                <Icon name="chevron-right" size={16} class="text-muted group-hover:text-teal-600 rtl-mirror transition-transform group-hover:translate-x-0.5" />
+                <Icon name="chevron-right" size={16} class="text-muted group-hover:text-teal-600 rtl-mirror transition-colors shrink-0" />
               </a>
             </div>
           </section>
 
           <!-- Direct Residence Desk Contact & Hours -->
           <section class="card p-5 sm:p-6 flex flex-col gap-3">
-            <span class="overline text-muted">{locale === 'fr' ? 'Permanence de la résidence' : 'Residence Desk'}</span>
+            <h3 class="font-display text-h3 font-semibold text-ink">{locale === 'fr' ? 'Permanence de la résidence' : 'Residence Desk'}</h3>
             <div class="flex items-start gap-3">
               <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-input bg-subtle text-teal-600">
                 <Icon name="building" size={18} />
               </span>
               <div class="min-w-0">
-                <p class="text-body font-semibold text-ink">Bureau de la Résidence · Pavillon Central</p>
-                <p class="text-xs text-muted mt-0.5">
-                  {locale === 'fr' ? 'Dimanche – Jeudi : 08h30 – 16h30' : 'Sunday – Thursday: 08:30 – 16:30'}
+                <p class="text-body font-semibold text-ink">Bureau de la Résidence, Pavillon Central</p>
+                <p class="text-small text-muted mt-0.5">
+                  {locale === 'fr' ? 'Dimanche au Jeudi : 08h30 à 16h30' : 'Sunday to Thursday: 08:30 to 16:30'}
                 </p>
               </div>
             </div>
-            <div class="border-t border-line pt-3 flex items-center justify-between">
-              <span class="text-xs text-muted">{locale === 'fr' ? 'Guichet d’accueil' : 'Help Desk'}</span>
+            <div class="border-t border-line pt-3 flex items-center justify-between gap-2">
+              <span class="text-small text-muted">{locale === 'fr' ? 'Guichet d’accueil' : 'Help Desk'}</span>
               <a
                 href="tel:+21343210000"
-                class="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-600 hover:underline min-h-[36px]"
+                class="inline-flex items-center gap-1.5 text-small font-semibold text-teal-600 hover:underline min-h-[44px] whitespace-nowrap"
                 dir="ltr"
               >
-                <Icon name="phone" size={13} class="rtl-mirror" />
+                <Icon name="phone" size={14} class="rtl-mirror shrink-0" />
                 <span class="tnum font-mono">+213 (0) 43 21 00 00</span>
               </a>
             </div>
@@ -327,11 +320,10 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
     isActive && !room && (
       <section class="hero-card border border-line bg-surface p-5 sm:p-7 shadow-e1">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-pending-line bg-pending-bg text-pending shadow-sm">
+          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-input border border-pending-line bg-pending-bg text-pending">
             <Icon name="clock" size={24} />
           </span>
           <div class="min-w-0">
-            <p class="overline text-pending font-semibold">{t(locale, 'dashboard.room_assignment')}</p>
             <h2 class="font-display text-h1 sm:text-h2 text-ink tracking-tight">{t(locale, 'dashboard.allocation_finalizing_title')}</h2>
             <p class="measure mt-1.5 text-body text-ink-2 leading-relaxed">
               {t(locale, 'dashboard.allocation_finalizing_desc')}
@@ -346,68 +338,63 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
   {
     (!isActive || !room) && (
       <section class="mt-8 sm:mt-10" aria-labelledby="services-heading">
-        <div class="flex flex-col gap-1">
-          <p class="overline text-muted">{t(locale, 'dashboard.services_section_overline')}</p>
-          <h2 id="services-heading" class="font-display text-h1 sm:text-h2 text-ink tracking-tight">
-            {t(locale, 'dashboard.services_section_title')}
-          </h2>
-        </div>
+        <h2 id="services-heading" class="font-display text-h1 sm:text-h2 text-ink tracking-tight">
+          {t(locale, 'dashboard.services_section_title')}
+        </h2>
 
-        <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div class="card card-flat flex flex-col justify-between gap-5 p-5 sm:p-6 bg-subtle/50">
-            <div>
-              <span class="flex h-12 w-12 items-center justify-center rounded-input bg-subtle text-muted">
-                <Icon name="wrench" size={22} />
-              </span>
-              <div class="mt-4 flex flex-wrap items-center gap-2">
-                <h3 class="text-h3 font-semibold text-muted">{t(locale, 'dashboard.service_maintenance_title')}</h3>
+        <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-12 items-stretch">
+          <div class="card card-flat divide-y divide-line bg-subtle/50 lg:col-span-7 flex flex-col justify-center">
+            <div class="flex flex-col gap-2 p-5 sm:p-6">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5 text-muted">
+                  <Icon name="wrench" size={18} />
+                  <h3 class="text-h3 font-semibold text-ink">{t(locale, 'dashboard.service_maintenance_title')}</h3>
+                </div>
                 <StatusPill kind="neutral" icon="lock" label={t(locale, 'dashboard.service_locked_badge')} size="sm" />
               </div>
-              <p class="mt-1.5 text-small font-normal text-muted leading-relaxed">
+              <p class="text-small font-normal text-ink-2 leading-relaxed">
                 {t(locale, 'dashboard.service_maintenance_desc')}
               </p>
-            </div>
-            <span class="flex items-start gap-2 text-small font-normal text-muted">
-              <Icon name="lock" size={16} class="mt-0.5 shrink-0" />
-              <span>{t(locale, 'dashboard.service_maintenance_locked')}</span>
-            </span>
-          </div>
-
-          <div class="card card-flat flex flex-col justify-between gap-5 p-5 sm:p-6 bg-subtle/50">
-            <div>
-              <span class="flex h-12 w-12 items-center justify-center rounded-input bg-subtle text-muted">
-                <Icon name="arrow-left-right" size={22} />
-              </span>
-              <div class="mt-4 flex flex-wrap items-center gap-2">
-                <h3 class="text-h3 font-semibold text-muted">{t(locale, 'dashboard.service_transfer_title')}</h3>
-                <StatusPill kind="neutral" icon="lock" label={t(locale, 'dashboard.service_locked_badge')} size="sm" />
-              </div>
-              <p class="mt-1.5 text-small font-normal text-muted leading-relaxed">
-                {t(locale, 'dashboard.service_transfer_desc')}
+              <p class="flex items-start gap-2 text-small font-normal text-muted">
+                <Icon name="lock" size={15} class="mt-0.5 shrink-0" />
+                <span>{t(locale, 'dashboard.service_maintenance_locked')}</span>
               </p>
             </div>
-            <span class="flex items-start gap-2 text-small font-normal text-muted">
-              <Icon name="lock" size={16} class="mt-0.5 shrink-0" />
-              <span>{t(locale, 'dashboard.service_transfer_locked')}</span>
-            </span>
+
+            <div class="flex flex-col gap-2 p-5 sm:p-6">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5 text-muted">
+                  <Icon name="arrow-left-right" size={18} />
+                  <h3 class="text-h3 font-semibold text-ink">{t(locale, 'dashboard.service_transfer_title')}</h3>
+                </div>
+                <StatusPill kind="neutral" icon="lock" label={t(locale, 'dashboard.service_locked_badge')} size="sm" />
+              </div>
+              <p class="text-small font-normal text-ink-2 leading-relaxed">
+                {t(locale, 'dashboard.service_transfer_desc')}
+              </p>
+              <p class="flex items-start gap-2 text-small font-normal text-muted">
+                <Icon name="lock" size={15} class="mt-0.5 shrink-0" />
+                <span>{t(locale, 'dashboard.service_transfer_locked')}</span>
+              </p>
+            </div>
           </div>
 
           <a
             href={localizePath(locale, '/dashboard/profile')}
-            class="card group flex flex-col justify-between gap-5 p-5 sm:p-6 transition-all duration-200 hover:border-teal-600 hover:shadow-e2"
+            class="card group lg:col-span-5 flex flex-col justify-between gap-5 p-5 sm:p-6 transition-colors duration-200 hover:border-teal-600"
           >
             <div>
-              <span class="flex h-12 w-12 items-center justify-center rounded-input border border-gold-500/20 bg-gold-500/15 text-navy-800 shadow-sm transition-transform duration-200 group-hover:scale-105">
-                <Icon name="user" size={22} />
-              </span>
-              <h3 class="mt-4 text-h3 font-semibold text-ink transition-colors group-hover:text-teal-600">
-                {t(locale, 'dashboard.service_profile_title')}
-              </h3>
-              <p class="mt-1.5 text-small font-normal text-muted leading-relaxed">
+              <div class="flex items-center gap-2.5 text-navy-800">
+                <Icon name="user" size={20} />
+                <h3 class="text-h3 font-semibold text-ink transition-colors group-hover:text-teal-600">
+                  {t(locale, 'dashboard.service_profile_title')}
+                </h3>
+              </div>
+              <p class="mt-2.5 text-small font-normal text-ink-2 leading-relaxed">
                 {t(locale, 'dashboard.service_profile_desc')}
               </p>
             </div>
-            <span class="flex items-center gap-1.5 text-small font-semibold text-teal-600 transition-transform duration-200 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5">
+            <span class="inline-flex items-center gap-1.5 text-small font-semibold text-teal-600 whitespace-nowrap">
               <span>{t(locale, 'dashboard.service_profile_cta')}</span>
               <Icon name="chevron-right" size={16} class="rtl-mirror" />
             </span>
@@ -422,12 +409,9 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
        ====================================================================== -->
   <section class="mt-10 sm:mt-12" aria-labelledby="activity-heading">
     <div class="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <p class="overline text-muted">{t(locale, 'dashboard.timeline_overline')}</p>
-        <h2 id="activity-heading" class="font-display text-h1 sm:text-h2 text-ink tracking-tight">
-          {t(locale, 'dashboard.timeline_title')}
-        </h2>
-      </div>
+      <h2 id="activity-heading" class="font-display text-h1 sm:text-h2 text-ink tracking-tight">
+        {t(locale, 'dashboard.timeline_title')}
+      </h2>
       {
         isActive && (
           <a
@@ -475,13 +459,13 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
             recentReports.map((r) => (
               <li class="card flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 transition-colors hover:border-border-strong">
                 <div class="flex min-w-0 items-start gap-3.5">
-                  <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-input border border-teal-600/15 bg-teal-600/10 text-teal-600 shadow-sm">
+                  <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-input border border-teal-600/15 bg-teal-600/10 text-teal-600">
                     <Icon name={getCategoryMeta(r.category).icon} size={20} />
                   </span>
                   <div class="min-w-0">
-                    <p class="overline text-muted">{t(locale, 'nav.maintenance')} · {getCategoryMeta(r.category).label}</p>
+                    <p class="text-small font-medium text-muted">{t(locale, 'nav.maintenance')}: {getCategoryMeta(r.category).label}</p>
                     <p class="line-clamp-1 text-body font-semibold text-ink">{r.description}</p>
-                    <time class="tnum block text-xs font-normal text-muted mt-0.5" datetime={r.created_at}>
+                    <time class="tnum block text-small font-normal text-muted mt-0.5" datetime={r.created_at}>
                       {formatDate(locale, r.created_at, { year: 'numeric', month: 'short', day: 'numeric' })}
                     </time>
                   </div>
@@ -498,13 +482,13 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
             recentRoomChanges.map((rc) => (
               <li class="card flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 transition-colors hover:border-border-strong">
                 <div class="flex min-w-0 items-start gap-3.5">
-                  <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-input border border-navy-800/15 bg-navy-800/10 text-navy-800 shadow-sm">
+                  <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-input border border-navy-800/15 bg-navy-800/10 text-navy-800">
                     <Icon name="arrow-left-right" size={20} />
                   </span>
                   <div class="min-w-0">
-                    <p class="overline text-muted">{t(locale, 'terms.room_change_request')}</p>
+                    <p class="text-small font-medium text-muted">{t(locale, 'terms.room_change_request')}</p>
                     <p class="line-clamp-1 text-body font-semibold text-ink">{rc.reason}</p>
-                    <time class="tnum block text-xs font-normal text-muted mt-0.5" datetime={rc.created_at}>
+                    <time class="tnum block text-small font-normal text-muted mt-0.5" datetime={rc.created_at}>
                       {formatDate(locale, rc.created_at, { year: 'numeric', month: 'short', day: 'numeric' })}
                     </time>
                   </div>
@@ -520,4 +504,12 @@ const subtitle = [student?.faculty, student?.university || 'Université de Tlemc
       )
     }
   </section>
+  <style>
+    h1,
+    h2 {
+      overflow-wrap: break-word;
+      min-width: 0;
+      text-wrap: balance;
+    }
+  </style>
 </Layout>

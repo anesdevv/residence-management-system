@@ -7,7 +7,7 @@ import InlineBanner from '../../components/InlineBanner.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
-import { localizePath, t, formatDate, formatFloor, type SupportedLocale } from '../../lib/i18n';
+import { t, formatDate, formatFloor, type SupportedLocale } from '../../lib/i18n';
 
 export const prerender = false;
 const locale: SupportedLocale = Astro.locals.locale || 'en';
@@ -80,10 +80,9 @@ const motives = [
 ];
 ---
 
-<Layout title={locale === 'fr' ? 'Changement de Chambre — RÉSIVO' : 'Room Transfer Portal — RÉSIVO'} activeNav="room-change">
+<Layout title={locale === 'fr' ? 'Changement de Chambre | RÉSIVO' : 'Room Transfer Portal | RÉSIVO'} activeNav="room-change">
   <PageHeader
     title={t(locale, 'room_change.portal_title')}
-    overline="Cité Universitaire Tlemcen"
     subtitle={t(locale, 'room_change.portal_subtitle')}
   />
 
@@ -153,14 +152,15 @@ const motives = [
                   <button
                     type="button"
                     data-motive={m.text}
-                    class="motive-pill text-start p-3.5 rounded-card border border-line bg-subtle hover:bg-canvas transition cursor-pointer flex flex-col justify-between gap-2 min-h-[96px] h-full"
+                    aria-pressed="false"
+                    class="motive-pill text-start p-3.5 rounded-input border border-line bg-subtle hover:bg-canvas transition-colors cursor-pointer flex flex-col justify-between gap-2 min-h-[96px] h-full"
                   >
                     <div class="flex flex-col gap-1">
                       <div class="flex items-center gap-2">
                         <Icon name={m.icon} size={16} class="text-teal-600 shrink-0" />
                         <span class="font-display text-small font-semibold text-ink">{m.title}</span>
                       </div>
-                      <span class="text-xs text-muted leading-relaxed">{m.desc}</span>
+                      <span class="text-small text-muted leading-relaxed">{m.desc}</span>
                     </div>
                   </button>
                 ))}
@@ -199,7 +199,7 @@ const motives = [
 
             <!-- Submit Button -->
             <div>
-              <button type="submit" class="btn btn-primary min-h-[44px]">
+              <button type="submit" class="btn btn-primary min-h-[44px] whitespace-nowrap">
                 <Icon name="check-circle" size={18} />
                 <span>{t(locale, 'room_change.submit_btn')}</span>
               </button>
@@ -263,14 +263,14 @@ const motives = [
 
               <!-- Stated Reason -->
               <div class="mt-4">
-                <span class="overline block text-muted mb-1">{t(locale, 'room_change.reason_label')}</span>
+                <span class="block text-small font-semibold text-muted mb-1">{t(locale, 'room_change.reason_label')}</span>
                 <p class="text-body text-ink leading-relaxed">{r.reason}</p>
               </div>
 
               <!-- Administration Decision Note -->
               {r.decision_note && (
-                <div class="mt-4 rounded-card border border-line bg-subtle p-3.5">
-                  <span class="overline block text-muted mb-1">{t(locale, 'room_change.decision_note_label')}</span>
+                <div class="mt-4 rounded-input border border-line bg-subtle p-3.5">
+                  <span class="block text-small font-semibold text-muted mb-1">{t(locale, 'room_change.decision_note_label')}</span>
                   <p class="text-small font-normal text-ink leading-relaxed">{r.decision_note}</p>
                 </div>
               )}
@@ -295,8 +295,10 @@ const motives = [
         pill.addEventListener('click', () => {
           motivePills.forEach((p) => {
             p.classList.remove('border-teal-600', 'bg-teal-600/5', 'ring-1', 'ring-teal-600');
+            p.setAttribute('aria-pressed', 'false');
           });
           pill.classList.add('border-teal-600', 'bg-teal-600/5', 'ring-1', 'ring-teal-600');
+          pill.setAttribute('aria-pressed', 'true');
           const motiveText = pill.getAttribute('data-motive');
           if (motiveText) {
             reasonTextarea.value = motiveText;

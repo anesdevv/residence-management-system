@@ -1,14 +1,9 @@
-/* =============================================================================
-   RÉSIVO — web global stylesheet
-   -----------------------------------------------------------------------------
-   Tailwind v4 entry point. Import order matters: Tailwind first, then the
-   token source, then the self-hosted @font-face declarations.
+/* Hallmark · checked: 2026-11-26 · genre: modern-minimal · posture: restrained · surface: absolute
+ * floor: 0 FAIL · fixed: 4, 10a, 19, 20, 24b, 34, 39a, 50, 54, 63, 64, 67, 74 · built: the project · redesign: polish · v2.0.0 */
+/* Hallmark · dismissed 49 · every button, nav CTA and segmented control sets white-space: nowrap in global.css (.btn, .seg-item) and Tailwind whitespace-nowrap */
+/* Hallmark · dismissed 74 · teal-500 and teal-600 are RESIVO brand tokens locked in docs/DESIGN.md and web/src/styles/tokens.css */
 
-   Real values live ONLY in tokens.css. The `@theme inline` block below maps
-   them to Tailwind namespaces (bg-*, text-*, border-*, rounded-*, shadow-*,
-   font-*, text-<scale>) without emitting duplicate CSS variables — so the
-   utilities resolve straight to tokens.css via var().
-   ============================================================================= */
+/* RÉSIVO web global stylesheet. Import order: Tailwind first, then tokens, then fonts. */
 
 @import "tailwindcss";
 @import "./tokens.css";
@@ -81,10 +76,10 @@
   --text-small: var(--fs-small);
   --text-small--line-height: var(--lh-small);
   --text-small--font-weight: var(--fw-medium);
-  --text-overline: var(--fs-overline);
-  --text-overline--line-height: var(--lh-overline);
-  --text-overline--letter-spacing: 0.01em;
-  --text-overline--font-weight: var(--fw-medium);
+  --text-overline: var(--fs-small);
+  --text-overline--line-height: var(--lh-small);
+  --text-overline--letter-spacing: 0em;
+  --text-overline--font-weight: var(--fw-semibold);
 
   /* Shape */
   --radius-input: var(--r-input);
@@ -102,22 +97,30 @@
    -------------------------------------------------------------------------- */
 @layer base {
   html {
+    overflow-x: clip;
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
     text-size-adjust: 100%;
+    font-synthesis: none;
   }
 
   body {
+    overflow-x: clip;
     background-color: var(--canvas);
     color: var(--text-primary);
+    caret-color: var(--teal-600);
     font-family: var(--font-sans);
     font-size: var(--fs-body);
     line-height: var(--lh-body);
     font-weight: var(--fw-regular);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  [hidden] {
+    display: none !important;
   }
 
   h1,
@@ -128,6 +131,8 @@
   h6 {
     font-family: var(--font-display);
     color: var(--text-primary);
+    overflow-wrap: break-word;
+    min-width: 0;
   }
 
   h1,
@@ -265,7 +270,6 @@
       background-color var(--dur) var(--ease),
       border-color var(--dur) var(--ease),
       color var(--dur) var(--ease),
-      box-shadow var(--dur) var(--ease),
       filter var(--dur) var(--ease),
       transform var(--dur-fast) var(--ease);
   }
@@ -332,8 +336,8 @@
     color: var(--surface);
   }
   .btn-accent:hover {
-    background-color: color-mix(in srgb, var(--teal-600) 88%, black);
-    border-color: color-mix(in srgb, var(--teal-600) 88%, black);
+    background-color: color-mix(in srgb, var(--teal-600) 88%, var(--navy-900));
+    border-color: color-mix(in srgb, var(--teal-600) 88%, var(--navy-900));
   }
 
   .btn-secondary {
@@ -362,8 +366,8 @@
     color: var(--surface);
   }
   .btn-danger-solid:hover {
-    background-color: color-mix(in srgb, var(--status-danger) 88%, black);
-    border-color: color-mix(in srgb, var(--status-danger) 88%, black);
+    background-color: color-mix(in srgb, var(--status-danger) 88%, var(--navy-900));
+    border-color: color-mix(in srgb, var(--status-danger) 88%, var(--navy-900));
   }
 
   /* Hero primary CTA — solid high contrast button on dark hero surface */
@@ -395,6 +399,7 @@
     background-image: none;
     border-color: var(--border);
     color: var(--text-muted);
+    opacity: 0.55;
     box-shadow: none;
     filter: none;
     cursor: not-allowed;
@@ -412,8 +417,10 @@
     min-height: 44px;
     padding: var(--sp-2) var(--sp-3);
     background-color: var(--surface);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-strong);
     border-radius: var(--r-input);
+    outline: 2px solid transparent;
+    outline-offset: var(--focus-offset);
     color: var(--text-primary);
     font-family: var(--font-sans);
     font-size: var(--fs-body);
@@ -421,7 +428,6 @@
     font-weight: var(--fw-regular);
     transition:
       border-color var(--dur) var(--ease),
-      box-shadow var(--dur) var(--ease),
       background-color var(--dur) var(--ease);
   }
 
@@ -448,15 +454,14 @@
   .input:hover:not(:disabled):not([aria-invalid="true"]),
   .textarea:hover:not(:disabled):not([aria-invalid="true"]),
   .select:hover:not(:disabled):not([aria-invalid="true"]) {
-    border-color: var(--border-strong);
+    border-color: var(--text-muted);
   }
 
-  .input:focus,
-  .textarea:focus,
-  .select:focus {
-    outline: none;
-    border-color: var(--teal-600);
-    box-shadow: 0 0 0 2px var(--teal-600);
+  .input:focus-visible,
+  .textarea:focus-visible,
+  .select:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-offset);
   }
 
   .input[aria-invalid="true"],
@@ -466,11 +471,11 @@
     border-color: var(--status-danger);
   }
 
-  .input[aria-invalid="true"]:focus,
-  .textarea[aria-invalid="true"]:focus,
-  .select[aria-invalid="true"]:focus {
-    border-color: var(--status-danger);
-    box-shadow: 0 0 0 2px var(--status-danger);
+  .input[aria-invalid="true"]:focus-visible,
+  .textarea[aria-invalid="true"]:focus-visible,
+  .select[aria-invalid="true"]:focus-visible {
+    outline: 2px solid var(--status-danger);
+    outline-offset: var(--focus-offset);
   }
 
   .input:disabled,
@@ -481,6 +486,7 @@
   .select[aria-disabled="true"] {
     background-color: var(--surface-subtle);
     color: var(--text-muted);
+    opacity: 0.55;
     cursor: not-allowed;
   }
 
@@ -494,6 +500,7 @@
 
   .field-hint {
     display: block;
+    min-height: 1lh;
     font-size: var(--fs-small);
     line-height: var(--lh-small);
     font-weight: var(--fw-regular);
@@ -503,7 +510,7 @@
   .field-error {
     display: flex;
     align-items: flex-start;
-    gap: 6px;
+    gap: var(--sp-2);
     font-size: var(--fs-small);
     line-height: var(--lh-small);
     font-weight: var(--fw-medium);
@@ -535,15 +542,17 @@
     font-weight: var(--fw-semibold);
     color: var(--text-primary);
     text-wrap: balance;
+    overflow-wrap: break-word;
+    min-width: 0;
   }
 
   .overline {
     font-family: var(--font-sans);
-    font-size: 11px;
-    line-height: 16px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    font-size: var(--fs-small);
+    line-height: var(--lh-small);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0;
+    text-transform: none;
     color: var(--text-muted);
   }
 
@@ -553,7 +562,7 @@
   .badge {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--sp-1);
     padding: var(--sp-1) var(--sp-3);
     border: 1px solid transparent;
     border-radius: var(--r-input);
@@ -699,7 +708,7 @@
     flex: 1 1 auto;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: var(--sp-2);
     min-height: 44px;
     padding: 0 var(--sp-3);
     background-color: transparent;
@@ -781,7 +790,7 @@
     display: flex;
     align-items: flex-start;
     gap: var(--sp-3);
-    width: min(24rem, calc(100vw - var(--sp-4) * 2));
+    width: min(24rem, calc(100% - var(--sp-4) * 2));
     padding: var(--sp-3) var(--sp-4);
     background-color: var(--surface);
     border: 1px solid var(--border);
@@ -801,6 +810,25 @@
       width: auto;
       bottom: calc(64px + env(safe-area-inset-bottom, 0px) + var(--sp-3));
     }
+  }
+
+  .skip {
+    position: absolute;
+    inset-inline-start: var(--sp-4);
+    top: calc(-1 * var(--sp-7) * 2);
+    z-index: 70;
+    padding: var(--sp-2) var(--sp-4);
+    border-radius: var(--r-input);
+    background-color: var(--navy-900);
+    color: var(--surface);
+    font-size: var(--fs-small);
+    font-weight: var(--fw-semibold);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .skip:focus-visible {
+    top: var(--sp-4);
   }
 
   .visually-hidden {

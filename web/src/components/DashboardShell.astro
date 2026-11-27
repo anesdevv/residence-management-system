@@ -17,7 +17,7 @@ interface Props {
   activeNav: 'dashboard' | 'maintenance' | 'room-change' | 'profile';
 }
 
-const { title, activeNav } = Astro.props;
+const { activeNav } = Astro.props;
 const rawEmail = Astro.locals.user?.email ?? '';
 const isSyntheticAuth = rawEmail.toLowerCase().endsWith('@students.residence.local');
 const displayIdentity = isSyntheticAuth ? rawEmail.split('@')[0] : rawEmail;
@@ -66,10 +66,13 @@ const navItems = [
 ---
 
 <div class="min-h-screen bg-canvas">
-  <header class="sticky top-0 z-40 h-16 border-b border-line bg-surface/95 backdrop-blur-md">
+  <a class="skip" href="#main-content">
+    {locale === 'fr' ? 'Aller au contenu principal' : 'Skip to main content'}
+  </a>
+  <header class="sticky top-0 z-40 h-16 border-b border-line bg-surface">
     <div class="mx-auto flex h-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
       <!-- Clean Brand Logo without truncating page subtitle -->
-      <a href={localizePath(locale, '/dashboard')} class="flex shrink-0 items-center gap-2.5" aria-label="RÉSIVO">
+      <a href={localizePath(locale, '/dashboard')} class="flex shrink-0 items-center gap-2.5 whitespace-nowrap" aria-label="RÉSIVO">
         <BrandMark variant="mark" size={32} />
         <span class="font-display text-h2 font-bold tracking-tight text-ink">RÉSIVO</span>
       </a>
@@ -81,7 +84,7 @@ const navItems = [
             <a
               href={item.href}
               aria-current={activeNav === item.key ? 'page' : undefined}
-              class={`whitespace-nowrap inline-flex min-h-[38px] items-center gap-2 rounded-lg px-3 py-1.5 text-small font-medium transition-colors ${
+              class={`whitespace-nowrap inline-flex min-h-[38px] items-center gap-2 rounded-input px-3 py-1.5 text-small font-medium transition-colors ${
                 activeNav === item.key
                   ? 'bg-subtle text-ink font-semibold'
                   : 'text-muted hover:text-ink hover:bg-subtle/60'
@@ -97,12 +100,12 @@ const navItems = [
       <!-- Right Controls: Language toggle + User Avatar + Sign out -->
       <div class="ms-auto flex items-center gap-2 sm:gap-3">
         <!-- Language switcher -->
-        <nav aria-label={t(locale, 'nav.language')} class="flex items-center rounded-lg border border-line bg-subtle p-0.5 text-xs font-semibold shrink-0">
+        <nav aria-label={t(locale, 'nav.language')} class="flex items-center rounded-input border border-line bg-subtle p-0.5 text-small font-semibold shrink-0">
           <a
             href={targetFrPath}
             data-locale-switch="fr"
-            class={`rounded-md px-2.5 py-1 transition-colors ${
-              locale === 'fr' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+            class={`rounded-input px-2.5 py-1 transition-colors whitespace-nowrap ${
+              locale === 'fr' ? 'bg-surface text-ink shadow-e1' : 'text-muted hover:text-ink'
             }`}
             aria-current={locale === 'fr' ? 'true' : undefined}
           >
@@ -111,8 +114,8 @@ const navItems = [
           <a
             href={targetEnPath}
             data-locale-switch="en"
-            class={`rounded-md px-2.5 py-1 transition-colors ${
-              locale === 'en' ? 'bg-surface text-ink shadow-xs' : 'text-muted hover:text-ink'
+            class={`rounded-input px-2.5 py-1 transition-colors whitespace-nowrap ${
+              locale === 'en' ? 'bg-surface text-ink shadow-e1' : 'text-muted hover:text-ink'
             }`}
             aria-current={locale === 'en' ? 'true' : undefined}
           >
@@ -122,8 +125,8 @@ const navItems = [
 
         <a
           href={localizePath(locale, '/dashboard/profile')}
-          class="flex items-center gap-2 rounded-lg p-1 hover:bg-subtle transition-colors shrink-0 touch-target-44"
-          aria-label={`Signed in as ${displayIdentity || 'resident'} — open profile`}
+          class="flex items-center gap-2 rounded-input p-1 hover:bg-subtle transition-colors shrink-0 touch-target-44"
+          aria-label={`Signed in as ${displayIdentity || 'resident'}, open profile`}
           title={displayIdentity}
         >
           <Avatar name={displayIdentity || 'Resident Student'} size={32} />
@@ -132,7 +135,7 @@ const navItems = [
 
         <a
           href="/logout"
-          class="btn btn-secondary !min-h-[36px] !px-3 shrink-0 hidden sm:inline-flex"
+          class="btn btn-secondary btn-sm whitespace-nowrap shrink-0 hidden sm:inline-flex"
           aria-label={t(locale, 'nav.sign_out')}
         >
           <Icon name="log-out" size={15} />
@@ -142,7 +145,7 @@ const navItems = [
     </div>
   </header>
 
-  <main class="pb-24 md:pb-12">
+  <main id="main-content" class="pb-24 md:pb-12">
     <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:py-8">
       <slot />
     </div>
@@ -150,7 +153,7 @@ const navItems = [
 
   <nav
     aria-label="Dashboard"
-    class="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 backdrop-blur-md pb-safe md:hidden"
+    class="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface pb-safe md:hidden"
   >
     <div class="mx-auto grid h-16 max-w-lg grid-cols-4 px-1">
       {
@@ -158,12 +161,12 @@ const navItems = [
           <a
             href={item.href}
             aria-current={activeNav === item.key ? 'page' : undefined}
-            class={`flex min-h-[44px] flex-col items-center justify-center gap-1 py-1.5 text-xs transition-colors ${
+            class={`flex min-h-[44px] flex-col items-center justify-center gap-1 py-1.5 text-small transition-colors ${
               activeNav === item.key ? 'font-semibold text-teal-600' : 'text-muted hover:text-ink'
             }`}
           >
             <Icon name={item.icon} size={20} class={activeNav === item.key ? 'text-teal-600' : 'text-muted'} />
-            <span class="truncate max-w-[72px] text-center text-[11px] leading-tight">{item.short}</span>
+            <span class="truncate max-w-[72px] text-center text-small leading-tight">{item.short}</span>
           </a>
         ))
       }

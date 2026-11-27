@@ -26,6 +26,7 @@ supabase/.temp/
 supabase/.env
 
 # Scratch / OS / editors
+.hallmark/
 .superpowers/
 .DS_Store
 Thumbs.db

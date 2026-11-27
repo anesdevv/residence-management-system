@@ -38,10 +38,10 @@ Gold is an accent, never text on white; `gold-300` text only on navy.
 ### Text scale (size + line-height + weight in one utility)
 
 `text-display` 32/40 · `text-h1` 24/32 · `text-h2` 18/26 · `text-h3` 15/22 ·
-`text-body` 14/22 · `text-small` 12/18 · `text-overline` 11/16 (+0.08em, use with
-`uppercase` or the `.overline` class). Each utility sets size + line-height +
-weight (plus tracking for `display`/`overline`); heading elements render in
-Outfit and body/UI text in Inter via the base layer.
+`text-body` 14/22 · `text-small` 12/18 · `text-overline` 12/18 (sentence case,
+untracked). Each utility sets size + line-height + weight (plus tracking for
+`display`); heading elements render in Outfit and body/UI text in Inter via the
+base layer.
 
 ### Fonts, radii, elevation, spacing
 
@@ -67,8 +67,8 @@ Outfit and body/UI text in Inter via the base layer.
 | Class | Purpose |
 |---|---|
 | `.btn` | base: inline-flex, gap 8px, min-height **44px**, radius 8, 14/600, focus ring, transition. Works on `<button>`, `<a>` and `<label>`. |
-| `.btn-sm` | 36px min-height, 12/600, tighter padding |
-| `.btn-icon` | square 44px icon-only control (`.btn-icon.btn-sm` = 36px) |
+| `.btn-sm` | 40px min-height, 12/600, tighter padding |
+| `.btn-icon` | square 44px icon-only control (`.btn-icon.btn-sm` = 40px) |
 | `.btn-primary` | navy-800, hover navy-700 — default action |
 | `.btn-accent` | teal-600, darkens on hover — links/confirmations |
 | `.btn-secondary` | white + strong border + secondary ink, hover subtle — cancel/neutral |
@@ -106,7 +106,7 @@ explanatory tooltip** (`title` + `aria-describedby` copy).
 | `.card-flat` | same card without the shadow |
 | `.hero-card` | radius 20 for hero containers (gradient only on the landing/resident pass) |
 | `.card-title` | Outfit 18/26 600 — the card heading |
-| `.overline` | 11/600 uppercase +0.08em, `muted` — labels, table headers, section eyebrows |
+| `.overline` | 12/18 sentence case, untracked, `muted` | labels, section captions |
 
 ### Status badges (colour + icon + label, never colour alone)
 

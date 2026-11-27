@@ -7,8 +7,8 @@ import Stepper from '../../components/Stepper.astro';
 import InlineBanner from '../../components/InlineBanner.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
-import { MAINTENANCE_STAGES, getStageIndex, MAINTENANCE_CATEGORIES, getCategoryMeta, batchResolveSignedUrls } from '../../lib/maintenance';
-import { localizePath, t, tn, formatDateTime, type SupportedLocale } from '../../lib/i18n';
+import { getStageIndex, MAINTENANCE_CATEGORIES, getCategoryMeta } from '../../lib/maintenance';
+import { t, tn, formatDateTime, type SupportedLocale } from '../../lib/i18n';
 
 export const prerender = false;
 const locale: SupportedLocale = Astro.locals.locale || 'en';
@@ -78,10 +78,9 @@ const categories = [...MAINTENANCE_CATEGORIES];
 const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(locale, 'status.resolved')];
 ---
 
-<Layout title={locale === 'fr' ? 'Maintenance des Bâtiments — RÉSIVO' : 'Facility Maintenance — RÉSIVO'} activeNav="maintenance">
+<Layout title={locale === 'fr' ? 'Maintenance des Bâtiments | RÉSIVO' : 'Facility Maintenance | RÉSIVO'} activeNav="maintenance">
   <PageHeader
     title={t(locale, 'maintenance.title')}
-    overline="Cité Universitaire Tlemcen"
     subtitle={t(locale, 'maintenance.subtitle')}
   />
 
@@ -149,17 +148,17 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
       <!-- Emergency Hotline (Always accessible) -->
       <div class="rounded-card border border-pending-line bg-pending-bg p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-start gap-3">
-          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input bg-surface text-pending shadow-sm">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-input bg-surface text-pending">
             <Icon name="alert-triangle" size={20} />
           </span>
           <div>
-            <h3 class="text-small font-semibold uppercase tracking-wider text-pending">{t(locale, 'maintenance.emergency_title')}</h3>
+            <h2 class="text-body font-semibold text-pending">{t(locale, 'maintenance.emergency_title')}</h2>
             <p class="text-small text-ink-2 mt-0.5">{t(locale, 'maintenance.emergency_desc')}</p>
           </div>
         </div>
-        <a href="tel:+21343210000" class="btn btn-sm btn-secondary shrink-0 min-h-[40px]" dir="ltr">
-          <Icon name="phone" size={14} class="rtl-mirror" />
-          <span>{t(locale, 'maintenance.emergency_hotline')} : +213 (0) 43 21 00 00</span>
+        <a href="tel:+21343210000" class="btn btn-sm btn-secondary shrink-0 min-h-[44px] whitespace-nowrap" dir="ltr">
+          <Icon name="phone" size={14} class="rtl-mirror shrink-0" />
+          <span class="tnum font-mono">+213 (0) 43 21 00 00</span>
         </a>
       </div>
     </div>
@@ -187,10 +186,10 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
                     checked={i === 0}
                     class="peer sr-only"
                   />
-                  <div class="flex h-full flex-col items-center justify-center p-3 text-center rounded-card border border-line bg-subtle hover:bg-canvas peer-checked:border-teal-600 peer-checked:bg-teal-600/5 peer-checked:text-teal-600 transition min-h-[96px]">
-                    <Icon name={c.icon} size={22} class="text-muted peer-checked:text-teal-600" />
+                  <div class="flex h-full flex-col items-center justify-center p-3 text-center rounded-input border border-line bg-subtle hover:bg-canvas peer-checked:border-teal-600 peer-checked:bg-teal-600/5 peer-checked:text-teal-600 transition-colors min-h-[96px]">
+                    <Icon name={c.icon} size={22} class="text-ink-2 peer-checked:text-teal-600" />
                     <span class="mt-2 text-small font-semibold text-ink">{t(locale, 'category.' + c.id)}</span>
-                    <span class="mt-0.5 text-xs text-muted hidden sm:block">{c.desc}</span>
+                    <span class="mt-0.5 text-small text-muted hidden sm:block">{c.desc}</span>
                   </div>
                 </label>
               ))}
@@ -214,7 +213,7 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
           <!-- Photo Upload Box with Preview -->
           <div class="flex flex-col gap-2">
             <label for="photo" class="label">{t(locale, 'maintenance.photo_optional_label')}</label>
-            <div class="rounded-card border border-dashed border-line bg-subtle p-4 sm:p-5 flex flex-col items-center justify-center gap-2">
+            <div class="rounded-input border border-dashed border-line bg-subtle p-4 sm:p-5 flex flex-col items-center justify-center gap-2">
               <Icon name="image" size={24} class="text-muted" />
               <input
                 type="file"
@@ -225,20 +224,20 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
               />
               <p class="field-hint text-center">{t(locale, 'maintenance.photo_hint_detailed')}</p>
               <div id="photoStatus" class="hidden flex items-center gap-2 text-small text-teal-600 font-medium py-1">
-                <span class="inline-block animate-spin font-bold">&#8635;</span>
+                <Icon name="spinner" size={16} class="motion-safe:animate-spin shrink-0" />
                 <span>{t(locale, 'maintenance.photo_optimizing')}</span>
               </div>
               <div id="photoError" class="hidden text-small text-danger font-medium py-1"></div>
               <div id="photoPreview" class="hidden mt-2 flex flex-col items-center gap-1.5">
-                <img id="previewImg" src="" alt="Photo preview" class="max-h-48 rounded-card border border-line object-cover" />
-                <span id="photoSizeBadge" class="text-caption text-muted bg-canvas border border-line px-2.5 py-0.5 rounded-full font-mono"></span>
+                <img id="previewImg" src="" alt="Photo preview" class="max-h-48 rounded-input border border-line object-cover" />
+                <span id="photoSizeBadge" class="text-small text-muted bg-canvas border border-line px-2.5 py-0.5 rounded-pill font-mono"></span>
               </div>
             </div>
           </div>
 
           <!-- Submit Button -->
           <div>
-            <button type="submit" class="btn btn-primary min-h-[44px]">
+            <button type="submit" class="btn btn-primary min-h-[44px] whitespace-nowrap">
               <Icon name="check-circle" size={18} />
               <span>{t(locale, 'maintenance.submit_btn')}</span>
             </button>
@@ -252,19 +251,22 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
         <div class="rounded-card border border-pending-line bg-pending-bg p-5 flex flex-col gap-3">
           <div class="flex items-center gap-2.5 text-pending font-semibold">
             <Icon name="alert-triangle" size={18} />
-            <h3 class="text-small uppercase tracking-wider">{t(locale, 'maintenance.emergency_title')}</h3>
+            <h2 class="text-body font-semibold">{t(locale, 'maintenance.emergency_title')}</h2>
           </div>
           <p class="text-small text-ink-2 leading-relaxed">
             {t(locale, 'maintenance.emergency_desc')}
           </p>
-          <div class="pt-1">
+          <p class="text-small font-medium text-ink">
+            {t(locale, 'maintenance.emergency_hotline')}
+          </p>
+          <div>
             <a
               href="tel:+21343210000"
-              class="btn btn-sm btn-secondary w-full justify-center min-h-[40px]"
+              class="btn btn-sm btn-secondary w-full justify-center min-h-[44px] whitespace-nowrap"
               dir="ltr"
             >
-              <Icon name="phone" size={14} class="rtl-mirror" />
-              <span class="font-mono font-medium">{t(locale, 'maintenance.emergency_hotline')} : +213 (0) 43 21 00 00</span>
+              <Icon name="phone" size={14} class="rtl-mirror shrink-0" />
+              <span class="tnum font-mono font-medium">+213 (0) 43 21 00 00</span>
             </a>
           </div>
         </div>
@@ -277,8 +279,8 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
           </div>
           <p class="leading-relaxed">
             {locale === 'fr'
-              ? 'Les interventions ont lieu durant les heures de bureau (08h30 – 16h00). Assurez-vous de libérer l’accès à la zone d’intervention dans votre chambre.'
-              : 'Technical teams inspect and repair during standard service hours (08:30 – 16:00). Please ensure clear access to the affected fixture.'}
+              ? 'Les interventions ont lieu durant les heures de bureau (08h30 à 16h00). Assurez-vous de libérer l’accès à la zone d’intervention dans votre chambre.'
+              : 'Technical teams inspect and repair during standard service hours (08:30 to 16:00). Please ensure clear access to the affected fixture.'}
           </p>
         </div>
       </aside>
@@ -294,12 +296,12 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
       </div>
 
       <!-- Filter Chips -->
-      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 pe-2 sm:pe-0" id="filterChips" role="group" aria-label="Filter tickets by status">
+      <div class="seg overflow-x-auto max-w-full" id="filterChips" role="group" aria-label={locale === 'fr' ? 'Filtrer les signalements par statut' : 'Filter tickets by status'}>
         <button
           type="button"
           data-filter="all"
           aria-pressed="true"
-          class="filter-chip btn btn-sm btn-primary min-h-[40px]"
+          class="filter-chip seg-item whitespace-nowrap"
         >
           {t(locale, 'maintenance.filter_all', { count: totalCount })}
         </button>
@@ -307,7 +309,7 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
           type="button"
           data-filter="pending"
           aria-pressed="false"
-          class="filter-chip btn btn-sm btn-secondary min-h-[40px]"
+          class="filter-chip seg-item whitespace-nowrap"
         >
           {t(locale, 'maintenance.filter_pending', { count: pendingCount })}
         </button>
@@ -315,7 +317,7 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
           type="button"
           data-filter="in_progress"
           aria-pressed="false"
-          class="filter-chip btn btn-sm btn-secondary min-h-[40px]"
+          class="filter-chip seg-item whitespace-nowrap"
         >
           {t(locale, 'maintenance.filter_in_progress', { count: inProgressCount })}
         </button>
@@ -323,7 +325,7 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
           type="button"
           data-filter="resolved"
           aria-pressed="false"
-          class="filter-chip btn btn-sm btn-secondary min-h-[40px]"
+          class="filter-chip seg-item whitespace-nowrap"
         >
           {t(locale, 'maintenance.filter_resolved', { count: resolvedCount })}
         </button>
@@ -378,8 +380,8 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
 
               <!-- Staff / Technician Feedback Note -->
               {r.staff_note && (
-                <div class="mt-4 rounded-card border border-line bg-subtle p-3.5">
-                  <span class="overline block text-muted mb-1">{t(locale, 'maintenance.technician_note_title')}</span>
+                <div class="mt-4 rounded-input border border-line bg-subtle p-3.5">
+                  <span class="block text-small font-semibold text-muted mb-1">{t(locale, 'maintenance.technician_note_title')}</span>
                   <p class="text-small font-normal text-ink leading-relaxed">{r.staff_note}</p>
                 </div>
               )}
@@ -387,13 +389,13 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
               <!-- Attached Inspection Photo (Lazy Loaded with Fixed Aspect Ratio for CLS = 0) -->
               {r.photo_path && (
                 <div class="mt-4 pt-3 border-t border-line">
-                  <span class="overline block text-muted mb-2">{t(locale, 'maintenance.photo_inspection_title')}</span>
+                  <span class="block text-small font-semibold text-muted mb-2">{t(locale, 'maintenance.photo_inspection_title')}</span>
                   <div
-                    class="photo-lazy-container relative w-full max-w-sm aspect-[16/10] rounded-card border border-line bg-subtle overflow-hidden"
+                    class="photo-lazy-container relative w-full max-w-sm aspect-[16/10] rounded-input border border-line bg-subtle overflow-hidden"
                     data-photo-path={r.photo_path}
                   >
-                    <div class="photo-skeleton absolute inset-0 flex items-center justify-center text-muted">
-                      <Icon name="image" size={24} class="opacity-40 animate-pulse" />
+                    <div class="photo-skeleton skeleton absolute inset-0 flex items-center justify-center text-muted" aria-hidden="true">
+                      <Icon name="image" size={24} class="opacity-50" />
                     </div>
                     <a href="#" target="_blank" rel="noopener noreferrer" class="photo-link hidden group block w-full h-full">
                       <img
@@ -401,7 +403,7 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
                         alt="Fault inspection documentation"
                         width="384"
                         height="160"
-                        class="h-full w-full object-cover group-hover:opacity-90 transition"
+                        class="h-full w-full object-cover group-hover:opacity-90 transition-opacity"
                         loading="lazy"
                         decoding="async"
                       />
@@ -412,6 +414,9 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
             </article>
           );
         })}
+        <div id="filterEmptyState" class="hidden card card-flat p-8 text-center text-small text-muted">
+          {locale === 'fr' ? 'Aucun signalement ne correspond à ce statut.' : 'No maintenance tickets match this status.'}
+        </div>
       </div>
     )}
   </div>
@@ -453,8 +458,8 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
 
         try {
           const result = await optimizePhotoFile(file, {
-            maxDimension: 1600,
-            maxBytes: 500 * 1024,
+            maxSide: 1600,
+            targetBytes: 500 * 1024,
             initialQuality: 0.82,
             minQuality: 0.60,
           });
@@ -479,7 +484,7 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
           }
 
           if (photoSizeBadge) {
-            if (result.wasOptimized) {
+            if (!result.fallback && result.optimizedSize < result.originalSize) {
               const pct = Math.round((1 - result.optimizedSize / result.originalSize) * 100);
               photoSizeBadge.textContent = `${formatFileSize(result.originalSize)} → ${formatFileSize(result.optimizedSize)} (${pct}% smaller)`;
             } else {
@@ -560,11 +565,13 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
                 };
                 img.onerror = () => {
                   if (skeleton) {
-                    skeleton.innerHTML = '<span class="text-caption text-muted">Failed to load photo</span>';
+                    skeleton.classList.remove('skeleton');
+                    skeleton.innerHTML = '<span class="text-small text-muted">Failed to load photo</span>';
                   }
                 };
               } else if (skeleton) {
-                skeleton.innerHTML = '<span class="text-caption text-muted">Photo unavailable</span>';
+                skeleton.classList.remove('skeleton');
+                skeleton.innerHTML = '<span class="text-small text-muted">Photo unavailable</span>';
               }
             }
           });
@@ -593,27 +600,52 @@ const STAGES = [t(locale, 'status.pending'), t(locale, 'status.in_progress'), t(
     // 3. Filter chips handling
     const filterContainer = document.getElementById('filterChips');
     const ticketCards = document.querySelectorAll('.ticket-card');
+    const filterEmptyState = document.getElementById('filterEmptyState');
+
+    function applyFilter(filter: string) {
+      if (!filterContainer) return;
+      const chips = filterContainer.querySelectorAll('.filter-chip');
+      chips.forEach((c) => {
+        const isActive = c.getAttribute('data-filter') === filter;
+        c.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      });
+
+      let visibleCount = 0;
+      ticketCards.forEach((card) => {
+        const status = card.getAttribute('data-status');
+        const show = filter === 'all' || status === filter;
+        card.classList.toggle('hidden', !show);
+        if (show) visibleCount++;
+      });
+
+      if (filterEmptyState) {
+        filterEmptyState.classList.toggle('hidden', visibleCount > 0 || ticketCards.length === 0);
+      }
+    }
 
     if (filterContainer && ticketCards.length > 0) {
       const chips = filterContainer.querySelectorAll('.filter-chip');
+      const initialStatus = new URLSearchParams(window.location.search).get('status');
+      const validFilters = new Set(Array.from(chips).map((c) => c.getAttribute('data-filter')));
+      if (initialStatus && validFilters.has(initialStatus)) {
+        applyFilter(initialStatus);
+      }
+
       chips.forEach((chip) => {
         chip.addEventListener('click', () => {
-          const filter = chip.getAttribute('data-filter');
-          chips.forEach((c) => {
-            c.classList.remove('btn-primary');
-            c.classList.add('btn-secondary');
-          });
-          chip.classList.add('btn-primary');
-          chip.classList.remove('btn-secondary');
-
-          ticketCards.forEach((card) => {
-            const status = card.getAttribute('data-status');
-            if (filter === 'all' || status === filter) {
-              (card as HTMLElement).style.display = 'block';
+          const filter = chip.getAttribute('data-filter') || 'all';
+          applyFilter(filter);
+          try {
+            const url = new URL(window.location.href);
+            if (filter === 'all') {
+              url.searchParams.delete('status');
             } else {
-              (card as HTMLElement).style.display = 'none';
+              url.searchParams.set('status', filter);
             }
-          });
+            window.history.replaceState({}, '', url.toString());
+          } catch {
+            // URL sync best-effort
+          }
         });
       });
     }

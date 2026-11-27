@@ -26,7 +26,7 @@ const spec = KINDS[kind] ?? KINDS.info;
 ---
 
 <div
-  class={`flex items-start gap-3 rounded-card border p-3 sm:p-4 ${spec.box} ${className}`}
+  class={`flex items-start gap-3 rounded-input border p-3 sm:p-4 ${spec.box} ${className}`}
   role={kind === 'error' ? 'alert' : undefined}
 >
   <Icon name={icon ?? spec.icon} size={18} class={`mt-0.5 shrink-0 ${spec.iconClass}`} />
